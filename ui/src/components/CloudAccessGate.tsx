@@ -9,7 +9,7 @@ import { healthApi } from "@/api/health";
 import { isTemporaryApiError } from "@/api/response";
 import { queryKeys } from "@/lib/queryKeys";
 import { BootstrapPendingPage } from "@/components/BootstrapPendingPage";
-import { PaperclipLoading } from "@/components/AnimatedPaperclipIcon";
+import { BostanLoading } from "@/components/BostanLoading";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CloudSignIn } from "@/components/CloudSignIn";
@@ -170,7 +170,7 @@ export function CloudAccessGate({ allowMembershipRequest = false }: { allowMembe
   }
 
   if (isLoading) {
-    return <PaperclipLoading />;
+    return <BostanLoading />;
   }
 
   if (isAuthenticatedMode && healthQuery.data?.cloud && !sessionQuery.data) {
@@ -180,7 +180,7 @@ export function CloudAccessGate({ allowMembershipRequest = false }: { allowMembe
   if (isBootstrapPending) {
     const health = healthQuery.data;
     if (!health) {
-      return <PaperclipLoading />;
+      return <BostanLoading />;
     }
     const claimError = claimMutation.error instanceof ApiError
       ? { status: claimMutation.error.status, message: claimMutation.error.message }

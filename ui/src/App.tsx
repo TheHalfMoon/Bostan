@@ -19,7 +19,7 @@ import { useHiddenSettings } from "./hooks/useHiddenSettings";
 import { OnboardingWizardVariant } from "./components/OnboardingWizardVariant";
 import { CloudAccessGate } from "./components/CloudAccessGate";
 import { ShellConfigurationGate } from "./components/ShellConfigurationGate";
-import { PaperclipLoading } from "./components/AnimatedPaperclipIcon";
+import { BostanLoading } from "./components/BostanLoading";
 import { AGENT_FILTER_TABS } from "./lib/agent-filter-tabs";
 import { useCombinedInboxTasksEnabled } from "./hooks/useCombinedInboxTasksEnabled";
 import { ChatConnectorsExperimentalGate } from "./components/ChatConnectorsExperimentalGate";
@@ -138,7 +138,7 @@ const ProductionCompanyActivity = lazy(() => import("./pages/audit/CompanyActivi
 const ProductionOrgChart = lazy(() => import("./pages/OrgChart.production").then((module) => ({ default: module.OrgChart })));
 
 function ProductionSurface({ children }: { children: ReactNode }) {
-  return <Suspense fallback={<PaperclipLoading />}>{children}</Suspense>;
+  return <Suspense fallback={<BostanLoading />}>{children}</Suspense>;
 }
 
 function boardRoutes(streamlinedUiEnabled: boolean, combinedInboxTasksEnabled: boolean) {
@@ -175,7 +175,7 @@ function boardRoutes(streamlinedUiEnabled: boolean, combinedInboxTasksEnabled: b
         <Route
           path="company/export/*"
           element={(
-            <Suspense fallback={<PaperclipLoading />}>
+            <Suspense fallback={<BostanLoading />}>
               <CompanyExport />
             </Suspense>
           )}
@@ -506,7 +506,7 @@ function LegacySettingsRedirect() {
   const { hidden: hiddenSettings } = useHiddenSettings();
 
   if (loading) {
-    return <PaperclipLoading />;
+    return <BostanLoading />;
   }
 
   const targetCompany =
@@ -645,7 +645,7 @@ function CompanyRootRedirect() {
   const location = useLocation();
 
   if (loading) {
-    return <PaperclipLoading />;
+    return <BostanLoading />;
   }
 
   const targetCompany = selectedCompany ?? companies[0] ?? null;
@@ -690,7 +690,7 @@ function UnprefixedBoardRedirect() {
   const { companies, selectedCompany, loading } = useCompany();
 
   if (loading) {
-    return <PaperclipLoading />;
+    return <BostanLoading />;
   }
 
   const targetCompany = selectedCompany ?? companies[0] ?? null;
@@ -770,7 +770,7 @@ export function App() {
 
   return (
     <>
-      <Suspense fallback={<PaperclipLoading />}><Routes>
+      <Suspense fallback={<BostanLoading />}><Routes>
         <Route path="oauth-handoff" element={<PaperclipCloudOAuthHandoffPage />} />
         <Route path="auth" element={<AuthPage />} />
         <Route path="board-claim/:token" element={<BoardClaimPage />} />
