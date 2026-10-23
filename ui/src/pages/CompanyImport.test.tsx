@@ -1326,10 +1326,10 @@ describe("CompanyImport", () => {
       await flushReact();
     }
     const select = container.querySelector<HTMLButtonElement>('[aria-label="Permission mode"]');
-    if (sourceType === "paperclip_runner") expect(select?.textContent).toContain(permission === "deny-all" ? "Deny all" : "Allow Paperclip reads");
+    if (sourceType === "paperclip_runner") expect(select?.textContent).toContain(permission === "deny-all" ? "Deny all" : "Allow Bostan reads");
     await act(async () => select!.click());
     const nextPermission = permission === "deny-all" ? "approve-reads" : "deny-all";
-    const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(element => element.textContent === (nextPermission === "deny-all" ? "Deny all" : "Allow Paperclip reads"));
+    const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(element => element.textContent === (nextPermission === "deny-all" ? "Deny all" : "Allow Bostan reads"));
     expect(option).toBeTruthy();
     await act(async () => option!.click());
     await flushReact();
@@ -1495,7 +1495,7 @@ describe("CompanyImport", () => {
     await clickButton(text => text.startsWith("Import 3 file"));
     await settle();
     expect(mockCompaniesApi.importBundleAsync).not.toHaveBeenCalled();
-    expect(container.textContent).toContain("Unknown Paperclip Runner provider unknown-provider");
+    expect(container.textContent).toContain("Unknown Bostan Runner provider unknown-provider");
   });
 
   it("requires billing acknowledgement and serializes the standalone Dot import choice as Runner", async () => {

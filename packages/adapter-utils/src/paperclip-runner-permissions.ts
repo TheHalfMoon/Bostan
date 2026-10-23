@@ -126,7 +126,7 @@ export const PAPERCLIP_RUNNER_PERMISSION_CAPABILITIES = {
       },
       {
         value: "approve-reads",
-        label: "Allow Paperclip reads",
+        label: "Allow Bostan reads",
         description:
           "Automatically allow assigned Paperclip read tools. Other operations request a supported permission decision. Company permissions and execution boundaries still apply.",
       },

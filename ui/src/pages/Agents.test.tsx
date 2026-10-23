@@ -609,7 +609,7 @@ describe("Agents", () => {
     await flushReact();
 
     expect(container.textContent).toContain("Dev Laptop");
-    expect(container.textContent).toContain("Paperclip host");
+    expect(container.textContent).toContain("Bostan host");
   });
 
   it("reserves the environment column while environment metadata is loading", async () => {
