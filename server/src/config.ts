@@ -1,4 +1,5 @@
 import { readConfigFile, resolveDeploymentMode } from "./config-file.js";
+import { resolveBostanAnnouncementPolicy } from "./announcement-policy.js";
 import { parseChatWebhookPublicBaseUrl } from "./chat-webhook-public-url.js";
 import { execFileSync } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
@@ -368,6 +369,8 @@ export function loadConfig(): Config {
     throw new Error(resolvedBind.errors[0]);
   }
 
+  const announcements = resolveBostanAnnouncementPolicy();
+
   return {
     deploymentMode,
     deploymentExposure,
@@ -437,8 +440,8 @@ export function loadConfig(): Config {
     heartbeatSchedulerEnabled: process.env.HEARTBEAT_SCHEDULER_ENABLED !== "false",
     heartbeatSchedulerIntervalMs: Math.max(10000, Number(process.env.HEARTBEAT_SCHEDULER_INTERVAL_MS) || 30000),
     companyDeletionEnabled,
-    telemetryEnabled: fileConfig?.telemetry?.enabled ?? true,
-    announcementsEnabled: process.env.PAPERCLIP_ANNOUNCEMENTS_ENABLED !== "false",
-    announcementsFeedUrl: process.env.PAPERCLIP_ANNOUNCEMENTS_FEED_URL?.trim() || "https://pages.paperclip.ing/announcements/v1/current.json",
+    telemetryEnabled: fileConfig?.telemetry?.enabled ?? false,
+    announcementsEnabled: announcements.enabled,
+    announcementsFeedUrl: announcements.feedUrl,
   };
 }

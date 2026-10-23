@@ -709,8 +709,9 @@ export async function onboard(opts: OnboardOptions): Promise<void> {
     logging,
     server,
     auth,
+    // No network telemetry on first run. Explicit opt-in is a separate action.
     telemetry: {
-      enabled: true,
+      enabled: false,
     },
     storage,
     secrets,

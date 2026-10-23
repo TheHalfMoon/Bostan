@@ -77,10 +77,24 @@ export function resolveTelemetryConfig(
   if (isCI()) {
     return { enabled: false, ...caps };
   }
-  if (fileConfig?.enabled === false) {
+  // Bostan must not inherit the former project's opt-in state or default
+  // telemetry endpoint from a copied config. Three independent signals are
+  // required before network transmission can become possible:
+  // 1) explicit Bostan environment consent; 2) config consent; 3) destination.
+  if (process.env.BOSTAN_TELEMETRY_OPT_IN !== "1" || fileConfig?.enabled !== true) {
     return { enabled: false, ...caps };
   }
-
-  const endpoint = process.env.PAPERCLIP_TELEMETRY_ENDPOINT || undefined;
-  return { enabled: true, endpoint, ...caps };
+  const endpoint = process.env.BOSTAN_TELEMETRY_ENDPOINT?.trim();
+  if (!endpoint) return { enabled: false, ...caps };
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return { enabled: false, ...caps };
+  }
+  const loopback = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
+  if (url.username || url.password || !(url.protocol === "https:" || (url.protocol === "http:" && loopback))) {
+    return { enabled: false, ...caps };
+  }
+  return { enabled: true, endpoint: url.toString(), ...caps };
 }
