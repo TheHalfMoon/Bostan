@@ -1,14 +1,13 @@
 {
-  "name": "paperclipai",
+  "name": "bostan",
   "version": "0.3.1",
-  "description": "Paperclip CLI — orchestrate AI agent teams to run a business",
+  "description": "Bostan preview command line interface (operations gated pending local identity qualification)",
   "type": "module",
   "bin": {
-    "paperclipai": "./dist/index.js"
+    "bostan": "./dist/bostan.js"
   },
   "keywords": [
-    "paperclip",
-    "ai",
+    "bostan",
     "agents",
     "orchestration",
     "cli"
@@ -16,24 +15,22 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/paperclipai/paperclip",
+    "url": "https://github.com/TheHalfMoon/Bostan",
     "directory": "cli"
   },
-  "homepage": "https://github.com/paperclipai/paperclip",
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
   "bugs": {
-    "url": "https://github.com/paperclipai/paperclip/issues"
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
   },
   "files": [
     "dist"
   ],
-  "publishConfig": {
-    "access": "public"
-  },
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "node --input-type=module -e \"import esbuild from 'esbuild'; import config from './esbuild.config.mjs'; await esbuild.build(config);\" && chmod +x dist/index.js",
+    "build": "node scripts/build-bostan-preview.mjs",
     "clean": "rm -rf dist",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "bostan:smoke": "node --test src/__tests__/bostan-preview.test.mjs"
   },
   "dependencies": {
     "@clack/prompts": "^1.7.0",
@@ -65,5 +62,6 @@
   },
   "engines": {
     "node": ">=24.11.0"
-  }
+  },
+  "private": true
 }

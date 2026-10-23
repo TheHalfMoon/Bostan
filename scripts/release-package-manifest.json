@@ -101,8 +101,8 @@
   },
   {
     "dir": "cli",
-    "name": "paperclipai",
-    "publishFromCi": true
+    "name": "bostan",
+    "publishFromCi": false
   },
   {
     "dir": "packages/mcp-server",

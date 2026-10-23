@@ -1,5 +1,5 @@
 {
-  "name": "paperclip",
+  "name": "bostan",
   "private": true,
   "type": "module",
   "scripts": {
@@ -35,14 +35,13 @@
     "issue-references:backfill": "pnpm run preflight:workspace-links && tsx scripts/backfill-issue-reference-mentions.ts",
     "secrets:migrate-inline-env": "tsx scripts/migrate-inline-env-secrets.ts",
     "db:backup": "./scripts/backup-db.sh",
-    "paperclipai": "node cli/node_modules/tsx/dist/cli.mjs cli/src/index.ts",
-    "build:npm": "./scripts/build-npm.sh",
-    "release": "./scripts/release.sh",
-    "release:canary": "./scripts/release.sh canary",
-    "release:stable": "./scripts/release.sh stable",
-    "release:github": "./scripts/create-github-release.sh",
-    "release:rollback": "./scripts/rollback-latest.sh",
-    "release:bootstrap-package": "node scripts/bootstrap-npm-package.mjs",
+    "build:npm": "node scripts/bostan-release-disabled.mjs",
+    "release": "node scripts/bostan-release-disabled.mjs",
+    "release:canary": "node scripts/bostan-release-disabled.mjs",
+    "release:stable": "node scripts/bostan-release-disabled.mjs",
+    "release:github": "node scripts/bostan-release-disabled.mjs",
+    "release:rollback": "node scripts/bostan-release-disabled.mjs",
+    "release:bootstrap-package": "node scripts/bostan-release-disabled.mjs",
     "check:tokens": "node scripts/check-forbidden-tokens.mjs",
     "check:token-gates": "node scripts/check-token-gates.mjs && node scripts/sync-agent-palette-tokens.mjs --check && node scripts/sync-cliplab-character.mjs --check",
     "check:node-version": "node scripts/check-node-version-policy.mjs",
@@ -94,7 +93,8 @@
     "connections:ingest-app-definitions": "node scripts/ingest-app-definitions.mjs",
     "test:lifecycle-baseline": "node tests/lifecycle-baseline/run.mjs",
     "test:lifecycle-baseline:support": "node --test tests/lifecycle-baseline/report.test.mjs",
-    "test:lifecycle-baseline:typecheck": "tsc -p tests/lifecycle-baseline/tsconfig.json"
+    "test:lifecycle-baseline:typecheck": "tsc -p tests/lifecycle-baseline/tsconfig.json",
+    "bostan": "node cli/src/bostan-preview.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
