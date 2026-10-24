@@ -161,6 +161,6 @@ test("Windows disposable server startup log has a bounded local filename", () =>
 
 
 test("Windows disposable QA gets a bounded cold-start allowance without changing production limit", () => {
-  assert.equal(serverStartupProbeLimit({ windowsQa: true }), 240);
+  assert.equal(serverStartupProbeLimit({ windowsQa: true }), 360);
   assert.equal(serverStartupProbeLimit({ windowsQa: false }), 90);
 });

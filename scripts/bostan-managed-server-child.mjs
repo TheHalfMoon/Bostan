@@ -55,8 +55,20 @@ export function superviseManagedServer(startServer, ipc = process) {
 async function main() {
   // The imported Bostan server is not the main module, so its ordinary
   // process-signal launch branch stays inactive; we own graceful stop.
+  // This diagnostic is local to explicitly disposable Windows QA and does
+  // not print model prompts, credentials or private runtime configuration.
+  const tracing = process.platform === "win32" && process.env.BOSTAN_WINDOWS_TEMP_QA === "1";
+  const startedAt = performance.now();
+  if (tracing) process.stderr.write("Bostan Windows QA: beginning server module import.\n");
   const { startServer } = await import("../server/src/index.ts");
-  await superviseManagedServer(startServer);
+  if (tracing) process.stderr.write("Bostan Windows QA: module import complete after " +
+    Math.round((performance.now() - startedAt) / 1000) + " seconds; beginning startup.\n");
+  await superviseManagedServer(async () => {
+    const result = await startServer();
+    if (tracing) process.stderr.write("Bostan Windows QA: service startup complete after " +
+      Math.round((performance.now() - startedAt) / 1000) + " seconds.\n");
+    return result;
+  });
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch((error) => {

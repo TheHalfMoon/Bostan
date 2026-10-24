@@ -129,7 +129,7 @@ export function serverStartupProbeLimit({ windowsQa }) {
   // Broad Windows QA builds have a much colder TypeScript module graph than
   // the qualified macOS developer install. This extra allowance is never
   // used outside explicit disposable Windows QA.
-  return windowsQa ? 240 : 90;
+  return windowsQa ? 360 : 90;
 }
 
 export function serverStartupLogPath(logDirectory, pid, timestamp = Date.now()) {
