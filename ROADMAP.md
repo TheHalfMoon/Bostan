@@ -46,6 +46,10 @@ completion. Introduce strong negative-path and concurrent workload tests.
 - [x] B1-02: deny agent Done for pending, task-scoped governed interaction
   (tool/secret/connection/document), while ordinary questions and unrelated
   AI account logins remain nonblocking; real PostgreSQL integration verified.
+- [x] B1-03: transactional approval-link admission serializes with Done on
+  a locked task row; bulk links are atomic and cannot cross tenants.
+- [ ] Qualify direct tool-gateway approval insertion against concurrent Done
+  and extend row-lock admission to every remaining governed creation path.
 - [ ] Complete independent output/effect verification, concurrency and
   approval creation races, cross-tenant policy, recovery and budget gates.
 
