@@ -49,7 +49,11 @@ export async function createBostanRecommendation(input: {
   body: BostanRecommendationInput;
 }) {
   const recommendation = bostanRecommendationSchema.parse(input.body);
-  const references = await input.db.select({ id: issues.id, companyId: issues.companyId, status: issues.status, projectId: issues.projectId })
+  const references = await input.db.select({
+    id: issues.id, companyId: issues.companyId, status: issues.status,
+    projectId: issues.projectId, updatedAt: issues.updatedAt,
+    title: issues.title, description: issues.description,
+  })
     .from(issues).where(and(eq(issues.companyId, input.companyId), inArray(issues.id, recommendation.evidenceIssueIds)));
   if (references.length !== recommendation.evidenceIssueIds.length) {
     throw unprocessable("Every evidence issue must belong to this company and be accessible");
@@ -62,6 +66,21 @@ export async function createBostanRecommendation(input: {
     });
     if (!access.allowed) throw unprocessable("Every evidence issue must belong to this company and be accessible");
   }
+  // Evidence issue identities alone are not a provenance receipt: record an
+  // opaque content-and-version fingerprint so an idempotent recommendation
+  // cannot silently reuse claims after any cited issue changes. Raw issue
+  // titles/descriptions must not be projected into this agent-visible row.
+  // This does NOT certify that the cited data supports the recommendation.
+  const evidenceSnapshotHmacSha256 = createHmac("sha256", resolveDecisionSigningSecret())
+    .update("bostan-evidence-issue-snapshot-v1:")
+    .update(JSON.stringify([...references]
+      .sort((left, right) => left.id.localeCompare(right.id))
+      .map(ref => ({
+        id: ref.id, status: ref.status, projectId: ref.projectId,
+        updatedAt: ref.updatedAt.toISOString(), title: ref.title,
+        description: ref.description ?? null,
+      }))))
+    .digest("hex");
   // The estimated USD amount is not a reservation. For *advice* evaluate
   // already configured, authenticated board budget policies as an additional
   // abstention guard. The agent's own declared ceiling can NEVER raise them.
@@ -132,6 +151,7 @@ export async function createBostanRecommendation(input: {
     "",
     "Evidence issue references (existence/access verified, relevance NOT independently verified):",
     ...recommendation.evidenceIssueIds.map(id => `- ${id}`),
+    `Opaque evidence content snapshot: ${evidenceSnapshotHmacSha256}`,
     "",
     "This is advice, not approval for tool execution, spending, account access or task completion.",
   ].join("\n");
@@ -149,6 +169,9 @@ export async function createBostanRecommendation(input: {
     metadata: {
       kind: "bostan_evidence_recommendation_v1",
       evidenceIssueIds: recommendation.evidenceIssueIds,
+      evidenceSnapshotHmacSha256,
+      evidenceIssueCount: references.length,
+      evidenceRelevanceVerified: false,
       recommendedOptionId: abstained ? null : recommendation.recommendedOptionId,
       selfReportedConfidence: recommendation.confidence,
       calibrated: false,

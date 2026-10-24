@@ -74,6 +74,9 @@ privileged effects.
   exposure, abstain when spending/unknown accounting violates hard stops,
   redact board financial details from agent-readable recommendations and bind
   idempotency to a budget snapshot fingerprint. No actual spend authorized.
+- [x] B2-03: bind cited evidence identity, source content and version timestamps
+  to a private keyed HMAC included in the signed decision and idempotency,
+  rejecting reuse of stale recommendations without exposing document text.
 - [ ] Board-defined actual budget limits, calibrated outcomes, external
   evidence proof/readback, durable model routing, evaluation and UI E2E.
 

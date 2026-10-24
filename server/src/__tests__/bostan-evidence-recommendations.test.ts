@@ -160,6 +160,22 @@ suite("Bostan B2 recommendations reuse signed board decisions", () => {
     expect(after.metadata).toMatchObject({ abstained: true, abstentionReasons: ["board_budget_capacity_exceeded"] });
     expect(after.metadata.boardBudgetPolicySnapshotHmacSha256).not.toBe(before.metadata.boardBudgetPolicySnapshotHmacSha256);
   });
+  it("B2-03 invalidates stale signed advice when a cited issue's evidence changes", async () => {
+    await seed();
+    const request = { ...base(), evidenceIssueIds: [evidenceIssueId] };
+    const first = await write(request);
+    expect(first.metadata).toMatchObject({ evidenceIssueCount: 1, evidenceRelevanceVerified: false });
+    expect(first.metadata.evidenceSnapshotHmacSha256).toMatch(/^[a-f0-9]{64}$/);
+    await db.update(issues).set({
+      description: "Synthetic evidence was revised after the initial recommendation",
+      updatedAt: new Date(Date.now() + 10_000),
+    }).where(eq(issues.id, evidenceIssueId));
+    await expect(write(request)).rejects.toMatchObject({ status: 409 });
+    const updated = await write({ ...request, idempotencyKey: `bostan-evidence-revised-${randomUUID()}` });
+    expect(updated.metadata.evidenceSnapshotHmacSha256).not.toBe(first.metadata.evidenceSnapshotHmacSha256);
+    expect(JSON.stringify(updated.metadata)).not.toContain("Synthetic evidence was revised");
+    expect(updated.options.every(option => option.effects.length === 0)).toBe(true);
+  });
   it("B2-02 never applies a budget belonging to another company", async () => {
     await seed();
     const otherCompany = randomUUID();
