@@ -40,3 +40,21 @@ This is **source-only, development-qualified**, and must not be exposed on a
 public network or used for high-value production data. The source server
 is still undergoing migration of internal dependencies. The preview binary
 from `install --local` deliberately cannot start the full application.
+
+## Recover a stopped local runtime after a crash
+
+The local PostgreSQL database may outlive its UI/server process. **Do not delete**
+`~/.bostan/app/run.lock` by hand. From the prepared **source checkout** use:
+
+```bash
+bostan app recover --local
+```
+
+Bostan clears the Bostan-owned runtime lock **only** if the prior owner PID
+is gone and its local PostgreSQL cluster is confirmed stopped. It refuses to
+remove the lock while PostgreSQL runs, if its status cannot be checked, or
+when the lock or managed paths look unsafe. Database files are preserved.
+This is manual recovery, not an automatic data repair, restore or migration.
+
+Never point the recovery command at another user's HOME. The separately
+installed CLI-only preview cannot invoke app commands.
