@@ -14,6 +14,7 @@ const HELP = `Bostan ${version} — development preview
 Usage: bostan [--help | --version | status | install --local]
        bostan app doctor
        bostan app run --local [--port 3100]
+       bostan app stop --local
        bostan app recover --local
        bostan app backup --local
        bostan app verify --local <snapshot-directory>
@@ -25,6 +26,7 @@ Usage: bostan [--help | --version | status | install --local]
   install --local  Install only this Bostan CLI preview into your user home
   app doctor       Read-only runtime prerequisites check (source checkout)
   app run --local  Run built UI, server and isolated PostgreSQL in foreground
+  app stop --local     Request verified shutdown (Windows TEMP QA only)
   app recover --local  Clear only a confirmed stale Bostan runtime lock
   app backup --local   Create a cold backup (requires stopped PostgreSQL)
   app verify --local   Verify snapshot checksums without changing data
@@ -69,12 +71,23 @@ async function main() {
     return;
   }
   if (args.length >= 2 && args[0] === "app"
-    && (["doctor", "run", "recover", "backup", "verify", "restore"].includes(args[1]))) {
+    && (["doctor", "run", "stop", "recover", "backup", "verify", "restore"].includes(args[1]))) {
     const sourceModule = new URL("../../scripts/bostan-local-runtime.mjs", import.meta.url);
     if (!existsSync(sourceModule)) {
       throw new Error("App runtime commands require the full Bostan source checkout");
     }
     const { inspectLocalRuntime, runLocalRuntime, executable } = await import(sourceModule.href);
+    if (args.length === 3 && args[1] === "stop" && args[2] === "--local") {
+      const home = process.env.HOME || homedir();
+      const { enforceWindowsQaPrivateAcl } = await import(new URL("../../scripts/bostan-windows-acl.mjs", import.meta.url).href);
+      const { requestPrivateLocalStop } = await import(new URL("../../scripts/bostan-local-stop.mjs", import.meta.url).href);
+      // Verify ACL before reading the private token from stop-control.json.
+      // A new/foreign HOME must never be created by this command.
+      enforceWindowsQaPrivateAcl(home);
+      const result = await requestPrivateLocalStop({ home, pgCtl: executable("pg_ctl") });
+      process.stdout.write("Bostan local stop confirmed. PostgreSQL: " + result.postgres + "\n");
+      return;
+    }
     if (args.length === 3 && args[1] === "recover" && args[2] === "--local") {
       const { recoverStoppedLocalRuntime } = await import(new URL("../../scripts/bostan-runtime-recovery.mjs", import.meta.url).href);
       const result = recoverStoppedLocalRuntime({ home: process.env.HOME || homedir(), pgCtl: executable("pg_ctl") });

@@ -8,6 +8,7 @@ import { promisify } from "node:util";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { inspectRuntimeLock, removeStoppedRuntimeLock } from "./bostan-runtime-recovery.mjs";
 import { enforceWindowsQaPrivateAcl } from "./bostan-windows-acl.mjs";
+import { startPrivateStopControl } from "./bostan-local-stop.mjs";
 
 const exec = promisify(execFile);
 export const REPO = fileURLToPath(new URL("../", import.meta.url));
@@ -245,8 +246,17 @@ export async function runLocalRuntime(options = {}) {
   let child = null;
   let startupLog = null;
   let startupLogPath = null;
+  let stopControl = null;
   let interrupted = false;
-  const onSignal = () => { interrupted = true; child?.kill("SIGTERM"); };
+  const windowsQa = process.platform === "win32" && windowsDisposableQaHome(home);
+  const onSignal = () => {
+    interrupted = true;
+    if (windowsQa && child?.connected) {
+      child.send({ type: "bostan:managed:stop" }, () => {});
+    } else if (!windowsQa) {
+      child?.kill("SIGTERM");
+    }
+  };
   process.on("SIGINT", onSignal);
   process.on("SIGTERM", onSignal);
   try {
@@ -268,14 +278,16 @@ export async function runLocalRuntime(options = {}) {
     directory(path.join(p.instance, "secrets"));
     writeManagedConfig(p, port);
     const url = "postgres://bostan:" + password + "@127.0.0.1:" + pgPort + "/bostan";
-    const windowsQa = process.platform === "win32" && windowsDisposableQaHome(home);
     if (windowsQa) {
+      stopControl = await startPrivateStopControl({ home, onStop: onSignal });
       startupLogPath = serverStartupLogPath(p.logs, process.pid);
       startupLog = fs.createWriteStream(startupLogPath, { flags: "wx", mode: 0o600 });
     }
     child = spawn(process.execPath, ["--import", pathToFileURL(path.join(repo, "server", "node_modules", "tsx", "dist", "loader.mjs")).href,
-      path.join(repo, "server", "src", "index.ts")],
-      { cwd: repo, stdio: windowsQa ? ["ignore", "pipe", "pipe"] : "inherit",
+      windowsQa
+        ? path.join(repo, "scripts", "bostan-managed-server-child.mjs")
+        : path.join(repo, "server", "src", "index.ts")],
+      { cwd: repo, stdio: windowsQa ? ["ignore", "pipe", "pipe", "ipc"] : "inherit",
         env: isolatedEnv({ home, port, databaseUrl: url, jwt, config: p.config }) });
     if (windowsQa) {
       // Consuming both streams prevents a stalled backend process from
@@ -309,14 +321,20 @@ export async function runLocalRuntime(options = {}) {
       process.stdout.write("Bostan local application: http://127.0.0.1:" + port + "\n");
       process.stdout.write("Press Ctrl+C to shut down this local server and PostgreSQL.\n");
     }
-    if (interrupted) child.kill("SIGTERM");
+    if (interrupted) onSignal();
     const code = await exited;
     if (code !== 0 && !interrupted) throw new Error("Bostan server process failed with exit " + code);
     return code;
   } finally {
     process.off("SIGINT", onSignal);
     process.off("SIGTERM", onSignal);
-    if (child && child.exitCode === null && !child.killed) child.kill("SIGTERM");
+    if (child && child.exitCode === null && !child.killed) {
+      // Error paths may require an ungraceful last-resort process kill.
+      // Normal Windows TEMP QA app-stop uses the child IPC programmatic
+      // server.shutdown() and awaits exit before reaching this finally.
+      child.kill("SIGTERM");
+    }
+    if (stopControl) await stopControl.close();
     if (startupLog) {
       // Child pipes were connected with end:false; explicit close is required
       // after the child terminates so the test log is not left open.
