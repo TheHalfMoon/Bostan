@@ -16,6 +16,15 @@ export function superviseManagedServer(startServer, ipc = process) {
     pending = true;
     if (!closing) void orderlyStop();
   };
+  function reportAndExit(type, code) {
+    // An orphaned Windows child has a disconnected IPC pipe. Reporting is
+    // best effort; failure to send an acknowledgement must never leave the
+    // completed server alive with an unowned database connection.
+    try {
+      if (ipc.connected !== false) ipc.send?.({ type });
+    } catch {}
+    ipc.exit?.(code);
+  }
   async function orderlyStop() {
     if (!pending || closing) return;
     closing = true;
@@ -23,11 +32,9 @@ export function superviseManagedServer(startServer, ipc = process) {
       const instance = await started;
       if (!instance) return; // startup failed and the process will exit nonzero
       await instance.shutdown("SIGTERM");
-      ipc.send?.({ type: "bostan:managed:stopped" });
-      ipc.exit?.(0);
+      reportAndExit("bostan:managed:stopped", 0);
     } catch (error) {
-      ipc.send?.({ type: "bostan:managed:stop-failed" });
-      ipc.exit?.(1);
+      reportAndExit("bostan:managed:stop-failed", 1);
     }
   }
   // If the launcher dies, the child must not continue to serve against an

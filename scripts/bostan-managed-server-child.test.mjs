@@ -102,3 +102,15 @@ test("unexpected launcher IPC disconnection triggers graceful teardown", async (
   assert.equal(closed, 1);
   assert.deepEqual(proc.exits, [0]);
 });
+
+test("disconnected parent cannot prevent child from exiting after service drain", async () => {
+  const proc = fakeProcess();
+  proc.connected = false;
+  proc.send = () => { throw new Error("disconnected IPC"); };
+  let closed = 0;
+  await superviseManagedServer(async () => ({shutdown: async () => {closed++;}}), proc);
+  proc.emit("disconnect");
+  await new Promise(r => setImmediate(r));
+  assert.equal(closed, 1);
+  assert.deepEqual(proc.exits, [0]);
+});
