@@ -113,6 +113,10 @@ reconciliation. Never duplicate the existing task/run authority.
   readback receipt in existing workspace operations; board-only signed
   integrity GET, company scope, and tampering/SQL/HTTP QA PASS. This still
   does **not** independently attribute a tool's causal effect.
+- [x] B3-04: recheck the *current* company-scoped local artifact against the
+  exact original private source commitment of a valid signed historical
+  receipt; reject forged/mismatched rechecks and issue a distinct fresh
+  signed receipt. No claim of tool causality or permission to retry.
 - [ ] B3-02b: external provider/browser effect readback, signed independent
   verifier evidence, unknown-outcome reconciliation and fail-closed retries.
   Local file SHA matching alone must never be treated as full effect proof.

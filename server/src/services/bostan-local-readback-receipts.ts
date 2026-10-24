@@ -37,6 +37,14 @@ function hmac(domain: string, bytes: string) {
   return createHmac("sha256", resolveDecisionSigningSecret()).update(domain).update(bytes).digest("hex");
 }
 
+function requestReadbackHmac(input: Pick<Parameters<typeof verifyBostanCompanyWorkspaceFile>[0],
+  "companyId" | "workspaceId" | "invocationId" | "relativePath" | "expectedSha256" | "expectedByteSize">) {
+  return hmac("bostan-local-file-readback-request-v1:", JSON.stringify([
+    input.companyId, input.workspaceId, input.invocationId, input.relativePath,
+    input.expectedSha256, input.expectedByteSize,
+  ]));
+}
+
 export async function recordBostanLocalFileReadback(input: Parameters<typeof verifyBostanCompanyWorkspaceFile>[0]) {
   // The source read itself is company+origin-issue+workspace scoped and must
   // finish BEFORE recording a host-owned statement about observed content.
@@ -54,10 +62,7 @@ export async function recordBostanLocalFileReadback(input: Parameters<typeof ver
   const checkedAt = new Date().toISOString();
   // Neither the raw path nor the expected digest is persisted in the DB.
   // The request fingerprint is private-keyed to resist dictionary guessing.
-  const requestHmacSha256 = hmac("bostan-local-file-readback-request-v1:", JSON.stringify([
-    input.companyId, input.workspaceId, input.invocationId, input.relativePath,
-    input.expectedSha256, input.expectedByteSize,
-  ]));
+  const requestHmacSha256 = requestReadbackHmac(input);
   const fields: ReceiptFields = {
     schema: SCHEMA, receiptId: randomUUID(), companyId: input.companyId,
     issueId: scoped.issueId, workspaceId: input.workspaceId,
@@ -117,5 +122,46 @@ export async function inspectBostanLocalReadbackReceipt(db: Db, companyId: strin
     observedAt: valid && record ? record.checkedAt : null,
     independentEffectVerified: false,
     autoRetrySafe: false,
+  };
+}
+
+/** A signed historical observation is NEVER a current-state assertion.
+ * Recheck requires exactly the same board-supplied path/expected content and
+ * returns a NEW signed host receipt after a NEW confined filesystem open.
+ * The original receipt is never mutated or silently upgraded. */
+export async function recheckBostanLocalReadbackReceipt(input:
+  Parameters<typeof verifyBostanCompanyWorkspaceFile>[0] & { receiptId: string }) {
+  const original = await inspectBostanLocalReadbackReceipt(input.db, input.companyId, input.receiptId);
+  if (!original) return null;
+  if (!original.receiptIntegrityValid) return { recheckAllowed: false as const, reason: "invalid_prior_receipt" as const };
+  const [row] = await input.db.select({ metadata: workspaceOperations.metadata })
+    .from(workspaceOperations).where(and(
+      eq(workspaceOperations.companyId, input.companyId),
+      eq(workspaceOperations.id, input.receiptId),
+      eq(workspaceOperations.phase, "bostan_local_artifact_readback"),
+    ));
+  const previous = row?.metadata;
+  const claimedRequest = previous?.requestHmacSha256;
+  // Ensure the request matches ALL original content commitments without
+  // returning historical paths/hashes to the human board. Constant-time HMAC.
+  if (previous?.workspaceId !== input.workspaceId ||
+      previous?.invocationId !== input.invocationId ||
+      typeof claimedRequest !== "string" || !/^[a-f0-9]{64}$/.test(claimedRequest)) {
+    return { recheckAllowed: false as const, reason: "request_binding_mismatch" as const };
+  }
+  const expected = requestReadbackHmac(input);
+  if (!timingSafeEqual(Buffer.from(claimedRequest, "hex"), Buffer.from(expected, "hex"))) {
+    return { recheckAllowed: false as const, reason: "request_binding_mismatch" as const };
+  }
+  const fresh = await recordBostanLocalFileReadback(input);
+  if (!fresh) return { recheckAllowed: false as const, reason: "scoped_workspace_unavailable" as const };
+  return {
+    recheckAllowed: true as const, priorReceiptId: input.receiptId,
+    freshReceiptId: fresh.receiptId,
+    currentState: fresh.state,
+    currentContentReadbackMatched: fresh.contentReadbackMatched,
+    historicalObservationUnchanged: true,
+    independentEffectVerified: false as const,
+    autoRetrySafe: false as const,
   };
 }

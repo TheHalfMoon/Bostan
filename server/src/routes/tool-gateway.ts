@@ -20,7 +20,8 @@ import { accessService } from "../services/index.js";
 import { listConnectionLifecycleEvents } from "../services/tool-connection-activity.js";
 import { readBostanActionEvidence } from "../services/bostan-action-evidence.js";
 import { BOSTAN_FILE_READBACK_LIMIT_BYTES } from "../services/bostan-local-file-readback.js";
-import { recordBostanLocalFileReadback, inspectBostanLocalReadbackReceipt } from "../services/bostan-local-readback-receipts.js";
+import { recordBostanLocalFileReadback, inspectBostanLocalReadbackReceipt,
+  recheckBostanLocalReadbackReceipt } from "../services/bostan-local-readback-receipts.js";
 
 const TOOL_ACTIVITY_EVENT_TYPES = [
   "call_completed",
@@ -756,6 +757,26 @@ export function toolGatewayRoutes(db: Db, toolGateway: ToolGatewayService) {
     expectedSha256: z.string().regex(/^[0-9a-f]{64}$/),
     expectedByteSize: z.number().int().nonnegative().max(BOSTAN_FILE_READBACK_LIMIT_BYTES),
   }).strict();
+  router.post("/tool-gateway/bostan-local-file-readback/:receiptId/recheck", async (req, res) => {
+    try {
+      assertBoard(req);
+      const parsed = bostanLocalReadbackSchema.safeParse(req.body);
+      const receiptId = req.params.receiptId;
+      if (!uuidPattern.test(receiptId) || !parsed.success) {
+        res.status(400).json({ error: "Invalid readback recheck request" }); return;
+      }
+      await assertBoardPermission(req, parsed.data.companyId, "tools:view_audit");
+      await assertBoardPermission(req, parsed.data.companyId, "tools:manage_runtime");
+      const fresh = await recheckBostanLocalReadbackReceipt({ db, ...parsed.data, receiptId });
+      if (!fresh) { res.status(404).json({ error: "Scoped readback receipt not found" }); return; }
+      if (!fresh.recheckAllowed) {
+        res.status(409).json({ error: "Historical receipt cannot be rechecked with this request",
+          reasonCode: fresh.reason }); return;
+      }
+      res.json(fresh);
+    } catch (error) { sendGatewayError(res, error); }
+  });
+
   router.post("/tool-gateway/bostan-local-file-readback", async (req, res) => {
     try {
       assertBoard(req);

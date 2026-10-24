@@ -182,6 +182,23 @@ suite("Bostan B3 board-only action status with real SQL", () => {
         readbackState: "matches_expected_content", independentEffectVerified: false });
       expect(JSON.stringify(trustedReceipt.body)).not.toContain(payload.expectedSha256);
       expect(JSON.stringify(trustedReceipt.body)).not.toContain("receipt.txt");
+      const recheckUrl = `/api/tool-gateway/bostan-local-file-readback/${observed.body.receiptId}/recheck`;
+      const wrongPath = await request(board).post(recheckUrl).send({ ...payload, relativePath: "different.txt" });
+      expect(wrongPath.status).toBe(409);
+      expect(wrongPath.body).toMatchObject({ reasonCode: "request_binding_mismatch" });
+      const wrongHash = await request(board).post(recheckUrl).send({ ...payload,
+        expectedSha256: createHash("sha256").update("fabricated digest").digest("hex") });
+      expect(wrongHash.status).toBe(409);
+      const firstFresh = await request(board).post(recheckUrl).send(payload);
+      expect(firstFresh.status).toBe(200);
+      expect(firstFresh.body).toMatchObject({ priorReceiptId: observed.body.receiptId,
+        currentState: "matches_expected_content", currentContentReadbackMatched: true,
+        independentEffectVerified: false, autoRetrySafe: false });
+      expect(firstFresh.body.freshReceiptId).not.toBe(observed.body.receiptId);
+      const freshReceipt = await request(board).get(
+        `/api/tool-gateway/bostan-local-file-readback/${firstFresh.body.freshReceiptId}?companyId=${companyId}`);
+      expect(freshReceipt.body).toMatchObject({ receiptIntegrityValid: true,
+        readbackState: "matches_expected_content", independentEffectVerified: false });
       expect((await request(appWithActor({type: "agent", source: "agent_jwt", companyId,
         agentId: randomUUID(), runId: randomUUID()})).get(receiptUrl)).status).toBe(403);
       const [stored] = await db.select().from(workspaceOperations)
@@ -198,6 +215,9 @@ suite("Bostan B3 board-only action status with real SQL", () => {
       expect(forged.status).toBe(200);
       expect(forged.body).toMatchObject({ receiptIntegrityValid: false,
         readbackState: "unverifiable", independentEffectVerified: false });
+      const forgedRecheck = await request(board).post(recheckUrl).send(payload);
+      expect(forgedRecheck.status).toBe(409);
+      expect(forgedRecheck.body).toMatchObject({ reasonCode: "invalid_prior_receipt" });
       await db.update(workspaceOperations).set({ metadata: { ...stored.metadata, injectedField: "should-fail" } })
         .where(eq(workspaceOperations.id, stored.id));
       const injected = await request(board).get(receiptUrl);
@@ -217,6 +237,23 @@ suite("Bostan B3 board-only action status with real SQL", () => {
         `/api/tool-gateway/bostan-local-file-readback/${changed.body.receiptId}?companyId=${companyId}`);
       expect(mismatchReceipt.body).toMatchObject({ receiptIntegrityValid: true,
         readbackState: "content_mismatch", independentEffectVerified: false });
+      // The original signed fresh readback is immutable; its recheck must
+      // independently read the changed file and produce a NEW signed receipt.
+      const changedAgain = await request(board).post(
+        `/api/tool-gateway/bostan-local-file-readback/${firstFresh.body.freshReceiptId}/recheck`).send(payload);
+      expect(changedAgain.status).toBe(200);
+      expect(changedAgain.body).toMatchObject({ currentState: "content_mismatch",
+        currentContentReadbackMatched: false, independentEffectVerified: false });
+      expect(changedAgain.body.freshReceiptId).not.toBe(firstFresh.body.freshReceiptId);
+      const changedAgainProof = await request(board).get(
+        `/api/tool-gateway/bostan-local-file-readback/${changedAgain.body.freshReceiptId}?companyId=${companyId}`);
+      expect(changedAgainProof.body).toMatchObject({ receiptIntegrityValid: true,
+        readbackState: "content_mismatch", independentEffectVerified: false });
+      const crossTenantRecheck = await request(board).post(recheckUrl).send({ ...payload, companyId: otherCompany });
+      expect(crossTenantRecheck.status).toBe(404);
+      const agentRecheck = await request(appWithActor({ type: "agent", source: "agent_jwt", companyId,
+        agentId: randomUUID(), runId: randomUUID() })).post(recheckUrl).send(payload);
+      expect(agentRecheck.status).toBe(403);
       const other = await request(board).post(url).send({ ...payload, companyId: otherCompany });
       expect(other.status).toBe(404);
       const agent = appWithActor({ type: "agent", source: "agent_jwt", companyId, agentId: randomUUID(), runId: randomUUID() });
