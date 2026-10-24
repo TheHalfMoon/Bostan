@@ -84,3 +84,17 @@ shutdown, application restart with exact persisted company readback and a
 second clean stop. The disposable successful test HOME was cleaned; no live
 models, paid providers or external automation were used. `git diff --check`:
 PASS. This is not a browser or installed Windows acceptance test.
+
+## Latest-head backend TypeScript qualification blocker
+
+A real whole-project `pnpm --filter @paperclipai/server exec tsc --noEmit`
+was attempted on the B3-03 branch using the installed native TypeScript
+compiler, capped at **120 seconds** and a 3 GiB Node allocation. It never
+completed or produced a compiler diagnostic before the bound; it exited
+**124 (TIMEOUT)**. macOS memory/disk pressure rose during this compilation.
+The compiler was stopped and its ephemeral build-info removed after the
+result was recorded. **Whole-server TypeScript is NOT QUALIFIED** by the
+passing SQL/HTTP tests, smoke test, or this timed-out compiler attempt.
+
+A smaller host, native TS workspace graph or more efficient incremental
+compiler setup must address this independently. No inaccurate PASS claim.
