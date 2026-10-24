@@ -3,22 +3,65 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { spawnSync } from "node:child_process";
 import { createColdSnapshot, verifyColdSnapshot, restoreColdSnapshot } from "./bostan-cold-snapshot.mjs";
 
 const MARKER = "bostan-managed-source-runtime-v1";
+
+// The POSIX fake pg_ctl is a shell script. On native Windows, spawnSync with
+// shell:false correctly refuses that file and reports status unknown. Compile
+// an isolated *test-only* Windows executable with the .NET compiler provided
+// by Windows PowerShell instead of weakening production PG status admission.
+// No external download, persistent executable, PowerShell profile change,
+// system service, database or source worktree mutation is required.
+let nativeWindowsPgCtl = null;
+if (process.platform === "win32") {
+  const toolsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-pgctl-unit-"));
+  test.after(() => fs.rmSync(toolsRoot, { recursive: true, force: true }));
+  const executable = path.join(toolsRoot, "fake-pgctl.exe");
+  const code = `
+using System;
+using System.IO;
+public class BostanFakePgCtl {
+  public static int Main(string[] arguments) {
+    for (int i = 0; i < arguments.Length - 1; i++) {
+      if (arguments[i] != "-D") continue;
+      string databaseDir = arguments[i + 1];
+      if (arguments[arguments.Length - 1] != "status") return 4;
+      string statusFile = Path.Combine(databaseDir, ".bostan-test-pgctl-status");
+      int status;
+      return File.Exists(statusFile) &&
+        Int32.TryParse(File.ReadAllText(statusFile), out status) ? status : 4;
+    }
+    return 4;
+  }
+}`;
+  const command = `Add-Type -TypeDefinition @'\n${code}\n'@ -OutputAssembly '${executable.replaceAll("'", "''")}' -OutputType ConsoleApplication -ErrorAction Stop`;
+  const encoded = Buffer.from(command, "utf16le").toString("base64");
+  const result = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-EncodedCommand", encoded],
+    { encoding: "utf8", timeout: 60_000, windowsHide: true });
+  if (result.error || result.status !== 0 || !fs.existsSync(executable)) {
+    throw new Error("Cannot compile private Windows pg_ctl test fixture: " +
+      String(result.error?.message ?? result.stderr ?? result.status).slice(0, 500));
+  }
+  nativeWindowsPgCtl = executable;
+}
+
 function fixture() {
   const parent = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-cold-"));
   const home = path.join(parent, "home");
   const app = path.join(home, ".bostan", "app");
   const cfg = path.join(app, "state", "instances", "local");
-  const pg = path.join(parent, "fake-pgctl");
+  const pg = nativeWindowsPgCtl ?? path.join(parent, "fake-pgctl");
   fs.mkdirSync(cfg, { recursive: true, mode: 0o700 });
   fs.mkdirSync(path.join(app, "postgres", "data"), { recursive: true, mode: 0o700 });
   fs.mkdirSync(path.join(app, "secrets"), { mode: 0o700 });
   fs.writeFileSync(path.join(cfg, "config.json"), JSON.stringify({ bostanManagedLocalRuntime: MARKER }), { mode: 0o600 });
   fs.writeFileSync(path.join(app, "postgres", "data", "PG_VERSION"), "17\n", { mode: 0o600 });
   fs.writeFileSync(path.join(app, "secrets", "agent-jwt"), "secret-example", { mode: 0o600 });
-  const tool = (code) => fs.writeFileSync(pg, "#!/bin/sh\nexit " + code + "\n", { mode: 0o700 });
+  const tool = nativeWindowsPgCtl
+    ? (code) => fs.writeFileSync(path.join(app, "postgres", "data", ".bostan-test-pgctl-status"), String(code), { mode: 0o600 })
+    : (code) => fs.writeFileSync(pg, "#!/bin/sh\nexit " + code + "\n", { mode: 0o700 });
   tool(3);
   return { parent, home, app, pg, tool, restore: path.join(parent, "new-home"),
     cleanup: () => fs.rmSync(parent, { recursive: true, force: true }) };
