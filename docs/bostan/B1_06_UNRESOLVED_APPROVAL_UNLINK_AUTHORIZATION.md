@@ -66,3 +66,26 @@ untouched, repo private, actions disabled, all work Draft. **Release NO-GO.**
 - The 16/16 real PostgreSQL tests and `git diff --check` **PASS**. No
   isolated test PostgreSQL clusters, lingering compiler process or live
   test HOME remain after successful cleanup.
+
+### Windows source regression (separate device)
+
+- Windows `Abdulaziz`, Node v24, fresh detached QA worktree pinned to
+  `81fd3c3f8fff45c70419065237588f465d479273`, without modifying the
+  older Windows source checkout or its untracked QA scripts.
+- Eleven source/CLI Node test files covering local runtime, stop/recovery,
+  NTFS ACL, free first-agent admission policy, free Opencode guard, cold
+  snapshot, guides/frontdoor/branding and live smoke admission:
+  **83 total; 77 PASS, 0 FAIL, 6 POSIX-only skips**. There was no actual
+  AI model inference, Windows consumer installer or fresh PostgreSQL service
+  in this run. Those qualification gates remain open.
+- Temporary detached QA worktree was safely removed after checking the
+  exact HEAD and clean working-tree status. D: free space restored to
+  **4.38 GB**; the original Windows checkout and untracked scripts remain.
+
+### Second compiler attempt
+
+- Added an explicit `Promise<void>` return annotation to the transactional
+  unlink API to avoid unnecessary inferred generic types. With this change
+  present, server TypeScript still exceeded a **175-second** cap without
+  diagnostics; run terminated with exit 124. This is **NOT A PASS** and
+  remains a source qualification blocker. No compiler process left behind.

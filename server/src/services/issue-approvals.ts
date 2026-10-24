@@ -174,7 +174,7 @@ export function issueApprovalService(db: Db) {
       });
     },
 
-    unlink: async (issueId: string, approvalId: string, actor: { isBoard?: boolean } = {}) => {
+    unlink: async (issueId: string, approvalId: string, actor: { isBoard?: boolean } = {}): Promise<void> => {
       return db.transaction(async tx => {
         // A CEO-class agent may manage historical link records, but must not
         // defeat a still-pending *human* approval by deleting the task link.
