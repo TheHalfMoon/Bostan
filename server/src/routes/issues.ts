@@ -1,4 +1,5 @@
 import { taskInterruptionPresentation, taskInterruptionPresentations } from "../services/task-interruption-presentation.js";
+import { readBostanIssueDocumentEvidence } from "../services/bostan-knowledge-evidence.js";
 import { parseObject } from "../adapters/utils.js";
 import { prepareRestrictedWorkspaceRetry } from "../services/restricted-workspace-retry.js";
 import { issueSummariesQuerySchema, type IssueSummary } from "@paperclipai/shared";
@@ -8125,6 +8126,26 @@ export function issueRoutes(
       error:
         "Missing companyId in path. Use /api/companies/{companyId}/issues.",
     });
+  });
+
+  router.get("/companies/:companyId/issues/:issueId/bostan-evidence/documents/:documentId", async (req, res) => {
+    assertBoard(req);
+    const companyId = req.params.companyId as string;
+    const issueId = req.params.issueId as string;
+    const documentId = req.params.documentId as string;
+    assertCompanyAccess(req, companyId);
+    if (![companyId, issueId, documentId].every(id => z.string().uuid().safeParse(id).success)) {
+      res.status(400).json({ error: "Valid company, issue and document UUIDs are required" }); return;
+    }
+    const authorization = await access.decide({ actor: req.actor, action: "company_scope:read",
+      resource: { type: "company", companyId } });
+    if (!authorization.allowed) {
+      res.status(403).json({ error: "Company evidence is outside this actor's authorization boundary" }); return;
+    }
+    const result = await readBostanIssueDocumentEvidence({ db, companyId, issueId, documentId,
+      issueReadCondition: await issueReadSqlCondition(db, req.actor) });
+    if (!result) { res.status(404).json({ error: "Scoped document evidence not found" }); return; }
+    res.json(result);
   });
 
   router.get("/companies/:companyId/search/extract", async (req, res) => {

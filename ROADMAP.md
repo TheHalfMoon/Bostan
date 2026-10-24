@@ -133,6 +133,14 @@ reconciliation. Never duplicate the existing task/run authority.
 Scoped retrieval, OCR, evidence provenance, memory and reproducible analytics.
 Enforce deletion propagation, tenant boundaries and prompt-injection safety.
 
+- [x] B4-01: reuse canonical task/document links for board-only, company-and-
+  issue-authorized source evidence with current revision/HMAC, bounded
+  untrusted excerpt and deletion/unlink invalidation. Mac real PostgreSQL
+  and HTTP tests 3/3 PASS, including tenant and task-privacy gates.
+- [ ] Extend B4 to general scoped search/OCR, cross-source citation quality,
+  provenance through revision conflicts, deletion propagation to external
+  caches, injection-resistant agents and reproducible analytics.
+
 ## B5 — Autonomous company acceptance
 
 Founder → CEO → specialist → permitted action → independent verifier →
