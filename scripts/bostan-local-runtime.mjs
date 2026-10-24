@@ -14,10 +14,21 @@ const MARKER = "bostan-managed-source-runtime-v1";
 const TOOLS = ["initdb", "pg_ctl", "psql", "createdb"];
 
 export function executable(name, env = process.env) {
-  for (const dir of (env.PATH || "").split(path.delimiter)) {
+  // Windows PostgreSQL commands are .exe files, whereas macOS/Linux tools
+  // are usually extensionless (often Homebrew symlinks). Never launch .cmd,
+  // .bat or arbitrary PATHEXT handlers when resolving a database executable.
+  const windows = process.platform === "win32";
+  const filenames = windows && !/\.exe$/i.test(name) ? [name + ".exe"] : [name];
+  for (const rawDir of (env.PATH || "").split(path.delimiter)) {
+    const dir = windows ? rawDir.replace(/^"|"$/g, "") : rawDir;
     if (!path.isAbsolute(dir)) continue;
-    const candidate = path.join(dir, name);
-    try { if (fs.statSync(candidate).isFile()) return candidate; } catch {}
+    for (const filename of filenames) {
+      const candidate = path.join(dir, filename);
+      try {
+        const entry = fs.statSync(candidate);
+        if (entry.isFile()) return candidate;
+      } catch {}
+    }
   }
   return null;
 }
