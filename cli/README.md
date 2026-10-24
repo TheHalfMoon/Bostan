@@ -101,9 +101,30 @@ with an unrelated existing OpenCode background server. This is **only**
 a local CLI-process isolation guarantee; the model still uses an external
 online provider. Nothing is uploaded to a public project or deployment.
 
-The agent wrote a real task comment and marked a synthetic task done.
-However, its parent heartbeat process then hit a configured timeout. Do
-not interpret `done` as proof the agent run completed successfully.
+A synthetic `beam-free` agent completed its task but later exceeded
+its heartbeat deadline; in contrast, `deepseek-v4.1-flash-free` agents
+completed two separate synthetic tasks and finished both heartbeat runs
+cleanly. Never treat issue `done` alone as proof of a successful run.
 See `docs/bostan/B0_FIRST_AGENT_RUNTIME_RECEIPT.md` for the precise
 results, limitations and open release gate. No paid model/provider should
 be selected by an automated test or release process.
+
+
+A repeatable first-agent smoke test lives at
+`scripts/bostan-first-agent-free-e2e.mjs`. It never runs by default; a
+developer must explicitly select a Bostan localhost server running with
+an isolated temporary HOME and opt in to free **online** model use:
+
+```bash
+BOSTAN_E2E_URL=http://127.0.0.1:41517/ \
+BOSTAN_E2E_DISPOSABLE_HOME=/tmp/<your-disposable-Bostan-home> \
+BOSTAN_E2E_CONFIRM_TEMP_DATA=1 \
+BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL=1 \
+node scripts/bostan-first-agent-free-e2e.mjs
+```
+
+It requires the managed config and active run lock in the temp profile,
+checks that the source runtime is private and healthy, and creates only
+synthetic organizations/tasks. It fails if the heartbeat ends `timed_out`
+or otherwise fails even if the task happens to be `done`. Never point
+it at a real profile or rely on free-provider availability for CI.
