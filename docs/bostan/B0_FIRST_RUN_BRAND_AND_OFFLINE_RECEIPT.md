@@ -1,7 +1,8 @@
 # B0-25 — First-run identity, assistant consent and offline recovery
 
-**Status: private source/UI copy remediation. Consumer UI build and browser
-E2E remain NOT QUALIFIED. Release NO-GO.**
+**Status: private source/UI copy remediation. Mac UI production bundle and
+focused React tests pass. Consumer installer and browser E2E remain NOT
+QUALIFIED. Release NO-GO.**
 
 ## Scope
 
@@ -32,10 +33,11 @@ E2E remain NOT QUALIFIED. Release NO-GO.**
   authenticated API request. It executes the real service worker JavaScript
   in a synthetic isolated VM and invokes the real fetch listener.
 - `node --check ui/public/sw.js` and `git diff --check` must pass.
-- Changes to TSX paired test expectations are source-only here; full Vite
-  UI build, Vitest in-browser/React assertions, actual browser screenshots,
-  device startup and real user acceptance have **NOT** been run in this
-  fresh checkout. Do not treat static checks as a substitute.
+- The Mac Vite production bundle, TypeScript project check and a focused
+  React/Vitest suite now pass after offline-only workspace dependency setup.
+  This is **not** a consumer installer or a live backend/browser E2E.
+  Actual browser screenshots, device startup, cross-platform installation
+  and end-user acceptance remain **NOT RUN**.
 - This is only the first-run subset. Hundreds of source UI files still
   contain inherited wording or internal compatibility names. No claim of
   a completed project-wide rebrand or release-ready product is made.
@@ -49,5 +51,36 @@ enable Actions, access paid providers, or write into non-disposable data.
 **80 PASS, 0 FAIL, 9 Windows-only SKIP**. The four B0-25 standalone tests
 passed, including execution of the real synthetic service worker fallback
 and refusal to intercept an `/api/companies` request. `node --check
-ui/public/sw.js` and `git diff --check` both passed. No pnpm/Vite UI build or
-React browser tests were run in this clean Mac checkout.
+ui/public/sw.js` and `git diff --check` both passed. The UI qualification below supersedes the earlier source-only limit.
+
+## Native workspace frontend qualification — same Mac checkout
+
+Used **pnpm offline and the existing local package store** (zero packages
+downloaded in the first scoped install, no paid provider). Built shared and
+plugin SDK dependencies locally, generated the Storybook catalog, then ran:
+
+- `vitest run` focused API, service-worker, build-id and privacy tests:
+  **58 PASS / 0 FAIL**, including 22 worker privacy tests.
+- `vitest run` App, CloudAccessGate, AppErrorBoundary, announcement and
+  Vite component-name tests: **49 PASS / 0 FAIL**. Four initial failures
+  exposed mismatched actual bootstrap headings and a two-link assumption
+  in the preview announcement; these were corrected and the full targeted
+  group rerun passed. Total **107/107 focused Vitest PASS**.
+- `pnpm --filter @paperclipai/ui exec tsc -b --pretty false`:
+  **PASS** after installing missing runner dependencies, building plugin
+  SDK and generating Storybook artifacts locally.
+- `CI=1 pnpm --filter @paperclipai/ui build`: **PASS**, 2.89 seconds on
+  the final source; generated `ui/dist/index.html` and stamped `sw.js`.
+  Validated the stamped worker has no unexpanded placeholders, contains
+  the Bostan offline heading, and parses with `node --check`.
+- `git diff --check`: **PASS**.
+
+The UI bundle reports inherited large-chunk warnings; performance work
+remains. Bootstrap's runnable fallback still uses the inherited
+`npx paperclipai auth bootstrap-ceo` source command while Bostan CLI full
+bootstrap/installer migration remains unqualified. This operational
+compatibility command must be migrated with functionality and regression
+tests; it was **not** deceptively renamed to a nonworking command. The
+underlying MCP `paperclip:*` scope names similarly remain unchanged for
+compatibility. No real HTTP server, database, Windows acceptance harness,
+visual browser E2E, release gate or production workload was qualified.

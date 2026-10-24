@@ -28,7 +28,7 @@ describe("AnnouncementCard", () => {
     expect(div.querySelector('[role="img"]')?.getAttribute("aria-label")).toBe(announcementAnimationPreview.animation!.alt);
     expect(Array.from(div.querySelectorAll("button"), (button) => button.getAttribute("aria-label")))
       .toEqual(["Dismiss announcement"]);
-    expect(div.querySelectorAll("a")).toHaveLength(2);
+    expect(div.querySelectorAll("a")).toHaveLength(1);
     expect(dismiss).not.toHaveBeenCalled();
     await cleanup();
   });
