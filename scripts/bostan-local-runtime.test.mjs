@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, delimiter } from "node:path";
 import test from "node:test";
-import { inspectLocalRuntime, isolatedEnv, runLocalRuntime } from "./bostan-local-runtime.mjs";
+import { executable, inspectLocalRuntime, isolatedEnv, runLocalRuntime } from "./bostan-local-runtime.mjs";
 
 test("isolated application environment ignores inherited telemetry, external providers and unsafe binding", () => {
   const parent = {
@@ -76,5 +76,42 @@ test("invalid ports fail before the runtime touches the user's HOME", async () =
       await assert.rejects(() => runLocalRuntime({ port, home: dir }), /Invalid local port/);
     }
     assert.deepEqual(fs.readdirSync(dir), []);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("database executable discovery uses native extensions without invoking script shims", () => {
+  const dir = mkdtempSync(join(tmpdir(), "bostan-executable-"));
+  try {
+    writeFileSync(join(dir, "pg_ctl.exe"), "not an actual program");
+    writeFileSync(join(dir, "pg_ctl.cmd"), "malicious shim");
+    writeFileSync(join(dir, "initdb.cmd"), "malicious shim");
+    writeFileSync(join(dir, "postgres.exe"), "not an actual program");
+    const env = { PATH: process.platform === "win32"
+      ? `"${dir}"${delimiter}relative-untrusted-path`
+      : `${dir}${delimiter}relative-untrusted-path` };
+    if (process.platform === "win32") {
+      assert.equal(executable("pg_ctl", env), join(dir, "pg_ctl.exe"));
+      assert.equal(executable("initdb", env), null);
+      assert.equal(executable("postgres", env), join(dir, "postgres.exe"));
+    } else {
+      assert.equal(executable("pg_ctl", env), null);
+      assert.equal(executable("postgres", env), null);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("Windows remains release-blocked even if fake PostgreSQL executables are present", () => {
+  if (process.platform !== "win32") return;
+  const dir = mkdtempSync(join(tmpdir(), "bostan-windows-gate-"));
+  try {
+    for (const tool of ["initdb", "pg_ctl", "psql", "createdb"]) {
+      writeFileSync(join(dir, tool + ".exe"), "synthetic only");
+    }
+    const result = inspectLocalRuntime(undefined, { PATH: dir });
+    assert.ok(result.missing.includes("macOS/Linux platform"));
+    for (const tool of ["initdb", "pg_ctl", "psql", "createdb"]) {
+      assert.ok(!result.missing.includes(tool), `should resolve ${tool}.exe`);
+    }
+    assert.equal(result.ready, false);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
