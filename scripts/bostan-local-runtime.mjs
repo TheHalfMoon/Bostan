@@ -7,6 +7,7 @@ import net from "node:net";
 import { promisify } from "node:util";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { inspectRuntimeLock, removeStoppedRuntimeLock } from "./bostan-runtime-recovery.mjs";
+import { enforceWindowsQaPrivateAcl } from "./bostan-windows-acl.mjs";
 
 const exec = promisify(execFile);
 export const REPO = fileURLToPath(new URL("../", import.meta.url));
@@ -219,8 +220,17 @@ export async function runLocalRuntime(options = {}) {
   if (!check.ready) throw new Error("Bostan runtime prerequisites missing: " + check.missing.join(", "));
   const p = paths(home);
   if (!entry(home, true)) throw new Error("HOME directory is unavailable");
+  const privateRoot = path.join(home, ".bostan");
+  const newRoot = !entry(privateRoot, true);
+  directory(privateRoot);
+  if (process.platform === "win32") {
+    // Fail closed before creating any application secrets or private data.
+    // Fresh roots get a protected DACL; restarts VERIFY without rewriting
+    // existing permissions or silently widening earlier ACLs.
+    enforceWindowsQaPrivateAcl(home, { fresh: newRoot });
+  }
   for (const dir of [
-    path.join(home, ".bostan"), p.app, p.state, path.join(p.state, "instances"),
+    p.app, p.state, path.join(p.state, "instances"),
     p.instance, path.join(p.app, "postgres"), p.secrets, p.logs,
     ...(process.platform === "win32" ? [
       path.join(p.app, "tmp"), path.join(p.app, "roaming"),
