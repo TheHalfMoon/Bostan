@@ -1,3 +1,4 @@
+import { issueApprovalService } from "./issue-approvals.js";
 import { restConnectorFor } from "./connectors/rest-registry.js";
 import type { runPromptInjectionProvider } from "./prompt-injection-provider.js";
 import { promptInjectionPreventionService } from "./prompt-injection-prevention.js";
@@ -60,7 +61,6 @@ import {
   connectionGrants,
   documents,
   heartbeatRuns,
-  issueApprovals,
   issueDocuments,
   issueThreadInteractions,
   issues,
@@ -2567,11 +2567,13 @@ export function createToolGatewayService(
 
     let formalApprovalId: string | null = null;
     if (toolRequiresFormalApproval(input.tool)) {
-      const [approval] = await db
-        .insert(approvals)
-        .values({
+      // One task-row-locked transaction creates BOTH the formal approval
+      // and its task link; a concurrent Done cannot leave a late pending
+      // approval behind. On rejection, revoke the orphan action request.
+      try {
+        formalApprovalId = await issueApprovalService(db).createPendingToolApproval({
           companyId: input.session.companyId,
-          type: "request_board_approval",
+          issueId: input.session.issueId,
           requestedByAgentId: input.session.agentId,
           payload: {
             title: `Approve high-risk tool action: ${input.tool.name}`,
@@ -2589,18 +2591,14 @@ export function createToolGatewayService(
             risk: input.tool.risk,
             argumentsHash: canonicalArgumentsHash,
           },
-        })
-        .returning();
-      formalApprovalId = approval.id;
-      await db
-        .insert(issueApprovals)
-        .values({
-          companyId: input.session.companyId,
-          issueId: input.session.issueId,
-          approvalId: approval.id,
-          linkedByAgentId: input.session.agentId,
-        })
-        .onConflictDoNothing();
+        });
+      } catch (error) {
+        // A rejected admission never leaves an executable pending request.
+        await db.update(toolActionRequests).set({
+          status: "cancelled", resolvedAt: new Date(), updatedAt: new Date(),
+        }).where(and(eq(toolActionRequests.id, actionRequest.id), eq(toolActionRequests.status, "pending")));
+        throw error;
+      }
     }
 
     const interaction = await interactions.create(

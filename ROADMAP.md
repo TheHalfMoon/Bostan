@@ -48,8 +48,10 @@ completion. Introduce strong negative-path and concurrent workload tests.
   AI account logins remain nonblocking; real PostgreSQL integration verified.
 - [x] B1-03: transactional approval-link admission serializes with Done on
   a locked task row; bulk links are atomic and cannot cross tenants.
-- [ ] Qualify direct tool-gateway approval insertion against concurrent Done
-  and extend row-lock admission to every remaining governed creation path.
+- [x] B1-04: atomic formal board-approval creation in Tool Gateway; no
+  orphan pending approvals or links after concurrent Done (real PostgreSQL).
+- [ ] Qualify remaining governed creation paths, actual external-effect
+  verification, approval revocation and concurrent lease recovery.
 - [ ] Complete independent output/effect verification, concurrency and
   approval creation races, cross-tenant policy, recovery and budget gates.
 

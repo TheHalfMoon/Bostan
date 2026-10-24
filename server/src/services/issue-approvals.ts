@@ -41,6 +41,45 @@ export function issueApprovalService(db: Db) {
   }
 
   return {
+    /**
+     * The gateway's formal approval and task link are one unit: no orphan
+     * pending approval and no link inserted after the agent commits Done.
+     * Matches the issue-row lock ordering of B1-01/B1-03.
+     */
+    createPendingToolApproval: async (input: {
+      companyId: string;
+      issueId: string;
+      requestedByAgentId: string | null;
+      payload: typeof approvals.$inferInsert.payload;
+    }): Promise<string> => {
+      return db.transaction(async tx => {
+        const [task] = await tx.select({
+          id: issues.id, companyId: issues.companyId, status: issues.status,
+        }).from(issues)
+          .where(and(eq(issues.id, input.issueId), eq(issues.companyId, input.companyId)))
+          .for("update");
+        if (!task) throw notFound("Issue not found");
+        if (task.status === "done" || task.status === "cancelled") {
+          throw conflict("Cannot request approval for a completed task", {
+            code: "issue_terminal_approval_link", issueId: input.issueId,
+          });
+        }
+        const [approval] = await tx.insert(approvals).values({
+          companyId: input.companyId,
+          type: "request_board_approval",
+          status: "pending",
+          requestedByAgentId: input.requestedByAgentId,
+          payload: input.payload,
+        }).returning({ id: approvals.id });
+        await tx.insert(issueApprovals).values({
+          companyId: input.companyId,
+          issueId: input.issueId,
+          approvalId: approval.id,
+          linkedByAgentId: input.requestedByAgentId,
+        });
+        return approval.id;
+      });
+    },
     listApprovalsForIssue: async (issueId: string) => {
       const issue = await getIssue(issueId);
       if (!issue) throw notFound("Issue not found");
