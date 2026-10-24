@@ -69,6 +69,41 @@ suite("Bostan approval link and Done serialize on the issue row", () => {
       .rejects.toMatchObject({ status: 422 });
     expect(await db.select().from(issueApprovals)).toHaveLength(0);
   });
+  it("B1-06 refuses agent unlink of pending human approval and preserves Done guard", async () => {
+    const task = await seed();
+    await issueApprovalService(db).link(task.issueId, task.approvalId);
+    await expect(issueApprovalService(db).unlink(task.issueId, task.approvalId, { isBoard: false }))
+      .rejects.toMatchObject({ status: 403, details: { code: "unresolved_approval_board_only" } });
+    expect(await db.select().from(issueApprovals)).toHaveLength(1);
+    await expect(issueService(db).update(task.issueId, {
+      status: "done", actorAgentId: task.agentId, companyGuard: task.companyId,
+    })).rejects.toMatchObject({ status: 409, details: { code: "task_approval_pending" } });
+  });
+  it("B1-06 board explicitly unlinks unresolved approval without changing its formal decision", async () => {
+    const task = await seed();
+    await issueApprovalService(db).link(task.issueId, task.approvalId);
+    await issueApprovalService(db).unlink(task.issueId, task.approvalId, { isBoard: true });
+    expect(await db.select().from(issueApprovals)).toHaveLength(0);
+    expect(await db.select().from(approvals)).toMatchObject([{ id: task.approvalId, status: "pending" }]);
+  });
+  it("B1-06 authorized agent may unlink resolved historical approval", async () => {
+    const task = await seed("in_progress", "approved");
+    await issueApprovalService(db).link(task.issueId, task.approvalId);
+    await issueApprovalService(db).unlink(task.issueId, task.approvalId, { isBoard: false });
+    expect(await db.select().from(issueApprovals)).toHaveLength(0);
+  });
+  it("B1-06 blocks requested-revision unlink for agent and rejects cross-company unlink", async () => {
+    const task = await seed("in_progress", "revision_requested");
+    await issueApprovalService(db).link(task.issueId, task.approvalId);
+    await expect(issueApprovalService(db).unlink(task.issueId, task.approvalId))
+      .rejects.toMatchObject({ status: 403, details: { code: "unresolved_approval_board_only" } });
+    const otherCompany = randomUUID(), otherApproval = randomUUID();
+    await db.insert(companies).values({ id: otherCompany, name: "External company", issuePrefix: "EXT" });
+    await db.insert(approvals).values({ id: otherApproval, companyId: otherCompany, type: "governed_action", status: "approved", payload: {} });
+    await expect(issueApprovalService(db).unlink(task.issueId, otherApproval, { isBoard: true }))
+      .rejects.toMatchObject({ status: 422 });
+    expect(await db.select().from(issueApprovals)).toHaveLength(1);
+  });
   it("link waits on concurrent Done and rejects after the committed terminal state", async () => {
     const s = await seed();
     let release!: () => void;

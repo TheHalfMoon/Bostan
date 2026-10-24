@@ -52,6 +52,8 @@ completion. Introduce strong negative-path and concurrent workload tests.
   orphan pending approvals or links after concurrent Done (real PostgreSQL).
 - [x] B1-05: native status committer rechecks fresh human governance under
   the authoritative issue lock before applying Done; real corpus PASS.
+- [x] B1-06: pending human approvals cannot be unlinked by privileged agents
+  to bypass Done; an authenticated board decision is required.
 - [ ] Stress independent finalization, revocation and effect verification
   through multiple live agents and adverse scheduling.
 - [ ] Qualify remaining governed creation paths, actual external-effect

@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { approvals, issueApprovals, issues } from "@paperclipai/db";
-import { conflict, notFound, unprocessable } from "../errors.js";
+import { conflict, forbidden, notFound, unprocessable } from "../errors.js";
 import { redactEventPayload } from "../redaction.js";
 
 interface LinkActor {
@@ -174,11 +174,32 @@ export function issueApprovalService(db: Db) {
       });
     },
 
-    unlink: async (issueId: string, approvalId: string) => {
-      await assertIssueAndApprovalSameCompany(issueId, approvalId);
-      await db
-        .delete(issueApprovals)
-        .where(and(eq(issueApprovals.issueId, issueId), eq(issueApprovals.approvalId, approvalId)));
+    unlink: async (issueId: string, approvalId: string, actor: { isBoard?: boolean } = {}) => {
+      return db.transaction(async tx => {
+        // A CEO-class agent may manage historical link records, but must not
+        // defeat a still-pending *human* approval by deleting the task link.
+        // Lock the task row just like link() and issueService.update(), so
+        // unlink vs Done cannot bypass the same company-scoped authority.
+        const [issue] = await tx.select({ id: issues.id, companyId: issues.companyId })
+          .from(issues).where(eq(issues.id, issueId)).for("update");
+        if (!issue) throw notFound("Issue not found");
+        const [approval] = await tx.select({ id: approvals.id, companyId: approvals.companyId, status: approvals.status })
+          .from(approvals).where(eq(approvals.id, approvalId)).for("share");
+        if (!approval) throw notFound("Approval not found");
+        if (issue.companyId !== approval.companyId) {
+          throw unprocessable("Issue and approval must belong to the same company");
+        }
+        if (!actor.isBoard && ["pending", "revision_requested"].includes(approval.status)) {
+          throw forbidden("Only an authorized board actor may unlink an unresolved human approval", {
+            code: "unresolved_approval_board_only", issueId, approvalId,
+          });
+        }
+        await tx.delete(issueApprovals).where(and(
+          eq(issueApprovals.companyId, issue.companyId),
+          eq(issueApprovals.issueId, issueId),
+          eq(issueApprovals.approvalId, approvalId),
+        ));
+      });
     },
 
     linkManyForApproval: async (approvalId: string, issueIds: string[], actor?: LinkActor): Promise<void> => {

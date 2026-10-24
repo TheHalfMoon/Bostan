@@ -12171,7 +12171,9 @@ export function issueRoutes(
     if (!(await assertCanManageIssueApprovalLinks(req, res, issue.companyId)))
       return;
 
-    await issueApprovalsSvc.unlink(id, approvalId);
+    // A CEO/privileged agent may manage historical links but cannot remove
+    // a pending human approval to self-certify the task as Done.
+    await issueApprovalsSvc.unlink(id, approvalId, { isBoard: req.actor.type === "board" });
 
     const actor = getActorInfo(req);
     await logActivity(db, {
