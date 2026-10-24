@@ -1,11 +1,15 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { link, mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import express from "express";
 import request from "supertest";
 import { sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { companies, createDb, toolInvocations } from "@paperclipai/db";
+import { companies, createDb, executionWorkspaces, issues, toolInvocations } from "@paperclipai/db";
 import { toolGatewayRoutes } from "../routes/tool-gateway.js";
 import { classifyBostanActionEvidence, readBostanActionEvidence } from "../services/bostan-action-evidence.js";
+import { verifyBostanLocalFileContent } from "../services/bostan-local-file-readback.js";
 import { getBostanFeedbackPostgresTestSupport, startBostanFeedbackPostgresTestDatabase } from "./helpers/bostan-postgres-test-backend.js";
 
 const support = await getBostanFeedbackPostgresTestSupport();
@@ -39,6 +43,62 @@ describe("Bostan B3 conservative action outcome classification", () => {
     expect(classifyBostanActionEvidence({ ...specimen, status: "executing" })).toMatchObject({
       assessment: "in_progress", independentEffectVerified: false,
     });
+  });
+});
+
+describe("Bostan B3-02 independently reads local artifact content, not the tool result", () => {
+  it("verifies the real bytes, and fails closed after an in-place content change", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "bostan-b3-local-readback-"));
+    try {
+      const filename = path.join(root, "product.txt");
+      const original = Buffer.from("first state produced by a synthetic actor");
+      const sha = createHash("sha256").update(original).digest("hex");
+      await writeFile(filename, original);
+      const common = { trustedWorkspaceRoot: root, relativePath: "product.txt",
+        expectedSha256: sha, expectedByteSize: original.length };
+      expect(await verifyBostanLocalFileContent(common)).toMatchObject({ state: "matches_expected_content", contentReadbackMatched: true });
+      await writeFile(filename, Buffer.from("alter state produced by a synthetic actor"));
+      expect(await verifyBostanLocalFileContent(common)).toMatchObject({ state: "content_mismatch", contentReadbackMatched: false });
+      expect(await verifyBostanLocalFileContent({ ...common, relativePath: "missing.txt" }))
+        .toMatchObject({ state: "file_missing", contentReadbackMatched: false });
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+  it("refuses traversal, symlink final target and symlink parent directories", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "bostan-b3-link-readback-"));
+    const outside = await mkdtemp(path.join(os.tmpdir(), "bostan-b3-outside-"));
+    try {
+      const data = Buffer.from("secret must never leak");
+      await writeFile(path.join(outside, "outside.txt"), data);
+      await symlink(path.join(outside, "outside.txt"), path.join(root, "alias.txt"));
+      await link(path.join(outside, "outside.txt"), path.join(root, "hardlink.txt"));
+      await symlink(outside, path.join(root, "linked-dir"));
+      await mkdir(path.join(root, "safe"));
+      const common = { trustedWorkspaceRoot: root,
+        expectedSha256: createHash("sha256").update(data).digest("hex"), expectedByteSize: data.length };
+      for (const relativePath of ["../outside.txt", "/etc/passwd", "nested/../../outside.txt", "safe\\evil.txt", "", "."]) {
+        expect(await verifyBostanLocalFileContent({ ...common, relativePath }))
+          .toMatchObject({ state: "unreadable_or_unsafe", contentReadbackMatched: false });
+      }
+      for (const relativePath of ["alias.txt", "linked-dir/outside.txt", "hardlink.txt"]) {
+        expect(await verifyBostanLocalFileContent({ ...common, relativePath }))
+          .toMatchObject({ state: "unreadable_or_unsafe", contentReadbackMatched: false });
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true });
+      await rm(outside, { recursive: true, force: true });
+    }
+  });
+  it("rejects unexpected byte lengths, overly large limits, malformed hashes and roots", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "bostan-b3-size-readback-"));
+    try {
+      await writeFile(path.join(root, "output.txt"), "test");
+      const base = { trustedWorkspaceRoot: root, relativePath: "output.txt",
+        expectedSha256: createHash("sha256").update("test").digest("hex"), expectedByteSize: 4 };
+      expect((await verifyBostanLocalFileContent({ ...base, expectedByteSize: 3 })).state).toBe("content_mismatch");
+      expect((await verifyBostanLocalFileContent({ ...base, expectedByteSize: 9_000_000 })).state).toBe("unreadable_or_unsafe");
+      expect((await verifyBostanLocalFileContent({ ...base, expectedSha256: "nothex" })).state).toBe("unreadable_or_unsafe");
+      expect((await verifyBostanLocalFileContent({ ...base, trustedWorkspaceRoot: path.join(root, "unavailable") })).state).toBe("file_missing");
+    } finally { await rm(root, { recursive: true, force: true }); }
   });
 });
 
@@ -84,6 +144,53 @@ suite("Bostan B3 board-only action status with real SQL", () => {
     expect(reading.body).toMatchObject({ assessment: "reported_result_unverified", independentEffectVerified: false });
     const unknown = await readBostanActionEvidence(db, companyId, records[2].id);
     expect(unknown).toMatchObject({ assessment: "external_outcome_unknown", autoRetrySafe: false });
+  });
+  it("B3-02 confines a board-authorized HTTP file check to the invocation's own company issue workspace", async () => {
+    await seed();
+    const root = await mkdtemp(path.join(os.tmpdir(), "bostan-b3-db-readback-"));
+    try {
+      const content = Buffer.from("local output actually observed from independent filesystem open");
+      await writeFile(path.join(root, "receipt.txt"), content);
+      const issueId = randomUUID();
+      await db.insert(issues).values({ id: issueId, companyId, title: "B3 readback origin", status: "in_progress", priority: "medium" });
+      const [invocation] = await db.insert(toolInvocations).values({
+        companyId, issueId, toolName: "synthetic_file_write", status: "succeeded", riskLevel: "write",
+        resultHash: "not-an-independent-proof",
+      }).returning();
+      const [workspace] = await db.insert(executionWorkspaces).values({
+        companyId, sourceIssueId: issueId, mode: "task", strategyType: "local", name: "B3 scoped workspace",
+        status: "active", providerType: "local_fs", cwd: root,
+      }).returning();
+      const board = appWithActor({ type: "board", source: "local_implicit", userId: "local", companyIds: [companyId] });
+      const payload = { companyId, workspaceId: workspace.id, invocationId: invocation.id,
+        relativePath: "receipt.txt", expectedSha256: createHash("sha256").update(content).digest("hex"),
+        expectedByteSize: content.length };
+      const url = "/api/tool-gateway/bostan-local-file-readback";
+      const observed = await request(board).post(url).send(payload);
+      expect(observed.status).toBe(200);
+      expect(observed.body).toMatchObject({ state: "matches_expected_content", contentReadbackMatched: true,
+        independentEffectVerified: false, autoRetrySafe: false });
+      expect(JSON.stringify(observed.body)).not.toContain(root);
+      expect(JSON.stringify(observed.body)).not.toContain("not-an-independent-proof");
+      expect(JSON.stringify(observed.body)).not.toContain(content.toString());
+      // A second filesystem read observes mutation, independent of the prior
+      // tool's reported result digest or the first readback response.
+      await writeFile(path.join(root, "receipt.txt"), Buffer.from("independent content changed"));
+      const changed = await request(board).post(url).send(payload);
+      expect(changed.status).toBe(200);
+      expect(changed.body).toMatchObject({ state: "content_mismatch",
+        contentReadbackMatched: false, independentEffectVerified: false });
+      const other = await request(board).post(url).send({ ...payload, companyId: otherCompany });
+      expect(other.status).toBe(404);
+      const agent = appWithActor({ type: "agent", source: "agent_jwt", companyId, agentId: randomUUID(), runId: randomUUID() });
+      expect((await request(agent).post(url).send(payload)).status).toBe(403);
+      expect((await request(board).post(url).send({ ...payload, relativePath: "../receipt.txt" })).body)
+        .toMatchObject({ state: "unreadable_or_unsafe", independentEffectVerified: false });
+      // Workspace from a different source issue cannot be used as the root.
+      const [wrong] = await db.insert(toolInvocations).values({ companyId,
+        toolName: "synthetic_other_issue", status: "succeeded", riskLevel: "write" }).returning();
+      expect((await request(board).post(url).send({ ...payload, invocationId: wrong.id })).status).toBe(404);
+    } finally { await rm(root, { recursive: true, force: true }); }
   });
   it("rejects agent route probing, cross-company reads, and bad UUID inputs", async () => {
     const records = await seed();

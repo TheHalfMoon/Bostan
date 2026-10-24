@@ -102,8 +102,12 @@ reconciliation. Never duplicate the existing task/run authority.
 - [x] B3-01: board-only, company-scoped read-only action outcome assessment
   built from existing invocation receipts. Never equate success with verified
   external effects or automatically retry unknown-outcome writes.
-- [ ] B3-02: actual independent authorized post-action provider/file readback
-  with signed evidence, unknown-outcome reconciliation and fail-closed retry.
+- [x] B3-02a: actual restricted local-file content readback, bounded and
+  no-symlink workspace open, company/issue/invocation scoping and private
+  board-only authorization; macOS real-filesystem/SQL tests PASS.
+- [ ] B3-02b: external provider/browser effect readback, signed independent
+  verifier evidence, unknown-outcome reconciliation and fail-closed retries.
+  Local file SHA matching alone must never be treated as full effect proof.
 - [ ] Full real computer/browser connector E2E, revocation, recovery and
   effect verification in the B5 founder-to-specialist workflow.
 

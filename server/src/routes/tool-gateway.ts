@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from "express";
+import { z } from "zod";
 import { and, desc, eq, gte, ilike, inArray, lt, or, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { agents, toolApplications, toolCallEvents, toolConnections, toolInvocations } from "@paperclipai/db";
@@ -18,6 +19,7 @@ import { forbidden, HttpError } from "../errors.js";
 import { accessService } from "../services/index.js";
 import { listConnectionLifecycleEvents } from "../services/tool-connection-activity.js";
 import { readBostanActionEvidence } from "../services/bostan-action-evidence.js";
+import { verifyBostanCompanyWorkspaceFile, BOSTAN_FILE_READBACK_LIMIT_BYTES } from "../services/bostan-local-file-readback.js";
 
 const TOOL_ACTIVITY_EVENT_TYPES = [
   "call_completed",
@@ -727,6 +729,30 @@ export function toolGatewayRoutes(db: Db, toolGateway: ToolGatewayService) {
     } catch (err) {
       sendGatewayError(res, err);
     }
+  });
+
+  const bostanLocalReadbackSchema = z.object({
+    companyId: z.string().uuid(),
+    workspaceId: z.string().uuid(),
+    invocationId: z.string().uuid(),
+    relativePath: z.string().min(1).max(1024),
+    expectedSha256: z.string().regex(/^[0-9a-f]{64}$/),
+    expectedByteSize: z.number().int().nonnegative().max(BOSTAN_FILE_READBACK_LIMIT_BYTES),
+  }).strict();
+  router.post("/tool-gateway/bostan-local-file-readback", async (req, res) => {
+    try {
+      assertBoard(req);
+      const parsed = bostanLocalReadbackSchema.safeParse(req.body);
+      if (!parsed.success) { res.status(400).json({ error: "Invalid Bostan file readback request" }); return; }
+      const input = parsed.data;
+      // A human reviewer must have both access to tool audit data AND the
+      // privileged runtime permission. Never use an agent-provided root.
+      await assertBoardPermission(req, input.companyId, "tools:view_audit");
+      await assertBoardPermission(req, input.companyId, "tools:manage_runtime");
+      const observed = await verifyBostanCompanyWorkspaceFile({ db, ...input });
+      if (!observed) { res.status(404).json({ error: "Scoped local invocation workspace not found" }); return; }
+      res.json(observed);
+    } catch (error) { sendGatewayError(res, error); }
   });
 
   router.get("/tool-gateway/bostan-action-evidence/:invocationId", async (req, res) => {
