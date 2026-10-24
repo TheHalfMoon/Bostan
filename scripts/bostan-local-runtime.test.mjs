@@ -108,7 +108,7 @@ test("Windows remains release-blocked even if fake PostgreSQL executables are pr
       writeFileSync(join(dir, tool + ".exe"), "synthetic only");
     }
     const result = inspectLocalRuntime(undefined, { PATH: dir });
-    assert.ok(result.missing.includes("macOS/Linux platform"));
+    assert.ok(result.missing.some(entry => entry.includes("Windows requires explicit isolated TEMP QA")));
     for (const tool of ["initdb", "pg_ctl", "psql", "createdb"]) {
       assert.ok(!result.missing.includes(tool), `should resolve ${tool}.exe`);
     }
