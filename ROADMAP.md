@@ -99,6 +99,14 @@ Authorized computer, browser, file, API and connector operations with scoped
 permissions, readback, idempotency, durable receipts and unknown-outcome
 reconciliation. Never duplicate the existing task/run authority.
 
+- [x] B3-01: board-only, company-scoped read-only action outcome assessment
+  built from existing invocation receipts. Never equate success with verified
+  external effects or automatically retry unknown-outcome writes.
+- [ ] B3-02: actual independent authorized post-action provider/file readback
+  with signed evidence, unknown-outcome reconciliation and fail-closed retry.
+- [ ] Full real computer/browser connector E2E, revocation, recovery and
+  effect verification in the B5 founder-to-specialist workflow.
+
 ## B4 — Knowledge and Analytics
 
 Scoped retrieval, OCR, evidence provenance, memory and reproducible analytics.

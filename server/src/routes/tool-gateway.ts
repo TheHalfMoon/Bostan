@@ -17,6 +17,7 @@ import { ToolGatewayHttpError, type ToolGatewayService } from "../services/tool-
 import { forbidden, HttpError } from "../errors.js";
 import { accessService } from "../services/index.js";
 import { listConnectionLifecycleEvents } from "../services/tool-connection-activity.js";
+import { readBostanActionEvidence } from "../services/bostan-action-evidence.js";
 
 const TOOL_ACTIVITY_EVENT_TYPES = [
   "call_completed",
@@ -726,6 +727,21 @@ export function toolGatewayRoutes(db: Db, toolGateway: ToolGatewayService) {
     } catch (err) {
       sendGatewayError(res, err);
     }
+  });
+
+  router.get("/tool-gateway/bostan-action-evidence/:invocationId", async (req, res) => {
+    try {
+      assertBoard(req);
+      const companyId = typeof req.query.companyId === "string" ? req.query.companyId : null;
+      const invocationId = req.params.invocationId;
+      if (!companyId || !uuidPattern.test(companyId) || !uuidPattern.test(invocationId)) {
+        res.status(400).json({ error: "Valid companyId and invocationId UUIDs are required" }); return;
+      }
+      await assertBoardPermission(req, companyId, "tools:view_audit");
+      const assessment = await readBostanActionEvidence(db, companyId, invocationId);
+      if (!assessment) { res.status(404).json({ error: "Invocation not found" }); return; }
+      res.json(assessment);
+    } catch (error) { sendGatewayError(res, error); }
   });
 
   router.get("/tool-gateway/audit", async (req, res) => {
