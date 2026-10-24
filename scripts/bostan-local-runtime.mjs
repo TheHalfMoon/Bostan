@@ -118,6 +118,19 @@ export function inspectLocalRuntime(repo = REPO, env = process.env, home = env.H
   for (const tool of TOOLS) if (!executable(tool, env)) missing.push(tool);
   return { ready: !missing.length, missing };
 }
+/**
+ * Windows TEMP-only QA captures backend output in a private per-run file.
+ * Never copy this log to a public issue or release: server logs may contain
+ * confidential requests, model prompts or debugging data.
+ */
+export function serverStartupLogPath(logDirectory, pid, timestamp = Date.now()) {
+  if (!path.isAbsolute(logDirectory) || !Number.isSafeInteger(pid) || pid < 1
+    || !Number.isSafeInteger(timestamp) || timestamp < 0) {
+    throw new Error("Invalid Bostan server startup log path");
+  }
+  return path.join(logDirectory, `server-startup-${pid}-${timestamp}.log`);
+}
+
 export function isolatedEnv({ home, port, databaseUrl, jwt, config }, original = process.env) {
   return {
     PATH: original.PATH || "", HOME: home, LANG: original.LANG || "en_US.UTF-8",
@@ -213,6 +226,8 @@ export async function runLocalRuntime(options = {}) {
   fs.writeFileSync(p.lock, MARKER + ":" + process.pid + "\n", { flag: "wx", mode: 0o600 });
   let pgStarted = false;
   let child = null;
+  let startupLog = null;
+  let startupLogPath = null;
   let interrupted = false;
   const onSignal = () => { interrupted = true; child?.kill("SIGTERM"); };
   process.on("SIGINT", onSignal);
@@ -236,9 +251,22 @@ export async function runLocalRuntime(options = {}) {
     directory(path.join(p.instance, "secrets"));
     writeManagedConfig(p, port);
     const url = "postgres://bostan:" + password + "@127.0.0.1:" + pgPort + "/bostan";
+    const windowsQa = process.platform === "win32" && windowsDisposableQaHome(home);
+    if (windowsQa) {
+      startupLogPath = serverStartupLogPath(p.logs, process.pid);
+      startupLog = fs.createWriteStream(startupLogPath, { flags: "wx", mode: 0o600 });
+    }
     child = spawn(process.execPath, ["--import", pathToFileURL(path.join(repo, "server", "node_modules", "tsx", "dist", "loader.mjs")).href,
       path.join(repo, "server", "src", "index.ts")],
-      { cwd: repo, stdio: "inherit", env: isolatedEnv({ home, port, databaseUrl: url, jwt, config: p.config }) });
+      { cwd: repo, stdio: windowsQa ? ["ignore", "pipe", "pipe"] : "inherit",
+        env: isolatedEnv({ home, port, databaseUrl: url, jwt, config: p.config }) });
+    if (windowsQa) {
+      // Consuming both streams prevents a stalled backend process from
+      // blocking on a full pipe. Keep logs on the disposable local profile.
+      child.stdout.pipe(startupLog, { end: false });
+      child.stderr.pipe(startupLog, { end: false });
+      process.stdout.write("Bostan Windows TEMP-only server log: " + startupLogPath + "\n");
+    }
     let finished = false;
     const exited = new Promise((resolve) => {
       child.once("exit", (code, signal) => { finished = true; resolve(code ?? (signal ? 1 : 0)); });
@@ -254,9 +282,11 @@ export async function runLocalRuntime(options = {}) {
       await new Promise((r) => setTimeout(r, 1000));
     }
     if (!healthy && !interrupted) {
-      child.kill("SIGTERM");
-      await exited;
-      throw new Error("Bostan local server did not reach HTTP 200 at /api/health");
+      if (!finished) child.kill("SIGTERM");
+      const exitCode = await exited;
+      throw new Error("Bostan local server did not reach HTTP 200 at /api/health" +
+        (startupLogPath ? "; inspect private TEMP-only startup log: " + startupLogPath : "") +
+        " (server exit " + exitCode + ")");
     }
     if (healthy) {
       process.stdout.write("Bostan local application: http://127.0.0.1:" + port + "\n");
@@ -270,6 +300,17 @@ export async function runLocalRuntime(options = {}) {
     process.off("SIGINT", onSignal);
     process.off("SIGTERM", onSignal);
     if (child && child.exitCode === null && !child.killed) child.kill("SIGTERM");
+    if (startupLog) {
+      // Child pipes were connected with end:false; explicit close is required
+      // after the child terminates so the test log is not left open.
+      child?.stdout?.unpipe(startupLog);
+      child?.stderr?.unpipe(startupLog);
+      await new Promise((resolve) => {
+        startupLog.once("close", resolve);
+        startupLog.once("error", resolve);
+        startupLog.end();
+      });
+    }
     if (pgStarted) {
       try {
         await call(executable("pg_ctl"), ["-D", p.data, "-m", "fast", "-w", "stop"], process.env, 30000);

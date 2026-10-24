@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, delimiter } from "node:path";
 import test from "node:test";
-import { executable, inspectLocalRuntime, isolatedEnv, runLocalRuntime, windowsDisposableQaHome } from "./bostan-local-runtime.mjs";
+import { executable, inspectLocalRuntime, isolatedEnv, runLocalRuntime, windowsDisposableQaHome, serverStartupLogPath } from "./bostan-local-runtime.mjs";
 
 test("isolated application environment ignores inherited telemetry, external providers and unsafe binding", () => {
   const parent = {
@@ -148,4 +148,13 @@ test("Windows isolated server environment does not inherit the real roaming prof
     assert.equal(next.USERPROFILE, dir);
     assert.equal(next.OPENAI_API_KEY, undefined);
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+
+test("Windows disposable server startup log has a bounded local filename", () => {
+  const directory = join(tmpdir(), "bostan-owned-server-logs");
+  assert.equal(serverStartupLogPath(directory, 123, 456),
+    join(directory, "server-startup-123-456.log"));
+  assert.throws(() => serverStartupLogPath("relative", 123), /Invalid/);
+  assert.throws(() => serverStartupLogPath(directory, -5), /Invalid/);
 });
