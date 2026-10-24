@@ -3354,6 +3354,7 @@ export function issueRoutes(
   db: Db,
   storage: StorageService,
   opts: {
+    feedbackExportAllowed?: boolean;
     chatRunRetries?: Pick<
       ChatChannelService,
       "prepareFailedChatRunRetry" | "processFailedChatRunRetry"
@@ -19335,7 +19336,9 @@ export function issueRoutes(
         vote: req.body.vote,
         reason: req.body.reason,
         authorUserId: req.actor.userId ?? "local-board",
-        allowSharing: req.body.allowSharing === true,
+        // Save feedback locally even if a stale client sends consent. The
+        // destination must pass the Bostan-only server admission first.
+        allowSharing: opts.feedbackExportAllowed === true && req.body.allowSharing === true,
       });
 
       await logActivity(db, {

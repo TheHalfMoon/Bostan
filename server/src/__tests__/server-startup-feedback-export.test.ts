@@ -449,7 +449,8 @@ vi.mock("../storage/index.js", () => ({
   createStorageServiceFromConfig: vi.fn(() => ({ id: "storage-service" })),
 }));
 
-vi.mock("../services/feedback-share-client.js", () => ({
+vi.mock("../services/feedback-share-client.js", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../services/feedback-share-client.js")>(),
   createFeedbackTraceShareClientFromConfig: vi.fn(() => ({ id: "feedback-share-client" })),
 }));
 

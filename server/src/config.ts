@@ -180,14 +180,15 @@ export function loadConfig(): Config {
     process.env.PAPERCLIP_STORAGE_S3_FORCE_PATH_STYLE !== undefined
       ? process.env.PAPERCLIP_STORAGE_S3_FORCE_PATH_STYLE === "true"
       : (fileStorage?.s3?.forcePathStyle ?? false);
-  const feedbackExportBackendUrl =
-    process.env.PAPERCLIP_FEEDBACK_EXPORT_BACKEND_URL?.trim() ||
-    process.env.PAPERCLIP_TELEMETRY_BACKEND_URL?.trim() ||
-    undefined;
-  const feedbackExportBackendToken =
-    process.env.PAPERCLIP_FEEDBACK_EXPORT_BACKEND_TOKEN?.trim() ||
-    process.env.PAPERCLIP_TELEMETRY_BACKEND_TOKEN?.trim() ||
-    undefined;
+  // Bostan never inherits the donor's telemetry configuration. A feedback
+  // trace may leave this machine only after a Bostan-specific operator opt-in.
+  const feedbackExportEnabled = process.env.BOSTAN_FEEDBACK_EXPORT_ENABLED === "1";
+  const feedbackExportBackendUrl = feedbackExportEnabled
+    ? process.env.BOSTAN_FEEDBACK_EXPORT_BACKEND_URL?.trim() || undefined
+    : undefined;
+  const feedbackExportBackendToken = feedbackExportEnabled
+    ? process.env.BOSTAN_FEEDBACK_EXPORT_BACKEND_TOKEN?.trim() || undefined
+    : undefined;
 
   const deploymentMode = resolveDeploymentMode(fileConfig);
   const strictModeFromEnv = process.env.PAPERCLIP_SECRETS_STRICT_MODE;

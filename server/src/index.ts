@@ -139,7 +139,7 @@ import {
   parseAdapterRegistryEnv,
   reconcileAdapterAvailability,
 } from "./services/adapter-registry-bootstrap.js";
-import { createFeedbackTraceShareClientFromConfig } from "./services/feedback-share-client.js";
+import { configuredBostanFeedbackEndpoint, createFeedbackTraceShareClientFromConfig } from "./services/feedback-share-client.js";
 import { buildRuntimeApiCandidateUrls, choosePrimaryRuntimeApiUrl } from "./runtime-api.js";
 import { isLoopbackHost, rewriteLoopbackUrlPort } from "./url-utils.js";
 import { createPluginWorkerManager } from "./services/plugin-worker-manager.js";
@@ -942,6 +942,8 @@ async function startServerWithDatabaseTeardown(
     serverPort: listenPort,
     storageService,
     feedbackExportService: feedback,
+    // The same verified destination admission protects vote consent and uploads.
+    feedbackExportAllowed: configuredBostanFeedbackEndpoint(config) !== null,
     databaseBackupService: {
       runManualBackup: async () => {
         const result = await runServerDatabaseBackup("manual");

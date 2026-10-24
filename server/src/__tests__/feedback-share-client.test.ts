@@ -15,42 +15,36 @@ describe("feedback trace share client", () => {
     vi.unstubAllGlobals();
   });
 
-  it("defaults to telemetry.paperclip.ing when no backend url is configured", async () => {
+  const vote = {
+    traceId: "trace-1", exportId: "export-1", companyId: "company-1",
+    issueId: "issue-1", issueIdentifier: "BOS-1", adapterType: "codex_local",
+    captureStatus: "full", notes: [], envelope: {}, surface: null,
+    paperclipRun: null, rawAdapterTrace: null, normalizedAdapterTrace: null,
+    privacy: null, integrity: {}, files: [],
+  } as Parameters<ReturnType<typeof createFeedbackTraceShareClientFromConfig>["uploadTraceBundle"]>[0];
+
+  it.each([
+    ["missing URL", undefined, "token"],
+    ["missing token", "https://feedback.bostan.example", undefined],
+    ["donor endpoint", "https://telemetry.paperclip.ing", "token"],
+    ["donor subdomain", "https://docs.paperclip.ing", "token"],
+    ["donor with trailing dot", "https://telemetry.paperclip.ing.", "token"],
+    ["insecure HTTP", "http://feedback.bostan.example", "token"],
+    ["credentials in URL", "https://user:pass@feedback.bostan.example", "token"],
+    ["query parameters", "https://feedback.bostan.example/?key=secret", "token"],
+    ["local service", "https://localhost", "token"],
+  ])("refuses export without a safe explicit target: %s", async (_label, url, token) => {
     const client = createFeedbackTraceShareClientFromConfig({
-      feedbackExportBackendUrl: undefined,
-      feedbackExportBackendToken: undefined,
+      feedbackExportBackendUrl: url,
+      feedbackExportBackendToken: token,
     });
-
-    await client.uploadTraceBundle({
-      traceId: "trace-1",
-      exportId: "export-1",
-      companyId: "company-1",
-      issueId: "issue-1",
-      issueIdentifier: "PAP-1",
-      adapterType: "codex_local",
-      captureStatus: "full",
-      notes: [],
-      envelope: {},
-      surface: null,
-      paperclipRun: null,
-      rawAdapterTrace: null,
-      normalizedAdapterTrace: null,
-      privacy: null,
-      integrity: {},
-      files: [],
-    });
-
-    expect(fetch).toHaveBeenCalledWith(
-      "https://telemetry.paperclip.ing/feedback-traces",
-      expect.objectContaining({
-        method: "POST",
-      }),
-    );
+    await expect(client.uploadTraceBundle(vote)).rejects.toThrow(/Bostan feedback export is disabled/);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("wraps the feedback trace payload as gzip+base64 json before upload", async () => {
     const client = createFeedbackTraceShareClientFromConfig({
-      feedbackExportBackendUrl: "https://telemetry.paperclip.ing",
+      feedbackExportBackendUrl: "https://feedback.bostan.example",
       feedbackExportBackendToken: "test-token",
     });
 
@@ -74,9 +68,10 @@ describe("feedback trace share client", () => {
     });
 
     const call = vi.mocked(fetch).mock.calls[0];
-    expect(call?.[0]).toBe("https://telemetry.paperclip.ing/feedback-traces");
+    expect(call?.[0]).toBe("https://feedback.bostan.example/feedback-traces");
     expect(call?.[1]).toMatchObject({
       method: "POST",
+      redirect: "error",
       headers: {
         "content-type": "application/json",
         authorization: "Bearer test-token",
@@ -112,7 +107,7 @@ describe("feedback trace share client", () => {
       if (phase === "headers") return block();
       return { ok: true, json: block } as unknown as Response;
     });
-    const client = createFeedbackTraceShareClientFromConfig({ feedbackExportBackendUrl: undefined, feedbackExportBackendToken: undefined });
+    const client = createFeedbackTraceShareClientFromConfig({ feedbackExportBackendUrl: "https://feedback.bostan.example", feedbackExportBackendToken: "test-token" });
     const bundle = { companyId: "company", traceId: "trace" } as Parameters<typeof client.uploadTraceBundle>[0];
     const uploading = client.uploadTraceBundle(bundle);
     const rejected = expect(uploading).rejects.toThrow("upload deadline");
@@ -130,7 +125,7 @@ describe("feedback trace share client", () => {
       options!.signal!.addEventListener("abort", () => reject(options!.signal!.reason), { once: true });
       started();
     }));
-    const client = createFeedbackTraceShareClientFromConfig({ feedbackExportBackendUrl: undefined, feedbackExportBackendToken: undefined });
+    const client = createFeedbackTraceShareClientFromConfig({ feedbackExportBackendUrl: "https://feedback.bostan.example", feedbackExportBackendToken: "test-token" });
     const bundle = { companyId: "company", traceId: "trace" } as Parameters<typeof client.uploadTraceBundle>[0];
     const rejected = expect(client.uploadTraceBundle(bundle, shutdown.signal)).rejects.toThrow("shutdown");
     await waiting;

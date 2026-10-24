@@ -125,7 +125,7 @@ vi.mock("../services/instance-settings.js", () => ({
   instanceSettingsService: () => mockInstanceSettingsService,
 }));
 
-async function createApp(actor: Record<string, unknown>) {
+async function createApp(actor: Record<string, unknown>, feedbackExportAllowed = false) {
   const [{ issueRoutes }, { errorHandler }] = await Promise.all([
     import("../routes/issues.js"),
     import("../middleware/index.js"),
@@ -136,7 +136,7 @@ async function createApp(actor: Record<string, unknown>) {
     (req as any).actor = actor;
     next();
   });
-  app.use("/api", issueRoutes({} as any, {} as any));
+  app.use("/api", issueRoutes({} as any, {} as any, { feedbackExportAllowed }));
   const routeErrors: string[] = [];
   app.locals.routeErrors = routeErrors;
   app.use((error: unknown, _req: express.Request, _res: express.Response, next: express.NextFunction) => {
@@ -205,8 +205,36 @@ describe("issue feedback trace routes", () => {
 
     expect([200, 201]).toContain(res.status);
     expect(mockFeedbackService.saveIssueVote).toHaveBeenCalledTimes(1);
+    // A stale client request must not create a shareable export when the
+    // Bostan server has no explicitly admitted remote backend.
+    expect(mockFeedbackService.saveIssueVote).toHaveBeenCalledWith(
+      expect.objectContaining({ allowSharing: false }),
+    );
     expect(mockFeedbackService.flushPendingFeedbackTraces).not.toHaveBeenCalled();
 
+  });
+
+  it("permits explicit sharing only when the Bostan backend is admitted", async () => {
+    const targetId = "11111111-1111-4111-8111-111111111111";
+    mockIssueService.getById.mockResolvedValue({
+      id: "issue-1", companyId: "company-1", identifier: "BOS-1",
+    });
+    mockFeedbackService.saveIssueVote.mockResolvedValue({
+      vote: { targetType: "issue_comment", targetId, vote: "up", reason: null },
+      traceId: "trace-2", consentEnabledNow: false,
+      persistedSharingPreference: null, sharingEnabled: true,
+    });
+    const app = await createApp({
+      type: "board", userId: "user-1", source: "session",
+      isInstanceAdmin: true, companyIds: ["company-1"],
+    }, true);
+    const response = await request(app)
+      .post("/api/issues/issue-1/feedback-votes")
+      .send({ targetType: "issue_comment", targetId, vote: "up", allowSharing: true });
+    expect(response.status).toBe(201);
+    expect(mockFeedbackService.saveIssueVote).toHaveBeenCalledWith(
+      expect.objectContaining({ allowSharing: true }),
+    );
   });
 
   it("rejects non-board callers before fetching a feedback trace", async () => {

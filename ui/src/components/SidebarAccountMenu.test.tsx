@@ -185,7 +185,7 @@ describe("SidebarAccountMenu", () => {
       if (visible) {
         expect(label?.textContent).toBe("SHA 8751e2d");
         expect(label?.previousElementSibling?.textContent).toBe("jane@example.com");
-        expect(label?.getAttribute("href")).toBe(`https://github.com/paperclipai/paperclip/commit/${commit}`);
+        expect(label?.getAttribute("href")).toBe(`https://github.com/TheHalfMoon/Bostan/commit/${commit}`);
         expect(label?.getAttribute("aria-label")).toBe(`View commit ${commit} on GitHub`);
         expect(mockHealthApi.get).toHaveBeenCalledOnce();
       } else {
@@ -302,7 +302,7 @@ describe("SidebarAccountMenu", () => {
     const feedbackButton = container.querySelector<HTMLAnchorElement>(
       'a[aria-label="Share feedback"]',
     );
-    expect(feedbackButton?.getAttribute("href")).toBe("https://paperclip.ing/feedback");
+    expect(feedbackButton?.getAttribute("href")).toBe("https://github.com/TheHalfMoon/Bostan/issues/new/choose");
     expect(feedbackButton?.getAttribute("target")).toBe("_blank");
     expect(feedbackButton?.classList).toContain("text-muted-foreground/50");
     expect(feedbackButton?.classList).not.toContain("text-border");
@@ -341,7 +341,7 @@ describe("SidebarAccountMenu", () => {
     const feedbackButton = container.querySelector<HTMLAnchorElement>(
       'a[aria-label="Share feedback"]',
     );
-    expect(feedbackButton?.getAttribute("href")).toBe("https://paperclip.ing/feedback");
+    expect(feedbackButton?.getAttribute("href")).toBe("https://github.com/TheHalfMoon/Bostan/issues/new/choose");
     expect(feedbackButton?.getAttribute("target")).toBe("_blank");
     expect(feedbackButton?.classList).toContain("text-muted-foreground/50");
     expect(feedbackButton?.classList).not.toContain("text-border");
@@ -357,7 +357,7 @@ describe("SidebarAccountMenu", () => {
 
     const popover = document.body.querySelector('[data-slot="popover-content"]');
     expect(popover?.textContent).not.toContain("Feedback");
-    expect(popover?.querySelector('a[href="https://paperclip.ing/feedback"]')).toBeNull();
+    expect(popover?.querySelector('a[href="https://github.com/TheHalfMoon/Bostan/issues/new/choose"]')).toBeNull();
 
     await act(async () => root.unmount());
   });
@@ -402,7 +402,7 @@ describe("SidebarAccountMenu", () => {
 
     const popover = document.body.querySelector('[data-slot="popover-content"]');
     expect(popover?.textContent).not.toContain("Feedback");
-    expect(popover?.querySelector('a[href="https://paperclip.ing/feedback"]')).toBeNull();
+    expect(popover?.querySelector('a[href="https://github.com/TheHalfMoon/Bostan/issues/new/choose"]')).toBeNull();
 
     // Profile access moved off the action list: the header links to the
     // profile, and the separate view/edit rows are gone. Editing lives on the

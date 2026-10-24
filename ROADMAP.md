@@ -23,6 +23,8 @@ work is in [Bostan receipts](docs/bostan/).
   installer and runtime identity, preserving mandatory legal notices.
 - [ ] Reproducible, minimal-footprint Mac and Windows installation, start,
   stop, upgrade, cold backup, restore, and rollback without a source checkout.
+- [ ] Qualify the B0-26 feedback export privacy gate with real PostgreSQL
+  persistence tests, full server typecheck, and platform-level E2E.
 - [ ] Complete dependency, licensing, privacy, and security qualification.
 
 ## B1 — Reliable company orchestration

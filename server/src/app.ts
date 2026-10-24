@@ -508,6 +508,7 @@ export async function createApp(
     uiMode: UiMode;
     serverPort: number;
     storageService: StorageService;
+    feedbackExportAllowed?: boolean;
     feedbackExportService?: {
       hasPendingFeedbackTraces(): Promise<boolean>;
       flushPendingFeedbackTraces(input?: {
@@ -946,6 +947,7 @@ export async function createApp(
   // issue approval endpoints delegate to it. The intervening routers use distinct
   // route prefixes, so this dependency does not change issue-route precedence.
   api.use(issueRoutes(db, opts.storageService, {
+    feedbackExportAllowed: opts.feedbackExportAllowed === true,
     chatRunRetries: chatChannels,
     pluginWorkerManager: workerManager,
     approveToolActionRequest: (input) => toolGateway.approveActionRequest(input),
