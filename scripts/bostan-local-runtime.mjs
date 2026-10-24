@@ -148,6 +148,10 @@ export function isolatedEnv({ home, port, databaseUrl, jwt, config }, original =
       SystemRoot: original.SystemRoot || path.join(path.parse(home).root, "Windows"),
       WINDIR: original.WINDIR || original.SystemRoot || path.join(path.parse(home).root, "Windows"),
       USERPROFILE: home,
+      // The launcher already verified explicit Windows TEMP-only QA admission.
+      // Propagate that scoped marker to the private backend child so local
+      // startup diagnostics can distinguish this from production operation.
+      BOSTAN_WINDOWS_TEMP_QA: "1",
       TEMP: path.join(home, ".bostan", "app", "tmp"),
       TMP: path.join(home, ".bostan", "app", "tmp"),
       APPDATA: path.join(home, ".bostan", "app", "roaming"),

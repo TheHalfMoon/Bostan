@@ -146,6 +146,7 @@ test("Windows isolated server environment does not inherit the real roaming prof
     assert.ok(next.APPDATA.startsWith(dir));
     assert.ok(next.LOCALAPPDATA.startsWith(dir));
     assert.equal(next.USERPROFILE, dir);
+    assert.equal(next.BOSTAN_WINDOWS_TEMP_QA, "1");
     assert.equal(next.OPENAI_API_KEY, undefined);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
