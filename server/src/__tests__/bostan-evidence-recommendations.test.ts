@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { sql, eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { agents, authUsers, companies, companyMemberships, createDb, decisions, heartbeatRuns, issues, decisionEffectExecutions } from "@paperclipai/db";
+import { agents, authUsers, budgetPolicies, companies, companyMemberships, costEvents, createDb, decisions, heartbeatRuns, issues, decisionEffectExecutions, projects } from "@paperclipai/db";
 import { createBostanRecommendation, bostanRecommendationSchema } from "../services/bostan-decision-recommendations.js";
 import { decisionService } from "../services/decisions.js";
 import {
@@ -85,6 +85,88 @@ suite("Bostan B2 recommendations reuse signed board decisions", () => {
     await seed();const created=await write({...base(),evidenceIssueIds:[evidenceIssueId],estimatedCostUsd:150,costCeilingUsd:100});
     expect(created.metadata).toMatchObject({abstained:true,abstentionReasons:["cost_ceiling_exceeded"],permitsEffects:false});
     expect(created.options.every(option=>option.effects.length===0)).toBe(true);
+  });
+  it("B2-02 abstains when a real board-set company budget is lower than the agent's declared ceiling", async () => {
+    await seed();
+    await db.insert(budgetPolicies).values({
+      companyId, scopeType: "company", scopeId: companyId,
+      metric: "billed_cents", windowKind: "calendar_month_utc",
+      amount: 2_000, hardStopEnabled: true, isActive: true, createdByUserId: userId,
+    });
+    const created = await write({ ...base(), evidenceIssueIds: [evidenceIssueId], estimatedCostUsd: 45, costCeilingUsd: 5_000 });
+    expect(created.metadata).toMatchObject({
+      abstained: true, recommendedOptionId: null,
+      abstentionReasons: ["board_budget_capacity_exceeded"],
+      permitsEffects: false,
+      checkedBoardBudgetPolicyCount: 1,
+    });
+    expect(created.options.map(option => option.id)).toEqual(["request_evidence", "defer"]);
+  });
+  it("B2-02 conservatively applies the stricter applicable agent budget even if company permits", async () => {
+    await seed();
+    await db.insert(budgetPolicies).values([
+      { companyId, scopeType: "company", scopeId: companyId, metric: "billed_cents", windowKind: "calendar_month_utc", amount: 10_000, hardStopEnabled: true, isActive: true },
+      { companyId, scopeType: "agent", scopeId: agentId, metric: "billed_cents", windowKind: "calendar_month_utc", amount: 500, hardStopEnabled: true, isActive: true },
+    ]);
+    const created = await write({ ...base(), evidenceIssueIds: [evidenceIssueId], estimatedCostUsd: 45, costCeilingUsd: 100 });
+    expect(created.metadata).toMatchObject({ abstained: true, abstentionReasons: ["board_budget_capacity_exceeded"] });
+    expect(created.metadata).toMatchObject({ checkedBoardBudgetPolicyCount: 2 });
+    expect(created.metadata.boardBudgetPolicySnapshotHmacSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(created.metadata)).not.toContain("limitCents");
+    expect(JSON.stringify(created.metadata)).not.toContain("observedCents");
+  });
+  it("B2-02 uses real settled ledger spend when calculating board policy remaining capacity", async () => {
+    await seed();
+    await db.insert(budgetPolicies).values({ companyId, scopeType: "company", scopeId: companyId, metric: "billed_cents", windowKind: "calendar_month_utc", amount: 6_000, hardStopEnabled: true, isActive: true });
+    await db.insert(costEvents).values({
+      companyId, agentId, issueId: evidenceIssueId, usageKind: "agent",
+      provider: "synthetic-offline", biller: "test", billingType: "usage",
+      model: "test-only", costStatus: "reported", costCents: 3_000,
+      occurredAt: new Date(),
+    });
+    const created = await write({ ...base(), evidenceIssueIds: [evidenceIssueId], estimatedCostUsd: 45, costCeilingUsd: 100 });
+    expect(created.metadata).toMatchObject({ abstained: true, abstentionReasons: ["board_budget_capacity_exceeded"] });
+    expect(created.metadata.checkedBoardBudgetPolicyCount).toBe(1);
+    expect(JSON.stringify(created.metadata)).not.toContain("observedCents");
+  });
+  it("B2-02 enforces the board's project budget for the *origin* issue's project", async () => {
+    await seed();
+    const projectId = randomUUID();
+    await db.insert(projects).values({ id: projectId, companyId, name: "Bostan bounded origin project" });
+    await db.update(issues).set({ projectId }).where(eq(issues.id, originIssueId));
+    await db.insert(budgetPolicies).values({ companyId, scopeType: "project", scopeId: projectId, metric: "billed_cents", windowKind: "lifetime", amount: 2_000, hardStopEnabled: true, isActive: true });
+    const created = await write({ ...base(), evidenceIssueIds: [evidenceIssueId], estimatedCostUsd: 45, costCeilingUsd: 100 });
+    expect(created.metadata).toMatchObject({ abstained: true, abstentionReasons: ["board_budget_capacity_exceeded"] });
+    expect(created.metadata.checkedBoardBudgetPolicyCount).toBe(1);
+    expect(JSON.stringify(created.metadata)).not.toContain(projectId);
+  });
+  it("B2-02 still offers only effect-free alternatives if the board budget has ample remaining capacity", async () => {
+    await seed();
+    await db.insert(budgetPolicies).values({ companyId, scopeType: "company", scopeId: companyId, metric: "billed_cents", windowKind: "lifetime", amount: 10_000, hardStopEnabled: true, isActive: true });
+    const created = await write({ ...base(), evidenceIssueIds: [evidenceIssueId], estimatedCostUsd: 45, costCeilingUsd: 100 });
+    expect(created.metadata).toMatchObject({ abstained: false, checkedBoardBudgetPolicyCount: 1 });
+    expect(created.options.every(option => option.effects.length === 0)).toBe(true);
+  });
+  it("B2-02 never reuses stale idempotent advice after the board changes its hard-stop budget", async () => {
+    await seed();
+    const [policy] = await db.insert(budgetPolicies).values({ companyId, scopeType: "company", scopeId: companyId, metric: "billed_cents", windowKind: "lifetime", amount: 10_000, hardStopEnabled: true, isActive: true }).returning();
+    const request = { ...base(), evidenceIssueIds: [evidenceIssueId], estimatedCostUsd: 45, costCeilingUsd: 100 };
+    const before = await write(request);
+    expect(before.metadata).toMatchObject({ abstained: false });
+    await db.update(budgetPolicies).set({ amount: 2_000, enforcementVersion: policy.enforcementVersion + 1 }).where(eq(budgetPolicies.id, policy.id));
+    // The same request ID cannot silently return the old signed recommendation.
+    await expect(write(request)).rejects.toMatchObject({ status: 409 });
+    const after = await write({ ...request, idempotencyKey: `bostan-budget-updated-${randomUUID()}` });
+    expect(after.metadata).toMatchObject({ abstained: true, abstentionReasons: ["board_budget_capacity_exceeded"] });
+    expect(after.metadata.boardBudgetPolicySnapshotHmacSha256).not.toBe(before.metadata.boardBudgetPolicySnapshotHmacSha256);
+  });
+  it("B2-02 never applies a budget belonging to another company", async () => {
+    await seed();
+    const otherCompany = randomUUID();
+    await db.insert(companies).values({ id: otherCompany, name: "Foreign budget company", issuePrefix: "FBG" });
+    await db.insert(budgetPolicies).values({ companyId: otherCompany, scopeType: "company", scopeId: otherCompany, metric: "billed_cents", windowKind: "calendar_month_utc", amount: 100, hardStopEnabled: true, isActive: true });
+    const created = await write({ ...base(), evidenceIssueIds: [evidenceIssueId], estimatedCostUsd: 45, costCeilingUsd: 100 });
+    expect(created.metadata).toMatchObject({ abstained: false, checkedBoardBudgetPolicyCount: 0 });
   });
   it("rejects foreign company evidence and makes no decision record", async () => {
     await seed();const otherId=randomUUID(),foreignIssue=randomUUID();

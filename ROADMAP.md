@@ -70,6 +70,10 @@ privileged effects.
 - [x] B2-01: real company-scoped, signed decision recommendation route with
   typed alternatives, cited issue-access checks, abstention, declared cost
   ceiling and **no executable effects**; isolated PostgreSQL tests PASS.
+- [x] B2-02: read existing human-configured company/agent/project budget
+  exposure, abstain when spending/unknown accounting violates hard stops,
+  redact board financial details from agent-readable recommendations and bind
+  idempotency to a budget snapshot fingerprint. No actual spend authorized.
 - [ ] Board-defined actual budget limits, calibrated outcomes, external
   evidence proof/readback, durable model routing, evaluation and UI E2E.
 
