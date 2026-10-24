@@ -10836,6 +10836,24 @@ export function createToolGatewayService(
           recoveredGitHubPublication = { content: JSON.stringify(receipt), data: receipt };
         }
         if (recorded.replayed && !retryingSlackRateLimit && !retryingGitHubPublication) {
+          // Never describe an unresolved, potentially side-effectful execution
+          // as a successful "replayed" result. A timeout/failure can happen
+          // *after* a remote provider applies a write. Re-executing with a new
+          // key also requires separate human/provider reconciliation.
+          const prior = recorded.invocation;
+          const possiblyWrite = !prior.riskLevel || !["low", "read"].includes(prior.riskLevel);
+          if (possiblyWrite && ["failed", "timed_out", "cancelled"].includes(prior.status)) {
+            await writeAudit({
+              session, companyId: session.companyId, agentId: session.agentId,
+              runId: session.runId, issueId: session.issueId,
+              action: "tool_gateway.call_failed",
+              details: { invocationId, decision: "deny", reasonCode: "tool_effect_outcome_unresolved",
+                tool: tool.name, ...toolAuditMetadata(tool), replayed: true },
+            });
+            throw new ToolGatewayHttpError(409,
+              "A prior tool write has an unresolved external outcome. Inspect the provider before retrying; no tool call was replayed.",
+              "tool_effect_outcome_unresolved");
+          }
           if (gitHubPublicationReplay && !gitHubReplayPolicyAllowed)
             throw new ToolGatewayHttpError(policyErrorStatus(accessDecision), accessDecision.explanation, accessDecision.reasonCode);
           await writeAudit({

@@ -26,9 +26,9 @@ import {
   toolRateLimitCounters,
 } from "@paperclipai/db";
 import {
-  getEmbeddedPostgresTestSupport,
-  startEmbeddedPostgresTestDatabase,
-} from "./helpers/embedded-postgres.js";
+  getBostanFeedbackPostgresTestSupport as getEmbeddedPostgresTestSupport,
+  startBostanFeedbackPostgresTestDatabase as startEmbeddedPostgresTestDatabase,
+} from "./helpers/bostan-postgres-test-backend.js";
 import { toolAccessPolicyService } from "../services/tool-access-policy.js";
 import { toolAccessService } from "../services/tool-access.js";
 import { createToolGatewayService, ToolGatewayHttpError } from "../services/tool-gateway.js";
@@ -1738,6 +1738,36 @@ describeEmbeddedPostgres("tool access policy service", () => {
       status: "succeeded",
       resultSummary: expect.objectContaining({ summary: expect.any(String) }),
     });
+  });
+
+  it("B3-05 denies idempotent replay of a timed-out side-effectful tool without redispatch", async () => {
+    const company = await createCompany(db);
+    const agent = await createAgent(db, company.id);
+    const run = await createRun(db, company.id, agent.id);
+    await db.insert(principalPermissionGrants).values({
+      companyId: company.id, principalType: "agent", principalId: agent.id,
+      permissionKey: "tools:use", scope: { toolName: "mcp-remote-fixture:update_note" },
+    });
+    const gateway = createToolGatewayService(db);
+    const session = await gateway.createSession({ companyId: company.id,
+      agentId: agent.id, runId: run.id });
+    const options = { sessionToken: session.token, tool: "mcp-remote-fixture:update_note",
+      parameters: { noteId: "synthetic-timeout", body: "test no duplicate side effects" },
+      idempotencyKey: "b3-05-unknown-outcome" };
+    const first = await gateway.executeTool(options);
+    expect(first.status).toBe("completed");
+    for (const status of ["timed_out", "failed", "cancelled"] as const) {
+      await db.update(toolInvocations).set({ status,
+        errorCode: "tool_execution_outcome_unknown", resultSummary: null })
+        .where(eq(toolInvocations.id, first.invocationId));
+      await expect(gateway.executeTool(options)).rejects.toMatchObject({
+        status: 409, reasonCode: "tool_effect_outcome_unresolved",
+      });
+      const [retained] = await db.select().from(toolInvocations)
+        .where(eq(toolInvocations.id, first.invocationId));
+      expect(retained).toMatchObject({ status, idempotencyKey: options.idempotencyKey });
+      expect(await db.select().from(toolInvocations)).toHaveLength(1);
+    }
   });
 
   it("rejects cross-company owner agents and credential secret refs before persisting tool access records", async () => {

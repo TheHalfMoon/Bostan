@@ -117,6 +117,11 @@ reconciliation. Never duplicate the existing task/run authority.
   exact original private source commitment of a valid signed historical
   receipt; reject forged/mismatched rechecks and issue a distinct fresh
   signed receipt. No claim of tool causality or permission to retry.
+- [x] B3-05: fail closed on same-idempotency-key replay of a timed-out,
+  failed or cancelled potentially side-effectful Tool Gateway invocation;
+  avoid misleading successful replay status, require reconciliation and
+  preserve known-safe successful replay. 50/50 real PostgreSQL policy tests
+  PASS. Cross-key duplicate reconciliation remains open.
 - [ ] B3-02b: external provider/browser effect readback, signed independent
   verifier evidence, unknown-outcome reconciliation and fail-closed retries.
   Local file SHA matching alone must never be treated as full effect proof.
