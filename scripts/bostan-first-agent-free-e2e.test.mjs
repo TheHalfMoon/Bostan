@@ -5,7 +5,7 @@ import os from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel, syntheticFreeAgentAdapterConfig, observeHeartbeatQaStatus, assertHeartbeatQaSucceeded } from "./bostan-first-agent-free-e2e.mjs";
+import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel, syntheticFreeAgentAdapterConfig, observeHeartbeatQaStatus, assertHeartbeatQaSucceeded, firstAgentLifecycleReadinessTimeoutMs } from "./bostan-first-agent-free-e2e.mjs";
 
 function fixture() {
   const home = mkdtempSync(path.join(os.tmpdir(), "bostan-free-agent-guard-"));
@@ -146,4 +146,10 @@ test("failed run diagnostics never echo arbitrary raw error content", () => {
     status: "failed", errorCode: "secret=private-credential\n",
     executionStage: "preparing",
   }), e => !e.message.includes("private-credential") && e.message.includes("failed"));
+});
+
+test("Windows agent readiness is bounded but tolerates native cold verification", () => {
+  assert.equal(firstAgentLifecycleReadinessTimeoutMs("win32"), 240_000);
+  assert.equal(firstAgentLifecycleReadinessTimeoutMs("darwin"), 90_000);
+  assert.equal(firstAgentLifecycleReadinessTimeoutMs("linux"), 90_000);
 });

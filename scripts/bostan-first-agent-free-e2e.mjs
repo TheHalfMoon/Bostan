@@ -31,6 +31,13 @@ export function observeHeartbeatQaStatus(run) {
   return { done: true, result: run };
 }
 
+export function firstAgentLifecycleReadinessTimeoutMs(platform = process.platform) {
+  // The native Windows development source uses cold tsx imports and process
+  // verification; 90s was too short even though the agent later became ready.
+  // This stays bounded and does not alter the macOS release qualification.
+  return platform === "win32" ? 240_000 : 90_000;
+}
+
 export function assertHeartbeatQaSucceeded(run) {
   if (run?.status === "succeeded") return;
   // The provider may never have been called. Persisted interruption is
@@ -162,7 +169,7 @@ export async function runFirstAgentFreeE2e(env = process.env) {
       throw new Error("Bostan first agent did not pass lifecycle verification: " + current.lifecycleState);
     }
     return { done: false };
-  }, { timeoutMs: 90_000, label: "agent lifecycle ready" });
+  }, { timeoutMs: firstAgentLifecycleReadinessTimeoutMs(), label: "agent lifecycle ready" });
   const issue = await requestJson(base, "companies/" + company.id + "/issues", {
     title: "Synthetic Bostan free agent execution QA " + id,
     description: "Synthetic, disposable QA. Post ONE task comment containing " + MARKER +
