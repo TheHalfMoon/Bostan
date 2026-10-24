@@ -23,8 +23,9 @@ work is in [Bostan receipts](docs/bostan/).
   installer and runtime identity, preserving mandatory legal notices.
 - [ ] Reproducible, minimal-footprint Mac and Windows installation, start,
   stop, upgrade, cold backup, restore, and rollback without a source checkout.
-- [ ] Qualify the B0-26 feedback export privacy gate with real PostgreSQL
-  persistence tests, full server typecheck, and platform-level E2E.
+- [ ] Finish B0-26/B0-29 feedback-export qualification: **macOS real
+  PostgreSQL persistence (17 PASS), server typecheck (PASS)**; Windows,
+  browser/consumer E2E, and cross-platform safety acceptance remain open.
 - [ ] Qualify the B0-27 private Cloud broker with an operator-owned service,
   real enrollment/credentials test, migration plan and no upstream requests.
 - [ ] Complete dependency, licensing, privacy, and security qualification.

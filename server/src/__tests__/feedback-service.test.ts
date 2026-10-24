@@ -25,11 +25,11 @@ import {
 } from "@paperclipai/db";
 import { feedbackService } from "../services/feedback.ts";
 import {
-  getEmbeddedPostgresTestSupport,
-  startEmbeddedPostgresTestDatabase,
-} from "./helpers/embedded-postgres.ts";
+  getBostanFeedbackPostgresTestSupport,
+  startBostanFeedbackPostgresTestDatabase,
+} from "./helpers/bostan-postgres-test-backend.ts";
 
-const embeddedPostgresSupport = await getEmbeddedPostgresTestSupport();
+const embeddedPostgresSupport = await getBostanFeedbackPostgresTestSupport();
 const describeEmbeddedPostgres = embeddedPostgresSupport.supported ? describe : describe.skip;
 
 if (!embeddedPostgresSupport.supported) {
@@ -49,7 +49,7 @@ describeEmbeddedPostgres("feedbackService.saveIssueVote", () => {
   let tempDirs: string[] = [];
 
   beforeAll(async () => {
-    const started = await startEmbeddedPostgresTestDatabase("paperclip-feedback-service-");
+    const started = await startBostanFeedbackPostgresTestDatabase("paperclip-feedback-service-");
     db = createDb(started.connectionString);
     svc = feedbackService(db);
     tempDb = started;
