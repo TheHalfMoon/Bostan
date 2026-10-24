@@ -17,7 +17,7 @@ Branch: `work/b0-first-run-brand`.
 
 ## Verified (2026-10-24)
 
-- `pnpm exec vitest run ui/src/components/OnboardingWizard.test.tsx ui/src/context/BreadcrumbContext.test.tsx`: **179/179 passing**.
+- `pnpm exec vitest run ui/src/components/OnboardingWizard.test.tsx ui/src/context/BreadcrumbContext.test.tsx`: **183/183 passing** (including all four pre-existing breadcrumb tests).
 - `pnpm --filter @paperclipai/ui build`: **PASS**, nonblocking existing chunk-size warning.
 - Fresh Bostan source server + system PostgreSQL 17 in a disposable HOME: UI `/` and health endpoint already qualified HTTP 200 by B0-06.
 - Browser tested with locally cached Chromium headless shell 1248 and Playwright 1.62.1. Initial document title **Bostan**. With a test organization name, clicked **Continue** from **Step 1 of 4**, reached **Step 2 of 4 — Create your first agent**; new title **Bostan QA Lab • Bostan**.
