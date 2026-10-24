@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { EventEmitter } from "node:events";
+import { EventEmitter, once } from "node:events";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { superviseManagedServer } from "./bostan-managed-server-child.mjs";
 
@@ -58,4 +60,45 @@ test("failed child shutdown cannot be misrepresented as clean", async () => {
   await new Promise(r => setImmediate(r));
   assert.deepEqual(proc.messages, [{ type: "bostan:managed:stop-failed" }]);
   assert.deepEqual(proc.exits, [1]);
+});
+
+test("real interprocess Node IPC finishes synthetic server shutdown with exit zero", { timeout: 15_000 }, async () => {
+  const moduleUri = new URL("./bostan-managed-server-child.mjs", import.meta.url).href;
+  const code = `import { superviseManagedServer } from ${JSON.stringify(moduleUri)};
+await superviseManagedServer(async () => {
+  process.send({type:"fake:ready"});
+  return {shutdown: async () => {}};
+});`;
+  const child = spawn(process.execPath, ["--input-type=module", "-e", code], {
+    stdio: ["ignore", "pipe", "pipe", "ipc"],
+  });
+  const messages = [];
+  let stderr = "";
+  child.stderr.on("data", b => { stderr += b.toString().slice(0, 200); });
+  child.on("message", v => { messages.push(v); });
+  try {
+    await new Promise((resolve, reject) => {
+      const fail = setTimeout(() => reject(new Error("Fake child never became ready")), 8000);
+      child.on("message", value => {
+        if (value?.type === "fake:ready") { clearTimeout(fail); resolve(); }
+      });
+      child.once("error", reject);
+    });
+    child.send({type: "bostan:managed:stop"});
+    const [exitCode, signal] = await once(child, "exit");
+    assert.equal(exitCode, 0, stderr);
+    assert.equal(signal, null);
+    assert.ok(messages.some(v => v?.type === "bostan:managed:stopped"));
+  } finally {
+    if (child.exitCode === null) child.kill();
+  }
+});
+test("unexpected launcher IPC disconnection triggers graceful teardown", async () => {
+  const proc = fakeProcess();
+  let closed = 0;
+  await superviseManagedServer(async () => ({shutdown: async () => {closed++;}}), proc);
+  proc.emit("disconnect");
+  await new Promise(r => setImmediate(r));
+  assert.equal(closed, 1);
+  assert.deepEqual(proc.exits, [0]);
 });

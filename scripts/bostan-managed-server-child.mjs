@@ -30,7 +30,11 @@ export function superviseManagedServer(startServer, ipc = process) {
       ipc.exit?.(1);
     }
   }
+  // If the launcher dies, the child must not continue to serve against an
+  // orphaned PostgreSQL cluster. Shutdown remains best effort, and recovery
+  // still requires the separately verified stopped-database lock protocol.
   ipc.on("message", onMessage);
+  ipc.on("disconnect", () => { pending = true; if (!closing) void orderlyStop(); });
   ready = Promise.resolve().then(startServer);
   ready.then((instance) => {
     resolveReady(instance);
