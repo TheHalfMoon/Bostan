@@ -93,6 +93,14 @@ export async function runFirstAgentFreeE2e(env = process.env) {
     onlineModelApproved: env.BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL,
   });
   const model = qualifyFreeQaModel(env.BOSTAN_E2E_FREE_MODEL);
+  // Windows native admission happens before creating any Bostan organization
+  // or agent. A model catalog listing is not proof of working inference.
+  if (process.platform === "win32") {
+    const { admitFreeOpenCodeModel } = await import("./bostan-opencode-free-admission.mjs");
+    await admitFreeOpenCodeModel({
+      parent: home, model, executable: env.BOSTAN_E2E_OPENCODE_EXE, env,
+    });
+  }
   const health = await requestJson(base, "health");
   if (health.status !== "ok" || health.deploymentMode !== "local_trusted"
     || health.deploymentExposure !== "private") {

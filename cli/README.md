@@ -196,3 +196,21 @@ organization row persisted. Full evidence and explicit limitations:
 The Windows TEMP-QA cold start may still be slow and resource intensive.
 Do not use this development proof as permission to run in a normal Windows
 profile, claim a consumer installer exists, or publish the application.
+
+### Windows free OpenCode model admission before synthetic agent E2E (B0-20)
+
+Headless OpenCode may hang before producing any model response when launched
+with open stdin or from an enormous untracked Git working tree. Windows
+synthetic first-agent E2E now first runs a **separate bounded admission** in
+a fresh, empty TEMP workspace with stdin already closed. The check requires
+a real JSON text response from an explicitly allowlisted free online model.
+
+Set `BOSTAN_E2E_OPENCODE_EXE` to the **absolute native OpenCode executable
+path**, plus `BOSTAN_E2E_DISPOSABLE_HOME`,
+`BOSTAN_E2E_CONFIRM_TEMP_DATA=1`, and
+`BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL=1`. The standalone preflight is
+`node scripts/bostan-opencode-free-admission.mjs`. It does not inherit
+your actual OpenCode profile or cloud keys and refuses paid or unknown models.
+The full app and agent E2E still require separate qualification.
+
+See `docs/bostan/B0_WINDOWS_FREE_MODEL_ADMISSION_RECEIPT.md`.
