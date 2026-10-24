@@ -58,3 +58,33 @@ This is manual recovery, not an automatic data repair, restore or migration.
 
 Never point the recovery command at another user's HOME. The separately
 installed CLI-only preview cannot invoke app commands.
+
+## Local PostgreSQL cold snapshots (source checkout only)
+
+These commands are for private, stopped Bostan localhost applications. They
+require a prepared source checkout and a working pg_ctl binary.
+
+```bash
+# Stop Bostan first (Ctrl+C); confirm PostgreSQL is stopped.
+bostan app backup --local
+
+# Verify the generated backup (read-only).
+bostan app verify --local /absolute/path/to/backup-folder
+
+# Restore only into a HOME path that does not already exist.
+bostan app restore --local /absolute/path/to/backup-folder --into-new-home /absolute/path/to/new-home
+```
+
+The snapshot copies Bostan-managed local app state, private PostgreSQL data
+and secrets under ~/.bostan/backups with per-file SHA-256 checks. It refuses
+live or uncertain PostgreSQL, a held runtime lock, symlinks and unsafe files.
+Restoration never overwrites an existing HOME. Verify the resulting app in a
+separate test HOME before relying on it for recovery.
+
+**Privacy warning:** Cold backups contain credentials and potentially
+sensitive company content. Files are private on disk but are NOT encrypted;
+manifest digests detect accidental corruption, not malicious replacement of
+the whole manifest. Keep them offline and private. No cross-OS or Postgres
+major-version portability guarantee exists. Production restore and full-app
+relaunch have not yet been qualified. Do not run backup concurrently with
+other Bostan operations.
