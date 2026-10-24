@@ -182,3 +182,17 @@ installed CLI-only preview continues to refuse this source command.
 Full native Windows Bostan-server-plus-PostgreSQL shutdown and active agent
 draining are still open qualification gates. See
 `docs/bostan/B0_WINDOWS_ORDERLY_STOP_RECEIPT.md`.
+
+### Windows synthetic full-app stop verification (B0-19)
+
+A disposable Windows source-runtime integration test successfully started
+the real Bostan HTTP server and PostgreSQL 17.11, created/read a synthetic
+organization, requested shutdown through the separate authenticated
+`bostan app stop --local` CLI, verified HTTP was closed and PostgreSQL
+stopped, then restarted the database independently to confirm the exact
+organization row persisted. Full evidence and explicit limitations:
+`docs/bostan/B0_WINDOWS_REAL_GRACEFUL_STOP_RECEIPT.md`.
+
+The Windows TEMP-QA cold start may still be slow and resource intensive.
+Do not use this development proof as permission to run in a normal Windows
+profile, claim a consumer installer exists, or publish the application.
