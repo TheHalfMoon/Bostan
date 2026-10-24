@@ -197,4 +197,3 @@ export function installLocal(home) {
     fs.rmSync(paths.lock, { force: true });
   }
 }
-
