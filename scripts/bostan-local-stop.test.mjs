@@ -11,6 +11,8 @@ import { enforceWindowsQaPrivateAcl } from "./bostan-windows-acl.mjs";
 
 const winTest = process.platform === "win32" ? test : test.skip;
 function fixture() {
+  const originalQa = process.env.BOSTAN_WINDOWS_TEMP_QA;
+  process.env.BOSTAN_WINDOWS_TEMP_QA = "1";
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-stop-qa-"));
   const root = path.join(home, ".bostan");
   fs.mkdirSync(path.join(root, "app"), { recursive: true });
@@ -18,7 +20,13 @@ function fixture() {
   const lock = path.join(root, "app", "run.lock");
   fs.writeFileSync(lock, "bostan-managed-source-runtime-v1:" + process.pid + "\n",
     { mode: 0o600, flag: "wx" });
-  return { home, lock, clean: () => fs.rmSync(home, { recursive: true, force: true, maxRetries: 6, retryDelay: 200 }) };
+  return { home, lock, clean: () => {
+    try { fs.rmSync(home, { recursive: true, force: true, maxRetries: 6, retryDelay: 200 }); }
+    finally {
+      if (originalQa === undefined) delete process.env.BOSTAN_WINDOWS_TEMP_QA;
+      else process.env.BOSTAN_WINDOWS_TEMP_QA = originalQa;
+    }
+  } };
 }
 winTest("local QA controller authenticates request and verifies stopped fake-empty database", async () => {
   const f = fixture();
