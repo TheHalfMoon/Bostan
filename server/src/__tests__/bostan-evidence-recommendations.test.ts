@@ -8,6 +8,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { agents, authUsers, budgetPolicies, companies, companyMemberships, costEvents, createDb, decisions, heartbeatRuns, issues, decisionEffectExecutions, projects } from "@paperclipai/db";
 import { createBostanRecommendation, bostanRecommendationSchema } from "../services/bostan-decision-recommendations.js";
 import { decisionService } from "../services/decisions.js";
+import { signDecisionSpec } from "../services/decision-signing.js";
 import {
   getBostanFeedbackPostgresTestSupport,
   startBostanFeedbackPostgresTestDatabase,
@@ -187,6 +188,63 @@ suite("Bostan B2 recommendations reuse signed board decisions", () => {
     await db.insert(budgetPolicies).values({ companyId: otherCompany, scopeType: "company", scopeId: otherCompany, metric: "billed_cents", windowKind: "calendar_month_utc", amount: 100, hardStopEnabled: true, isActive: true });
     const created = await write({ ...base(), evidenceIssueIds: [evidenceIssueId], estimatedCostUsd: 45, costCeilingUsd: 100 });
     expect(created.metadata).toMatchObject({ abstained: false, checkedBoardBudgetPolicyCount: 0 });
+  });
+  it("B2-05 blocks board acceptance of a recommendation when evidence changed after creation", async () => {
+    await seed();
+    const recommendation = await write({ ...base(), evidenceIssueIds: [evidenceIssueId] });
+    await db.update(issues).set({ description: "New factual information invalidating this proposal", updatedAt: new Date(Date.now() + 8_000) })
+      .where(eq(issues.id, evidenceIssueId));
+    const board = { type: "board" as const, userId, companyIds: [companyId], source: "session" as const,
+      memberships: [{ companyId, membershipRole: "member", status: "active" }] };
+    await expect(decisionService(db,serviceOptions).decide({ id: recommendation.id, optionId: "pilot", decidedByUserId: userId, userActor: board }))
+      .rejects.toMatchObject({ status: 409, details: { code: "bostan_recommendation_stale" } });
+    const [row] = await db.select().from(decisions).where(eq(decisions.id, recommendation.id));
+    expect(row.status).toBe("open");
+    expect(await db.select().from(decisionEffectExecutions)).toHaveLength(0);
+  });
+  it("B2-05 allows explicit safe deferral after evidence changed", async () => {
+    await seed();
+    const recommendation = await write({ ...base(), evidenceIssueIds: [evidenceIssueId], confidence: 0.1 });
+    await db.update(issues).set({ description: "Changed after advisory proposal", updatedAt: new Date(Date.now() + 8_000) })
+      .where(eq(issues.id, evidenceIssueId));
+    const board = { type: "board" as const, userId, companyIds: [companyId], source: "session" as const,
+      memberships: [{ companyId, membershipRole: "member", status: "active" }] };
+    const resolved = await decisionService(db,serviceOptions).decide({ id: recommendation.id, optionId: "defer", decidedByUserId: userId, userActor: board });
+    expect(resolved.chosenOptionId).toBe("defer");
+    expect(await db.select().from(decisionEffectExecutions)).toHaveLength(0);
+  });
+  it("B2-05 denies even a defer choice if a malformed Bostan advisory contains executable effects", async () => {
+    await seed();
+    const recommendation = await write({ ...base(), evidenceIssueIds: [evidenceIssueId], confidence: 0.1 });
+    // Construct a synthetically corrupted-but-signed record to prove the
+    // Bostan rule key is not a shortcut around the imported effect verifier.
+    const unsafeOptions = recommendation.options.map((option, index) => index === 0
+      ? { ...option, effects: [{ type: "comment_on_issue", targetIssueId: evidenceIssueId,
+          bodyMarkdown: "synthetic never-execute", staleness: "strict" }] }
+      : option);
+    const signedSpec = signDecisionSpec({ decisionId: recommendation.id, options: unsafeOptions,
+      targetSnapshots: recommendation.targetSnapshots });
+    await db.update(decisions).set({ options: unsafeOptions as typeof recommendation.options, signedSpec })
+      .where(eq(decisions.id, recommendation.id));
+    const board = { type: "board" as const, userId, companyIds: [companyId], source: "session" as const,
+      memberships: [{ companyId, membershipRole: "member", status: "active" }] };
+    await expect(decisionService(db,serviceOptions).decide({ id: recommendation.id, optionId: "defer", decidedByUserId: userId, userActor: board }))
+      .rejects.toMatchObject({ status: 403 });
+    expect((await db.select().from(decisions).where(eq(decisions.id,recommendation.id)))[0].status).toBe("open");
+    expect(await db.select().from(decisionEffectExecutions)).toHaveLength(0);
+  });
+  it("B2-05 blocks board acceptance after board budget is lowered", async () => {
+    await seed();
+    const [policy] = await db.insert(budgetPolicies).values({ companyId, scopeType: "company", scopeId: companyId,
+      metric: "billed_cents", windowKind: "calendar_month_utc", amount: 10_000,
+      hardStopEnabled: true, isActive: true }).returning();
+    const recommendation = await write({ ...base(), evidenceIssueIds: [evidenceIssueId] });
+    await db.update(budgetPolicies).set({ amount: 1000, enforcementVersion: policy.enforcementVersion + 1 }).where(eq(budgetPolicies.id, policy.id));
+    const board = { type: "board" as const, userId, companyIds: [companyId], source: "session" as const,
+      memberships: [{ companyId, membershipRole: "member", status: "active" }] };
+    await expect(decisionService(db,serviceOptions).decide({ id: recommendation.id, optionId: "pilot", decidedByUserId: userId, userActor: board }))
+      .rejects.toMatchObject({ status: 409, details: { code: "bostan_recommendation_stale" } });
+    expect((await db.select().from(decisions).where(eq(decisions.id,recommendation.id)))[0].status).toBe("open");
   });
   it("B2-04 authenticates the agent-run HTTP route and returns only non-effectful signed choices", async () => {
     await seed();
