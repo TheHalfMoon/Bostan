@@ -68,3 +68,18 @@ path. Idempotent repeats reuse the exact existing decision record.
   open until independently tested and qualified.
 - Repo and actions remain private/disabled; development Draft only. No
   public deployment, paid services or branch merge. **RELEASE NO-GO.**
+
+## Final local runtime and compiler result
+
+- Actual Bostan source-runtime on Mac after the B2 route was added:
+  `BOSTAN_LIVE_LOCAL_QA_CONFIRM=1 node scripts/bostan-local-live-persistence-e2e.mjs`:
+  **PASS, exit 0**. Private local health, real PostgreSQL company insert,
+  graceful stop, restart and exact persisted company readback, second clean
+  stop. This is a live app smoke, **not** a browser UI test for the new form.
+- Full server TypeScript (incremental, with a private temporary build-info
+  path) did **not** finish under its 175-second limit. It was terminated
+  after timeout with exit 124 and no diagnostics. **TYPECHECK NOT QUALIFIED**;
+  the passing B2 DB tests and real runtime smoke are not equivalent to a
+  successful whole-project typecheck. Earlier B1-05 typecheck does not
+  cover this branch. No lingering compiler process.
+- `git diff --check`: PASS. No external model or paid service.
