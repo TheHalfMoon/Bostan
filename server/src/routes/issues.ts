@@ -1,5 +1,5 @@
 import { taskInterruptionPresentation, taskInterruptionPresentations } from "../services/task-interruption-presentation.js";
-import { readBostanIssueDocumentEvidence } from "../services/bostan-knowledge-evidence.js";
+import { readBostanIssueDocumentEvidence, checkBostanIssueDocumentSnapshot } from "../services/bostan-knowledge-evidence.js";
 import { parseObject } from "../adapters/utils.js";
 import { prepareRestrictedWorkspaceRetry } from "../services/restricted-workspace-retry.js";
 import { issueSummariesQuerySchema, type IssueSummary } from "@paperclipai/shared";
@@ -8126,6 +8126,31 @@ export function issueRoutes(
       error:
         "Missing companyId in path. Use /api/companies/{companyId}/issues.",
     });
+  });
+
+  // An explicitly read-only POST avoids putting a private source commitment
+  // into browser history, logs and intermediary URL caches. No model, action
+  // or board decision is dispatched here.
+  router.post("/companies/:companyId/issues/:issueId/bostan-evidence/documents/:documentId/freshness", async (req, res) => {
+    assertBoard(req);
+    const companyId = req.params.companyId as string;
+    const issueId = req.params.issueId as string;
+    const documentId = req.params.documentId as string;
+    assertCompanyAccess(req, companyId);
+    if (![companyId, issueId, documentId].every(id => z.string().uuid().safeParse(id).success)) {
+      res.status(400).json({ error: "Valid company, issue and document UUIDs are required" }); return;
+    }
+    const body = z.object({ expectedSnapshotHmacSha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict().safeParse(req.body);
+    if (!body.success) { res.status(400).json({ error: "Invalid Bostan source snapshot commitment" }); return; }
+    const authorization = await access.decide({ actor: req.actor, action: "company_scope:read",
+      resource: { type: "company", companyId } });
+    if (!authorization.allowed) { res.status(403).json({ error: "Company source verification is unauthorized" }); return; }
+    const assessment = await checkBostanIssueDocumentSnapshot({ db, companyId, issueId, documentId,
+      expectedSnapshotHmacSha256: body.data.expectedSnapshotHmacSha256,
+      issueReadCondition: await issueReadSqlCondition(db, req.actor) });
+    if (!assessment) { res.status(404).json({ error: "Scoped source no longer accessible" }); return; }
+    res.setHeader("Cache-Control", "no-store");
+    res.json(assessment);
   });
 
   router.get("/companies/:companyId/issues/:issueId/bostan-evidence/documents/:documentId", async (req, res) => {

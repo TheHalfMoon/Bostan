@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { and, eq, isNull, type SQL } from "drizzle-orm";
 import { documents, issueDocuments, issues, type Db } from "@paperclipai/db";
 import { resolveDecisionSigningSecret } from "./decision-signing.js";
@@ -69,5 +69,32 @@ export async function readBostanIssueDocumentEvidence(input: {
     provenanceVerified: true as const,
     factualRelevanceVerified: false as const,
     executionAuthorized: false as const,
+  };
+}
+
+/** Fail closed on the *current*, authorized canonical source. This is
+ * point-in-time citation freshness, not proof of factual truth or an
+ * approval to execute the underlying source text. */
+export async function checkBostanIssueDocumentSnapshot(input: Parameters<typeof readBostanIssueDocumentEvidence>[0] & {
+  expectedSnapshotHmacSha256: string;
+}) {
+  const evidence = await readBostanIssueDocumentEvidence(input);
+  if (!evidence) return null;
+  const expected = input.expectedSnapshotHmacSha256;
+  const current = evidence.sourceSnapshotHmacSha256;
+  const matches = /^[a-f0-9]{64}$/.test(expected) &&
+    timingSafeEqual(Buffer.from(current, "hex"), Buffer.from(expected, "hex"));
+  return {
+    schema: "bostan.knowledge.document-snapshot-freshness.v1" as const,
+    companyId: input.companyId,
+    issueId: input.issueId,
+    documentId: input.documentId,
+    snapshotCurrent: matches,
+    // No source text, expected/current HMAC, private document titles or
+    // attributes in this short advisory response.
+    decisionCommitAuthorized: false as const,
+    factualRelevanceVerified: false as const,
+    sourceContentIsUntrusted: true as const,
+    checkedAt: new Date().toISOString(),
   };
 }

@@ -102,6 +102,50 @@ suite("Bostan B4-01 versioned, tenant-scoped task document evidence", () => {
     await db.delete(documents).where(eq(documents.id, s.documentId));
     expect((await request(boardApp).get(endpoint)).status).toBe(404);
   });
+  it("B4-02 verifies current document snapshot, fails closed on revision changes and restricts tenants", async () => {
+    const s = await seed();
+    const app = appFor(board(s.companyId));
+    const sourcePath = `/api/companies/${s.companyId}/issues/${s.issueId}/bostan-evidence/documents/${s.documentId}`;
+    const freshPath = `${sourcePath}/freshness`;
+    const first = await request(app).get(sourcePath);
+    expect(first.status).toBe(200);
+    const body = { expectedSnapshotHmacSha256: first.body.sourceSnapshotHmacSha256 };
+    const current = await request(app).post(freshPath).send(body);
+    expect(current.status).toBe(200);
+    expect(current.headers["cache-control"]).toContain("no-store");
+    expect(current.body).toMatchObject({ snapshotCurrent: true, decisionCommitAuthorized: false,
+      factualRelevanceVerified: false, sourceContentIsUntrusted: true });
+    expect(JSON.stringify(current.body)).not.toContain(first.body.excerpt);
+    expect(JSON.stringify(current.body)).not.toContain(first.body.sourceSnapshotHmacSha256);
+    expect((await request(app).post(freshPath).send({ ...body, unexpected: true })).status).toBe(400);
+    expect((await request(app).post(freshPath).send({ expectedSnapshotHmacSha256: "bad" })).status).toBe(400);
+    expect((await request(app).post(freshPath).send({ expectedSnapshotHmacSha256: "0".repeat(64) })).body)
+      .toMatchObject({ snapshotCurrent: false, decisionCommitAuthorized: false });
+    await db.update(documents).set({ latestBody: "changed cited evidence, not a valid earlier snapshot",
+      latestRevisionNumber: 2, updatedAt: new Date(Date.now()+10_000) }).where(eq(documents.id, s.documentId));
+    const stale = await request(app).post(freshPath).send(body);
+    expect(stale.status).toBe(200);
+    expect(stale.body).toMatchObject({ snapshotCurrent: false, decisionCommitAuthorized: false });
+    const second = await request(app).get(sourcePath);
+    expect((await request(app).post(freshPath).send({ expectedSnapshotHmacSha256: second.body.sourceSnapshotHmacSha256 })).body)
+      .toMatchObject({ snapshotCurrent: true, decisionCommitAuthorized: false });
+    const outsider = { type: "board", source: "session", userId: "separate-company-user",
+      companyIds: [s.otherCompany], memberships: [{ companyId: s.otherCompany, membershipRole: "member", status: "active" }] };
+    expect((await request(appFor(outsider)).post(freshPath).send(body)).status).toBe(403);
+    const agent = { type: "agent", source: "agent_jwt", companyId: s.companyId, agentId: randomUUID(), runId: randomUUID() };
+    expect((await request(appFor(agent)).post(freshPath).send(body)).status).toBe(403);
+    await db.delete(issueDocuments).where(eq(issueDocuments.documentId, s.documentId));
+    expect((await request(app).post(freshPath).send(body)).status).toBe(404);
+  });
+  it("B4-02 denies hidden/unauthorized source even with a valid old snapshot", async () => {
+    const s = await seed();
+    const first = await readBostanIssueDocumentEvidence({ db, ...s, issueReadCondition: sql<boolean>`true` });
+    const { checkBostanIssueDocumentSnapshot } = await import("../services/bostan-knowledge-evidence.js");
+    const input = { db, ...s, expectedSnapshotHmacSha256: first!.sourceSnapshotHmacSha256 };
+    expect(await checkBostanIssueDocumentSnapshot({ ...input, issueReadCondition: sql<boolean>`false` })).toBeNull();
+    await db.update(issues).set({ hiddenAt: new Date() }).where(eq(issues.id, s.issueId));
+    expect(await checkBostanIssueDocumentSnapshot({ ...input, issueReadCondition: sql<boolean>`true` })).toBeNull();
+  });
   it("never exposes the contents of hidden issues and bounds giant source excerpts", async () => {
     const s = await seed();
     await db.update(documents).set({ latestBody: "p".repeat(12_000) })

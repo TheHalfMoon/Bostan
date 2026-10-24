@@ -137,6 +137,10 @@ Enforce deletion propagation, tenant boundaries and prompt-injection safety.
   issue-authorized source evidence with current revision/HMAC, bounded
   untrusted excerpt and deletion/unlink invalidation. Mac real PostgreSQL
   and HTTP tests 3/3 PASS, including tenant and task-privacy gates.
+- [x] B4-02: board-only point-in-time source snapshot freshness API reuses
+  the canonical document+issue privacy join and private HMAC, refuses
+  stale/missing/inaccessible sources and returns no document body/hash.
+  Five cumulative real PostgreSQL/HTTP tests PASS; no decision authority.
 - [ ] Extend B4 to general scoped search/OCR, cross-source citation quality,
   provenance through revision conflicts, deletion propagation to external
   caches, injection-resistant agents and reproducible analytics.
