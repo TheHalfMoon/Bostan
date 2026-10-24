@@ -77,4 +77,3 @@ test("invalid ports fail before the runtime touches the user's HOME", async () =
     assert.deepEqual(fs.readdirSync(dir), []);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
-
