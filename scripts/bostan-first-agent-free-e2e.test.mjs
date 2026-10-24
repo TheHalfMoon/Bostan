@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, realpathSync } from "nod
 import path from "node:path";
 import os from "node:os";
 import test from "node:test";
-import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel } from "./bostan-first-agent-free-e2e.mjs";
+import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel, syntheticFreeAgentAdapterConfig } from "./bostan-first-agent-free-e2e.mjs";
 
 function fixture() {
   const home = mkdtempSync(path.join(os.tmpdir(), "bostan-free-agent-guard-"));
@@ -70,4 +70,29 @@ test("allowlisted QA models only; never attempt a paid or unknown model", () => 
     "opencode/deepseek-v4.1-flash-free\n--ignore-safety"]) {
     assert.throws(() => qualifyFreeQaModel(model), /Only explicitly permitted/);
   }
+});
+
+test("Windows synthetic agent uses exact admitted OpenCode executable, not a PATH shim", () => {
+  const f = fixture();
+  try {
+    const fake = path.join(f.home, "opencode.exe");
+    writeFileSync(fake, "synthetic");
+    const model = "opencode/deepseek-v4.1-flash-free";
+    const windows = syntheticFreeAgentAdapterConfig({
+      model, workspace: f.home, binary: fake, platform: "win32",
+    });
+    assert.equal(windows.command, fake);
+    assert.equal(windows.maxAgentSteps, 12);
+    assert.equal(windows.timeoutSec, 120);
+    assert.throws(() => syntheticFreeAgentAdapterConfig({
+      model, workspace: f.home, platform: "win32",
+    }), /absolute native OpenCode executable/);
+    assert.throws(() => syntheticFreeAgentAdapterConfig({
+      model, workspace: f.home, binary: "opencode.cmd", platform: "win32",
+    }), /absolute native/);
+    const mac = syntheticFreeAgentAdapterConfig({
+      model, workspace: f.home, platform: "darwin",
+    });
+    assert.equal(mac.command, undefined);
+  } finally { f.clean(); }
 });

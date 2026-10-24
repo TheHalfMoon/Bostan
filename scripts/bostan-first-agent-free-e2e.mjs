@@ -11,6 +11,19 @@ export function qualifyFreeQaModel(value) {
   if (!FREE_QA_MODELS.has(model)) throw new Error("Only explicitly permitted free test models are allowed");
   return model;
 }
+export function syntheticFreeAgentAdapterConfig({ model, workspace, binary, platform = process.platform }) {
+  qualifyFreeQaModel(model);
+  if (!path.isAbsolute(workspace)) throw new Error("Synthetic agent workspace must be absolute");
+  if (platform === "win32" && (!binary || !path.isAbsolute(binary) ||
+      !fs.statSync(binary).isFile())) {
+    throw new Error("Windows synthetic agent requires an absolute native OpenCode executable");
+  }
+  return {
+    model, cwd: workspace, timeoutSec: 120, maxAgentSteps: 12,
+    ...(platform === "win32" ? { command: binary } : {}),
+  };
+}
+
 const MARKER = "BOSTAN_CLEAN_RUN_PASS";
 const MANAGED = "bostan-managed-source-runtime-v1";
 
@@ -116,7 +129,9 @@ export async function runFirstAgentFreeE2e(env = process.env) {
     role: "general",
     adapterType: "opencode_local",
     runner: "legacy",
-    adapterConfig: { model, cwd: workspace, timeoutSec: 120, maxAgentSteps: 12 },
+    adapterConfig: syntheticFreeAgentAdapterConfig({
+      model, workspace, binary: env.BOSTAN_E2E_OPENCODE_EXE,
+    }),
     budgetMonthlyCents: 0,
   });
   if (agent.adapterType !== "opencode_local") throw new Error("Wrong Bostan agent adapter");

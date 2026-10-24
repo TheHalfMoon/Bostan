@@ -37,6 +37,8 @@ exclusive root cause has been demonstrated for our earlier Windows test.
   a prompt, log, or malformed JSON cannot constitute model success.
 - Windows first-agent E2E now automatically performs the bounded provider
   admission **before creating a synthetic Bostan company or agent**.
+  The subsequently created agent uses that same **absolute native OpenCode
+  executable**, not a Windows PATH search that might select a .cmd shim.
   macOS existing qualified first-agent behavior is unchanged.
 - The command never claims catalog listing is inference, and never promises
   zero future charges based solely on a free-labeled model ID.
