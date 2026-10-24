@@ -78,13 +78,15 @@ bostan app restore --local /absolute/path/to/backup-folder --into-new-home /abso
 The snapshot copies Bostan-managed local app state, private PostgreSQL data
 and secrets under ~/.bostan/backups with per-file SHA-256 checks. It refuses
 live or uncertain PostgreSQL, a held runtime lock, symlinks and unsafe files.
-Restoration never overwrites an existing HOME. Verify the resulting app in a
-separate test HOME before relying on it for recovery.
+Restoration never overwrites an existing HOME. It also rewrites Bostan launcher-owned
+absolute storage, logging, backup and secret-key paths to point into the new
+HOME, while leaving arbitrary user-defined paths unchanged. Verify the
+resulting app in a separate test HOME before relying on it for recovery.
 
 **Privacy warning:** Cold backups contain credentials and potentially
 sensitive company content. Files are private on disk but are NOT encrypted;
 manifest digests detect accidental corruption, not malicious replacement of
 the whole manifest. Keep them offline and private. No cross-OS or Postgres
-major-version portability guarantee exists. Production restore and full-app
-relaunch have not yet been qualified. Do not run backup concurrently with
+major-version portability guarantee exists. Full-app restore/relaunch passed a focused macOS + PostgreSQL 17 disposable
+smoke test, but broader disaster recovery is not qualified. Do not run backup concurrently with
 other Bostan operations.

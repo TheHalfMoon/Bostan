@@ -38,7 +38,47 @@ test("restores into a new HOME without overwriting existing data", () => run(f =
   assert.equal(restoreColdSnapshot({backup,targetHome:f.restore}).files > 0, true);
   assert.equal(fs.readFileSync(path.join(f.restore,".bostan","app","secrets","agent-jwt"),"utf8"),"secret-example");
   assert.equal(fs.existsSync(path.join(f.restore,".bostan","app","run.lock")),false);
+  const restoredCfg=JSON.parse(fs.readFileSync(path.join(f.restore,".bostan","app","state","instances","local","config.json"),"utf8"));
+  assert.equal(restoredCfg.bostanManagedLocalRuntime, MARKER);
   assert.throws(()=>restoreColdSnapshot({backup,targetHome:f.restore}), /refusing overwrite/);
+}));
+test("restore rebases only launcher-owned secret, storage, logging and backup paths", () => run(f => {
+  const filename=path.join(f.app,"state","instances","local","config.json");
+  const cfg=JSON.parse(fs.readFileSync(filename,"utf8"));
+  cfg.database={backup:{dir:path.join(f.app,"state","instances","local","data","backups")}};
+  cfg.logging={logDir:path.join(f.app,"state","instances","local","logs")};
+  cfg.storage={localDisk:{baseDir:path.join(f.app,"state","instances","local","data","storage")}};
+  cfg.secrets={localEncrypted:{keyFilePath:path.join(f.app,"state","instances","local","secrets","master.key")}};
+  fs.writeFileSync(filename,JSON.stringify(cfg),{mode:0o600});
+  const backup=createColdSnapshot({home:f.home,pgCtl:f.pg}).path;
+  restoreColdSnapshot({backup,targetHome:f.restore});
+  const migrated=JSON.parse(fs.readFileSync(path.join(f.restore,".bostan","app","state","instances","local","config.json"),"utf8"));
+  for (const value of [
+    migrated.database.backup.dir,migrated.logging.logDir,
+    migrated.storage.localDisk.baseDir,migrated.secrets.localEncrypted.keyFilePath,
+  ]) {
+    assert.ok(value.startsWith(path.join(f.restore,".bostan","app")+path.sep));
+    assert.ok(!value.includes(f.home));
+  }
+}));
+test("restore rejects launcher-managed external paths and leaves original HOME untouched", () => run(f => {
+  const filename=path.join(f.app,"state","instances","local","config.json");
+  const cfg=JSON.parse(fs.readFileSync(filename,"utf8"));
+  cfg.secrets={localEncrypted:{keyFilePath:"/foreign/secret/master.key"}};
+  fs.writeFileSync(filename,JSON.stringify(cfg));
+  const backup=createColdSnapshot({home:f.home,pgCtl:f.pg}).path;
+  assert.throws(()=>restoreColdSnapshot({backup,targetHome:f.restore}),/Unsafe external/);
+  assert.equal(fs.existsSync(f.restore),false);
+  assert.equal(fs.readFileSync(filename,"utf8"),JSON.stringify(cfg));
+}));
+test("restore rejects manifest without valid sourceApp before touching target HOME", () => run(f => {
+  const backup=createColdSnapshot({home:f.home,pgCtl:f.pg}).path;
+  const file=path.join(backup,"manifest.json");
+  const manifest=JSON.parse(fs.readFileSync(file,"utf8"));
+  manifest.sourceApp="../foreign";
+  fs.writeFileSync(file,JSON.stringify(manifest));
+  assert.throws(()=>restoreColdSnapshot({backup,targetHome:f.restore}),/Unsupported Bostan backup format/);
+  assert.equal(fs.existsSync(f.restore),false);
 }));
 test("refuses backup if PostgreSQL is running and never creates a lock", () => run(f => {
   f.tool(0); assert.throws(()=>createColdSnapshot({home:f.home,pgCtl:f.pg}),/requires PostgreSQL stopped/);
@@ -83,8 +123,15 @@ test("rejects forged traversal or duplicate path in manifest", () => run(f => {
   const obj=JSON.parse(fs.readFileSync(manifestFile,"utf8"));
   obj.entries.push({path:"../outside",type:"file",size:0,sha256:"0".repeat(64)});
   fs.writeFileSync(manifestFile,JSON.stringify(obj));
-  assert.throws(()=>restoreColdSnapshot({backup,targetHome:f.restore}),/Invalid Bostan backup manifest path/);
+  assert.throws(()=>restoreColdSnapshot({backup,targetHome:f.restore}),/Invalid Bostan backup manifest path|Unsafe Bostan backup entry name/);
   assert.equal(fs.existsSync(f.restore),false);
+}));
+test("restore refuses a target nested inside its own snapshot", () => run(f => {
+  const backup=createColdSnapshot({home:f.home,pgCtl:f.pg}).path;
+  const nested=path.join(backup,"nested-home");
+  assert.throws(()=>restoreColdSnapshot({backup,targetHome:nested}),/outside the source snapshot/);
+  assert.equal(fs.existsSync(nested),false);
+  assert.doesNotThrow(()=>verifyColdSnapshot(backup));
 }));
 test("restore target must be a nonexistent, normalized absolute HOME", () => run(f => {
   const backup=createColdSnapshot({home:f.home,pgCtl:f.pg}).path;

@@ -117,6 +117,47 @@ function verifyAppIdentity(app) {
     throw new Error("Refusing a non-Bostan-managed application");
   }
 }
+/**
+ * A restored app must never open its old installation's secret key or storage
+ * path. Rewrite ONLY the launcher-owned absolute config fields, not arbitrary
+ * user model paths or strings stored in the database.
+ */
+function rebaseManagedConfig(sourceApp, targetApp) {
+  const configFile = path.join(targetApp, "state", "instances", "local", "config.json");
+  const config = JSON.parse(fs.readFileSync(configFile, "utf8"));
+  if (config?.bostanManagedLocalRuntime !== RUNTIME_MARKER) {
+    throw new Error("Refusing to rewrite an unmanaged Bostan configuration");
+  }
+  const keys = [
+    ["database", "backup", "dir"],
+    ["logging", "logDir"],
+    ["storage", "localDisk", "baseDir"],
+    ["secrets", "localEncrypted", "keyFilePath"],
+  ];
+  let changed = false;
+  for (const keyPath of keys) {
+    let parent = config;
+    for (const key of keyPath.slice(0, -1)) parent = parent?.[key];
+    if (!parent || typeof parent !== "object") continue;
+    const leaf = keyPath[keyPath.length - 1];
+    const value = parent[leaf];
+    if (value === undefined || value === null) continue;
+    if (typeof value !== "string" || !path.isAbsolute(value)
+      || !(value === sourceApp || value.startsWith(sourceApp + path.sep))) {
+      throw new Error("Unsafe external or invalid managed path in restored Bostan configuration: " + keyPath.join("."));
+    }
+    parent[leaf] = targetApp + value.slice(sourceApp.length);
+    changed = true;
+  }
+  if (!changed) return;
+  const temp = configFile + ".tmp-" + randomBytes(5).toString("hex");
+  try {
+    fs.writeFileSync(temp, JSON.stringify(config, null, 2) + "\n",
+      { flag: "wx", mode: 0o600 });
+    fs.renameSync(temp, configFile);
+  } finally { fs.rmSync(temp, { force: true }); }
+}
+
 function stopped(app, pgCtl, allowUninitialized = false) {
   const state = databaseStatus(pgCtl, path.join(app, "postgres", "data"));
   if (state !== "stopped" && !(allowUninitialized && state === "not-initialized")) {
@@ -148,8 +189,10 @@ export function verifyColdSnapshot(backup) {
     throw new Error("Unexpected files in Bostan backup");
   }
   const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8"));
-  if (manifest?.format !== FORMAT || !Array.isArray(manifest.entries)
-    || manifest.entries.length > MAX_FILES) throw new Error("Unsupported Bostan backup format");
+  if (manifest?.format !== FORMAT || typeof manifest.sourceApp !== "string"
+    || !path.isAbsolute(manifest.sourceApp) || path.normalize(manifest.sourceApp) !== manifest.sourceApp
+    || !manifest.sourceApp.endsWith(path.join(".bostan", "app"))
+    || !Array.isArray(manifest.entries) || manifest.entries.length > MAX_FILES) throw new Error("Unsupported Bostan backup format");
   const seen = new Set();
   for (const e of manifest.entries) {
     if (!e || typeof e.path !== "string" || e.path.split("/").some(n => !n || safeName(n) !== n)
@@ -201,7 +244,7 @@ export function createColdSnapshot({ home = process.env.HOME || os.homedir(), pg
       throw new Error("Bostan snapshot changed during copy");
     }
     stopped(app, pgCtl);
-    const manifest = { format: FORMAT, createdAt: new Date().toISOString(), entries };
+    const manifest = { format: FORMAT, sourceApp: app, createdAt: new Date().toISOString(), entries };
     fs.writeFileSync(path.join(partial, "manifest.json"), JSON.stringify(manifest) + "\n",
       { flag: "wx", mode: 0o600 });
     verifyColdSnapshot(partial);
@@ -221,6 +264,11 @@ export function restoreColdSnapshot({ backup, targetHome }) {
     throw new Error("A normalized absolute snapshot directory is required");
   }
   requireHome(targetHome);
+  // A restore within the backup itself would mutate the source snapshot
+  // after verification and could recursively consume its own payload.
+  if (targetHome === backup || targetHome.startsWith(backup + path.sep)) {
+    throw new Error("Bostan restore target must be outside the source snapshot");
+  }
   const parent = path.dirname(targetHome);
   mustDir(parent);
   if (fs.existsSync(targetHome) || owned(targetHome, "dir")) {
@@ -240,6 +288,7 @@ export function restoreColdSnapshot({ backup, targetHome }) {
       throw new Error("Bostan restored files failed checksum verification");
     }
     verifyAppIdentity(app);
+    rebaseManagedConfig(proof.manifest.sourceApp, app);
     created = false;
     return { home: targetHome, files: proof.files };
   } finally {
