@@ -24,9 +24,10 @@ Direct native testing discovered that `icacls /inheritance:r /grant:r` does **no
 
 ## Actual test status
 
-- Windows `node --test scripts/bostan-windows-acl.test.mjs scripts/bostan-local-runtime.test.mjs scripts/bostan-runtime-recovery.test.mjs`: **21 passed, 0 failed, 6 explicitly skipped POSIX-only fixtures**.
+- Windows `node --test scripts/bostan-windows-acl.test.mjs scripts/bostan-local-runtime.test.mjs scripts/bostan-runtime-recovery.test.mjs`: **22 passed, 0 failed, 6 explicitly skipped POSIX-only fixtures**.
 - Native Windows filesystem test: private DACL created, verified on restart, inherited private DACL on nested secret; adding `Authenticated Users` with `icacls` caused the next verification to **fail closed** until the synthetic directory was deliberately reset.
-- macOS same three modules: **24 passed, 0 failed, 3 Windows-only tests skipped**. The existing 90-probe macOS cold-start limit and POSIX 0600 permission check are unchanged.
+- **Launcher integration test on Windows:** a disposable fake-source app with Bostan package identities and fake PostgreSQL binaries, and a pre-existing **overly permissive** `.bostan` root, was passed through the actual `runLocalRuntime` function. The launcher **refused before it created either the private secrets directory or any PostgreSQL data**. After deliberately securing only the synthetic root, the runtime progressed past the ACL guard, generated its test secrets in the protected tree, then stopped cleanly at the intentionally invalid fake PostgreSQL binary; its managed run lock was removed. This is not a real server startup or database integration test. It specifically proves ordering of the Windows security gate.
+- macOS same three modules: **24 passed, 0 failed, 4 Windows-only tests skipped**. The existing 90-probe macOS cold-start limit and POSIX 0600 permission check are unchanged.
 
 ## Remaining limits
 
