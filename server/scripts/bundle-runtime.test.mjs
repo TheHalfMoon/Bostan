@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { bundleRuntime, preserveModuleLocation } from "./bundle-runtime.mjs";
+import { bundleRuntime, preserveModuleLocation, compiledRunnerQaShim } from "./bundle-runtime.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -119,5 +119,37 @@ describe("preserveModuleLocation", () => {
     const file = "/srv/app/packages/x/src/mod.ts";
     const out = preserveModuleLocation("a(import.meta.url); b(import.meta.dirname); c(import.meta.filename); d(import.meta.resolve);", file);
     expect(out).toBe(`a("file:///srv/app/packages/x/src/mod.ts"); b("/srv/app/packages/x/src"); c("/srv/app/packages/x/src/mod.ts"); d(import.meta.resolve);`);
+  });
+});
+
+describe("opt-in Bostan source QA prebundle", () => {
+  for (const [name, oldRelative, newRelative] of [
+    ["index.ts", "../../../../packages/paperclip-runner/src/index.ts",
+      "../../../../packages/paperclip-runner/dist/index.js"],
+    ["testing.ts", "../../../../packages/paperclip-runner/src/testing.ts",
+      "../../../../packages/paperclip-runner/dist/testing.js"],
+    ["live/index.ts", "../../../../../packages/paperclip-runner/src/live/index.ts",
+      "../../../../../packages/paperclip-runner/dist/live/index.js"],
+  ]) {
+    it("targets only the exact runner vendor shim: " + name, () => {
+      const filename = path.join("/tmp/test", "server", "src", "vendor", "paperclip-runner", name);
+      const source = "const sourceUrl = new URL(" + JSON.stringify(oldRelative) + ", import.meta.url);";
+      const transformed = compiledRunnerQaShim(source, filename);
+      expect(transformed).toContain(JSON.stringify(newRelative));
+      expect(transformed).not.toContain(JSON.stringify(oldRelative));
+      expect(compiledRunnerQaShim(source, "/tmp/test/server/src/routes/agents.ts")).toBe(source);
+      // Native Windows paths have backslashes, while esbuild's source
+      // resolver may produce either separator.
+      const windowsFile = "C:" + String.fromCharCode(92) +
+        ["work", "server", "src", "vendor", "paperclip-runner", ...name.split("/")].join(String.fromCharCode(92));
+      expect(compiledRunnerQaShim(source, windowsFile)).toContain(JSON.stringify(newRelative));
+      expect(() => compiledRunnerQaShim("const sourceUrl=missing", filename))
+        .toThrow(/expected runner source shim/);
+    });
+  }
+
+  it("refuses unknown replacements without altering production source imports", () => {
+    const plain = 'import { readFileSync } from "node:fs";';
+    expect(compiledRunnerQaShim(plain, "/tmp/fixture/packages/foo/index.ts")).toBe(plain);
   });
 });
