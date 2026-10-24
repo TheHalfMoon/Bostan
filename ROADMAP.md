@@ -41,6 +41,11 @@ Qualify companies, teams, task ownership, approvals, budgets, scheduling,
 company isolation, worker leases, crashes, recovery and trustworthy task
 completion. Introduce strong negative-path and concurrent workload tests.
 
+- [x] B1-01: prevent agent self-certified Done while a task has unresolved
+  linked human approval; real isolated PostgreSQL integration verified.
+- [ ] Complete independent output/effect verification, concurrency and
+  approval creation races, cross-tenant policy, recovery and budget gates.
+
 ## B2 — Decision Fabric
 
 Typed, evidence-linked recommendations; calibration, model routing, abstention,

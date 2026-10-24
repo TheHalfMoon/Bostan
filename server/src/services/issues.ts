@@ -11226,6 +11226,27 @@ export function issueService(db: Db) {
         if (actorAgentId && patch.status === "done") {
           const [review] = await tx.select({ id: toolActionRequests.id }).from(toolActionRequests).where(and(eq(toolActionRequests.companyId, existing.companyId), eq(toolActionRequests.issueId, id), inArray(toolActionRequests.status, ["pending", "approved", "executing"]))).limit(1);
           if (review) throw conflict("This task is waiting for a connection review. Finish unrelated work, then yield in_review without retrying the governed call.", { code: "tool_review_pending", actionRequestId: review.id });
+          // Bostan B1: a worker cannot self-certify Done while a linked,
+          // company-scoped human approval is unresolved. Read and enforce this
+          // under the existing issue write transaction; a board actor can
+          // still give an explicit, authorized disposition.
+          const [pendingApproval] = await tx.select({ id: approvals.id })
+            .from(issueApprovals)
+            .innerJoin(approvals, and(
+              eq(approvals.id, issueApprovals.approvalId),
+              eq(approvals.companyId, receiptExisting.companyId),
+            ))
+            .where(and(
+              eq(issueApprovals.companyId, receiptExisting.companyId),
+              eq(issueApprovals.issueId, id),
+              inArray(approvals.status, ["pending", "revision_requested"]),
+            )).limit(1);
+          if (pendingApproval) {
+            throw conflict(
+              "This task has a pending approval or requested revision. Yield in_review and wait for an authorized decision instead of marking it done.",
+              { code: "task_approval_pending", approvalId: pendingApproval.id },
+            );
+          }
         }
 
         const [previousLabelsByIssueId, previousRelationSummaries] = await Promise.all([
