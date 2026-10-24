@@ -82,3 +82,19 @@ Release **NO-GO**. No publishing, main merge, deployment or enabling Actions.
   exclusive root cause. However both changes — EOF stdin and fresh empty
   workspace — were applied in the native passing run and made reproducible
   in our disposable admission harness.
+
+## Windows full-agent integration blocker discovered and repaired
+
+During the first full native Windows Bostan agent E2E, the application was
+healthy and private, but the E2E Node process exited with the warning
+`Detected unsettled top-level await` **before any synthetic company was
+created**. A separate direct model admission still passed (~8 seconds).
+Root cause in the QA harness: the admission module imported the free-model
+policy from the E2E module while the E2E CLI's top-level await was awaiting
+the dynamic import of admission. This ESM initialization cycle deadlocked.
+
+The free-model allowlist now lives in an independent, **no-top-level-await**
+module. Both admission and the E2E import the shared pure policy. Existing
+E2E exports are preserved for compatibility. This is a harness dependency
+fix, not a model/provider workaround. The Windows E2E must be rerun and
+assessed on its own terms; previous direct provider passes remain valid.

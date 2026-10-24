@@ -4,13 +4,8 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
-const DEFAULT_MODEL = "opencode/deepseek-v4.1-flash-free";
-const FREE_QA_MODELS = new Set([DEFAULT_MODEL, "opencode/beam-free"]);
-export function qualifyFreeQaModel(value) {
-  const model = value || DEFAULT_MODEL;
-  if (!FREE_QA_MODELS.has(model)) throw new Error("Only explicitly permitted free test models are allowed");
-  return model;
-}
+import { qualifyFreeQaModel } from "./bostan-free-model-policy.mjs";
+export { qualifyFreeQaModel } from "./bostan-free-model-policy.mjs";
 export function syntheticFreeAgentAdapterConfig({ model, workspace, binary, platform = process.platform }) {
   qualifyFreeQaModel(model);
   if (!path.isAbsolute(workspace)) throw new Error("Synthetic agent workspace must be absolute");

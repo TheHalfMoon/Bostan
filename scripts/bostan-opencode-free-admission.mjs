@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { qualifyFreeQaModel } from "./bostan-first-agent-free-e2e.mjs";
+import { qualifyFreeQaModel } from "./bostan-free-model-policy.mjs";
 
 const REPLY = "BOSTAN_ISOLATED_FREE_MODEL_READY";
 const MAX_OUTPUT = 256 * 1024;
