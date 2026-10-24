@@ -1580,7 +1580,7 @@ function ProviderConnectStep({
               Configure one for this instance before creating or connecting your Slack app.
             </p>
             <a
-              href="https://docs.paperclip.ing/reference/deploy/https/"
+              href="https://github.com/TheHalfMoon/Bostan/blob/main/doc/DEPLOYMENT-MODES.md"
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm underline underline-offset-4"
