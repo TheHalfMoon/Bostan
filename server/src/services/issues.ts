@@ -11247,6 +11247,30 @@ export function issueService(db: Db) {
               { code: "task_approval_pending", approvalId: pendingApproval.id },
             );
           }
+          // Bostan B1: ordinary questions, stale confirmations, and drafts do
+          // not block Done. A *pending, same-company* interaction carrying an
+          // actual tool, secret, connection authorization or document verdict
+          // does. Non-AI connection enrollment itself is a governed action.
+          // Per-user AI login is not proof that this agent may access that
+          // account and must retain its distinct runtime/owner policy.
+          // Dismissing a permission request never grants that permission.
+          const [governedInteraction] = await tx.select({ id: issueThreadInteractions.id })
+            .from(issueThreadInteractions)
+            .where(and(
+              eq(issueThreadInteractions.companyId, receiptExisting.companyId),
+              eq(issueThreadInteractions.issueId, id),
+              eq(issueThreadInteractions.status, "pending"),
+              sql`(${issueThreadInteractions.payload} ?| array['toolAction', 'secretProposal', 'connectionAuthorization']
+                or coalesce(${issueThreadInteractions.payload}->'target'->>'type', '') = 'issue_document'
+                or (${issueThreadInteractions.kind} = 'connection_intent'
+                  and coalesce(${issueThreadInteractions.payload}->>'purpose', '') <> 'ai'))`,
+            )).limit(1);
+          if (governedInteraction) {
+            throw conflict(
+              "This task has a pending governed interaction. Await an authorized decision instead of marking it done.",
+              { code: "task_governed_interaction_pending", interactionId: governedInteraction.id },
+            );
+          }
         }
 
         const [previousLabelsByIssueId, previousRelationSummaries] = await Promise.all([

@@ -43,6 +43,9 @@ completion. Introduce strong negative-path and concurrent workload tests.
 
 - [x] B1-01: prevent agent self-certified Done while a task has unresolved
   linked human approval; real isolated PostgreSQL integration verified.
+- [x] B1-02: deny agent Done for pending, task-scoped governed interaction
+  (tool/secret/connection/document), while ordinary questions and unrelated
+  AI account logins remain nonblocking; real PostgreSQL integration verified.
 - [ ] Complete independent output/effect verification, concurrency and
   approval creation races, cross-tenant policy, recovery and budget gates.
 
