@@ -143,7 +143,7 @@ nativeTest("release and legacy operations remain disabled after local installati
   const f = fixture();
   try {
     assert.equal(invoke(f.home, ["install", "--local"]).status, 0);
-    for (const args of [["app", "doctor"], ["app", "run", "--local"], ["install"], ["install", "--repo", "paperclipai/paperclip", "--ref", "main"], ["onboard"], ["run"], ["service", "start"], ["uninstall"], ["update"], ["upgrade"]]) {
+    for (const args of [["app", "doctor"], ["app", "run", "--local"], ["app", "recover", "--local"], ["install"], ["install", "--repo", "paperclipai/paperclip", "--ref", "main"], ["onboard"], ["run"], ["service", "start"], ["uninstall"], ["update"], ["upgrade"]]) {
       mustRefuse(invoke(f.home, args, "shim"));
     }
   } finally { f.clean(); }
