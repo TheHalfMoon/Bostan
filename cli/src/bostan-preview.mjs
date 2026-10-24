@@ -4,6 +4,7 @@
  * No legacy runtime, updater, telemetry, database or service code is imported.
  */
 import { readFileSync, existsSync } from "node:fs";
+import { homedir } from "node:os";
 
 const { version } = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const args = process.argv.slice(2);
@@ -13,6 +14,7 @@ const HELP = `Bostan ${version} — development preview
 Usage: bostan [--help | --version | status | install --local]
        bostan app doctor
        bostan app run --local [--port 3100]
+       bostan app recover --local
 
   --help, -h       Show this message
   --version, -V    Show Bostan preview CLI version
@@ -20,6 +22,7 @@ Usage: bostan [--help | --version | status | install --local]
   install --local  Install only this Bostan CLI preview into your user home
   app doctor       Read-only runtime prerequisites check (source checkout)
   app run --local  Run built UI, server and isolated PostgreSQL in foreground
+  app recover --local  Clear only a confirmed stale Bostan runtime lock
 
 The local install places an isolated CLI shim in ~/.local/bin/bostan and
 a verified payload in ~/.bostan/cli. It does not install or run the Bostan
@@ -60,12 +63,18 @@ async function main() {
     return;
   }
   if (args.length >= 2 && args[0] === "app"
-    && (args[1] === "doctor" || args[1] === "run")) {
+    && (args[1] === "doctor" || args[1] === "run" || args[1] === "recover")) {
     const sourceModule = new URL("../../scripts/bostan-local-runtime.mjs", import.meta.url);
     if (!existsSync(sourceModule)) {
       throw new Error("App runtime commands require the full Bostan source checkout");
     }
-    const { inspectLocalRuntime, runLocalRuntime } = await import(sourceModule.href);
+    const { inspectLocalRuntime, runLocalRuntime, executable } = await import(sourceModule.href);
+    if (args.length === 3 && args[1] === "recover" && args[2] === "--local") {
+      const { recoverStoppedLocalRuntime } = await import(new URL("../../scripts/bostan-runtime-recovery.mjs", import.meta.url).href);
+      const result = recoverStoppedLocalRuntime({ home: process.env.HOME || homedir(), pgCtl: executable("pg_ctl") });
+      process.stdout.write("Bostan local recovery: " + result.reason + "\n");
+      return;
+    }
     if (args.length === 2 && args[1] === "doctor") {
       const result = inspectLocalRuntime();
       process.stdout.write(result.ready
