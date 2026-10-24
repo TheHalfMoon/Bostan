@@ -15,6 +15,9 @@ Usage: bostan [--help | --version | status | install --local]
        bostan app doctor
        bostan app run --local [--port 3100]
        bostan app recover --local
+       bostan app backup --local
+       bostan app verify --local <snapshot-directory>
+       bostan app restore --local <snapshot-directory> --into-new-home <absolute-home>
 
   --help, -h       Show this message
   --version, -V    Show Bostan preview CLI version
@@ -23,6 +26,9 @@ Usage: bostan [--help | --version | status | install --local]
   app doctor       Read-only runtime prerequisites check (source checkout)
   app run --local  Run built UI, server and isolated PostgreSQL in foreground
   app recover --local  Clear only a confirmed stale Bostan runtime lock
+  app backup --local   Create a cold backup (requires stopped PostgreSQL)
+  app verify --local   Verify snapshot checksums without changing data
+  app restore --local Restore into a newly created HOME (never overwrite)
 
 The local install places an isolated CLI shim in ~/.local/bin/bostan and
 a verified payload in ~/.bostan/cli. It does not install or run the Bostan
@@ -63,7 +69,7 @@ async function main() {
     return;
   }
   if (args.length >= 2 && args[0] === "app"
-    && (args[1] === "doctor" || args[1] === "run" || args[1] === "recover")) {
+    && (["doctor", "run", "recover", "backup", "verify", "restore"].includes(args[1]))) {
     const sourceModule = new URL("../../scripts/bostan-local-runtime.mjs", import.meta.url);
     if (!existsSync(sourceModule)) {
       throw new Error("App runtime commands require the full Bostan source checkout");
@@ -81,6 +87,25 @@ async function main() {
         ? "Bostan source runtime prerequisites satisfied.\n"
         : "Bostan source runtime missing: " + result.missing.join(", ") + "\n");
       if (!result.ready) process.exitCode = 2;
+      return;
+    }
+    if (args[1] === "backup" && args.length === 3 && args[2] === "--local") {
+      const { createColdSnapshot } = await import(new URL("../../scripts/bostan-cold-snapshot.mjs", import.meta.url).href);
+      const result = createColdSnapshot({ home: process.env.HOME || homedir(), pgCtl: executable("pg_ctl") });
+      process.stdout.write("Bostan private cold backup: " + result.path + " (" + result.files + " files)\n");
+      return;
+    }
+    if (args[1] === "verify" && args.length === 4 && args[2] === "--local") {
+      const { verifyColdSnapshot } = await import(new URL("../../scripts/bostan-cold-snapshot.mjs", import.meta.url).href);
+      const result = verifyColdSnapshot(args[3]);
+      process.stdout.write("Bostan cold snapshot integrity verified: " + result.files + " entries\n");
+      return;
+    }
+    if (args[1] === "restore" && args.length === 6 && args[2] === "--local"
+      && args[4] === "--into-new-home") {
+      const { restoreColdSnapshot } = await import(new URL("../../scripts/bostan-cold-snapshot.mjs", import.meta.url).href);
+      const result = restoreColdSnapshot({ backup: args[3], targetHome: args[5] });
+      process.stdout.write("Bostan cold snapshot restored into new HOME: " + result.home + "\n");
       return;
     }
     if (args[1] === "run" && args[2] === "--local") {
