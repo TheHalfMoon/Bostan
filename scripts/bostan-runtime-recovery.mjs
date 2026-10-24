@@ -17,7 +17,9 @@ function checkedStat(target, directory = false) {
       || (typeof process.getuid === "function" && stat.uid !== process.getuid())) {
       throw new Error("Unsafe Bostan runtime entry: " + target);
     }
-    if (!directory && (stat.mode & 0o077)) {
+    // Windows Node permission bits do not encode NTFS ACLs; Windows support
+    // is restricted to disposable QA until explicit ACL checks are qualified.
+    if (!directory && process.platform !== "win32" && (stat.mode & 0o077)) {
       throw new Error("Bostan runtime lock is readable by other users");
     }
     return stat;

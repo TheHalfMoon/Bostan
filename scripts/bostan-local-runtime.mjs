@@ -50,7 +50,12 @@ function directory(p) {
 }
 function secret(p) {
   if (entry(p, false)) {
-    if (fs.statSync(p).mode & 0o077) throw new Error("Insecure Bostan secret permissions");
+    // Windows' Node fs.stat mode does not model NTFS ACLs: a mode:0600 file
+    // still reports 0666. This branch is Windows *disposable QA only*, not
+    // a production ACL qualification. All Windows QA paths must be temp-owned.
+    if (process.platform !== "win32" && (fs.statSync(p).mode & 0o077)) {
+      throw new Error("Insecure Bostan secret permissions");
+    }
     const value = fs.readFileSync(p, "utf8").trim();
     if (!/^[a-f0-9]{64}$/.test(value)) throw new Error("Invalid Bostan secret");
     return value;
@@ -69,7 +74,26 @@ function paths(home) {
     secrets: path.join(app, "secrets"), logs: path.join(app, "logs"),
     lock: path.join(app, "run.lock"), config: path.join(instance, "config.json") };
 }
-export function inspectLocalRuntime(repo = REPO, env = process.env) {
+/**
+ * No Windows installation or real-profile operation is supported yet.
+ * Temporary test runs are opt-in and must never target an existing user HOME.
+ * The HOME path must already be a real directory inside this user's temp root.
+ */
+export function windowsDisposableQaHome(home, env = process.env) {
+  if (process.platform !== "win32" || env.BOSTAN_WINDOWS_TEMP_QA !== "1"
+    || typeof home !== "string" || !path.isAbsolute(home)
+    || home !== path.normalize(home)) return false;
+  try {
+    const root = fs.realpathSync(os.tmpdir()).toLowerCase();
+    const resolved = fs.realpathSync(home).toLowerCase();
+    return resolved.startsWith(root + path.sep)
+      && resolved !== root
+      && fs.lstatSync(home).isDirectory()
+      && !fs.lstatSync(home).isSymbolicLink();
+  } catch { return false; }
+}
+
+export function inspectLocalRuntime(repo = REPO, env = process.env, home = env.HOME || os.homedir()) {
   const required = {
     "Bostan checkout": path.join(repo, "package.json"),
     "CLI package": path.join(repo, "cli", "package.json"),
@@ -86,7 +110,10 @@ export function inspectLocalRuntime(repo = REPO, env = process.env) {
       }
     } catch { missing.push("Bostan package identity"); }
   }
-  if (!["darwin", "linux"].includes(process.platform)) missing.push("macOS/Linux platform");
+  if (!["darwin", "linux"].includes(process.platform)
+    && !windowsDisposableQaHome(home, env)) {
+    missing.push("Windows requires explicit isolated TEMP QA (not a supported installer)");
+  }
   if (Number(process.versions.node.split(".")[0]) < 24) missing.push("Node.js 24+");
   for (const tool of TOOLS) if (!executable(tool, env)) missing.push(tool);
   return { ready: !missing.length, missing };
@@ -95,6 +122,15 @@ export function isolatedEnv({ home, port, databaseUrl, jwt, config }, original =
   return {
     PATH: original.PATH || "", HOME: home, LANG: original.LANG || "en_US.UTF-8",
     ...(original.TMPDIR ? { TMPDIR: original.TMPDIR } : {}),
+    ...(process.platform === "win32" ? {
+      SystemRoot: original.SystemRoot || path.join(path.parse(home).root, "Windows"),
+      WINDIR: original.WINDIR || original.SystemRoot || path.join(path.parse(home).root, "Windows"),
+      USERPROFILE: home,
+      TEMP: path.join(home, ".bostan", "app", "tmp"),
+      TMP: path.join(home, ".bostan", "app", "tmp"),
+      APPDATA: path.join(home, ".bostan", "app", "roaming"),
+      LOCALAPPDATA: path.join(home, ".bostan", "app", "local-appdata"),
+    } : {}),
     DATABASE_URL: databaseUrl,
     PAPERCLIP_HOME: path.join(home, ".bostan", "app", "state"),
     PAPERCLIP_CONFIG: config,
@@ -159,13 +195,17 @@ export async function runLocalRuntime(options = {}) {
   const port = options.port ?? 3100;
   if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error("Invalid local port");
   const repo = options.repo || REPO;
-  const check = inspectLocalRuntime(repo);
+  const check = inspectLocalRuntime(repo, process.env, home);
   if (!check.ready) throw new Error("Bostan runtime prerequisites missing: " + check.missing.join(", "));
   const p = paths(home);
   if (!entry(home, true)) throw new Error("HOME directory is unavailable");
   for (const dir of [
     path.join(home, ".bostan"), p.app, p.state, path.join(p.state, "instances"),
     p.instance, path.join(p.app, "postgres"), p.secrets, p.logs,
+    ...(process.platform === "win32" ? [
+      path.join(p.app, "tmp"), path.join(p.app, "roaming"),
+      path.join(p.app, "local-appdata"),
+    ] : []),
   ]) directory(dir);
   if (inspectRuntimeLock(p.lock).state !== "absent") {
     throw new Error("Bostan runtime lock exists. Verify the database stopped, then use: bostan app recover --local");

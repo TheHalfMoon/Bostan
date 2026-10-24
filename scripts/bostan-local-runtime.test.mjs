@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, delimiter } from "node:path";
 import test from "node:test";
-import { executable, inspectLocalRuntime, isolatedEnv, runLocalRuntime } from "./bostan-local-runtime.mjs";
+import { executable, inspectLocalRuntime, isolatedEnv, runLocalRuntime, windowsDisposableQaHome } from "./bostan-local-runtime.mjs";
 
 test("isolated application environment ignores inherited telemetry, external providers and unsafe binding", () => {
   const parent = {
@@ -113,5 +113,39 @@ test("Windows remains release-blocked even if fake PostgreSQL executables are pr
       assert.ok(!result.missing.includes(tool), `should resolve ${tool}.exe`);
     }
     assert.equal(result.ready, false);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+
+test("Windows temporary runtime QA is explicitly opt-in and always refuses the actual user HOME", () => {
+  if (process.platform !== "win32") return;
+  const dir = mkdtempSync(join(tmpdir(), "bostan-win-qa-"));
+  try {
+    assert.equal(windowsDisposableQaHome(dir, {}), false);
+    assert.equal(windowsDisposableQaHome(dir, { BOSTAN_WINDOWS_TEMP_QA: "1" }), true);
+    assert.equal(windowsDisposableQaHome(process.env.USERPROFILE, { BOSTAN_WINDOWS_TEMP_QA: "1" }), false);
+    assert.equal(windowsDisposableQaHome("relative-path", { BOSTAN_WINDOWS_TEMP_QA: "1" }), false);
+    assert.equal(windowsDisposableQaHome(tmpdir(), { BOSTAN_WINDOWS_TEMP_QA: "1" }), false);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("Windows isolated server environment does not inherit the real roaming profile", () => {
+  if (process.platform !== "win32") return;
+  const dir = mkdtempSync(join(tmpdir(), "bostan-win-env-"));
+  try {
+    const next = isolatedEnv({
+      home: dir, port: 41501, databaseUrl: "postgres://test@127.0.0.1/",
+      jwt: "synthetic", config: join(dir, ".bostan", "app", "config.json"),
+    }, {
+      PATH: process.env.PATH, SystemRoot: process.env.SystemRoot,
+      WINDIR: process.env.WINDIR, APPDATA: process.env.APPDATA,
+      LOCALAPPDATA: process.env.LOCALAPPDATA, USERPROFILE: process.env.USERPROFILE,
+      TEMP: process.env.TEMP, TMP: process.env.TMP, OPENAI_API_KEY: "should-not-leak",
+    });
+    assert.ok(next.TEMP.startsWith(dir));
+    assert.ok(next.APPDATA.startsWith(dir));
+    assert.ok(next.LOCALAPPDATA.startsWith(dir));
+    assert.equal(next.USERPROFILE, dir);
+    assert.equal(next.OPENAI_API_KEY, undefined);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
