@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import net from "node:net";
 import { promisify } from "node:util";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { inspectRuntimeLock, removeStoppedRuntimeLock } from "./bostan-runtime-recovery.mjs";
 
 const exec = promisify(execFile);
@@ -236,7 +236,7 @@ export async function runLocalRuntime(options = {}) {
     directory(path.join(p.instance, "secrets"));
     writeManagedConfig(p, port);
     const url = "postgres://bostan:" + password + "@127.0.0.1:" + pgPort + "/bostan";
-    child = spawn(process.execPath, ["--import", path.join(repo, "server", "node_modules", "tsx", "dist", "loader.mjs"),
+    child = spawn(process.execPath, ["--import", pathToFileURL(path.join(repo, "server", "node_modules", "tsx", "dist", "loader.mjs")).href,
       path.join(repo, "server", "src", "index.ts")],
       { cwd: repo, stdio: "inherit", env: isolatedEnv({ home, port, databaseUrl: url, jwt, config: p.config }) });
     let finished = false;
