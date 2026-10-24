@@ -115,6 +115,7 @@ import {
   selectReusableOnboardingProject,
 } from "../lib/onboarding-launch";
 import { buildNewAgentRuntimeConfig } from "../lib/new-agent-runtime-config";
+import { canDeferModelConnection, isPersistedDeferredAgent } from "../lib/onboarding-defer";
 import { DEFAULT_CODEX_LOCAL_BYPASS_APPROVALS_AND_SANDBOX } from "@paperclipai/adapter-codex-local";
 import { DEFAULT_CURSOR_LOCAL_MODEL } from "@paperclipai/adapter-cursor-local";
 import { DEFAULT_GEMINI_LOCAL_MODEL } from "@paperclipai/adapter-gemini-local";
@@ -1920,6 +1921,42 @@ function OnboardingWizardInner({
     return false;
   }
 
+  // No AI account or payment is required to explore Bostan. However, do not
+  // promote an unfinished setup into a hired agent or schedule a fake task.
+  // Only a server-confirmed, paused setup may leave the wizard.
+  async function handleDeferModelConnection() {
+    const companyId = createdCompanyId;
+    const pendingAgentId = setupAgentId;
+    if (step !== 4 || !canDeferModelConnection({
+      companyId, setupAgentId: pendingAgentId, setupPrepared, createdAgentId,
+      loading, hireInFlight: hiringAgentRef.current !== null,
+    }) || !companyId || !pendingAgentId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await setupSave.current;
+      const agents = await agentsApi.list(companyId);
+      const pending = agents.find((agent) => agent.id === pendingAgentId);
+      if (!isPersistedDeferredAgent(pending, companyId, pendingAgentId)) {
+        throw new Error("Could not verify the agent is safely paused. Retry saving the setup.");
+      }
+      if (!stillTheSameCompany(companyId)) return;
+      const prefix = createdCompanyPrefix;
+      // No hired agent, scheduled heartbeat, goal, task or issue is created.
+      setSelectedCompanyId(companyId, { source: "route_sync" });
+      reset();
+      closeOnboarding();
+      setRouteDismissed(true);
+      navigate(prefix ? `/${prefix}/agents` : "/agents");
+    } catch (cause) {
+      if (stillTheSameCompany(companyId)) {
+        setError(cause instanceof Error ? cause.message : "Could not save the paused agent setup.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleLaunchToDashboard() {
     if (!createdCompanyId || !createdAgentId) {
       setError(INCOMPLETE_ONBOARDING_STATE_MESSAGE);
@@ -3485,6 +3522,27 @@ function OnboardingWizardInner({
                   ready, and the pill above has just woken to show it — a
                   checklist restating those in three rows only asked the
                   customer to audit work they watched happen. */}
+
+              {/* Explore the workspace without connecting a paid provider.
+                  Setup remains paused and cannot run tasks or heartbeats. */}
+              {step === 4 && !createdAgentId && (
+                <div className="mt-4 text-center">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={!canDeferModelConnection({
+                      companyId: createdCompanyId, setupAgentId, setupPrepared, createdAgentId,
+                      loading, hireInFlight: hiringAgentRef.current !== null,
+                    })}
+                    onClick={() => void handleDeferModelConnection()}
+                  >
+                    Set up AI later
+                  </Button>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Explore Bostan without a model account. Your agent setup stays paused until you connect it.
+                  </p>
+                </div>
+              )}
 
               {/* Error */}
               {visibleError && (
