@@ -1,4 +1,8 @@
 import { randomUUID } from "node:crypto";
+import express from "express";
+import request from "supertest";
+import { decisionRoutes } from "../routes/decisions.js";
+import { errorHandler } from "../middleware/error-handler.js";
 import { sql, eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { agents, authUsers, budgetPolicies, companies, companyMemberships, costEvents, createDb, decisions, heartbeatRuns, issues, decisionEffectExecutions, projects } from "@paperclipai/db";
@@ -183,6 +187,45 @@ suite("Bostan B2 recommendations reuse signed board decisions", () => {
     await db.insert(budgetPolicies).values({ companyId: otherCompany, scopeType: "company", scopeId: otherCompany, metric: "billed_cents", windowKind: "calendar_month_utc", amount: 100, hardStopEnabled: true, isActive: true });
     const created = await write({ ...base(), evidenceIssueIds: [evidenceIssueId], estimatedCostUsd: 45, costCeilingUsd: 100 });
     expect(created.metadata).toMatchObject({ abstained: false, checkedBoardBudgetPolicyCount: 0 });
+  });
+  it("B2-04 authenticates the agent-run HTTP route and returns only non-effectful signed choices", async () => {
+    await seed();
+    const app = express(); app.use(express.json());
+    app.use((req, _res, next) => { req.actor = actor(); next(); });
+    app.use("/api", decisionRoutes(db, serviceOptions)); app.use(errorHandler);
+    const response = await request(app).post(`/api/companies/${companyId}/bostan-decision-recommendations`)
+      .send({ ...base(), evidenceIssueIds: [evidenceIssueId] });
+    expect(response.status).toBe(201);
+    expect(response.body.metadata).toMatchObject({
+      kind: "bostan_evidence_recommendation_v1", evidenceIssueCount: 1,
+      abstained: false, permitsEffects: false,
+    });
+    expect(response.body.options.every((option: { effects: unknown[] }) => option.effects.length === 0)).toBe(true);
+  });
+  it("B2-04 rejects a board principal on the agent-only recommendation route", async () => {
+    await seed();
+    const app = express(); app.use(express.json());
+    app.use((req, _res, next) => {
+      req.actor = { type: "board", userId, companyIds: [companyId], source: "session" }; next();
+    });
+    app.use("/api", decisionRoutes(db, serviceOptions)); app.use(errorHandler);
+    const response = await request(app).post(`/api/companies/${companyId}/bostan-decision-recommendations`)
+      .send({ ...base(), evidenceIssueIds: [evidenceIssueId] });
+    expect(response.status).toBe(403);
+    expect(await db.select().from(decisions)).toHaveLength(0);
+  });
+  it("B2-04 refuses a forged cross-company route and unknown model-authored effect fields", async () => {
+    await seed();
+    const app = express(); app.use(express.json());
+    app.use((req, _res, next) => { req.actor = actor(); next(); });
+    app.use("/api", decisionRoutes(db, serviceOptions)); app.use(errorHandler);
+    const payload = { ...base(), evidenceIssueIds: [evidenceIssueId] };
+    const foreignResponse = await request(app).post(`/api/companies/${randomUUID()}/bostan-decision-recommendations`).send(payload);
+    expect(foreignResponse.status).toBe(403);
+    const invalidResponse = await request(app).post(`/api/companies/${companyId}/bostan-decision-recommendations`)
+      .send({ ...payload, effects: [{ type: "update_issue_status", status: "done" }] });
+    expect(invalidResponse.status).toBe(400);
+    expect(await db.select().from(decisions)).toHaveLength(0);
   });
   it("rejects foreign company evidence and makes no decision record", async () => {
     await seed();const otherId=randomUUID(),foreignIssue=randomUUID();

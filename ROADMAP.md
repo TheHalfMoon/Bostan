@@ -77,6 +77,9 @@ privileged effects.
 - [x] B2-03: bind cited evidence identity, source content and version timestamps
   to a private keyed HMAC included in the signed decision and idempotency,
   rejecting reuse of stale recommendations without exposing document text.
+- [x] B2-04: real HTTP route and PostgreSQL integration tests for agent-run
+  authentication, board/agent separation, tenant isolation and rejection of
+  model-authored privileged effects. Browser app acceptance remains open.
 - [ ] Board-defined actual budget limits, calibrated outcomes, external
   evidence proof/readback, durable model routing, evaluation and UI E2E.
 
