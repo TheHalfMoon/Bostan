@@ -30,3 +30,5 @@ Work branch `work/b0-onboarding-offline`.
 ## Important release gaps
 
 The deferred agent is **not a functional AI worker** until explicitly connected, environment-tested and hired. Provider-auth workflows and real task execution remain pending. A bundled desktop installer and a full cross-platform and egress security qualification are also pending. Other imported UI/runtime identifiers remain. Release: NO-GO; no main merge, public hosting or npm publish.
+
+Follow-on: B0-08b implements resume from Agents after browser reload without duplicating the paused setup. See B0_ONBOARDING_RESUME_RECEIPT.md.

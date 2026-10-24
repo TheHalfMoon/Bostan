@@ -12,6 +12,7 @@ import { heartbeatsApi } from "../api/heartbeats";
 import { instanceSettingsApi } from "../api/instanceSettings";
 import { useCompany } from "../context/CompanyContext";
 import { useDialogActions } from "../context/DialogContext";
+import { ONBOARDING_STORAGE_KEY, savedDraftMatchesAgent } from "../lib/onboarding-defer";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { useSidebar } from "../context/SidebarContext";
 import { useStreamlinedUiEnabled } from "../hooks/useStreamlinedUiEnabled";
@@ -189,7 +190,7 @@ export function Agents({ initialView = "list" }: { initialView?: AgentsView } = 
   const [query, setQuery] = useState("");
   const agentChat = useAgentChatEnabled();
   const { selectedCompanyId } = useCompany();
-  const { openNewAgent } = useDialogActions();
+  const { openNewAgent, openOnboarding } = useDialogActions();
   const { setBreadcrumbs } = useBreadcrumbs();
   const navigate = useNavigate();
   const location = useLocation();
@@ -392,6 +393,16 @@ export function Agents({ initialView = "list" }: { initialView?: AgentsView } = 
         )}
         trailing={
           <div className="flex items-center gap-3">
+            {savedDraftMatchesAgent((() => {
+              try { return window.localStorage.getItem(ONBOARDING_STORAGE_KEY); }
+              catch { return null; }
+            })(), agent) && (
+              <Button variant="outline" size="sm" onClick={event => {
+                event.preventDefault();
+                event.stopPropagation();
+                openOnboarding({ initialStep: 4, companyId: agent.companyId });
+              }}>Finish AI setup</Button>
+            )}
             {agentChat.enabled && <Button variant="ghost" size="sm" onClick={event => { event.preventDefault(); event.stopPropagation(); navigate(`/chats/${agentRouteRef(agent)}`); }}>Chat</Button>}
             <div className="hidden sm:flex items-center gap-3">
               {liveRunByAgent.has(agent.id) && (

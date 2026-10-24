@@ -61,7 +61,21 @@ try {
     || draft.lifecycleState !== "paused") {
     throw new Error("Deferred agent is not a verifiable paused setup: " + JSON.stringify(draft ?? null));
   }
-  console.log("Bostan deferred onboarding browser PASS: Step 1 -> Step 3, persisted paused setup, no model keys");
+  // The prior implementation dropped the browser draft when leaving the
+  // wizard. A user must be able to resume the *same* server-side agent.
+  // Refresh to prove that resuming the exact draft is not dependent on the
+  // mounted React component retaining its state in memory.
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Finish AI setup" }).waitFor({ timeout: 30_000 });
+  await page.getByRole("button", { name: "Finish AI setup" }).click();
+  await page.getByText("Connect a model").waitFor({ timeout: 30_000 });
+  const afterResume = await page.request.get(new URL("/api/companies/" + companyId + "/agents", base).href);
+  if (!afterResume.ok()) throw new Error("Agent list failed after resuming");
+  const matching = (await afterResume.json()).filter((agent) => agent.name === "Bostan Draft Worker");
+  if (matching.length !== 1 || matching[0].id !== draft.id || matching[0].pauseReason !== "setup") {
+    throw new Error("Resumed onboarding did not preserve the exact paused setup agent");
+  }
+  console.log("Bostan deferred onboarding browser PASS: paused agent persists; Finish AI setup resumes same agent without model keys");
 } finally {
   await browser.close();
 }

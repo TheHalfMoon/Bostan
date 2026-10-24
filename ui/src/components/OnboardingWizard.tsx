@@ -115,7 +115,8 @@ import {
   selectReusableOnboardingProject,
 } from "../lib/onboarding-launch";
 import { buildNewAgentRuntimeConfig } from "../lib/new-agent-runtime-config";
-import { canDeferModelConnection, isPersistedDeferredAgent } from "../lib/onboarding-defer";
+import { canDeferModelConnection, isPersistedDeferredAgent, ONBOARDING_STORAGE_KEY } from "../lib/onboarding-defer";
+export { ONBOARDING_STORAGE_KEY } from "../lib/onboarding-defer";
 import { DEFAULT_CODEX_LOCAL_BYPASS_APPROVALS_AND_SANDBOX } from "@paperclipai/adapter-codex-local";
 import { DEFAULT_CURSOR_LOCAL_MODEL } from "@paperclipai/adapter-cursor-local";
 import { DEFAULT_GEMINI_LOCAL_MODEL } from "@paperclipai/adapter-gemini-local";
@@ -292,7 +293,6 @@ function ModelSourceMark({
 
 // Exported so tests write/read the exact key the component uses, instead of
 // duplicating the literal and silently drifting from it if it's ever renamed.
-export const ONBOARDING_STORAGE_KEY = "paperclip-onboarding-state";
 const DEFAULT_TASK_TITLE = "Bostan onboarding";
 /**
  * The onboarding draft in `localStorage`, via a browser that is allowed to say
@@ -1944,7 +1944,8 @@ function OnboardingWizardInner({
       const prefix = createdCompanyPrefix;
       // No hired agent, scheduled heartbeat, goal, task or issue is created.
       setSelectedCompanyId(companyId, { source: "route_sync" });
-      reset();
+      // Retain the browser's non-secret draft and in-memory setup ID so
+      // the paused agent can resume from the Agents page. Never reset here.
       closeOnboarding();
       setRouteDismissed(true);
       navigate(prefix ? `/${prefix}/agents` : "/agents");

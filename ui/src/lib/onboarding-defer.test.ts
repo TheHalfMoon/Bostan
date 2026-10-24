@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canDeferModelConnection, isPersistedDeferredAgent } from "./onboarding-defer";
+import { canDeferModelConnection, isPersistedDeferredAgent, savedDraftMatchesAgent } from "./onboarding-defer";
 
 const ready = {
   companyId: "company-1", setupAgentId: "agent-setup-1",
@@ -27,5 +27,17 @@ describe("Bostan model setup deferral", () => {
     expect(isPersistedDeferredAgent(agent, "wrong", "a")).toBe(false);
     expect(isPersistedDeferredAgent(agent, "c", "wrong")).toBe(false);
     expect(isPersistedDeferredAgent(undefined, "c", "a")).toBe(false);
+  });
+  it("offers resume only for the exact browser draft and paused setup", () => {
+    const agent = { id: "a", companyId: "c", lifecycleState: "paused", pauseReason: "setup" };
+    const draft = JSON.stringify({ step: 4, createdCompanyId: "c", setupAgentId: "a", createdAgentId: null });
+    expect(savedDraftMatchesAgent(draft, agent)).toBe(true);
+    expect(savedDraftMatchesAgent(draft, { ...agent, pauseReason: "manual" })).toBe(false);
+    expect(savedDraftMatchesAgent(draft, { ...agent, id: "another-agent" })).toBe(false);
+    expect(savedDraftMatchesAgent(draft, { ...agent, companyId: "another-company" })).toBe(false);
+    expect(savedDraftMatchesAgent(draft, { ...agent, lifecycleState: "running" })).toBe(false);
+    expect(savedDraftMatchesAgent(null, agent)).toBe(false);
+    expect(savedDraftMatchesAgent("{malformed", agent)).toBe(false);
+    expect(savedDraftMatchesAgent(JSON.stringify({ step: 4, createdCompanyId: "c", setupAgentId: "a", createdAgentId: "hired" }), agent)).toBe(false);
   });
 });
