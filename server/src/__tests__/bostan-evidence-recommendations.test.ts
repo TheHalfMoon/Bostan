@@ -5,8 +5,9 @@ import { decisionRoutes } from "../routes/decisions.js";
 import { errorHandler } from "../middleware/error-handler.js";
 import { sql, eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { agents, authUsers, budgetPolicies, companies, companyMemberships, costEvents, createDb, decisions, heartbeatRuns, issues, decisionEffectExecutions, projects } from "@paperclipai/db";
-import { createBostanRecommendation, bostanRecommendationSchema } from "../services/bostan-decision-recommendations.js";
+import { agents, authUsers, budgetPolicies, companies, companyMemberships, costEvents, createDb, decisions, documents, issueDocuments, heartbeatRuns, issues, decisionEffectExecutions, projects } from "@paperclipai/db";
+import { createBostanRecommendation, bostanRecommendationSchema, type BostanRecommendationInput } from "../services/bostan-decision-recommendations.js";
+import { readBostanIssueDocumentEvidence } from "../services/bostan-knowledge-evidence.js";
 import { decisionService } from "../services/decisions.js";
 import { signDecisionSpec } from "../services/decision-signing.js";
 import {
@@ -67,7 +68,7 @@ suite("Bostan B2 recommendations reuse signed board decisions", () => {
     await db.insert(heartbeatRuns).values({id:runId,companyId,agentId,status:"running",responsibleUserId:userId,contextSnapshot:{issueId:originIssueId}});
   }
   const actor=()=>({type:"agent" as const,companyId,agentId,runId,source:"agent_jwt" as const,onBehalfOfUserId:userId,onBehalfOfMemberships:[{companyId,membershipRole:"member",status:"active"}]});
-  const write=(body: ReturnType<typeof base>)=>createBostanRecommendation({db,serviceOptions,companyId,actor:actor(),agentId,runId,body});
+  const write=(body: BostanRecommendationInput)=>createBostanRecommendation({db,serviceOptions,companyId,actor:actor(),agentId,runId,body});
   it("persists evidence-linked non-effectful recommendations with idempotent signed decision", async () => {
     await seed();const body={...base(),evidenceIssueIds:[evidenceIssueId]};
     const created=await write(body);const repeat=await write(body);
@@ -188,6 +189,77 @@ suite("Bostan B2 recommendations reuse signed board decisions", () => {
     await db.insert(budgetPolicies).values({ companyId: otherCompany, scopeType: "company", scopeId: otherCompany, metric: "billed_cents", windowKind: "calendar_month_utc", amount: 100, hardStopEnabled: true, isActive: true });
     const created = await write({ ...base(), evidenceIssueIds: [evidenceIssueId], estimatedCostUsd: 45, costCeilingUsd: 100 });
     expect(created.metadata).toMatchObject({ abstained: false, checkedBoardBudgetPolicyCount: 0 });
+  });
+  it("B4-04 binds actual cited task-document versions through final board decision claim", async () => {
+    await seed();
+    const documentId = randomUUID();
+    const sourceBody = "Synthetic linked reference that an agent should treat as untrusted text";
+    await db.insert(documents).values({ id: documentId, companyId,
+      title: "B4 signed source", latestBody: sourceBody, latestRevisionNumber: 1 });
+    await db.insert(issueDocuments).values({ companyId, issueId: evidenceIssueId,
+      documentId, key: "reference" });
+    const original = await readBostanIssueDocumentEvidence({ db, companyId,
+      issueId: evidenceIssueId, documentId, issueReadCondition: sql<boolean>`true` });
+    expect(original).not.toBeNull();
+    const input = { ...base(), evidenceIssueIds: [evidenceIssueId],
+      evidenceDocuments: [{ issueId: evidenceIssueId, documentId,
+        expectedSnapshotHmacSha256: original!.sourceSnapshotHmacSha256 }] };
+    const decision = await write(input);
+    expect(decision.metadata).toMatchObject({ evidenceDocumentCount: 1,
+      evidenceRelevanceVerified: false, permitsEffects: false });
+    expect(JSON.stringify(decision.metadata)).not.toContain(sourceBody);
+    await db.update(documents).set({ latestBody: "The linked document was changed after proposal",
+      latestRevisionNumber: 2, updatedAt: new Date(Date.now()+12_000) }).where(eq(documents.id, documentId));
+    await expect(write(input)).rejects.toMatchObject({ status: 422 });
+    const board = { type: "board" as const, userId, companyIds: [companyId], source: "session" as const,
+      memberships: [{ companyId, membershipRole: "member", status: "active" }] };
+    await expect(decisionService(db, serviceOptions).decide({ id: decision.id, optionId: "pilot",
+      decidedByUserId: userId, userActor: board })).rejects.toMatchObject({
+      status: 409, details: { code: "bostan_recommendation_stale" },
+    });
+    const [retained] = await db.select().from(decisions).where(eq(decisions.id, decision.id));
+    expect(retained.status).toBe("open");
+    expect(await db.select().from(decisionEffectExecutions)).toHaveLength(0);
+    // The operator may still defer an outdated proposal without an effect.
+    const deferred = await decisionService(db, serviceOptions).decide({ id: decision.id, optionId: "defer",
+      decidedByUserId: userId, userActor: board });
+    expect(deferred.chosenOptionId).toBe("defer");
+    expect(await db.select().from(decisionEffectExecutions)).toHaveLength(0);
+  });
+  it("B4-04 permits a current, linked document advisory only as an effect-free board decision", async () => {
+    await seed();
+    const documentId = randomUUID();
+    await db.insert(documents).values({ id: documentId, companyId,
+      title: "Synthetic verified revision", latestBody: "Bounded, untrusted source content", latestRevisionNumber: 1 });
+    await db.insert(issueDocuments).values({ companyId, issueId: evidenceIssueId,
+      documentId, key: "current-source" });
+    const source = await readBostanIssueDocumentEvidence({ db, companyId, issueId: evidenceIssueId,
+      documentId, issueReadCondition: sql<boolean>`true` });
+    const created = await write({ ...base(), evidenceIssueIds: [evidenceIssueId],
+      evidenceDocuments: [{ issueId: evidenceIssueId, documentId,
+        expectedSnapshotHmacSha256: source!.sourceSnapshotHmacSha256 }] });
+    expect(created.metadata).toMatchObject({ evidenceDocumentCount: 1, evidenceRelevanceVerified: false,
+      permitsEffects: false });
+    const board = { type: "board" as const, userId, companyIds: [companyId], source: "session" as const,
+      memberships: [{ companyId, membershipRole: "member", status: "active" }] };
+    const decided = await decisionService(db, serviceOptions).decide({ id: created.id,
+      optionId: "pilot", decidedByUserId: userId, userActor: board });
+    expect(decided).toMatchObject({ status: "decided", chosenOptionId: "pilot" });
+    expect(await db.select().from(decisionEffectExecutions)).toHaveLength(0);
+  });
+  it("B4-04 rejects invalid/foreign/unlinked document citations before proposal", async () => {
+    await seed();
+    const absentDocument = randomUUID();
+    const goodLookingDigest = "a".repeat(64);
+    const input = { ...base(), evidenceIssueIds: [evidenceIssueId],
+      evidenceDocuments: [{ issueId: evidenceIssueId, documentId: absentDocument,
+        expectedSnapshotHmacSha256: goodLookingDigest }] };
+    await expect(write(input)).rejects.toMatchObject({ status: 422 });
+    expect(bostanRecommendationSchema.safeParse({ ...input,
+      evidenceDocuments: [{ ...input.evidenceDocuments[0], issueId: originIssueId }] }).success).toBe(false);
+    expect(bostanRecommendationSchema.safeParse({ ...input,
+      evidenceDocuments: [input.evidenceDocuments[0], input.evidenceDocuments[0]] }).success).toBe(false);
+    expect(await db.select().from(decisions)).toHaveLength(0);
   });
   it("B2-05 blocks board acceptance of a recommendation when evidence changed after creation", async () => {
     await seed();

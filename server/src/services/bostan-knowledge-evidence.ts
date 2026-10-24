@@ -13,8 +13,10 @@ export async function readBostanIssueDocumentEvidence(input: {
   issueId: string;
   documentId: string;
   issueReadCondition: SQL<boolean>;
+  /** Only inside an existing board claim transaction; hold source rows. */
+  lockForShare?: boolean;
 }) {
-  const [source] = await input.db.select({
+  const sourceQuery = input.db.select({
     companyId: issueDocuments.companyId,
     issueId: issueDocuments.issueId,
     documentId: documents.id,
@@ -39,6 +41,7 @@ export async function readBostanIssueDocumentEvidence(input: {
     isNull(issues.hiddenAt), isNull(issues.harnessKind),
     input.issueReadCondition,
   )).limit(1);
+  const [source] = input.lockForShare ? await sourceQuery.for("share") : await sourceQuery;
   if (!source) return null;
   // A private, domain-separated fingerprint commits to the ACTUAL current
   // document body, origin task and revision. Raw HMAC input is not returned.

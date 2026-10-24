@@ -7,6 +7,8 @@ import { budgetPoliciesForRun, computeObservedSpends } from "./budgets.js";
 import { unprocessable } from "../errors.js";
 import { authorizationService, type AuthorizationActor } from "./authorization.js";
 import { decisionService, type DecisionServiceOptions } from "./decisions.js";
+import { readBostanIssueDocumentEvidence } from "./bostan-knowledge-evidence.js";
+import { issueReadSqlCondition } from "./authorization.js";
 import { resolveDecisionSigningSecret } from "./decision-signing.js";
 
 // Bostan B2 extends the imported, signed, company-scoped decision authority.
@@ -24,10 +26,20 @@ export const bostanRecommendationSchema = z.object({
   estimatedCostUsd: z.number().finite().min(0).max(1_000_000),
   costCeilingUsd: z.number().finite().min(0).max(1_000_000),
   evidenceIssueIds: z.array(z.string().uuid()).min(1).max(10),
+  evidenceDocuments: z.array(z.object({
+    issueId: z.string().uuid(), documentId: z.string().uuid(),
+    expectedSnapshotHmacSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  }).strict()).max(10).optional(),
   idempotencyKey: z.string().trim().min(1).max(500),
 }).strict().superRefine((value, context) => {
   if (new Set(value.evidenceIssueIds).size !== value.evidenceIssueIds.length) {
     context.addIssue({ code: "custom", message: "Evidence issue IDs must be unique", path: ["evidenceIssueIds"] });
+  }
+  if (value.evidenceDocuments?.some(doc => !value.evidenceIssueIds.includes(doc.issueId))) {
+    context.addIssue({ code: "custom", message: "Document evidence must belong to a cited issue", path: ["evidenceDocuments"] });
+  }
+  if (value.evidenceDocuments && new Set(value.evidenceDocuments.map(doc => `${doc.issueId}:${doc.documentId}`)).size !== value.evidenceDocuments.length) {
+    context.addIssue({ code: "custom", message: "Document evidence must be unique", path: ["evidenceDocuments"] });
   }
   if (new Set(value.alternatives.map(option => option.id)).size !== value.alternatives.length) {
     context.addIssue({ code: "custom", message: "Alternative IDs must be unique", path: ["alternatives"] });
@@ -81,6 +93,26 @@ export async function createBostanRecommendation(input: {
         description: ref.description ?? null,
       }))))
     .digest("hex");
+  // B4 citations are committed to the *actual*, currently readable
+  // canonical documents. A model-supplied hash/path is not accepted without
+  // a real permission-scoped source read. Documents are optional for older
+  // B2 advice, but never partially admitted when provided.
+  const citedDocuments = [] as Array<{ issueId: string; documentId: string; sourceSnapshotHmacSha256: string }>;
+  if (recommendation.evidenceDocuments?.length) {
+    const issueReadCondition = await issueReadSqlCondition(input.db, input.actor);
+    for (const source of recommendation.evidenceDocuments) {
+      const actual = await readBostanIssueDocumentEvidence({
+        db: input.db, companyId: input.companyId, issueId: source.issueId,
+        documentId: source.documentId, issueReadCondition,
+      });
+      if (!actual || actual.sourceSnapshotHmacSha256 !== source.expectedSnapshotHmacSha256) {
+        throw unprocessable("Document citation is missing, inaccessible or stale");
+      }
+      citedDocuments.push({ issueId: source.issueId, documentId: source.documentId,
+        sourceSnapshotHmacSha256: actual.sourceSnapshotHmacSha256 });
+    }
+  }
+  citedDocuments.sort((a, b) => `${a.issueId}:${a.documentId}`.localeCompare(`${b.issueId}:${b.documentId}`));
   // The estimated USD amount is not a reservation. For *advice* evaluate
   // already configured, authenticated board budget policies as an additional
   // abstention guard. The agent's own declared ceiling can NEVER raise them.
@@ -152,6 +184,7 @@ export async function createBostanRecommendation(input: {
     "Evidence issue references (existence/access verified, relevance NOT independently verified):",
     ...recommendation.evidenceIssueIds.map(id => `- ${id}`),
     `Opaque evidence content snapshot: ${evidenceSnapshotHmacSha256}`,
+    `Linked current document citations (content-current, relevance unverified): ${citedDocuments.length}`,
     "",
     "This is advice, not approval for tool execution, spending, account access or task completion.",
   ].join("\n");
@@ -171,6 +204,8 @@ export async function createBostanRecommendation(input: {
       evidenceIssueIds: recommendation.evidenceIssueIds,
       evidenceSnapshotHmacSha256,
       evidenceIssueCount: references.length,
+      evidenceDocumentSnapshots: citedDocuments,
+      evidenceDocumentCount: citedDocuments.length,
       evidenceRelevanceVerified: false,
       recommendedOptionId: abstained ? null : recommendation.recommendedOptionId,
       selfReportedConfidence: recommendation.confidence,

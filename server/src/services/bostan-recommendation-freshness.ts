@@ -1,10 +1,11 @@
 import { createHmac } from "node:crypto";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { budgetPolicies, heartbeatRuns, issues, type Db } from "@paperclipai/db";
 import { addCents, unitsToCents, usdToUnits } from "@paperclipai/shared";
 import { budgetPoliciesForRun, computeObservedSpends } from "./budgets.js";
 import { resolveDecisionSigningSecret } from "./decision-signing.js";
+import { readBostanIssueDocumentEvidence } from "./bostan-knowledge-evidence.js";
 
 /** Recheck a signed B2 recommendation at board-choice time. This is advice
  * only, so it does not allocate funds or grant an external effect. Callers
@@ -34,6 +35,27 @@ export async function isBostanRecommendationFresh(db: Db, decision: {
     }))))
     .digest("hex");
   if (evidenceHmac !== metadata.evidenceSnapshotHmacSha256) return false;
+  const documentRefs = metadata.evidenceDocumentSnapshots;
+  // Original B2 recommendations legitimately contain only issue evidence.
+  // New-style B4 document evidence must be complete, unique and well-typed.
+  if (documentRefs !== undefined) {
+    if (!Array.isArray(documentRefs) || documentRefs.length > 10 ||
+      !documentRefs.every(ref => ref && typeof ref === "object" &&
+        typeof ref.issueId === "string" && z.string().uuid().safeParse(ref.issueId).success &&
+        typeof ref.documentId === "string" && z.string().uuid().safeParse(ref.documentId).success &&
+        typeof ref.sourceSnapshotHmacSha256 === "string" && /^[a-f0-9]{64}$/.test(ref.sourceSnapshotHmacSha256) &&
+        evidenceIds.includes(ref.issueId)) ||
+      new Set(documentRefs.map(ref => `${ref.issueId}:${ref.documentId}`)).size !== documentRefs.length ||
+      metadata.evidenceDocumentCount !== documentRefs.length) return false;
+    for (const ref of documentRefs) {
+      const current = await readBostanIssueDocumentEvidence({
+        db, companyId: decision.companyId, issueId: ref.issueId, documentId: ref.documentId,
+        issueReadCondition: sql<boolean>`true`, lockForShare: true,
+      });
+      if (!current || current.sourceSnapshotHmacSha256 !== ref.sourceSnapshotHmacSha256) return false;
+    }
+  }
+
   const [run] = await db.select({ contextSnapshot: heartbeatRuns.contextSnapshot })
     .from(heartbeatRuns).where(and(eq(heartbeatRuns.id, decision.originRunId),
       eq(heartbeatRuns.companyId, decision.companyId), eq(heartbeatRuns.agentId, decision.originAgentId)));

@@ -144,8 +144,12 @@ Enforce deletion propagation, tenant boundaries and prompt-injection safety.
 - [x] B4-03: bound company-authorized batches of 1–10 distinct citations and
   read all canonical document versions within one repeatable-read, read-only
   PostgreSQL transaction. Fail if any cited source is missing, hidden or
-  stale; 7/7 cumulative SQL/HTTP tests PASS. Decision commit revalidation
-  and actual factual relevance remain open.
+  stale; 7/7 cumulative SQL/HTTP tests PASS.
+- [x] B4-04: optionally bind actual current task-document citations to B2's
+  signed recommendation and recheck them with row locks inside the final
+  existing human-board decision transaction. Changed document fails closed;
+  correct source still permits effect-free human choice. 33/33 real SQL
+  and service integration tests PASS; factual relevance still unproven.
 - [ ] Extend B4 to general scoped search/OCR, cross-source citation quality,
   provenance through revision conflicts, deletion propagation to external
   caches, injection-resistant agents and reproducible analytics.
