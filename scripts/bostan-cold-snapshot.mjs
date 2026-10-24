@@ -51,10 +51,10 @@ function shaFile(filename) {
     }
   } finally { fs.closeSync(fd); }
 }
-function collect(root, relative = "", entries = [], budget = { size: 0 }) {
+function collect(root, relative = "", entries = [], budget = { count: 0, size: 0 }, skipRuntimeLock = false) {
   for (const name of fs.readdirSync(path.join(root, relative)).sort()) {
     safeName(name);
-    if (!relative && name === "run.lock") throw new Error("Bostan runtime lock appeared during backup");
+    if (!relative && name === "run.lock" && skipRuntimeLock) continue;
     const rel = relative ? relative + "/" + name : name;
     const location = path.join(root, rel);
     const stat = fs.lstatSync(location);
@@ -64,7 +64,7 @@ function collect(root, relative = "", entries = [], budget = { size: 0 }) {
     if (++budget.count > MAX_FILES) throw new Error("Bostan backup file-count limit exceeded");
     if (stat.isDirectory()) {
       entries.push({ path: rel, type: "dir" });
-      collect(root, rel, entries, budget);
+      collect(root, rel, entries, budget, skipRuntimeLock);
     } else if (stat.isFile() && stat.nlink === 1) {
       budget.size += stat.size;
       if (!Number.isSafeInteger(stat.size) || budget.size > MAX_BYTES) {
@@ -75,8 +75,8 @@ function collect(root, relative = "", entries = [], budget = { size: 0 }) {
   }
   return entries;
 }
-function scan(root) {
-  return collect(root, "", [], { count: 0, size: 0 });
+function scan(root, skipRuntimeLock = false) {
+  return collect(root, "", [], { count: 0, size: 0 }, skipRuntimeLock);
 }
 function filesEqual(expected, actual) {
   if (expected.length !== actual.length) return false;
@@ -195,7 +195,7 @@ export function createColdSnapshot({ home = process.env.HOME || os.homedir(), pg
   try {
     fs.mkdirSync(partial, { mode: 0o700 });
     fs.mkdirSync(path.join(partial, "payload"), { mode: 0o700 });
-    const entries = scan(app); // Lock is not copied, and concurrent launch is refused.
+    const entries = scan(app, true); // The snapshot lock serializes this operation but is never copied.
     copyEntries(app, path.join(partial, "payload"), entries);
     if (!filesEqual(entries, scan(path.join(partial, "payload")))) {
       throw new Error("Bostan snapshot changed during copy");
