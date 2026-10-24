@@ -60,3 +60,22 @@ reviewed for the same race. This wave also does not prove database deadlock
 freedom under all multi-actor workloads, complete action outcome verification,
 Windows live E2E, installers, final security/privacy checks or B2–B6.
 `main` unchanged, repository private and Actions disabled. **Release NO-GO.**
+
+### Final regression receipts
+
+- Latest-head B0-31 real Mac source-app smoke:
+  `BOSTAN_LIVE_LOCAL_QA_CONFIRM=1 node scripts/bostan-local-live-persistence-e2e.mjs`
+  **PASS (exit 0)** — local private health, synthetic company creation,
+  shutdown, restart and exact company persistence, second clean PostgreSQL
+  shutdown. No model execution or external provider call.
+- Full server TypeScript qualification for this B1-03 head is **NOT
+  QUALIFIED**: one compiler run was manually stopped after excessive local
+  runtime; a second bounded run exceeded **135 seconds** and exited 124.
+  Neither run produced specific source/type errors, but an empty log is not
+  proof of type correctness. An inferred-return annotation was added to
+  the two linking functions and persisted; a clean server typecheck must
+  still pass before final release gates.
+- `git diff --check` PASS; local test PostgreSQL clusters and live Mac
+  persistence HOME were cleaned after successful tests. The test compiler
+  child was explicitly terminated after the timeout, rather than left to
+  consume resources.
