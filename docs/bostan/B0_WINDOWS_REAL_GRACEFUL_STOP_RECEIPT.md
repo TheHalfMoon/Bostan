@@ -89,3 +89,29 @@ backend marker have standalone regression assertions.
 
 **Status: NO-GO. GitHub repository stays private; all PRs Draft, main
 unchanged, GitHub Actions disabled. No deploy, publication or merge.**
+
+## Follow-up B0-20 free-model admission probe — BLOCKED
+
+A **separate** Windows test evaluated whether the next agent qualification
+could use an online provider listed as free, without paid credentials or
+real input data:
+
+- Installed OpenCode CLI: `opencode v2.1.2`.
+- Inside the isolated TEMP profile, `opencode models --standalone`
+  successfully enumerated **8 free-labeled models**, including
+  `opencode/deepseek-v4.1-flash-free`, `opencode/beam-free`,
+  and `opencode/flint-40b-free`.
+- The direct, explicitly synthetic `opencode run --standalone --format json
+  --model opencode/deepseek-v4.1-flash-free` did **not** produce an answer
+  after more than 120 seconds despite its isolated CLI and stdio server
+  processes remaining alive. The local log did not contain a conclusive
+  inference error or authentication failure.
+- Only the verified isolated test-run OpenCode process and its associated
+  child were then terminated. No paid model, real provider key, personal
+  data, untrusted workload or user-wide shutdown was used.
+
+**Conclusion:** model catalog listing is NOT proof of working free inference.
+Do not claim Windows native agent execution, identify a definitive network
+or account failure, or attempt paid-model fallback without explicit approval.
+The successful Windows B0-19 app/DB stop remains valid and independently
+supported; Windows AI-agent E2E remains an unresolved NO-GO gate.
