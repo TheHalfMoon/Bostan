@@ -123,6 +123,13 @@ export function inspectLocalRuntime(repo = REPO, env = process.env, home = env.H
  * Never copy this log to a public issue or release: server logs may contain
  * confidential requests, model prompts or debugging data.
  */
+export function serverStartupProbeLimit({ windowsQa }) {
+  // Broad Windows QA builds have a much colder TypeScript module graph than
+  // the qualified macOS developer install. This extra allowance is never
+  // used outside explicit disposable Windows QA.
+  return windowsQa ? 240 : 90;
+}
+
 export function serverStartupLogPath(logDirectory, pid, timestamp = Date.now()) {
   if (!path.isAbsolute(logDirectory) || !Number.isSafeInteger(pid) || pid < 1
     || !Number.isSafeInteger(timestamp) || timestamp < 0) {
@@ -273,7 +280,7 @@ export async function runLocalRuntime(options = {}) {
       child.once("error", () => { finished = true; resolve(1); });
     });
     let healthy = false;
-    for (let i = 0; i < 90 && !finished && !interrupted; i++) {
+    for (let i = 0; i < serverStartupProbeLimit({ windowsQa }) && !finished && !interrupted; i++) {
       try {
         const response = await fetch("http://127.0.0.1:" + port + "/api/health",
           { signal: AbortSignal.timeout(1000) });
