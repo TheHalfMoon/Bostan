@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, delimiter } from "node:path";
 import test from "node:test";
-import { executable, inspectLocalRuntime, isolatedEnv, runLocalRuntime, windowsDisposableQaHome, serverStartupLogPath, serverStartupProbeLimit } from "./bostan-local-runtime.mjs";
+import { executable, inspectLocalRuntime, isolatedEnv, runLocalRuntime, windowsDisposableQaHome, serverStartupLogPath, serverStartupProbeLimit, POSTGRES_LOCAL_INITDB_ENCODING_ARGS, assertUtf8PostgresEncoding } from "./bostan-local-runtime.mjs";
 
 test("isolated application environment ignores inherited telemetry, external providers and unsafe binding", () => {
   const parent = {
@@ -164,4 +164,18 @@ test("Windows disposable server startup log has a bounded local filename", () =>
 test("Windows disposable QA gets a bounded cold-start allowance without changing production limit", () => {
   assert.equal(serverStartupProbeLimit({ windowsQa: true }), 360);
   assert.equal(serverStartupProbeLimit({ windowsQa: false }), 90);
+});
+
+test("every new local PostgreSQL cluster is explicitly UTF8 in deterministic C locale", () => {
+  assert.deepEqual([...POSTGRES_LOCAL_INITDB_ENCODING_ARGS], ["--encoding=UTF8", "--locale=C"]);
+  assert.ok(Object.isFrozen(POSTGRES_LOCAL_INITDB_ENCODING_ARGS));
+});
+
+test("database admission refuses existing non-UTF8 clusters without deleting or mutating data", () => {
+  assert.doesNotThrow(() => assertUtf8PostgresEncoding("UTF8\n", "application database"));
+  for (const encoding of ["WIN1252", "LATIN1\n", "SQL_ASCII", "", "UTF8\nWIN1252", "UTF-8"]) {
+    assert.throws(() => assertUtf8PostgresEncoding(encoding, "application database"),
+      /not UTF8.*Existing cluster retained.*migrate explicitly/);
+  }
+  assert.throws(() => assertUtf8PostgresEncoding(null, "system database"), /not UTF8/);
 });

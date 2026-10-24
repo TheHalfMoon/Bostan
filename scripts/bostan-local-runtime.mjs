@@ -15,6 +15,23 @@ export const REPO = fileURLToPath(new URL("../", import.meta.url));
 const MARKER = "bostan-managed-source-runtime-v1";
 const TOOLS = ["initdb", "pg_ctl", "psql", "createdb"];
 
+// Windows initdb otherwise inherits the machine's legacy ANSI code page
+// (for example WIN1252) and fails on ordinary Bostan Unicode skill markdown.
+// A deterministic UTF-8/C cluster is required for every new local install.
+export const POSTGRES_LOCAL_INITDB_ENCODING_ARGS = Object.freeze([
+  "--encoding=UTF8", "--locale=C",
+]);
+
+export function assertUtf8PostgresEncoding(value, databaseName) {
+  if (typeof value !== "string" || value.trim() !== "UTF8") {
+    // No implicit re-initialization or deletion. An old cluster might
+    // contain valuable data and requires a separately planned migration.
+    throw new Error("Bostan PostgreSQL " + databaseName +
+      " is not UTF8. Existing cluster retained; backup and migrate explicitly before local runtime use.");
+  }
+}
+
+
 export function executable(name, env = process.env) {
   // Windows PostgreSQL commands are .exe files, whereas macOS/Linux tools
   // are usually extensionless (often Homebrew symlinks). Never launch .cmd,
@@ -269,6 +286,7 @@ export async function runLocalRuntime(options = {}) {
     const pgPort = await freePort();
     if (!entry(p.data, true)) {
       await call(executable("initdb"), ["-D", p.data, "--username=bostan", "--auth=scram-sha-256",
+        ...POSTGRES_LOCAL_INITDB_ENCODING_ARGS,
         "--pwfile=" + path.join(p.secrets, "db-password"), "--no-instructions"]);
     }
     await call(executable("pg_ctl"),
@@ -276,9 +294,22 @@ export async function runLocalRuntime(options = {}) {
     pgStarted = true;
     const dbEnv = { ...process.env, PGPASSWORD: password };
     const dbArgs = ["-h", "127.0.0.1", "-p", String(pgPort), "-U", "bostan"];
+    // Verify BEFORE launching the server or applying any migrations. On
+    // Windows older Bostan TEMP clusters may have inherited WIN1252 from
+    // the OS: the database is healthy but cannot store Unicode agent skills.
+    const postgresEncoding = await call(executable("psql"), [
+      ...dbArgs, "-d", "postgres", "-tA", "-c",
+      "SELECT pg_encoding_to_char(encoding) FROM pg_database WHERE datname='postgres'",
+    ], dbEnv);
+    assertUtf8PostgresEncoding(postgresEncoding.stdout, "system database");
     const found = await call(executable("psql"),
       [...dbArgs, "-d", "postgres", "-tA", "-c", "SELECT 1 FROM pg_database WHERE datname = 'bostan'"], dbEnv);
     if (!found.stdout.trim()) await call(executable("createdb"), [...dbArgs, "bostan"], dbEnv);
+    const appEncoding = await call(executable("psql"), [
+      ...dbArgs, "-d", "postgres", "-tA", "-c",
+      "SELECT pg_encoding_to_char(encoding) FROM pg_database WHERE datname='bostan'",
+    ], dbEnv);
+    assertUtf8PostgresEncoding(appEncoding.stdout, "application database");
     directory(path.join(p.instance, "secrets"));
     writeManagedConfig(p, port);
     const url = "postgres://bostan:" + password + "@127.0.0.1:" + pgPort + "/bostan";
