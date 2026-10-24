@@ -161,9 +161,9 @@ test("Windows disposable server startup log has a bounded local filename", () =>
 });
 
 
-test("Windows disposable QA gets a bounded cold-start allowance without changing production limit", () => {
+test("cold-source macOS/Linux and disposable Windows QA have explicit finite startup health limits", () => {
   assert.equal(serverStartupProbeLimit({ windowsQa: true }), 360);
-  assert.equal(serverStartupProbeLimit({ windowsQa: false }), 90);
+  assert.equal(serverStartupProbeLimit({ windowsQa: false }), 180);
 });
 
 test("every new local PostgreSQL cluster is explicitly UTF8 in deterministic C locale", () => {

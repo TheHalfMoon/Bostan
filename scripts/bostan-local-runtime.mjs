@@ -143,10 +143,12 @@ export function inspectLocalRuntime(repo = REPO, env = process.env, home = env.H
  * confidential requests, model prompts or debugging data.
  */
 export function serverStartupProbeLimit({ windowsQa }) {
-  // Broad Windows QA builds have a much colder TypeScript module graph than
-  // the qualified macOS developer install. This extra allowance is never
-  // used outside explicit disposable Windows QA.
-  return windowsQa ? 360 : 90;
+  // macOS/Linux may also require a cold-source TypeScript import plus first
+  // database migrations on a busy, low-memory developer machine. 90 probes
+  // killed a healthy first boot before it could bind localhost. Keep an
+  // explicit finite cap; never broaden network binding or skip health/ACL.
+  // Disposable Windows QA retains its existing larger cold-start allowance.
+  return windowsQa ? 360 : 180;
 }
 
 export function serverStartupLogPath(logDirectory, pid, timestamp = Date.now()) {

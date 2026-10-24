@@ -14,7 +14,10 @@ import { fileURLToPath } from "node:url";
 const REPO = fileURLToPath(new URL("../", import.meta.url));
 const MARKER = "bostan-managed-source-runtime-v1";
 const MAX_LOG_BYTES = 8192;
-const WAIT_START_MS = 115_000;
+// The Bostan source launcher itself now admits up to 180 cold-start probes.
+// Give the *outer* synthetic QA a slightly larger finite budget so it cannot
+// incorrectly kill a healthy first-run during the internal health window.
+const WAIT_START_MS = 215_000;
 const WAIT_STOP_MS = 45_000;
 const SLEEP_MS = 1000;
 

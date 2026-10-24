@@ -20,6 +20,10 @@ work is in [Bostan receipts](docs/bostan/).
 - [x] Qualify an isolated macOS first-agent smoke and one real Windows task
   using a free-labeled online OpenCode model; this is **not offline inference**.
 - [x] Refuse Windows legacy non-UTF8 PostgreSQL data without destroying it.
+- [x] B0-35: give macOS/Linux cold source loading a larger finite loopback
+  health window (180 probes) and align the opt-in disposable persistence
+  harness; 15/15 Node safety tests PASS and real macOS private-local
+  PostgreSQL first-run/restart/persistence E2E PASS (exit 0).
 - [ ] Rerun the complete native Windows first-agent CLI acceptance harness
   against the fixed UTF8 runtime and verify repeated clean termination.
 - [ ] Migrate the entire user-visible UI, package metadata, docs, binary,
