@@ -25,6 +25,7 @@ import {
   loadPaperclipCloudConnectorIdentity,
   paperclipCloudConnectorEnrollmentStatus,
 } from "./paperclip-cloud-connector-enrollment.js";
+import { bostanCloudBrokerOrigin } from "./bostan-cloud-broker-policy.js";
 
 export const GMAIL_MCP_URL = "https://gmailmcp.googleapis.com/mcp/v1";
 export const GMAIL_CONNECTOR_SCOPES = [
@@ -198,6 +199,14 @@ export class PaperclipCloudConnectorError extends Error {
 export function paperclipCloudConnectorConfigFromEnv(
   env: NodeJS.ProcessEnv = process.env,
 ): PaperclipCloudConnectorConfig | null {
+  const approvedBroker = bostanCloudBrokerOrigin(env);
+  if (!approvedBroker) return null;
+  // Do not adopt inherited upstream managed identities, even when a fresh
+  // Bostan broker URL is supplied. Those key pairs belong to another trust
+  // domain and require a separately qualified Bostan-specific migration.
+  if ([env.PAPERCLIP_CLOUD_CONNECTOR_INSTANCE_ID,
+    env.PAPERCLIP_CLOUD_CONNECTOR_SIGN_PRIVATE_KEY,
+    env.PAPERCLIP_CLOUD_CONNECTOR_SEAL_PRIVATE_KEY].some(value => Boolean(value?.trim()))) return null;
   const localIdentity = loadPaperclipCloudConnectorIdentity();
   const legacyConfigured = [
     env.PAPERCLIP_ID_CONNECTOR_INSTANCE_ID,
@@ -226,9 +235,10 @@ export function paperclipCloudConnectorConfigFromEnv(
   const signPrivateKey = hasManagedIdentityOverride ? managedSignPrivateKey : localIdentity!.signPrivateKey;
   const sealPrivateKey = hasManagedIdentityOverride ? managedSealPrivateKey : localIdentity!.sealPrivateKey;
   const environment = hasManagedIdentityOverride ? managedEnvironment : localIdentity!.environment;
-  const baseUrl = env.PAPERCLIP_CLOUD_CONNECTOR_BASE_URL?.trim()
-    || (hasActiveLocalIdentity ? localIdentity!.brokerBaseUrl : undefined)
-    || "https://my.paperclip.app";
+  // Never reuse an inherited account broker or silently redirect a saved
+  // upstream connector identity to the new operator-managed service.
+  if (hasActiveLocalIdentity && localIdentity!.brokerBaseUrl !== approvedBroker) return null;
+  const baseUrl = approvedBroker;
   const values = [instanceId, signPrivateKey, sealPrivateKey, environment];
   if (values.some((value) => !value)) {
     throw new PaperclipCloudConnectorError("Paperclip Cloud connector configuration is incomplete", "CONNECTOR_CONFIG_INCOMPLETE");
@@ -313,6 +323,7 @@ export function createPaperclipCloudConnector(input: {
     try {
       response = await request(endpoint, {
         method: "POST",
+        redirect: "error",
         headers: { "content-type": "application/json", accept: "application/json" },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(15_000),

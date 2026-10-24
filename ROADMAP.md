@@ -25,6 +25,8 @@ work is in [Bostan receipts](docs/bostan/).
   stop, upgrade, cold backup, restore, and rollback without a source checkout.
 - [ ] Qualify the B0-26 feedback export privacy gate with real PostgreSQL
   persistence tests, full server typecheck, and platform-level E2E.
+- [ ] Qualify the B0-27 private Cloud broker with an operator-owned service,
+  real enrollment/credentials test, migration plan and no upstream requests.
 - [ ] Complete dependency, licensing, privacy, and security qualification.
 
 ## B1 — Reliable company orchestration
