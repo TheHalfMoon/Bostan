@@ -62,3 +62,7 @@ revocation races remain B1 work. Existing required legal notices retained.
 - Database tests all ran using the test-only opt-in isolated PostgreSQL
   fallback, not the source `embedded-postgres` image that cannot start on
   this Mac. These are real SQL/service updates, not mocks.
+- Latest-branch B0-31 live source-runtime smoke also reran after this B1
+  service update: **PASS**, real Mac PostgreSQL + private health + company
+  insert + two clean server/database stops + exact UUID/name persistence
+  across restart. Does not exercise an LLM or native Windows app.
