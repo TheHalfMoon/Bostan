@@ -104,7 +104,7 @@ export function issueApprovalService(db: Db) {
         .orderBy(desc(issueApprovals.createdAt));
     },
 
-    link: async (issueId: string, approvalId: string, actor?: LinkActor) => {
+    link: async (issueId: string, approvalId: string, actor?: LinkActor): Promise<typeof issueApprovals.$inferSelect | null> => {
       return db.transaction(async tx => {
         // Lock before deciding: a concurrent agent Done and link creation must
         // serialize on the same issue row. Checking outside this transaction
@@ -142,7 +142,7 @@ export function issueApprovalService(db: Db) {
         .where(and(eq(issueApprovals.issueId, issueId), eq(issueApprovals.approvalId, approvalId)));
     },
 
-    linkManyForApproval: async (approvalId: string, issueIds: string[], actor?: LinkActor) => {
+    linkManyForApproval: async (approvalId: string, issueIds: string[], actor?: LinkActor): Promise<void> => {
       if (issueIds.length === 0) return;
       return db.transaction(async tx => {
         // Stable row order prevents two overlapping bulk link requests from
