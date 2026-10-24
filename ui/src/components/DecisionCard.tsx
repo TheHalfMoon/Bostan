@@ -47,6 +47,9 @@ export interface DecisionCardProps {
   executions?: DecisionEffectExecution[] | null;
   /** Which target issues drifted since the snapshot (open decisions only). */
   targetChanged?: Record<string, boolean> | null;
+  /** B2 signed advice readiness preview; never authoritative for execution. */
+  adviceFreshness?: { current: boolean; positiveChoiceAllowed: boolean } | null;
+  adviceFreshnessPending?: boolean;
   /** Resolve an issue id to a display ref (identifier / title / link). */
   resolveIssue?: (issueId: string) => DecisionIssueRef | null;
   /** Full sub-tree that a `cancel_issue_tree` option would cancel. */
@@ -228,6 +231,8 @@ export function DecisionCard({
   decision,
   executions,
   targetChanged,
+  adviceFreshness = null,
+  adviceFreshnessPending = false,
   resolveIssue = () => null,
   cancelTreePreview,
   originAgentName,
@@ -244,6 +249,8 @@ export function DecisionCard({
   const [confirmText, setConfirmText] = useState("");
 
   const open = decision.status === "open";
+  const isBostanAdvice = decision.ruleKey === "bostan.decision_recommendation.v1";
+  const advisoryNeedsReview = isBostanAdvice && (!adviceFreshness || !adviceFreshness.positiveChoiceAllowed);
   const dismissed =
     decision.chosenOptionId === "dismissed" || (decision.metadata as { dismissed?: boolean } | null)?.dismissed === true;
   const snapshots = (decision.targetSnapshots ?? {}) as Record<string, DecisionTargetSnapshot>;
@@ -412,6 +419,17 @@ export function DecisionCard({
         </div>
       )}
 
+      {/* Advisory status — preview only; server revalidates at commit. */}
+      {open && isBostanAdvice && (
+        <div role="status" className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-xs">
+          {adviceFreshnessPending
+            ? "Checking Bostan recommendation evidence and board budgets…"
+            : advisoryNeedsReview
+              ? "Evidence or budget may have changed. Request an updated recommendation; safe defer and evidence requests remain available."
+              : "Evidence and budget snapshot currently match. The server will check again when you approve."}
+        </div>
+      )}
+
       {/* Inputs (open only) */}
       {open && (decision.inputs ?? []).length > 0 && (
         <div className="mt-3 space-y-2">
@@ -441,7 +459,9 @@ export function DecisionCard({
             const blockedStale = option.effects.some(
               (effect) => effect.staleness === "strict" && decisionEffectTargetIssueIds(effect).some((id) => staleTargetIdSet.has(id)),
             );
-            const disabled = busy || requiredUnmet || blockedStale;
+            const blockedAdvice = isBostanAdvice && !["defer", "request_evidence"].includes(option.id)
+              && (adviceFreshnessPending || advisoryNeedsReview);
+            const disabled = busy || requiredUnmet || blockedStale || blockedAdvice;
             const cancelTree = cancelTreeEffect(option);
             const confirming = confirmOptionId === option.id;
             const previewRows = cancelTree && cancelTreePreview ? cancelTreePreview(cancelTree.targetIssueId) : null;
@@ -465,6 +485,11 @@ export function DecisionCard({
                     <span className={cn("text-sm font-medium", destructive && "text-rose-700 dark:text-rose-300")}>
                       {option.label}
                     </span>
+                    {blockedAdvice && (
+                      <span className="shrink-0 rounded-full border border-amber-500/60 bg-amber-500/10 px-2 py-0.5 text-(length:--text-micro) font-medium text-amber-800 dark:text-amber-200">
+                        Review required
+                      </span>
+                    )}
                     {blockedStale && (
                       <span className="shrink-0 rounded-full border border-amber-500/60 bg-amber-500/10 px-2 py-0.5 text-(length:--text-micro) font-medium text-amber-800 dark:text-amber-200">
                         Blocked · stale

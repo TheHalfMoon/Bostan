@@ -85,6 +85,15 @@ export interface DecisionListFilter {
   limit?: number;
 }
 
+export interface BostanAdviceFreshness {
+  decisionId: string;
+  status: DecisionStatus;
+  current: boolean;
+  positiveChoiceAllowed: boolean;
+  safeAvailableOptions: string[];
+  authoritativeExecutionAllowed: false;
+}
+
 export interface DecideInput {
   optionId: string;
   inputValues?: Record<string, string>;
@@ -106,6 +115,7 @@ export const decisionsApi = {
   list: (companyId: string, filter: DecisionListFilter = {}) =>
     api.get<DecisionListItem[]>(`/companies/${companyId}/decisions${listQuery(filter)}`),
   get: (id: string) => api.get<DecisionOutcome>(`/decisions/${id}`),
+  freshness: (id: string) => api.get<BostanAdviceFreshness>(`/decisions/${id}/bostan-freshness`),
   decide: (id: string, input: DecideInput) =>
     api.post<DecisionOutcome>(`/decisions/${id}/decide`, input),
   dismiss: (id: string, reason?: string | null) =>

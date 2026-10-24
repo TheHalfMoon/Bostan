@@ -85,7 +85,11 @@ privileged effects.
   stale decisions fail closed, while safe defer/dismiss remains possible.
 - [x] B2-06: board-only non-executing API to preview whether evidence and budget
   snapshots remain current; scoped HTTP/PG tests and privacy denials PASS.
-  Board browser UI integration remains open.
+- [x] B2-07: reuse the existing board DecisionCard/DecisionResolver to display
+  freshness, fail-closed positive choices, and recheck server before POST;
+  React tests, UI TypeScript and production bundle PASS.
+- [ ] Real Chromium end-to-end board review and independent citation
+  relevance/readback evaluation remain open.
 - [ ] Board-defined actual budget limits, calibrated outcomes, external
   evidence proof/readback, durable model routing, evaluation and UI E2E.
 
