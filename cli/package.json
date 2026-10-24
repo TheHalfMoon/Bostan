@@ -26,7 +26,7 @@
     "dist"
   ],
   "scripts": {
-    "dev": "tsx src/index.ts",
+    "dev": "node src/bostan-preview.mjs",
     "build": "node scripts/build-bostan-preview.mjs",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",

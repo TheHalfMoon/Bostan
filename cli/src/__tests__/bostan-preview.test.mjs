@@ -74,6 +74,7 @@ test("workspace and package metadata cannot expose the inherited CLI or publish 
   assert.equal(root.name, "bostan");
   assert.equal(root.scripts.paperclipai, undefined);
   assert.equal(root.scripts.bostan, "node cli/src/bostan-preview.mjs");
+  assert.equal(cli.scripts.dev, "node src/bostan-preview.mjs");
   assert.equal(cli.scripts.build, "node scripts/build-bostan-preview.mjs");
   assert.equal(cli.scripts.prepack, "node ../scripts/bostan-release-disabled.mjs");
   assert.equal(cli.scripts.prepublishOnly, "node ../scripts/bostan-release-disabled.mjs");
