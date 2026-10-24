@@ -137,6 +137,59 @@ suite("Bostan B4-01 versioned, tenant-scoped task document evidence", () => {
     await db.delete(issueDocuments).where(eq(issueDocuments.documentId, s.documentId));
     expect((await request(app).post(freshPath).send(body)).status).toBe(404);
   });
+  it("B4-03 requires every current citation in a repeatable-read source set", async () => {
+    const s = await seed();
+    const secondaryId = randomUUID();
+    await db.insert(documents).values({ id: secondaryId, companyId: s.companyId,
+      title: "Second source", latestBody: "Second independent synthetic fact", latestRevisionNumber: 1 });
+    await db.insert(issueDocuments).values({ companyId: s.companyId, issueId: s.issueId,
+      documentId: secondaryId, key: "second-source" });
+    const app = appFor(board(s.companyId));
+    const prefix = `/api/companies/${s.companyId}/issues/${s.issueId}/bostan-evidence/documents/`;
+    const first = (await request(app).get(prefix + s.documentId)).body;
+    const second = (await request(app).get(prefix + secondaryId)).body;
+    const sources = [
+      { issueId: s.issueId, documentId: s.documentId, expectedSnapshotHmacSha256: first.sourceSnapshotHmacSha256 },
+      { issueId: s.issueId, documentId: secondaryId, expectedSnapshotHmacSha256: second.sourceSnapshotHmacSha256 },
+    ];
+    const path = `/api/companies/${s.companyId}/bostan-evidence/snapshots/freshness`;
+    const fresh = await request(app).post(path).send({ sources });
+    expect(fresh.status).toBe(200);
+    expect(fresh.headers["cache-control"]).toContain("no-store");
+    expect(fresh.body).toMatchObject({ citationsChecked: 2, allSnapshotsCurrent: true,
+      decisionCommitAuthorized: false, factualRelevanceVerified: false });
+    expect(JSON.stringify(fresh.body)).not.toContain(first.sourceSnapshotHmacSha256);
+    expect(JSON.stringify(fresh.body)).not.toContain("Second independent synthetic fact");
+    expect((await request(app).post(path).send({ sources: [sources[0], sources[0]] })).status).toBe(400);
+    expect((await request(app).post(path).send({ sources: [] })).status).toBe(400);
+    expect((await request(app).post(path).send({ sources: Array(11).fill(sources[0]) })).status).toBe(400);
+    await db.update(documents).set({ latestBody: "Altered evidence source two",
+      latestRevisionNumber: 2 }).where(eq(documents.id, secondaryId));
+    const stale = await request(app).post(path).send({ sources });
+    expect(stale.status).toBe(200);
+    expect(stale.body).toMatchObject({ allSnapshotsCurrent: false, decisionCommitAuthorized: false });
+    await db.delete(issueDocuments).where(eq(issueDocuments.documentId, secondaryId));
+    const detached = await request(app).post(path).send({ sources });
+    expect(detached.body).toMatchObject({ allSnapshotsCurrent: false });
+  });
+  it("B4-03 denies foreign company and agent citation set probes", async () => {
+    const s = await seed();
+    const evidence = await readBostanIssueDocumentEvidence({ db, ...s,
+      issueReadCondition: sql<boolean>`true` });
+    const path = `/api/companies/${s.companyId}/bostan-evidence/snapshots/freshness`;
+    const sources = [{ issueId: s.issueId, documentId: s.documentId,
+      expectedSnapshotHmacSha256: evidence!.sourceSnapshotHmacSha256 }];
+    const outsider = { type: "board", source: "session", userId: "other-member",
+      companyIds: [s.otherCompany], memberships: [{ companyId: s.otherCompany, status: "active", membershipRole: "member" }] };
+    expect((await request(appFor(outsider)).post(path).send({ sources })).status).toBe(403);
+    const agent = { type: "agent", source: "agent_jwt", companyId: s.companyId,
+      agentId: randomUUID(), runId: randomUUID() };
+    expect((await request(appFor(agent)).post(path).send({ sources })).status).toBe(403);
+    await db.update(issues).set({ hiddenAt: new Date() }).where(eq(issues.id, s.issueId));
+    const hidden = await request(appFor(board(s.companyId))).post(path).send({ sources });
+    expect(hidden.status).toBe(200);
+    expect(hidden.body).toMatchObject({ allSnapshotsCurrent: false, decisionCommitAuthorized: false });
+  });
   it("B4-02 denies hidden/unauthorized source even with a valid old snapshot", async () => {
     const s = await seed();
     const first = await readBostanIssueDocumentEvidence({ db, ...s, issueReadCondition: sql<boolean>`true` });

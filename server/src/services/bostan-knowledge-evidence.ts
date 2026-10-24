@@ -3,10 +3,12 @@ import { and, eq, isNull, type SQL } from "drizzle-orm";
 import { documents, issueDocuments, issues, type Db } from "@paperclipai/db";
 import { resolveDecisionSigningSecret } from "./decision-signing.js";
 
+type DbTransaction = Parameters<Parameters<Db["transaction"]>[0]>[0];
+
 /** The existing task-document link is the source of truth for citations.
  * This read-only model never copies knowledge into a second index/ledger. */
 export async function readBostanIssueDocumentEvidence(input: {
-  db: Db;
+  db: Db | DbTransaction;
   companyId: string;
   issueId: string;
   documentId: string;
@@ -94,6 +96,42 @@ export async function checkBostanIssueDocumentSnapshot(input: Parameters<typeof 
     // attributes in this short advisory response.
     decisionCommitAuthorized: false as const,
     factualRelevanceVerified: false as const,
+    sourceContentIsUntrusted: true as const,
+    checkedAt: new Date().toISOString(),
+  };
+}
+
+/** All-or-nothing, one MVCC snapshot of cited source commitments.
+ * No index, stored dossier, future-state guarantee or action permission. */
+export async function checkBostanDocumentSnapshotBatch(input: {
+  db: Db;
+  companyId: string;
+  issueReadCondition: SQL<boolean>;
+  sources: Array<{ issueId: string; documentId: string; expectedSnapshotHmacSha256: string }>;
+}) {
+  if (input.sources.length === 0 || input.sources.length > 10) throw new Error("Bostan citation set size is invalid");
+  const pairs = new Set(input.sources.map(source => `${source.issueId}:${source.documentId}`));
+  if (pairs.size !== input.sources.length) throw new Error("Bostan citation set must be unique");
+  // Multi-statement checks must see one stable PostgreSQL source snapshot:
+  // prevent mixed-version verdicts across the cited document set.
+  const allCurrent = await input.db.transaction(async (tx) => {
+    for (const source of input.sources) {
+      const current = await checkBostanIssueDocumentSnapshot({
+        db: tx, companyId: input.companyId,
+        issueReadCondition: input.issueReadCondition,
+        ...source,
+      });
+      if (!current?.snapshotCurrent) return false;
+    }
+    return true;
+  }, { isolationLevel: "repeatable read", accessMode: "read only" });
+  return {
+    schema: "bostan.knowledge.citation-set-freshness.v1" as const,
+    companyId: input.companyId,
+    citationsChecked: input.sources.length,
+    allSnapshotsCurrent: allCurrent,
+    factualRelevanceVerified: false as const,
+    decisionCommitAuthorized: false as const,
     sourceContentIsUntrusted: true as const,
     checkedAt: new Date().toISOString(),
   };

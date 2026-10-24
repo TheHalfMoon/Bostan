@@ -1,5 +1,6 @@
 import { taskInterruptionPresentation, taskInterruptionPresentations } from "../services/task-interruption-presentation.js";
-import { readBostanIssueDocumentEvidence, checkBostanIssueDocumentSnapshot } from "../services/bostan-knowledge-evidence.js";
+import { readBostanIssueDocumentEvidence, checkBostanIssueDocumentSnapshot,
+  checkBostanDocumentSnapshotBatch } from "../services/bostan-knowledge-evidence.js";
 import { parseObject } from "../adapters/utils.js";
 import { prepareRestrictedWorkspaceRetry } from "../services/restricted-workspace-retry.js";
 import { issueSummariesQuerySchema, type IssueSummary } from "@paperclipai/shared";
@@ -8131,6 +8132,32 @@ export function issueRoutes(
   // An explicitly read-only POST avoids putting a private source commitment
   // into browser history, logs and intermediary URL caches. No model, action
   // or board decision is dispatched here.
+  router.post("/companies/:companyId/bostan-evidence/snapshots/freshness", async (req, res) => {
+    assertBoard(req);
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    if (!z.string().uuid().safeParse(companyId).success) {
+      res.status(400).json({ error: "Valid company UUID required" }); return;
+    }
+    const item = z.object({
+      issueId: z.string().uuid(), documentId: z.string().uuid(),
+      expectedSnapshotHmacSha256: z.string().regex(/^[a-f0-9]{64}$/),
+    }).strict();
+    const parsed = z.object({ sources: z.array(item).min(1).max(10) }).strict().safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: "Invalid bounded Bostan citation set" }); return; }
+    const ids = parsed.data.sources.map(source => `${source.issueId}:${source.documentId}`);
+    if (new Set(ids).size !== ids.length) {
+      res.status(400).json({ error: "Duplicate citation source identifiers" }); return;
+    }
+    const verdict = await access.decide({ actor: req.actor, action: "company_scope:read",
+      resource: { type: "company", companyId } });
+    if (!verdict.allowed) { res.status(403).json({ error: "Citation set is unauthorized" }); return; }
+    const result = await checkBostanDocumentSnapshotBatch({ db, companyId,
+      issueReadCondition: await issueReadSqlCondition(db, req.actor), sources: parsed.data.sources });
+    res.setHeader("Cache-Control", "no-store");
+    res.json(result);
+  });
+
   router.post("/companies/:companyId/issues/:issueId/bostan-evidence/documents/:documentId/freshness", async (req, res) => {
     assertBoard(req);
     const companyId = req.params.companyId as string;

@@ -141,6 +141,11 @@ Enforce deletion propagation, tenant boundaries and prompt-injection safety.
   the canonical document+issue privacy join and private HMAC, refuses
   stale/missing/inaccessible sources and returns no document body/hash.
   Five cumulative real PostgreSQL/HTTP tests PASS; no decision authority.
+- [x] B4-03: bound company-authorized batches of 1–10 distinct citations and
+  read all canonical document versions within one repeatable-read, read-only
+  PostgreSQL transaction. Fail if any cited source is missing, hidden or
+  stale; 7/7 cumulative SQL/HTTP tests PASS. Decision commit revalidation
+  and actual factual relevance remain open.
 - [ ] Extend B4 to general scoped search/OCR, cross-source citation quality,
   provenance through revision conflicts, deletion propagation to external
   caches, injection-resistant agents and reproducible analytics.
