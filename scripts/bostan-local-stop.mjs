@@ -65,7 +65,15 @@ export async function startPrivateStopControl({ home, onStop, pid = process.pid 
           requested = true;
           // A stop is only requested here; the parent still must await child
           // service drain and independently verify Postgres stopped.
-          queueMicrotask(() => onStop());
+          queueMicrotask(() => {
+            try { onStop(); }
+            catch {
+              // The authenticated request is not proof of a stopped runtime.
+              // The client independently waits for the managed lock to clear
+              // and databaseStatus() to prove the database stopped.
+              process.stderr.write("Bostan private stop request handler failed.\n");
+            }
+          });
         }
       }
     });

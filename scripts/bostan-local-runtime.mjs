@@ -334,7 +334,15 @@ export async function runLocalRuntime(options = {}) {
       // server.shutdown() and awaits exit before reaching this finally.
       child.kill("SIGTERM");
     }
-    if (stopControl) await stopControl.close();
+    let stopControlError = null;
+    if (stopControl) {
+      try {
+        await stopControl.close();
+      } catch (error) {
+        stopControlError = error;
+        process.stderr.write("Bostan private stop-control cleanup warning; PostgreSQL shutdown will still run.\n");
+      }
+    }
     if (startupLog) {
       // Child pipes were connected with end:false; explicit close is required
       // after the child terminates so the test log is not left open.
@@ -365,6 +373,11 @@ export async function runLocalRuntime(options = {}) {
       throw new Error("Bostan PostgreSQL shutdown could not be verified. " +
         "The managed lock is retained. Inspect PostgreSQL before running " +
         "bostan app recover --local. " + error.message);
+    }
+    if (stopControlError) {
+      throw new Error("Bostan PostgreSQL stopped and managed runtime lock was cleared, " +
+        "but stop control metadata could not be safely removed. " +
+        "Inspect the disposable profile before restarting.");
     }
   }
 }
