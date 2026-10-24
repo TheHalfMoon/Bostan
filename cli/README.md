@@ -163,3 +163,22 @@ broad explicit ACEs intact. See
 The app's general Windows packaging, normal graphical stop controls,
 native default agent E2E, full data privacy and security review, and signed
 installers are not yet release-qualified.
+
+
+## Windows developer-only orderly local stop (B0-18)
+
+From a full Bostan source checkout, `bostan app stop --local` now requests
+shutdown of the same private Windows TEMP QA runtime as
+`bostan app run --local`. Both command windows must use the identical
+explicit temporary `HOME`, set `BOSTAN_WINDOWS_TEMP_QA=1`, and have native
+PostgreSQL tools on PATH. The existing NTFS access DACL is verified before
+the source CLI reads the private local stop token. This uses an authenticated
+loopback request and parent-to-child Node IPC instead of an arbitrary
+process kill. The stop command checks that PostgreSQL has stopped before
+reporting success.
+
+This is **not a supported Windows installer or service feature**. The
+installed CLI-only preview continues to refuse this source command.
+Full native Windows Bostan-server-plus-PostgreSQL shutdown and active agent
+draining are still open qualification gates. See
+`docs/bostan/B0_WINDOWS_ORDERLY_STOP_RECEIPT.md`.
