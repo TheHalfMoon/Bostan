@@ -4,9 +4,9 @@ import os from "node:os";
 import path from "node:path";
 import express from "express";
 import request from "supertest";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { companies, createDb, executionWorkspaces, issues, toolInvocations } from "@paperclipai/db";
+import { companies, createDb, executionWorkspaces, issues, toolInvocations, workspaceOperations } from "@paperclipai/db";
 import { toolGatewayRoutes } from "../routes/tool-gateway.js";
 import { classifyBostanActionEvidence, readBostanActionEvidence } from "../services/bostan-action-evidence.js";
 import { verifyBostanLocalFileContent } from "../services/bostan-local-file-readback.js";
@@ -109,9 +109,10 @@ suite("Bostan B3 board-only action status with real SQL", () => {
   beforeAll(async () => {
     backend = await startBostanFeedbackPostgresTestDatabase("bostan-b3-action-evidence-");
     db = createDb(backend.connectionString);
+    process.env.PAPERCLIP_DECISION_SIGNING_SECRET = "bostan-test-only-signing-secret-0123456789";
   }, 120_000);
   afterEach(async () => { await db.execute(sql`TRUNCATE TABLE companies CASCADE`); });
-  afterAll(async () => { await db?.$client?.end?.({ timeout: 0 }); await backend?.cleanup(); });
+  afterAll(async () => { await db?.$client?.end?.({ timeout: 0 }); await backend?.cleanup(); delete process.env.PAPERCLIP_DECISION_SIGNING_SECRET; });
   async function seed() {
     companyId = randomUUID(); otherCompany = randomUUID();
     await db.insert(companies).values([
@@ -173,6 +174,38 @@ suite("Bostan B3 board-only action status with real SQL", () => {
       expect(JSON.stringify(observed.body)).not.toContain(root);
       expect(JSON.stringify(observed.body)).not.toContain("not-an-independent-proof");
       expect(JSON.stringify(observed.body)).not.toContain(content.toString());
+      expect(observed.body.receiptId).toMatch(/^[a-f0-9-]{36}$/);
+      const receiptUrl = `/api/tool-gateway/bostan-local-file-readback/${observed.body.receiptId}?companyId=${companyId}`;
+      const trustedReceipt = await request(board).get(receiptUrl);
+      expect(trustedReceipt.status).toBe(200);
+      expect(trustedReceipt.body).toMatchObject({ receiptIntegrityValid: true,
+        readbackState: "matches_expected_content", independentEffectVerified: false });
+      expect(JSON.stringify(trustedReceipt.body)).not.toContain(payload.expectedSha256);
+      expect(JSON.stringify(trustedReceipt.body)).not.toContain("receipt.txt");
+      expect((await request(appWithActor({type: "agent", source: "agent_jwt", companyId,
+        agentId: randomUUID(), runId: randomUUID()})).get(receiptUrl)).status).toBe(403);
+      const [stored] = await db.select().from(workspaceOperations)
+        .where(eq(workspaceOperations.id, observed.body.receiptId));
+      expect(stored).toMatchObject({ companyId, phase: "bostan_local_artifact_readback", status: "succeeded" });
+      expect(JSON.stringify(stored.metadata)).not.toContain(payload.expectedSha256);
+      expect(JSON.stringify(stored.metadata)).not.toContain("receipt.txt");
+      // The DB can be modified, but the host-issued HMAC is not forgeable
+      // without the private signer. It must never be accepted after tampering.
+      await db.update(workspaceOperations).set({
+        metadata: { ...stored.metadata, state: "content_mismatch" },
+      }).where(eq(workspaceOperations.id, stored.id));
+      const forged = await request(board).get(receiptUrl);
+      expect(forged.status).toBe(200);
+      expect(forged.body).toMatchObject({ receiptIntegrityValid: false,
+        readbackState: "unverifiable", independentEffectVerified: false });
+      await db.update(workspaceOperations).set({ metadata: { ...stored.metadata, injectedField: "should-fail" } })
+        .where(eq(workspaceOperations.id, stored.id));
+      const injected = await request(board).get(receiptUrl);
+      expect(injected.body).toMatchObject({ receiptIntegrityValid: false,
+        readbackState: "unverifiable" });
+      const foreignReceipt = await request(board).get(
+        `/api/tool-gateway/bostan-local-file-readback/${observed.body.receiptId}?companyId=${otherCompany}`);
+      expect(foreignReceipt.status).toBe(404);
       // A second filesystem read observes mutation, independent of the prior
       // tool's reported result digest or the first readback response.
       await writeFile(path.join(root, "receipt.txt"), Buffer.from("independent content changed"));
@@ -180,6 +213,10 @@ suite("Bostan B3 board-only action status with real SQL", () => {
       expect(changed.status).toBe(200);
       expect(changed.body).toMatchObject({ state: "content_mismatch",
         contentReadbackMatched: false, independentEffectVerified: false });
+      const mismatchReceipt = await request(board).get(
+        `/api/tool-gateway/bostan-local-file-readback/${changed.body.receiptId}?companyId=${companyId}`);
+      expect(mismatchReceipt.body).toMatchObject({ receiptIntegrityValid: true,
+        readbackState: "content_mismatch", independentEffectVerified: false });
       const other = await request(board).post(url).send({ ...payload, companyId: otherCompany });
       expect(other.status).toBe(404);
       const agent = appWithActor({ type: "agent", source: "agent_jwt", companyId, agentId: randomUUID(), runId: randomUUID() });

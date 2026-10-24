@@ -109,6 +109,10 @@ reconciliation. Never duplicate the existing task/run authority.
 - [x] B3-02a: actual restricted local-file content readback, bounded and
   no-symlink workspace open, company/issue/invocation scoping and private
   board-only authorization; macOS real-filesystem/SQL tests PASS.
+- [x] B3-03: store a private keyed-HMAC, tamper-evident historical file
+  readback receipt in existing workspace operations; board-only signed
+  integrity GET, company scope, and tampering/SQL/HTTP QA PASS. This still
+  does **not** independently attribute a tool's causal effect.
 - [ ] B3-02b: external provider/browser effect readback, signed independent
   verifier evidence, unknown-outcome reconciliation and fail-closed retries.
   Local file SHA matching alone must never be treated as full effect proof.

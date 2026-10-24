@@ -19,7 +19,8 @@ import { forbidden, HttpError } from "../errors.js";
 import { accessService } from "../services/index.js";
 import { listConnectionLifecycleEvents } from "../services/tool-connection-activity.js";
 import { readBostanActionEvidence } from "../services/bostan-action-evidence.js";
-import { verifyBostanCompanyWorkspaceFile, BOSTAN_FILE_READBACK_LIMIT_BYTES } from "../services/bostan-local-file-readback.js";
+import { BOSTAN_FILE_READBACK_LIMIT_BYTES } from "../services/bostan-local-file-readback.js";
+import { recordBostanLocalFileReadback, inspectBostanLocalReadbackReceipt } from "../services/bostan-local-readback-receipts.js";
 
 const TOOL_ACTIVITY_EVENT_TYPES = [
   "call_completed",
@@ -731,6 +732,22 @@ export function toolGatewayRoutes(db: Db, toolGateway: ToolGatewayService) {
     }
   });
 
+  router.get("/tool-gateway/bostan-local-file-readback/:receiptId", async (req, res) => {
+    try {
+      assertBoard(req);
+      const companyId = typeof req.query.companyId === "string" ? req.query.companyId : "";
+      const receiptId = req.params.receiptId;
+      if (!uuidPattern.test(companyId) || !uuidPattern.test(receiptId)) {
+        res.status(400).json({ error: "Valid company and receipt IDs are required" }); return;
+      }
+      await assertBoardPermission(req, companyId, "tools:view_audit");
+      await assertBoardPermission(req, companyId, "tools:manage_runtime");
+      const receipt = await inspectBostanLocalReadbackReceipt(db, companyId, receiptId);
+      if (!receipt) { res.status(404).json({ error: "Scoped readback receipt not found" }); return; }
+      res.json(receipt);
+    } catch (error) { sendGatewayError(res, error); }
+  });
+
   const bostanLocalReadbackSchema = z.object({
     companyId: z.string().uuid(),
     workspaceId: z.string().uuid(),
@@ -749,7 +766,7 @@ export function toolGatewayRoutes(db: Db, toolGateway: ToolGatewayService) {
       // privileged runtime permission. Never use an agent-provided root.
       await assertBoardPermission(req, input.companyId, "tools:view_audit");
       await assertBoardPermission(req, input.companyId, "tools:manage_runtime");
-      const observed = await verifyBostanCompanyWorkspaceFile({ db, ...input });
+      const observed = await recordBostanLocalFileReadback({ db, ...input });
       if (!observed) { res.status(404).json({ error: "Scoped local invocation workspace not found" }); return; }
       res.json(observed);
     } catch (error) { sendGatewayError(res, error); }
