@@ -83,6 +83,9 @@ privileged effects.
 - [x] B2-05: a board's positive choice on Bostan advice rechecks exact evidence
   and current scoped board budget HMACs inside the locked decision transaction;
   stale decisions fail closed, while safe defer/dismiss remains possible.
+- [x] B2-06: board-only non-executing API to preview whether evidence and budget
+  snapshots remain current; scoped HTTP/PG tests and privacy denials PASS.
+  Board browser UI integration remains open.
 - [ ] Board-defined actual budget limits, calibrated outcomes, external
   evidence proof/readback, durable model routing, evaluation and UI E2E.
 

@@ -246,6 +246,41 @@ suite("Bostan B2 recommendations reuse signed board decisions", () => {
       .rejects.toMatchObject({ status: 409, details: { code: "bostan_recommendation_stale" } });
     expect((await db.select().from(decisions).where(eq(decisions.id,recommendation.id)))[0].status).toBe("open");
   });
+  it("B2-06 provides a board-only no-financial-details freshness state and detects an evidence edit", async () => {
+    await seed();
+    const recommendation = await write({ ...base(), evidenceIssueIds: [evidenceIssueId] });
+    const app = express(); app.use(express.json());
+    app.use((req, _res, next) => { req.actor = { type: "board", userId, source: "session",
+      companyIds: [companyId], memberships: [{ companyId, membershipRole: "member", status: "active" }] }; next(); });
+    app.use("/api", decisionRoutes(db, serviceOptions)); app.use(errorHandler);
+    const path = `/api/decisions/${recommendation.id}/bostan-freshness`;
+    const fresh = await request(app).get(path);
+    expect(fresh.status).toBe(200);
+    expect(fresh.body).toMatchObject({ decisionId: recommendation.id, status: "open",
+      current: true, positiveChoiceAllowed: true, authoritativeExecutionAllowed: false });
+    expect(JSON.stringify(fresh.body)).not.toContain("Hmac");
+    expect(JSON.stringify(fresh.body)).not.toContain("limitCents");
+    await db.update(issues).set({ description: "Edited during human board review", updatedAt: new Date(Date.now()+10_000) })
+      .where(eq(issues.id, evidenceIssueId));
+    const stale = await request(app).get(path);
+    expect(stale.status).toBe(200);
+    expect(stale.body).toMatchObject({ current: false, positiveChoiceAllowed: false,
+      authoritativeExecutionAllowed: false });
+  });
+  it("B2-06 rejects agent attempts to read board freshness and cross-company board access", async () => {
+    await seed();
+    const recommendation = await write({ ...base(), evidenceIssueIds: [evidenceIssueId] });
+    const path = `/api/decisions/${recommendation.id}/bostan-freshness`;
+    const agentApp = express(); agentApp.use(express.json());
+    agentApp.use((req, _res, next) => { req.actor = actor(); next(); });
+    agentApp.use("/api", decisionRoutes(db, serviceOptions)); agentApp.use(errorHandler);
+    expect((await request(agentApp).get(path)).status).toBe(403);
+    const foreignApp = express(); foreignApp.use(express.json());
+    foreignApp.use((req, _res, next) => { req.actor = { type: "board", userId,
+      companyIds: [randomUUID()], source: "session" }; next(); });
+    foreignApp.use("/api", decisionRoutes(db, serviceOptions)); foreignApp.use(errorHandler);
+    expect([403,404]).toContain((await request(foreignApp).get(path)).status);
+  });
   it("B2-04 authenticates the agent-run HTTP route and returns only non-effectful signed choices", async () => {
     await seed();
     const app = express(); app.use(express.json());
