@@ -62,11 +62,11 @@ describe("AnnouncementCard", () => {
     const div = document.createElement("div"); document.body.append(div);
     const root = createRoot(div);
     const dismiss = vi.fn();
-    await act(async () => root.render(<AnnouncementCard announcement={{ ...announcementPreview, title: "<script>hello</script>" }} onDismiss={dismiss} />));
+    await act(async () => root.render(<AnnouncementCard announcement={{ ...announcementPreview, title: "<script>hello</script>", secondaryLink: { kind: "external", label: "Learn more", url: "https://example.test/docs" } }} onDismiss={dismiss} />));
     expect(div.querySelector("script")).toBeNull();
     expect(div.querySelector("h2")?.textContent).toBe("<script>hello</script>");
     expect(div.querySelector('[role="region"]')?.getAttribute("aria-labelledby")).toBe(div.querySelector("h2")?.id);
-    expect(div.querySelector('a[href="https://paperclip.ing"]')?.getAttribute("rel")).toContain("noreferrer");
+    expect(div.querySelector('a[href="https://example.test/docs"]')?.getAttribute("rel")).toContain("noreferrer");
     expect(div.querySelector('a[href="/projects"]')).not.toBeNull();
     await act(async () => div.querySelector("img")!.dispatchEvent(new Event("error")));
     expect(div.querySelector("img")).toBeNull();
