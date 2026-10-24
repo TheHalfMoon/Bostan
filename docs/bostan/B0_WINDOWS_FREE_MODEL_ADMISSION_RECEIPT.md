@@ -58,9 +58,25 @@ This is an **online** free-labeled model. It is not local offline inference.
 The prior **direct clean-stdin Windows** model probe passed in 6.37s.
 Unit tests cover strict JSON replies, EOF stdin, bounded synthetic hanging
 children, refusal of unsafe HOME and paid models, isolated environment and
-absence of prior-provider credentials. Actual Windows execution of the
-new reusable standalone preflight and full native Bostan agent workflow
-must be recorded independently. Full Windows native agent qualification
-is not inferred from a direct model probe.
+absence of prior-provider credentials. **The exact new reusable standalone
+preflight executed on the authorized Windows device**, using actual OpenCode
+2.1.2 and `opencode/deepseek-v4.1-flash-free`: exit code 0, exact JSON
+text answer PASS, **~6.49s**, and **zero leftover admission directories** in
+the isolated TEMP HOME. **12/12 focused Node tests passed on Windows**.
+The same 12/12 tests also passed on macOS. Native Bostan agent execution
+remains a separate, still unqualified integration gate: no claim that the
+agent created or completed tasks from this direct model admission.
 
 Release **NO-GO**. No publishing, main merge, deployment or enabling Actions.
+
+
+## Upstream OpenCode investigations
+
+- https://github.com/anomalyco/opencode/issues/38723 documents headless
+  OpenCode hangs from inherited open stdin, including Windows evidence, and
+  a later October 21, 2026 report specifically on 2.1.2 where Git snapshot
+  initialization walks over a huge untracked tree.
+- Neither external report alone proves this Bostan test had the same
+  exclusive root cause. However both changes — EOF stdin and fresh empty
+  workspace — were applied in the native passing run and made reproducible
+  in our disposable admission harness.
