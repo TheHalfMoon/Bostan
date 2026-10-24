@@ -22,7 +22,9 @@ onlyWindows("applies private NTFS DACL once and verifies it again on restart", (
   assert.equal(enforceWindowsQaPrivateAcl(home, { fresh: true }), path.join(home, ".bostan"));
   assert.doesNotThrow(() => enforceWindowsQaPrivateAcl(home));
   // A real app secret inherits precisely from the newly protected parent.
-  const secret = path.join(home, ".bostan", "disposable-secret");
+  const secrets = path.join(home, ".bostan", "app", "secrets");
+  fs.mkdirSync(secrets, { recursive: true, mode: 0o700 });
+  const secret = path.join(secrets, "disposable-secret");
   fs.writeFileSync(secret, "synthetic-do-not-persist", { mode: 0o600 });
   const output = execFileSync("icacls.exe", [secret], { encoding: "utf8" });
   assert.doesNotMatch(output, /Everyone|Authenticated Users|CodexSandboxUsers/i);

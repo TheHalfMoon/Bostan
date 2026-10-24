@@ -7,6 +7,7 @@ import { execFileSync } from "node:child_process";
 // A consumer Windows install needs a separately reviewed security model.
 const WINDOWS_PRIVATE_ACL_PS = String.raw`
 $ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
 $target = $env:BOSTAN_QA_ACL_TARGET
 $action = $env:BOSTAN_QA_ACL_ACTION
 if (-not $target -or ($action -ne 'apply' -and $action -ne 'verify')) { throw 'Invalid ACL request' }
@@ -82,6 +83,7 @@ export function enforceWindowsQaPrivateAcl(home, { fresh = false } = {}) {
         BOSTAN_QA_ACL_ACTION: fresh ? "apply" : "verify",
       },
       encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
       timeout: 20_000,
       windowsHide: true,
       maxBuffer: 256 * 1024,

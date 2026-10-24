@@ -144,3 +144,22 @@ free-model tests. Its default is `opencode/deepseek-v4.1-flash-free`; set
 `BOSTAN_E2E_FREE_MODEL=opencode/beam-free` to exercise the second allowed
 model. Paid and unknown model names are rejected by the harness.
 See `docs/bostan/B0_AGENT_STEP_BUDGET_RECEIPT.md`.
+
+## Windows TEMP-only ACL hardening (B0-17)
+
+A Windows source runtime remains **developer QA only**: it requires an
+explicit `BOSTAN_WINDOWS_TEMP_QA=1` opt-in, an existing isolated HOME under
+the current user's TEMP directory, working native PostgreSQL, Node, and a
+prepared source checkout. It is not a supported consumer installation.
+
+Before writing credentials, the first launch creates `HOME/.bostan` with an
+NTFS **protected access DACL** for only the current account, SYSTEM and
+Administrators. Restart verifies the existing DACL and fails if permissions
+have become broader. An unsafe or non-temporary HOME is refused. Do not
+use `icacls /inheritance:r` as a substitute for this check: it can leave
+broad explicit ACEs intact. See
+`docs/bostan/B0_WINDOWS_PRIVATE_ACL_RECEIPT.md`.
+
+The app's general Windows packaging, normal graphical stop controls,
+native default agent E2E, full data privacy and security review, and signed
+installers are not yet release-qualified.
