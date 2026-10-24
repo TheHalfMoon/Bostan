@@ -23,6 +23,8 @@ work is in [Bostan receipts](docs/bostan/).
   installer and runtime identity, preserving mandatory legal notices.
 - [ ] Reproducible, minimal-footprint Mac and Windows installation, start,
   stop, upgrade, cold backup, restore, and rollback without a source checkout.
+  B0-30 verified **17/17 cold-snapshot Node tests on each platform**;
+  this does not qualify an actual standalone installer.
 - [ ] Finish B0-26/B0-29 feedback-export qualification: **macOS real
   PostgreSQL persistence (17 PASS), server typecheck (PASS)**; Windows,
   browser/consumer E2E, and cross-platform safety acceptance remain open.
