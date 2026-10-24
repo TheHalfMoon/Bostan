@@ -6,6 +6,7 @@ import path from "node:path";
 import net from "node:net";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
+import { inspectRuntimeLock, removeStoppedRuntimeLock } from "./bostan-runtime-recovery.mjs";
 
 const exec = promisify(execFile);
 export const REPO = fileURLToPath(new URL("../", import.meta.url));
@@ -152,7 +153,9 @@ export async function runLocalRuntime(options = {}) {
     path.join(home, ".bostan"), p.app, p.state, path.join(p.state, "instances"),
     p.instance, path.join(p.app, "postgres"), p.secrets, p.logs,
   ]) directory(dir);
-  if (entry(p.lock, false)) throw new Error("Bostan runtime is already locked; inspect before retrying");
+  if (inspectRuntimeLock(p.lock).state !== "absent") {
+    throw new Error("Bostan runtime lock exists. Verify the database stopped, then use: bostan app recover --local");
+  }
   fs.writeFileSync(p.lock, MARKER + ":" + process.pid + "\n", { flag: "wx", mode: 0o600 });
   let pgStarted = false;
   let child = null;
@@ -214,9 +217,24 @@ export async function runLocalRuntime(options = {}) {
     process.off("SIGTERM", onSignal);
     if (child && child.exitCode === null && !child.killed) child.kill("SIGTERM");
     if (pgStarted) {
-      try { await call(executable("pg_ctl"), ["-D", p.data, "-m", "fast", "-w", "stop"], process.env, 30000); }
-      catch (error) { process.stderr.write("Bostan PostgreSQL shutdown warning: " + error.message + "\n"); }
+      try {
+        await call(executable("pg_ctl"), ["-D", p.data, "-m", "fast", "-w", "stop"], process.env, 30000);
+      } catch (error) {
+        process.stderr.write("Bostan PostgreSQL shutdown warning: " + error.message + "\n");
+      }
     }
-    fs.rmSync(p.lock, { force: true });
+    // Failed pg_ctl start/stop may still leave PostgreSQL running. Confirm
+    // the cluster is stopped even if this invocation never reached pgStarted.
+    try {
+      const result = removeStoppedRuntimeLock({
+        lockPath: p.lock, pgData: p.data, pgCtl: executable("pg_ctl"),
+        expectedPid: process.pid, mode: "shutdown",
+      });
+      if (!result.changed) throw new Error("runtime lock unexpectedly disappeared");
+    } catch (error) {
+      throw new Error("Bostan PostgreSQL shutdown could not be verified. " +
+        "The managed lock is retained. Inspect PostgreSQL before running " +
+        "bostan app recover --local. " + error.message);
+    }
   }
 }
