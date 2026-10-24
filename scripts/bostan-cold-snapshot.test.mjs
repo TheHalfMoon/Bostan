@@ -138,10 +138,15 @@ test("refuses non-Bostan managed config", () => run(f => {
   fs.writeFileSync(path.join(f.app,"state","instances","local","config.json"),'{"bostanManagedLocalRuntime":"foreign"}');
   assert.throws(()=>createColdSnapshot({home:f.home,pgCtl:f.pg}),/non-Bostan/);
 }));
-test("refuses symlinks in private data tree", () => run(f => {
-  fs.symlinkSync(f.pg,path.join(f.app,"postgres","data","evil"));
-  assert.throws(()=>createColdSnapshot({home:f.home,pgCtl:f.pg}),/Symlink/);
-  assert.equal(fs.existsSync(path.join(f.app,"run.lock")),false);
+test("refuses symlinks and native Windows junctions in private data tree", () => run(f => {
+  const evil = path.join(f.app, "postgres", "data", "evil");
+  // Windows without Developer Mode typically refuses ordinary symlinks with
+  // EPERM. NTFS junctions need no elevation and still exercise the real
+  // reparse-point rejection in the Bostan snapshot walker.
+  if (process.platform === "win32") fs.symlinkSync(f.app, evil, "junction");
+  else fs.symlinkSync(f.pg, evil);
+  assert.throws(() => createColdSnapshot({ home: f.home, pgCtl: f.pg }), /Symlink/);
+  assert.equal(fs.existsSync(path.join(f.app, "run.lock")), false);
 }));
 test("refuses special and hardlinked entries", () => run(f => {
   const original=path.join(f.app,"secrets","agent-jwt");
