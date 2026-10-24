@@ -1,0 +1,105 @@
+import { and, eq, inArray } from "drizzle-orm";
+import { z } from "zod";
+import { issues, type Db } from "@paperclipai/db";
+import { unprocessable } from "../errors.js";
+import { authorizationService, type AuthorizationActor } from "./authorization.js";
+import { decisionService, type DecisionServiceOptions } from "./decisions.js";
+
+// Bostan B2 extends the imported, signed, company-scoped decision authority.
+// A recommendation is NEVER permission to dispatch tools or to modify tasks.
+export const bostanRecommendationSchema = z.object({
+  title: z.string().trim().min(1).max(500),
+  rationale: z.string().trim().min(1).max(4_000),
+  alternatives: z.array(z.object({
+    id: z.string().regex(/^[a-z][a-z0-9_-]{0,59}$/),
+    label: z.string().trim().min(1).max(240),
+    rationale: z.string().trim().min(1).max(1_000),
+  }).strict()).min(2).max(6),
+  recommendedOptionId: z.string().regex(/^[a-z][a-z0-9_-]{0,59}$/),
+  confidence: z.number().finite().min(0).max(1), // Self-reported; NOT calibrated accuracy
+  estimatedCostUsd: z.number().finite().min(0).max(1_000_000),
+  costCeilingUsd: z.number().finite().min(0).max(1_000_000),
+  evidenceIssueIds: z.array(z.string().uuid()).min(1).max(10),
+  idempotencyKey: z.string().trim().min(1).max(500),
+}).strict().superRefine((value, context) => {
+  if (new Set(value.evidenceIssueIds).size !== value.evidenceIssueIds.length) {
+    context.addIssue({ code: "custom", message: "Evidence issue IDs must be unique", path: ["evidenceIssueIds"] });
+  }
+  if (new Set(value.alternatives.map(option => option.id)).size !== value.alternatives.length) {
+    context.addIssue({ code: "custom", message: "Alternative IDs must be unique", path: ["alternatives"] });
+  }
+  if (!value.alternatives.some(option => option.id === value.recommendedOptionId)) {
+    context.addIssue({ code: "custom", message: "Recommended choice must exist", path: ["recommendedOptionId"] });
+  }
+});
+export type BostanRecommendationInput = z.infer<typeof bostanRecommendationSchema>;
+const REPORTED_CONFIDENCE_FLOOR = 0.75;
+
+export async function createBostanRecommendation(input: {
+  db: Db;
+  serviceOptions: DecisionServiceOptions;
+  companyId: string;
+  actor: AuthorizationActor;
+  agentId: string;
+  runId: string;
+  body: BostanRecommendationInput;
+}) {
+  const recommendation = bostanRecommendationSchema.parse(input.body);
+  const references = await input.db.select({ id: issues.id, companyId: issues.companyId, status: issues.status, projectId: issues.projectId })
+    .from(issues).where(and(eq(issues.companyId, input.companyId), inArray(issues.id, recommendation.evidenceIssueIds)));
+  if (references.length !== recommendation.evidenceIssueIds.length) {
+    throw unprocessable("Every evidence issue must belong to this company and be accessible");
+  }
+  const authorization = authorizationService(input.db);
+  for (const issue of references) {
+    const access = await authorization.decide({
+      actor: input.actor, action: "issue:read",
+      resource: { type: "issue", companyId: issue.companyId, issueId: issue.id, status: issue.status, projectId: issue.projectId },
+    });
+    if (!access.allowed) throw unprocessable("Every evidence issue must belong to this company and be accessible");
+  }
+  const reasons: string[] = [];
+  if (recommendation.confidence < REPORTED_CONFIDENCE_FLOOR) reasons.push("low_self_reported_confidence");
+  if (recommendation.estimatedCostUsd > recommendation.costCeilingUsd) reasons.push("cost_ceiling_exceeded");
+  const abstained = reasons.length > 0;
+  const options = abstained
+    ? [{ id: "request_evidence", label: "Request more evidence", effects: [] }, { id: "defer", label: "Defer decision", effects: [] }]
+    : recommendation.alternatives.map(option => ({ id: option.id, label: option.label, description: option.rationale, effects: [] }));
+  const body = [
+    recommendation.rationale,
+    "",
+    `Self-reported confidence (not calibrated): ${recommendation.confidence.toFixed(3)}`,
+    `Estimated cost: USD ${recommendation.estimatedCostUsd.toFixed(2)}; ceiling: USD ${recommendation.costCeilingUsd.toFixed(2)}`,
+    `Recommendation: ${abstained ? "ABSTAIN / HUMAN REVIEW" : recommendation.recommendedOptionId}`,
+    ...reasons.map(reason => `Abstention: ${reason}`),
+    "",
+    "Evidence issue references (existence/access verified, relevance NOT independently verified):",
+    ...recommendation.evidenceIssueIds.map(id => `- ${id}`),
+    "",
+    "This is advice, not approval for tool execution, spending, account access or task completion.",
+  ].join("\n");
+  return decisionService(input.db, input.serviceOptions).create({
+    companyId: input.companyId,
+    actor: input.actor,
+    agentId: input.agentId,
+    runId: input.runId,
+    title: recommendation.title,
+    body,
+    ruleKey: "bostan.decision_recommendation.v1",
+    idempotencyKey: recommendation.idempotencyKey,
+    continuationPolicy: "wake_origin_agent",
+    options,
+    metadata: {
+      kind: "bostan_evidence_recommendation_v1",
+      evidenceIssueIds: recommendation.evidenceIssueIds,
+      recommendedOptionId: abstained ? null : recommendation.recommendedOptionId,
+      selfReportedConfidence: recommendation.confidence,
+      calibrated: false,
+      estimatedCostUsd: recommendation.estimatedCostUsd,
+      costCeilingUsd: recommendation.costCeilingUsd,
+      abstained,
+      abstentionReasons: reasons,
+      permitsEffects: false,
+    },
+  });
+}

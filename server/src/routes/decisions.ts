@@ -12,6 +12,7 @@ import {
 } from "@paperclipai/shared";
 import { validate } from "../middleware/validate.js";
 import { decisionService, type DecisionServiceOptions } from "../services/decisions.js";
+import { bostanRecommendationSchema, createBostanRecommendation } from "../services/bostan-decision-recommendations.js";
 import { assertBoard, assertBoardOrAgent, assertCompanyAccess, getAccessibleResource, getActorInfo } from "./authz.js";
 import { attentionService } from "../services/attention.js";
 import { authorizationDeniedDetails, authorizationService } from "../services/authorization.js";
@@ -135,6 +136,16 @@ export function decisionRoutes(db: Db, options: DecisionServiceOptions) {
       res.status(201).json(created);
     },
   );
+  router.post("/companies/:companyId/bostan-decision-recommendations", validate(bostanRecommendationSchema), async (req, res) => {
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const agent = agentContext(req);
+    if (!agent) { res.status(403).json({ error: "Agent run context required" }); return; }
+    const result = await createBostanRecommendation({
+      db, serviceOptions: options, companyId, actor: req.actor, ...agent, body: req.body,
+    });
+    res.status(201).json(result);
+  });
   router.post("/companies/:companyId/decisions", validate(createSchema), async (req, res) => {
     const companyId = req.params.companyId as string; assertCompanyAccess(req, companyId);
     const agent = agentContext(req); if (!agent) { res.status(403).json({ error: "Agent run context required" }); return; }

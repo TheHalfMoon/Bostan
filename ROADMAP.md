@@ -67,6 +67,12 @@ Typed, evidence-linked recommendations; calibration, model routing, abstention,
 explicit escalation, and bounded cost. No model may authorize its own
 privileged effects.
 
+- [x] B2-01: real company-scoped, signed decision recommendation route with
+  typed alternatives, cited issue-access checks, abstention, declared cost
+  ceiling and **no executable effects**; isolated PostgreSQL tests PASS.
+- [ ] Board-defined actual budget limits, calibrated outcomes, external
+  evidence proof/readback, durable model routing, evaluation and UI E2E.
+
 ## B3 — Action Fabric
 
 Authorized computer, browser, file, API and connector operations with scoped
