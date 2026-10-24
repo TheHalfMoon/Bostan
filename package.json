@@ -94,7 +94,8 @@
     "test:lifecycle-baseline": "node tests/lifecycle-baseline/run.mjs",
     "test:lifecycle-baseline:support": "node --test tests/lifecycle-baseline/report.test.mjs",
     "test:lifecycle-baseline:typecheck": "tsc -p tests/lifecycle-baseline/tsconfig.json",
-    "bostan": "node cli/src/bostan-preview.mjs"
+    "bostan": "node cli/src/bostan-preview.mjs",
+    "test:bostan-onboarding-browser": "node scripts/bostan-onboarding-browser-check.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
