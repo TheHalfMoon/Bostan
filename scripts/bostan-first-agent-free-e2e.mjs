@@ -19,6 +19,31 @@ export function syntheticFreeAgentAdapterConfig({ model, workspace, binary, plat
   };
 }
 
+const TERMINAL_HEARTBEAT_STATUSES = new Set([
+  "succeeded", "failed", "timed_out", "cancelled", "interrupted",
+]);
+
+export function observeHeartbeatQaStatus(run) {
+  if (!run || typeof run !== "object") throw new Error("Invalid heartbeat result");
+  const status = run.status;
+  if (typeof status !== "string") throw new Error("Missing heartbeat status");
+  if (!TERMINAL_HEARTBEAT_STATUSES.has(status)) return { done: false };
+  return { done: true, result: run };
+}
+
+export function assertHeartbeatQaSucceeded(run) {
+  if (run?.status === "succeeded") return;
+  // The provider may never have been called. Persisted interruption is
+  // terminal and must not be mistaken for a 175-second provider timeout.
+  const code = run?.errorCode;
+  const stage = run?.executionStage;
+  const errorCode = typeof code === "string" && /^[a-z][a-z0-9_]{0,63}$/.test(code) ? code : null;
+  const executionStage = typeof stage === "string" &&
+    /^(preparing|dispatching|executing|settled)$/.test(stage) ? stage : null;
+  throw new Error("Bostan synthetic heartbeat ended without success: " +
+    JSON.stringify({ status: run?.status ?? null, errorCode, executionStage }));
+}
+
 const MARKER = "BOSTAN_CLEAN_RUN_PASS";
 const MANAGED = "bostan-managed-source-runtime-v1";
 
@@ -148,11 +173,9 @@ export async function runFirstAgentFreeE2e(env = process.env) {
   const started = await requestJson(base, "agents/" + agent.id + "/heartbeat/invoke", {});
   const run = await waitFor(async () => {
     const current = await requestJson(base, "heartbeat-runs/" + started.id);
-    if (["succeeded", "failed", "timed_out", "cancelled"].includes(current.status)) {
-      return { done: true, result: current };
-    }
-    return { done: false };
+    return observeHeartbeatQaStatus(current);
   }, { timeoutMs: 175_000, label: "agent heartbeat terminal status" });
+  assertHeartbeatQaSucceeded(run);
   const finalIssue = await requestJson(base, "issues/" + issue.id);
   const commentResult = await requestJson(base, "issues/" + issue.id + "/comments");
   const comments = Array.isArray(commentResult) ? commentResult : commentResult.comments ?? [];

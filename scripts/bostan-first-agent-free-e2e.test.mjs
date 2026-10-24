@@ -5,7 +5,7 @@ import os from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel, syntheticFreeAgentAdapterConfig } from "./bostan-first-agent-free-e2e.mjs";
+import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel, syntheticFreeAgentAdapterConfig, observeHeartbeatQaStatus, assertHeartbeatQaSucceeded } from "./bostan-first-agent-free-e2e.mjs";
 
 function fixture() {
   const home = mkdtempSync(path.join(os.tmpdir(), "bostan-free-agent-guard-"));
@@ -121,4 +121,29 @@ test("Windows CLI ESM import path fails promptly before network when the native 
     assert.match(result.stderr, /Set BOSTAN_E2E_OPENCODE_EXE/);
     assert.doesNotMatch(result.stderr, /unsettled top-level await/i);
   } finally { f.clean(); }
+});
+
+test("terminal interrupted heartbeat fails immediately with safe stage/error evidence", () => {
+  const run = {
+    status: "interrupted", errorCode: "lease_released_before_terminal",
+    executionStage: "preparing", id: "synthetic",
+  };
+  assert.deepEqual(observeHeartbeatQaStatus(run), { done: true, result: run });
+  assert.throws(() => assertHeartbeatQaSucceeded(run),
+    /interrupted.*lease_released_before_terminal.*preparing/);
+});
+test("queued or preparing live heartbeat is never considered finished", () => {
+  for (const status of ["queued", "running", "preparing"]) {
+    assert.deepEqual(observeHeartbeatQaStatus({ status }), { done: false });
+  }
+  for (const status of ["succeeded", "failed", "timed_out", "cancelled", "interrupted"]) {
+    assert.equal(observeHeartbeatQaStatus({ status }).done, true);
+  }
+  assert.doesNotThrow(() => assertHeartbeatQaSucceeded({ status: "succeeded" }));
+});
+test("failed run diagnostics never echo arbitrary raw error content", () => {
+  assert.throws(() => assertHeartbeatQaSucceeded({
+    status: "failed", errorCode: "secret=private-credential\n",
+    executionStage: "preparing",
+  }), e => !e.message.includes("private-credential") && e.message.includes("failed"));
 });

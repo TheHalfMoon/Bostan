@@ -215,6 +215,7 @@ export {
   resolveTaskSessionConfigFreshness,
 } from "./heartbeat/workspaces.js";
 import { boundHeartbeatRunEventPayloadForStorage } from "./heartbeat/run-log.js";
+import { buildPreDispatchLeaseReleaseReceipt, type PreDispatchCheckpoint } from "./heartbeat/setup-phase-receipt.js";
 export {
   boundHeartbeatRunEventPayloadForStorage,
   compactRunLogChunk,
@@ -1769,6 +1770,11 @@ export function heartbeatService(
       return;
     }
 
+    // Safe, fixed milestones only. A still-live "preparing" run with a
+    // lease-release fallback needs an explainable boundary that cannot print
+    // credentials, issue prompts, or arbitrary local filesystem paths.
+    let preDispatchCheckpoint: PreDispatchCheckpoint = "claimed";
+    let preDispatchError: unknown = null;
     let legacyAdapterEntered = false;
     let legacyLocalAdapterEntered = false;
     let persistUsageCaptureFailure: (() => Promise<void>) | undefined;
@@ -1949,6 +1955,7 @@ export function heartbeatService(
 
       // The claimed adapter identity is immutable recovery evidence. Do not
       // execute a newly selected adapter under a previous adapter's claim.
+      preDispatchCheckpoint = "agent_loaded";
       const selectedAdapter = claimedAdapterType(run);
       if (selectedAdapter && selectedAdapter !== agent.adapterType) {
         throw new Error("Agent adapter changed during startup; start a new turn with the updated agent.");
@@ -1980,6 +1987,7 @@ export function heartbeatService(
         return;
       }
       const runtime = await ensureRuntimeState(agent);
+      preDispatchCheckpoint = "runtime_prepared";
       const context = parseObject(run.contextSnapshot);
       const authorizeFailedChatRetryExecution = () =>
         db.transaction((tx) =>
@@ -3065,6 +3073,7 @@ export function heartbeatService(
         evaluateSessionCompaction,
       });
 
+      preDispatchCheckpoint = "session_prepared";
       const runOutput = createHeartbeatRunOutput(db, {
         run, runId, issueId, runLogStore, identityRedactor, secretKeys,
         appendRunEvent, getCurrentUserRedactionOptions,
@@ -3615,6 +3624,9 @@ export function heartbeatService(
         });
       }
     } catch (outerErr) {
+      if (!legacyAdapterEntered && !nativeDispatchStarted) {
+        preDispatchError = outerErr;
+      }
       if (
         nativeOwnershipHeld ||
         outerErr instanceof NativeRunnerOwnershipUnverifiedError
@@ -3693,6 +3705,25 @@ export function heartbeatService(
               "provider trace finalization failed during heartbeat teardown",
             );
           }
+        }
+        // The ordinary setup-failure reporter may itself throw or be unable
+        // to write before teardown. Leave a minimal safe checkpoint even if
+        // only the fallback lease-release terminalization can finish the run.
+        if (
+          latestRun && latestRun.runtimeMode === "legacy" &&
+          latestRun.executionStage === "preparing" &&
+          (latestRun.status === "running" || latestRun.status === "queued") &&
+          !legacyAdapterEntered && !nativeDispatchStarted
+        ) {
+          await appendRunEvent(latestRun, {
+            eventType: "lifecycle",
+            stream: "system",
+            level: "warn",
+            message: "pre-dispatch preparation ended before terminal run state",
+            payload: buildPreDispatchLeaseReleaseReceipt(
+              preDispatchCheckpoint, preDispatchError,
+            ),
+          }).catch(() => undefined);
         }
         // Close the invariant "environment lease released implies the run is
         // terminal". When the teardown reaches this point with the run still
