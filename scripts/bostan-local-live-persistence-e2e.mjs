@@ -1,0 +1,158 @@
+/**
+ * Bostan source-runtime/macOS/Linux-only, synthetic persistence smoke.
+ * Not an installer and not a substitute for a browser or agent E2E.
+ *   BOSTAN_LIVE_LOCAL_QA_CONFIRM=1 node scripts/bostan-local-live-persistence-e2e.mjs
+ */
+import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import fs from "node:fs";
+import net from "node:net";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const REPO = fileURLToPath(new URL("../", import.meta.url));
+const MARKER = "bostan-managed-source-runtime-v1";
+const MAX_LOG_BYTES = 8192;
+const WAIT_START_MS = 115_000;
+const WAIT_STOP_MS = 45_000;
+const SLEEP_MS = 1000;
+
+export function requireBostanSourceSmokeAdmission(env = process.env, platform = process.platform) {
+  if (env.BOSTAN_LIVE_LOCAL_QA_CONFIRM !== "1") {
+    throw new Error("Bostan live local QA requires BOSTAN_LIVE_LOCAL_QA_CONFIRM=1");
+  }
+  if (platform !== "darwin" && platform !== "linux") {
+    throw new Error("Bostan live local QA is not qualified for Windows; use its separate TEMP-only workflow");
+  }
+}
+
+function hold(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+async function freePort() {
+  return await new Promise((resolve, reject) => {
+    const listener = net.createServer();
+    listener.once("error", reject);
+    listener.listen(0, "127.0.0.1", () => {
+      const address = listener.address();
+      listener.close(error => error ? reject(error) : resolve(address.port));
+    });
+  });
+}
+async function waitExit(child, elapsedMs) {
+  if (child.exitCode !== null) return { code: child.exitCode, signal: child.signalCode };
+  return await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      child.removeListener("exit", exit);
+      reject(new Error("Bostan source runtime did not exit within bounded shutdown window"));
+    }, elapsedMs);
+    const exit = (code, signal) => { clearTimeout(timer); resolve({ code, signal }); };
+    child.once("exit", exit);
+  });
+}
+function assertStopped(home) {
+  for (const fragment of [
+    ["run.lock"], ["postgres", "data", "postmaster.pid"],
+  ]) {
+    const target = path.join(home, ".bostan", "app", ...fragment);
+    if (fs.existsSync(target)) throw new Error("Bostan runtime left a PG or lock marker, data preserved for inspection");
+  }
+}
+async function requestJson(origin, route, body) {
+  const response = await fetch(origin + "/api/" + route, {
+    method: body === undefined ? "GET" : "POST",
+    headers: { "content-type": "application/json" },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    signal: AbortSignal.timeout(12_000), redirect: "error",
+  });
+  const json = await response.json();
+  if (!response.ok) throw new Error(`Bostan private QA /api/${route} returned HTTP ${response.status}`);
+  return json;
+}
+
+export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
+  // Admission runs before any filesystem or network operation.
+  requireBostanSourceSmokeAdmission(env);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-live-persistence-"));
+  fs.chmodSync(root, 0o700);
+  const home = path.join(root, "home");
+  fs.mkdirSync(home, { mode: 0o700 });
+  const childEnv = { ...env, HOME: home, DO_NOT_TRACK: "1", OTEL_SDK_DISABLED: "true" };
+  const port = await freePort();
+  const origin = `http://127.0.0.1:${port}`;
+  let proc = null;
+  let recent = "";
+  let clean = false;
+  let marker = null;
+  const app = path.join(home, ".bostan", "app");
+
+  async function start() {
+    recent = "";
+    proc = spawn(process.execPath, ["cli/src/bostan-preview.mjs", "app", "run", "--local", "--port", String(port)], {
+      cwd: REPO, env: childEnv, stdio: ["ignore", "pipe", "pipe"],
+    });
+    for (const output of [proc.stdout, proc.stderr]) {
+      output.on("data", piece => { recent = (recent + piece.toString()).slice(-MAX_LOG_BYTES); });
+    }
+    const deadline = Date.now() + WAIT_START_MS;
+    while (Date.now() < deadline) {
+      if (proc.exitCode !== null) throw new Error(`Bostan app exited before health: ${proc.exitCode}`);
+      try {
+        const health = await requestJson(origin, "health");
+        if (health.status === "ok" && health.deploymentMode === "local_trusted"
+            && health.deploymentExposure === "private") return;
+        if (health.status === "ok") throw new Error("Bostan app is not private local_trusted");
+      } catch (error) {
+        if (error.message === "Bostan app is not private local_trusted") throw error;
+      }
+      await hold(SLEEP_MS);
+    }
+    throw new Error("Bostan source runtime failed health startup within bounded timeout");
+  }
+  async function stop() {
+    const current = proc;
+    if (!current) throw new Error("Missing Bostan source process");
+    const waiting = waitExit(current, WAIT_STOP_MS);
+    current.kill("SIGTERM");
+    const result = await waiting;
+    proc = null;
+    if (result.code !== 0) throw new Error(`Bostan graceful stop returned ${result.code ?? result.signal}`);
+    assertStopped(home);
+  }
+  try {
+    await start();
+    marker = "Bostan isolated source E2E " + randomUUID();
+    const company = await requestJson(origin, "companies", { name: marker });
+    if (!company?.id || typeof company.id !== "string") throw new Error("Bostan company insert returned no ID");
+    await stop();
+    await start();
+    const result = await requestJson(origin, "companies");
+    const records = Array.isArray(result) ? result : result?.companies;
+    if (!Array.isArray(records) || !records.some(value => value.id === company.id && value.name === marker)) {
+      throw new Error("Bostan company did not survive a real PostgreSQL restart");
+    }
+    await stop();
+    const storedConfig = JSON.parse(fs.readFileSync(path.join(app, "state", "instances", "local", "config.json"), "utf8"));
+    if (storedConfig?.bostanManagedLocalRuntime !== MARKER) throw new Error("Unexpected runtime identity");
+    clean = true;
+    return { qualified: true, platform: process.platform, verified: "private-health,company-create,clean-stop,restart,persistence,clean-stop" };
+  } finally {
+    if (proc && proc.exitCode === null) {
+      proc.kill("SIGTERM");
+      try { await waitExit(proc, WAIT_STOP_MS); } catch { /* Preserve diagnostic profile */ }
+    }
+    // Cleanup is deliberately conservative and only touches our exact
+    // newly generated mkdtemp root when both DB and run.lock are absent.
+    if (clean) {
+      assertStopped(home);
+      fs.rmSync(root, { recursive: true, force: true });
+    } else {
+      process.stderr.write(`Bostan live QA failed; inspect private temporary profile ${root}.\n`);
+      if (recent) process.stderr.write("Bostan private server diagnostics retained in memory (not printed).\n");
+    }
+  }
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const result = await runBostanLocalLivePersistenceSmoke();
+  console.log("BOSTAN_LOCAL_PERSISTENCE_E2E_PASS", JSON.stringify(result));
+}

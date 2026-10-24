@@ -14,6 +14,9 @@ work is in [Bostan receipts](docs/bostan/).
 - [x] Import the authorized complete source snapshot into a private Bostan repository.
 - [x] Keep inherited Actions disabled and publication commands blocked.
 - [x] Add a separate Bostan local preview CLI and a guarded source-only runtime.
+- [x] B0-31 macOS real source-runtime regression: two separate loopback starts,
+  synthetic company creation, restart persistence and clean PostgreSQL shutdown.
+  This is **not** a Windows or standalone installer qualification.
 - [x] Qualify an isolated macOS first-agent smoke and one real Windows task
   using a free-labeled online OpenCode model; this is **not offline inference**.
 - [x] Refuse Windows legacy non-UTF8 PostgreSQL data without destroying it.
