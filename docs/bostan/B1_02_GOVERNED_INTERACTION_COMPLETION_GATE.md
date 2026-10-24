@@ -65,3 +65,17 @@ payload insertion, dynamic external-effects readback, secret-delivery
 rollback, concurrency under heavy load, Windows runtime E2E or final
 application distribution. A full B1 authorization and race audit remains.
 No merge to main, deployment, publication or paid services. **NO-GO.**
+
+### Final source/runtime verification
+
+- Full server TypeScript:
+  `pnpm --filter @paperclipai/server exec tsc --noEmit --pretty false` —
+  **PASS, exit 0** when executed without a concurrent heavyweight database
+  suite. An earlier overlapping check was intentionally cancelled due to
+  local resource pressure; that cancelled run was never counted as a pass.
+- Real Mac source-app smoke after the B1-02 gate:
+  `BOSTAN_LIVE_LOCAL_QA_CONFIRM=1 node scripts/bostan-local-live-persistence-e2e.mjs`
+  **PASS, exit 0** — private HTTP health, synthetic company creation, stop,
+  restart, exact persistence, and second clean PostgreSQL stop.
+- All B1-01 and B1-02 SQL tests completed with **15 PASS / 0 FAIL**;
+  no isolated PostgreSQL test directories left afterward.
