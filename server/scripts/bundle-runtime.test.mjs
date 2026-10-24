@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { bundleRuntime, preserveModuleLocation, compiledRunnerQaShim } from "./bundle-runtime.mjs";
+import { bundleRuntime, preserveModuleLocation, compiledRunnerQaShim, shouldResolveAsBarePackage } from "./bundle-runtime.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -151,5 +151,21 @@ describe("opt-in Bostan source QA prebundle", () => {
   it("refuses unknown replacements without altering production source imports", () => {
     const plain = 'import { readFileSync } from "node:fs";';
     expect(compiledRunnerQaShim(plain, "/tmp/fixture/packages/foo/index.ts")).toBe(plain);
+  });
+});
+
+describe("Windows absolute import paths in esbuild QA", () => {
+  it("never treats a Windows drive-letter entrypoint as an external npm package", () => {
+    for (const target of [
+      "C:" + String.fromCharCode(92) + "work" + String.fromCharCode(92) + "server" + String.fromCharCode(92) + "src" + String.fromCharCode(92) + "index.ts",
+      "D:/work/bostan/server/src/index.ts",
+      "/private/tmp/bostan/server/src/index.ts",
+      "./server/src/index.ts",
+      "../server/src/index.ts",
+      "node:fs", "file:///tmp/file.js",
+    ]) expect(shouldResolveAsBarePackage(target)).toBe(false);
+    for (const pkg of ["@paperclipai/plugin-sdk", "react", "esbuild", "typescript"]) {
+      expect(shouldResolveAsBarePackage(pkg)).toBe(true);
+    }
   });
 });

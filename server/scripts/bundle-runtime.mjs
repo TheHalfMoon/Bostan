@@ -1,6 +1,6 @@
 
 import { readFile, rm, lstat } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join, win32 } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "esbuild";
 
@@ -88,11 +88,26 @@ function keepModuleLocations({ compiledRunnerQa = false } = {}) {
   };
 }
 
+/**
+ * esbuild's bare-specifier filter also matches C:\source\server\index.ts.
+ * Absolute Windows entry points must be resolved as paths, never as third-
+ * party npm packages. The same guard handles Windows drive-letter paths
+ * during cross-platform fixture testing on macOS/Linux.
+ */
+export function shouldResolveAsBarePackage(specifier) {
+  return typeof specifier === "string"
+    && /^[^./]/.test(specifier)
+    && !isAbsolute(specifier)
+    && !win32.isAbsolute(specifier)
+    && !/^(node|file|data):/.test(specifier);
+}
+
 function externalizeThirdParty(isBundled, runtimeDir) {
   return {
     name: "externalize-third-party",
     setup(builder) {
       builder.onResolve({ filter: /^[^./]/ }, async (args) => {
+        if (!shouldResolveAsBarePackage(args.path)) return undefined;
         if (args.pluginData?.externalizeThirdParty || isBundled(args.path)) return undefined;
         const resolved = await builder.resolve(args.path, {
           kind: args.kind,
