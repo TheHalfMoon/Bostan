@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, realpathSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel, syntheticFreeAgentAdapterConfig } from "./bostan-first-agent-free-e2e.mjs";
 
@@ -94,5 +96,29 @@ test("Windows synthetic agent uses exact admitted OpenCode executable, not a PAT
       model, workspace: f.home, platform: "darwin",
     });
     assert.equal(mac.command, undefined);
+  } finally { f.clean(); }
+});
+
+test("Windows CLI ESM import path fails promptly before network when the native executable is missing", () => {
+  if (process.platform !== "win32") return;
+  const f = fixture();
+  try {
+    const script = fileURLToPath(new URL("./bostan-first-agent-free-e2e.mjs", import.meta.url));
+    const result = spawnSync(process.execPath, [script], {
+      env: {
+        ...process.env,
+        BOSTAN_E2E_URL: f.opts.url,
+        BOSTAN_E2E_DISPOSABLE_HOME: f.home,
+        BOSTAN_E2E_CONFIRM_TEMP_DATA: "1",
+        BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL: "1",
+        BOSTAN_E2E_FREE_MODEL: "opencode/deepseek-v4.1-flash-free",
+        BOSTAN_E2E_OPENCODE_EXE: "",
+      },
+      encoding: "utf8", timeout: 7_000, windowsHide: true,
+    });
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Set BOSTAN_E2E_OPENCODE_EXE/);
+    assert.doesNotMatch(result.stderr, /unsettled top-level await/i);
   } finally { f.clean(); }
 });
