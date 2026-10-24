@@ -90,3 +90,20 @@ the whole manifest. Keep them offline and private. No cross-OS or Postgres
 major-version portability guarantee exists. Full-app restore/relaunch passed a focused macOS + PostgreSQL 17 disposable
 smoke test, but broader disaster recovery is not qualified. Do not run backup concurrently with
 other Bostan operations.
+
+
+## Free-provider first-agent development smoke (not offline)
+
+A focused macOS source-runtime test verified that OpenCode could prepare a
+legacy `opencode_local` agent with `opencode/beam-free` and no stored API key.
+Bostan source runtime starts OpenCode in standalone mode to avoid colliding
+with an unrelated existing OpenCode background server. This is **only**
+a local CLI-process isolation guarantee; the model still uses an external
+online provider. Nothing is uploaded to a public project or deployment.
+
+The agent wrote a real task comment and marked a synthetic task done.
+However, its parent heartbeat process then hit a configured timeout. Do
+not interpret `done` as proof the agent run completed successfully.
+See `docs/bostan/B0_FIRST_AGENT_RUNTIME_RECEIPT.md` for the precise
+results, limitations and open release gate. No paid model/provider should
+be selected by an automated test or release process.

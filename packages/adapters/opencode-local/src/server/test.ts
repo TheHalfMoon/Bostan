@@ -26,6 +26,7 @@ import {
   overrideAdapterExecutionTargetRemoteCwd,
 } from "@paperclipai/adapter-utils/execution-target";
 import { discoverOpenCodeModels, ensureOpenCodeModelConfiguredAndAvailable, requireOpenCodeModelId } from "./models.js";
+import { bostanStandaloneArgs } from "./local-standalone.js";
 import { parseOpenCodeJsonl } from "./parse.js";
 import { SANDBOX_INSTALL_COMMAND } from "../index.js";
 import { prepareOpenCodeRuntimeConfig, prepareManagedOpenCodeRemoteHomes } from "./runtime-config.js";
@@ -368,6 +369,7 @@ export async function testEnvironment(
       const args = ["run", "--format", "json"];
       args.push("--model", probeModel);
       if (variant) args.push("--variant", variant);
+      args.push(...bostanStandaloneArgs(extraArgs, targetIsRemote));
       if (extraArgs.length > 0) args.push(...extraArgs);
 
       // Sandbox bridges still add cold-start and transport overhead, but the

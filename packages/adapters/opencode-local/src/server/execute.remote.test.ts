@@ -268,7 +268,10 @@ describe("opencode remote execution", () => {
       `${managedRemoteWorkspace}/.paperclip-runtime/opencode/xdgConfig`,
     );
     expect(modelProbeCall?.[3].remoteExecution?.remoteCwd).toBe("/remote/workspace");
-    expect(runCall?.[2].slice(-4)).toEqual(["--dir", managedRemoteWorkspace, "--", "--dir"]);
+    // New OpenCode CLI versions reject --dir. The remote target already owns
+    // its cwd; preserve the operator's literal argument after '--' only.
+    expect(runCall?.[2].slice(-2)).toEqual(["--", "--dir"]);
+    expect(runCall?.[2].slice(0, -2)).not.toContain("--dir");
     const call = runCall as
       | [string, string, string[], { env: Record<string, string>; remoteExecution?: { remoteCwd: string } | null }]
       | undefined;

@@ -98,6 +98,9 @@ export function isolatedEnv({ home, port, databaseUrl, jwt, config }, original =
     PAPERCLIP_TELEMETRY_DISABLED: "1",
     DO_NOT_TRACK: "1",
     BOSTAN_ANNOUNCEMENTS_ENABLED: "0",
+    // Every agent probe and run must use a fresh private OpenCode daemon.
+    // Inheriting the user's background server can collide or cross sessions.
+    BOSTAN_OPENCODE_STANDALONE: "1",
     OTEL_SDK_DISABLED: "true",
     PAPERCLIP_MIGRATION_AUTO_APPLY: "true",
   };

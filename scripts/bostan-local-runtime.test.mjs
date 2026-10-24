@@ -30,6 +30,7 @@ test("isolated application environment ignores inherited telemetry, external pro
   assert.equal(next.HOST, "127.0.0.1");
   assert.equal(next.PORT, "3421");
   assert.equal(next.BOSTAN_ANNOUNCEMENTS_ENABLED, "0");
+  assert.equal(next.BOSTAN_OPENCODE_STANDALONE, "1");
   assert.equal(next.PAPERCLIP_TELEMETRY_DISABLED, "1");
   assert.equal(next.DO_NOT_TRACK, "1");
   assert.equal(next.PAPERCLIP_MIGRATION_AUTO_APPLY, "true");

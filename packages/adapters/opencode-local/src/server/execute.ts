@@ -61,6 +61,7 @@ import {
   requireOpenCodeModelId,
 } from "./models.js";
 import { removeMaintainerOnlySkillSymlinks } from "@paperclipai/adapter-utils/server-utils";
+import { bostanStandaloneArgs } from "./local-standalone.js";
 import { apiKeyBillingType } from "@paperclipai/adapter-utils/api-billing-type";
 import { prepareOpenCodeRuntimeConfig, prepareManagedOpenCodeRemoteHomes } from "./runtime-config.js";
 import { SANDBOX_INSTALL_COMMAND } from "../index.js";
@@ -622,13 +623,10 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       if (resumeSessionId) args.push("--session", resumeSessionId);
       if (model) args.push("--model", model);
       if (variant) args.push("--variant", variant);
-      // OpenCode prefers the inherited PWD over process.cwd(). Use the realized
-      // workspace unless the operator already selected a directory explicitly.
-      const optionTerminator = extraArgs.indexOf("--");
-      const extraOptionArgs = optionTerminator === -1 ? extraArgs : extraArgs.slice(0, optionTerminator);
-      if (!extraOptionArgs.some((arg) => arg === "--dir" || arg.startsWith("--dir="))) {
-        args.push("--dir", effectiveExecutionCwd);
-      }
+      // Recent OpenCode versions no longer support --dir. The execution
+      // target already receives a cwd, including for remote workspaces.
+      // Never inject --dir: doing so makes a verified agent fail at dispatch.
+      args.push(...bostanStandaloneArgs(extraArgs, executionTargetIsRemote));
       if (extraArgs.length > 0) args.push(...extraArgs);
       return args;
     };
