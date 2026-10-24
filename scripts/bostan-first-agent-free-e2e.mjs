@@ -4,7 +4,13 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
-const MODEL = "opencode/deepseek-v4.1-flash-free";
+const DEFAULT_MODEL = "opencode/deepseek-v4.1-flash-free";
+const FREE_QA_MODELS = new Set([DEFAULT_MODEL, "opencode/beam-free"]);
+export function qualifyFreeQaModel(value) {
+  const model = value || DEFAULT_MODEL;
+  if (!FREE_QA_MODELS.has(model)) throw new Error("Only explicitly permitted free test models are allowed");
+  return model;
+}
 const MARKER = "BOSTAN_CLEAN_RUN_PASS";
 const MANAGED = "bostan-managed-source-runtime-v1";
 
@@ -86,6 +92,7 @@ export async function runFirstAgentFreeE2e(env = process.env) {
     confirmed: env.BOSTAN_E2E_CONFIRM_TEMP_DATA,
     onlineModelApproved: env.BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL,
   });
+  const model = qualifyFreeQaModel(env.BOSTAN_E2E_FREE_MODEL);
   const health = await requestJson(base, "health");
   if (health.status !== "ok" || health.deploymentMode !== "local_trusted"
     || health.deploymentExposure !== "private") {
@@ -101,7 +108,7 @@ export async function runFirstAgentFreeE2e(env = process.env) {
     role: "general",
     adapterType: "opencode_local",
     runner: "legacy",
-    adapterConfig: { model: MODEL, cwd: workspace, timeoutSec: 120 },
+    adapterConfig: { model, cwd: workspace, timeoutSec: 120, maxAgentSteps: 12 },
     budgetMonthlyCents: 0,
   });
   if (agent.adapterType !== "opencode_local") throw new Error("Wrong Bostan agent adapter");
@@ -141,7 +148,7 @@ export async function runFirstAgentFreeE2e(env = process.env) {
         errorCode: run.errorCode, issueStatus: finalIssue.status, hasMarker }));
   }
   console.log("Bostan first real free agent E2E PASS: " +
-    JSON.stringify({ companyId: company.id, agentId: agent.id, issueId: issue.id,
+    JSON.stringify({ model, companyId: company.id, agentId: agent.id, issueId: issue.id,
       runId: run.id, runStatus: run.status, exitCode: run.exitCode,
       issueStatus: finalIssue.status, exactMarkerFound: hasMarker,
       reportedCostUsd: run.usageJson?.costUsd ?? null }));

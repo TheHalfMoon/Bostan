@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, realpathSync } from "nod
 import path from "node:path";
 import os from "node:os";
 import test from "node:test";
-import { qualifyDisposableFirstAgentScope } from "./bostan-first-agent-free-e2e.mjs";
+import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel } from "./bostan-first-agent-free-e2e.mjs";
 
 function fixture() {
   const home = mkdtempSync(path.join(os.tmpdir(), "bostan-free-agent-guard-"));
@@ -61,4 +61,13 @@ test("scope refuses startup without a managed run lock", () => {
     writeFileSync(file, "malformed");
     assert.throws(() => qualifyDisposableFirstAgentScope(f.opts), /ownership lock/);
   } finally { f.clean(); }
+});
+
+test("allowlisted QA models only; never attempt a paid or unknown model", () => {
+  assert.equal(qualifyFreeQaModel(undefined), "opencode/deepseek-v4.1-flash-free");
+  assert.equal(qualifyFreeQaModel("opencode/beam-free"), "opencode/beam-free");
+  for (const model of ["openai/gpt-5.2", "opencode/claude-opus-5-5", "unknown/free",
+    "opencode/deepseek-v4.1-flash-free\n--ignore-safety"]) {
+    assert.throws(() => qualifyFreeQaModel(model), /Only explicitly permitted/);
+  }
 });

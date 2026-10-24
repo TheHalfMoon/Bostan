@@ -128,3 +128,19 @@ checks that the source runtime is private and healthy, and creates only
 synthetic organizations/tasks. It fails if the heartbeat ends `timed_out`
 or otherwise fails even if the task happens to be `done`. Never point
 it at a real profile or rely on free-provider availability for CI.
+
+### Optional OpenCode step budget (legacy adapter)
+
+When creating an `opencode_local` agent with `runner: "legacy"`, you can
+include `maxAgentSteps: 12` in its `adapterConfig` to cap OpenCode's
+primary build agent to at most 12 agentic iterations. The valid integer
+range is 1–128. This is optional: it does not alter any other agent or
+promise a token/cost ceiling. A pre-existing tighter OpenCode step limit
+stays in effect. The feature deliberately refuses remote execution where
+its generated local configuration would not enforce the limit.
+
+The disposable opt-in end-to-end runner uses that limit for its online
+free-model tests. Its default is `opencode/deepseek-v4.1-flash-free`; set
+`BOSTAN_E2E_FREE_MODEL=opencode/beam-free` to exercise the second allowed
+model. Paid and unknown model names are rejected by the harness.
+See `docs/bostan/B0_AGENT_STEP_BUDGET_RECEIPT.md`.
