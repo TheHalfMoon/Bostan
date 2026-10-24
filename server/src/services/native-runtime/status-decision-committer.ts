@@ -2016,6 +2016,23 @@ export async function commitNativeStatusDecision(input: {
       await supersedeExternalReviewRequestsInTransaction(tx as unknown as Db, binding, candidates, publications);
     }
 
+    // The arbiter can evaluate governance before a new consent request or
+    // approval link is committed. Recheck here after we hold the issue row
+    // lock and after validating any legitimately superseded reviews, but
+    // *before* effects or Done status are projected. Both approval linking
+    // and interaction creation take the same issue lock.
+    if (input.decision.statusAction === "done") {
+      const gate = await pendingNativeGovernance({
+        db: tx as unknown as Db,
+        companyId: input.companyId,
+        issueId: input.issueId,
+        runId: input.runId,
+        executionState: record(issue.executionState),
+        ignoredInteractionIds: input.supersededExternalReviewRequests?.interactionIds ?? [],
+      });
+      if (gate) throw new NativeStatusRaceError();
+    }
+
     const materialized: NativeMaterializedStatusEffect[] = [];
     const preMaterializedEffects = new Map(
       (input.preMaterializedEffects ?? []).map((effect) => [

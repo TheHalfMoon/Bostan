@@ -50,6 +50,10 @@ completion. Introduce strong negative-path and concurrent workload tests.
   a locked task row; bulk links are atomic and cannot cross tenants.
 - [x] B1-04: atomic formal board-approval creation in Tool Gateway; no
   orphan pending approvals or links after concurrent Done (real PostgreSQL).
+- [x] B1-05: native status committer rechecks fresh human governance under
+  the authoritative issue lock before applying Done; real corpus PASS.
+- [ ] Stress independent finalization, revocation and effect verification
+  through multiple live agents and adverse scheduling.
 - [ ] Qualify remaining governed creation paths, actual external-effect
   verification, approval revocation and concurrent lease recovery.
 - [ ] Complete independent output/effect verification, concurrency and

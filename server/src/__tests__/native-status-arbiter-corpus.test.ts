@@ -10,6 +10,8 @@ import {
   agents,
   agentWakeupRequests,
   companies,
+  approvals,
+  issueApprovals,
   completionContracts,
   createDb,
   heartbeatRuns,
@@ -70,7 +72,7 @@ import * as activityLog from "../services/activity-log.js";
 import { dismissObsoleteNativePolicyReviews } from "../services/native-runtime/obsolete-policy-reviews.js";
 import { issueService } from "../services/issues.js";
 import { issueThreadInteractionService } from "../services/issue-thread-interactions.js";
-import { startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
+import { startBostanFeedbackPostgresTestDatabase as startEmbeddedPostgresTestDatabase } from "./helpers/bostan-postgres-test-backend.js";
 
 type Fixture = {
   id: string;
@@ -381,7 +383,7 @@ describe("P6-31 Section 18.13 executable status-authority corpus", () => {
   const outsideAgentId = randomUUID();
 
   beforeAll(async () => {
-    temporary = await startEmbeddedPostgresTestDatabase("paperclip-status-corpus-");
+    temporary = await startEmbeddedPostgresTestDatabase("bostan-status-corpus-");
     db = createDb(temporary.connectionString);
     await db.insert(companies).values({ id: companyId, name: "Status corpus", issuePrefix: "PSC" });
     await db.insert(companies).values({ id: outsideCompanyId, name: "Outside corpus", issuePrefix: "OUT" });
@@ -409,7 +411,7 @@ describe("P6-31 Section 18.13 executable status-authority corpus", () => {
         status: "idle",
       },
     ]);
-  }, 30_000);
+  }, 120_000);
 
   afterAll(async () => temporary?.cleanup());
 
@@ -2888,6 +2890,55 @@ describe("P6-31 Section 18.13 executable status-authority corpus", () => {
     }).from(workAssessments).where(eq(workAssessments.id, supersedingAssessmentId))).resolves.toEqual([
       { supersedesAssessmentId: seeded.assessmentId },
     ]);
+  });
+
+  it("Bostan B1-05 native Done rechecks a newly linked approval under the issue lock", async () => {
+    const template = corpus.fixtures.find(candidate => candidate.mode === "native")!;
+    const fixture = { ...template, id: "bostan-b1-native-governed-finalization", given: { ...template.given, priorIssueStatus: "in_progress" } };
+    const seeded = await seedFixture(fixture);
+    const approvalId = randomUUID();
+    await db.insert(approvals).values({
+      id: approvalId, companyId, type: "request_board_approval", status: "pending",
+      payload: { source: "bostan-native-concurrency-test" },
+    });
+    await db.insert(issueApprovals).values({
+      companyId, issueId: seeded.issueId, approvalId,
+    });
+    const done: NativeStatusDecision = {
+      policyVersion: NATIVE_STATUS_ARBITER_POLICY_VERSION,
+      statusAction: "done", toStatus: "done",
+      reasonCode: "completion_contract_satisfied", unblockDescriptor: null, effects: [],
+    };
+    await expect(commitNativeStatusDecision({
+      db, companyId, issueId: seeded.issueId, runId: seeded.runId,
+      assessmentId: seeded.assessmentId, priorStatus: "in_progress",
+      priorStatusVersion: 0, priorDecisionId: null, decision: done,
+    })).rejects.toThrow("native_status_race");
+    const [state] = await db.select({ status: issues.status }).from(issues).where(eq(issues.id, seeded.issueId));
+    expect(state?.status).toBe("in_progress");
+    expect(await db.select().from(statusDecisions).where(eq(statusDecisions.issueId, seeded.issueId))).toHaveLength(0);
+  });
+
+  it("Bostan B1-05 native Done refuses newly pending governed interaction", async () => {
+    const template = corpus.fixtures.find(candidate => candidate.mode === "native")!;
+    const fixture = { ...template, id: "bostan-b1-native-late-authorization", given: { ...template.given, priorIssueStatus: "in_progress" } };
+    const seeded = await seedFixture(fixture);
+    await db.insert(issueThreadInteractions).values({
+      companyId, issueId: seeded.issueId, kind: "request_confirmation", status: "pending",
+      payload: { version: 1, prompt: "Approve the synthetic action?" },
+    });
+    const done: NativeStatusDecision = {
+      policyVersion: NATIVE_STATUS_ARBITER_POLICY_VERSION,
+      statusAction: "done", toStatus: "done",
+      reasonCode: "completion_contract_satisfied", unblockDescriptor: null, effects: [],
+    };
+    await expect(commitNativeStatusDecision({
+      db, companyId, issueId: seeded.issueId, runId: seeded.runId,
+      assessmentId: seeded.assessmentId, priorStatus: "in_progress",
+      priorStatusVersion: 0, priorDecisionId: null, decision: done,
+    })).rejects.toThrow("native_status_race");
+    const [state] = await db.select({ status: issues.status }).from(issues).where(eq(issues.id, seeded.issueId));
+    expect(state?.status).toBe("in_progress");
   });
 
   it("binds a tools-refresh continuation to its existing durable wake without a duplicate", async () => {
