@@ -1,18 +1,20 @@
 # Bostan CLI
 
-**Development preview — not ready for installation or release.**
+**Development preview only — not a complete Bostan installation or release.**
 
-Bostan is an autonomous-company and AI-agent orchestration platform. The preview CLI is intentionally limited to offline, read-only identity commands:
+This CLI supports limited offline functionality:
 
 ```bash
 bostan --help
 bostan --version
+bostan status
+bostan install --local
 ```
 
-All operational commands (including `install`, `update`, `uninstall`, `service`, `run` and `onboard`) are currently refused. This prevents incomplete Bostan migrations from touching legacy service/data stores or downloading a different product's binaries. Do not attempt to bypass these restrictions by invoking internal development entrypoints.
+`status` is read-only and reports whether a verified Bostan CLI preview is installed. `install --local` installs **only the Bostan preview CLI** from the current source/package: an isolated payload under `~/.bostan/cli` and a new command at `~/.local/bin/bostan`. It refuses existing commands, unexpected file types, symlinks and changed managed files. It never downloads binaries or accesses the former product's state. The caller must invoke it explicitly.
 
-The code foundation remains under qualification. Do not distribute, deploy, or run against real accounts, live payment systems, or company data.
+This does **not** install or start the Bostan server, database, AI agents or system services. Update, uninstall, onboard, run, remote installation and all release commands remain disabled pending safety qualification. Windows CLI installation is not qualified.
 
 Project: https://github.com/TheHalfMoon/Bostan
 
-License: MIT. See the bundled LICENSE and the repository's source/provenance documentation for retained third-party notices.
+License: MIT; see LICENSE and original attribution/provenance documentation in the repository.

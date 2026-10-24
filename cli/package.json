@@ -1,7 +1,7 @@
 {
   "name": "bostan",
   "version": "0.3.1",
-  "description": "Bostan preview command line interface (operations gated pending local identity qualification)",
+  "description": "Bostan local-source CLI preview with isolated installation and guarded operations",
   "type": "module",
   "bin": {
     "bostan": "./dist/bostan.js"
@@ -30,7 +30,9 @@
     "build": "node scripts/build-bostan-preview.mjs",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
-    "bostan:smoke": "node --test src/__tests__/bostan-preview.test.mjs"
+    "bostan:smoke": "node --test src/__tests__/bostan-preview.test.mjs src/__tests__/bostan-local-install.test.mjs",
+    "prepack": "node ../scripts/bostan-release-disabled.mjs",
+    "prepublishOnly": "node ../scripts/bostan-release-disabled.mjs"
   },
   "dependencies": {
     "@clack/prompts": "^1.7.0",
