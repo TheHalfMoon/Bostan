@@ -26,7 +26,7 @@ test("isolated application environment ignores inherited telemetry, external pro
     jwt: "test-agent-jwt", config: "/tmp/bostan-owned-home/.bostan/app/config.json",
   }, parent);
   assert.equal(next.HOME, "/tmp/bostan-owned-home");
-  assert.equal(next.PAPERCLIP_HOME, "/tmp/bostan-owned-home/.bostan/app/state");
+  assert.equal(next.PAPERCLIP_HOME, join("/tmp/bostan-owned-home", ".bostan", "app", "state"));
   assert.equal(next.HOST, "127.0.0.1");
   assert.equal(next.PORT, "3421");
   assert.equal(next.BOSTAN_ANNOUNCEMENTS_ENABLED, "0");
