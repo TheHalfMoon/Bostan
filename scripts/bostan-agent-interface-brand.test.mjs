@@ -35,6 +35,10 @@ const visibleCopy = new Map([
   ["ui/src/pages/InstanceExperimentalSettings.tsx", "Bostan Developer Mode"],
   ["ui/src/pages/Costs.tsx", "Bostan cannot enforce a Muse spend ceiling."],
   ["ui/src/pages/McpConnect.tsx", "Connect your assistant to Bostan"],
+  ["ui/src/pages/AgentToolsTab.tsx", "Bostan could not verify this agent"],
+  ["ui/src/pages/ProjectWorkspaceDetail.tsx", "A local path Bostan can use directly."],
+  ["ui/src/pages/ExecutionWorkspaceDetail.tsx", "Bostan created a run using this execution workspace."],
+  ["ui/src/pages/agent-skills/AgentSkillsTab.tsx", "stable Bostan-managed prompt bundle"],
 ]);
 
 test("first-party agent and local adapter labels expose Bostan identity", () => {
@@ -83,4 +87,21 @@ test("assistant connection UI retains stable MCP OAuth permission scopes", () =>
     assert.ok(body.includes(scope), scope + " is a stable scope identifier");
   }
   assert.doesNotMatch(body, /Connect your assistant to Paperclip|Write all of your Paperclip data/);
+});
+
+test("operational workspace and agent tool screens show Bostan without renaming runtime protocols", () => {
+  for (const filename of [
+    "ui/src/pages/AgentToolsTab.tsx",
+    "ui/src/pages/ProjectWorkspaceDetail.tsx",
+    "ui/src/pages/ExecutionWorkspaceDetail.tsx",
+  ]) {
+    assert.doesNotMatch(source(filename), /Paperclip/, filename);
+  }
+  const skills = source("ui/src/pages/agent-skills/AgentSkillsTab.tsx");
+  assert.match(skills, /Bostan cannot manage skills for custom ACP commands yet/);
+  assert.match(skills, /Bostan cannot manage OpenClaw skills here/);
+  assert.match(skills, /Bostan cannot manage skills for this adapter yet/);
+  // These are technical legacy compatibility identifiers, not product copy.
+  assert.match(skills, /agent\.adapterType === "paperclip_runner"/);
+  assert.match(skills, /legacy Paperclip operational skill/);
 });
