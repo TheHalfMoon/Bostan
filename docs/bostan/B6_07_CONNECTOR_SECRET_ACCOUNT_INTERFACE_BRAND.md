@@ -23,6 +23,18 @@ The existing first-party Bostan brand regression includes these eight screens an
 - Git diff whitespace validation: **PASS**.
 - React act(...) state-update test warnings existed but no assertions failed.
 
+## Actual isolated Windows security source check — 2026-10-25
+
+The connected Windows device (Abdulaziz) was checked for a source clone and available capacity, then a private shallow sparse Git checkout of this exact branch was created under the user's Windows TEMP path solely for Node source QA. No large dependencies, PostgreSQL or external paid model were installed.
+
+On native Windows Node v24, the command:
+
+node --test scripts/bostan-windows-acl.test.mjs scripts/bostan-local-runtime.test.mjs
+
+returned **18/18 PASS**, **0 FAIL**, **0 SKIP**. Scenarios include real NTFS DACL apply/verify on a freshly created disposable synthetic .bostan directory, intentional broad ACL injection and fail-closed recovery, rejection of real HOME and non-TEMP paths, refusal of missing/foreign DB executables, disabled inherited telemetry/secrets, UTF8 PG cluster arguments and pre-qualified zero-cost free-provider credential isolation.
+
+**Limit:** This verifies source-only security properties with synthetic files, not actual Bostan app install, browser journeys, real native PostgreSQL, packaged Windows distribution, or full Windows runtime and security qualification. The temporary checkout is to be cleaned after recorded evidence.
+
 ## Unqualified release gates
 
 These are source/UI code checks, not a new installed browser E2E, trained model evaluation, independent reviewer, production-like security penetration test or Windows installer sign-off. B4 document/OCR/analytics breadth, B5 real free-model independent review with current saved citations, B6 cross-platform installer/browser and external integration qualification remain open.
