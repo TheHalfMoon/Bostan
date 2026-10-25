@@ -16,6 +16,8 @@ describe("saved harness verification", () => {
     ["opencode_hello_probe_timed_out", "harness_probe_timed_out"],
     ["opencode_hello_probe_unexpected_output", "harness_probe_unexpected_output"],
     ["private provider error", "harness_test_failed"],
+    ["opencode_free_usage_limit_reached", "harness_free_provider_limited"],
+    ["opencode_free_provider_capacity_unavailable", "harness_free_provider_limited"],
   ])("classifies %s without keeping provider output", (checkCode, code) => {
     try {
       assertHarnessTestPassed(result("fail", [checkCode]));

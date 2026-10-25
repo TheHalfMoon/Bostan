@@ -3,6 +3,7 @@ import type { LifecycleFailure } from "./ports.js";
 // Only fixed text may leave this boundary. Provider errors can contain secrets.
 const reasons = {
   harness_test_failed: "The execution test did not pass. Open Configuration and run the agent test to inspect the failed checks.",
+  harness_free_provider_limited: "The selected free provider is rate-limited or at capacity. No paid fallback was used. Retry when free capacity is available.",
   harness_auth_failed: "Authentication failed. Check the agent's AI connection or sign in to its execution tool, then retry.",
   harness_model_unavailable: "The selected model is unavailable. Choose a model supported by the agent's AI connection in Configuration, then retry.",
   harness_command_unavailable: "The execution command was not found. Check the command and its installation in the agent's environment, then retry.",

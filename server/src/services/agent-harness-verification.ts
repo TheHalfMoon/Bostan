@@ -23,6 +23,9 @@ export function assertHarnessTestPassed(result: AdapterEnvironmentTestResult) {
   if (result.status === "fail" || authenticationFailed || incomplete) {
     const has = (suffix: string) => result.checks.some(check => check.code.endsWith(suffix));
     const code = authenticationFailed ? "harness_auth_failed"
+      : result.checks.some(check => ["opencode_free_usage_limit_reached",
+          "opencode_free_provider_capacity_unavailable"].includes(check.code))
+        ? "harness_free_provider_limited"
       : has("_hello_probe_model_unavailable") || has("_model_invalid") ? "harness_model_unavailable"
       : has("_command_unresolvable") ? "harness_command_unavailable"
       : has("_cwd_invalid") ? "harness_cwd_invalid"

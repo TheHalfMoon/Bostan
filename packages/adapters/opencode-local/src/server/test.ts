@@ -72,6 +72,20 @@ const OPENCODE_AUTH_REQUIRED_RE =
 export const OPENCODE_FREE_USAGE_LIMIT_RE =
   /(?:free\s+usage\s+(?:limit\s+)?(?:reached|exceeded)|free\s+(?:tier\s+)?quota\s+(?:reached|exceeded|exhausted))/i;
 
+/**
+ * Do not confuse a generic failed OpenCode command with provider capacity.
+ * This only applies to a specifically pinned zero-price OpenRouter :free ID,
+ * AND an explicit error/rate signal in a failed test probe. The result is a
+ * fixed check code; the raw provider response is never forwarded to a public
+ * agent lifecycle error.
+ */
+export function safeOpenRouterFreeCapacitySignal(model: string, evidence: string): boolean {
+  if (!/^openrouter\/[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*:free$/.test(model) ||
+      typeof evidence !== "string" || evidence.length > 128_000) return false;
+  return /(?:\b(?:HTTP\s*)?429\b|\bTooManyRequests\b|\bRateLimitError\b|\brate.?limit(?:ed|ing)?\b|\bquota\b.{0,48}\b(?:exceeded|exhausted|reached)\b|\bprovider\b.{0,48}\b(?:capacity|overloaded)\b|\b(?:resource|capacity)\s+exhausted\b)/i
+    .test(evidence);
+}
+
 export async function testEnvironment(
   ctx: AdapterEnvironmentTestContext,
 ): Promise<AdapterEnvironmentTestResult> {
@@ -444,6 +458,13 @@ export async function testEnvironment(
             level: "error",
             message: "The selected free OpenCode provider has reached its current usage allowance.",
             hint: "No paid provider was used. Resume when free usage is available, or select an already approved free model.",
+          });
+        } else if (safeOpenRouterFreeCapacitySignal(probeModel, authEvidence)) {
+          checks.push({
+            code: "opencode_free_provider_capacity_unavailable",
+            level: "error",
+            message: "The zero-priced OpenRouter model reported a capacity or rate limit.",
+            hint: "No paid fallback is allowed. Retry only after free capacity returns.",
           });
         } else if (/ProviderModelNotFoundError/i.test(authEvidence)) {
           checks.push({

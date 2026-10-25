@@ -166,6 +166,18 @@ test("agent readiness diagnostics allow only safe status enums; never echo priva
   }), { lifecycleState: null, status: null });
 });
 
+test("free-provider lifecycle capacity is safely classified without echoing provider data", () => {
+  const observed = safeAgentLifecycleDiagnostic({
+    lifecycleState: "verifying", status: "paused",
+    lifecycleError: "Execution configuration check failed. The selected free provider is rate-limited or at capacity. No paid fallback was used. Retry when free capacity is available. private-sk-or-token",
+  });
+  assert.deepEqual(observed, {
+    lifecycleState: "verifying", status: "paused",
+    failureCode: "harness_free_provider_limited",
+  });
+  assert.doesNotMatch(JSON.stringify(observed), /private|token|sk-or/);
+});
+
 test("agent lifecycle harness-failure classification does not leak provider or credentials", () => {
   const payload = { lifecycleState: "verifying", status: "paused",
     lifecycleError: "Execution configuration check failed. Authentication failed. secret=private." };

@@ -69,6 +69,7 @@ describe("lifecycle readiness handoff", () => {
 describe("lifecycle failure diagnostics", () => {
   it.each([
     ["host", "harness_model_unavailable", "Execution configuration check failed. The selected model is unavailable."],
+    ["host", "harness_free_provider_limited", "Execution configuration check failed. The selected free provider is rate-limited or at capacity."],
     ["plugin", "required_plugin_unavailable", "Execution configuration check: required plugin step failed. A required plugin is unavailable."],
     ["select_plugins", "unknown private code", "Execution configuration check: finding required plugins failed. Paperclip could not complete this step."],
     ["transition", "40P01", "Execution configuration check: saving progress failed. Paperclip could not complete this step."],

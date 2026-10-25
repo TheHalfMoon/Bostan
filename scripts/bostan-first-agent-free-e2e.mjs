@@ -48,7 +48,10 @@ export function safeAgentLifecycleDiagnostic(agent) {
     /^[a-z][a-z0-9_]{0,39}$/.test(value) ? value : null;
   const lifecycleError = typeof agent?.lifecycleError === "string"
     ? agent.lifecycleError : "";
-  const failureCode = lifecycleError.startsWith("Execution configuration check failed.")
+  const failureCode = lifecycleError.startsWith(
+    "Execution configuration check failed. The selected free provider is rate-limited")
+    ? "harness_free_provider_limited"
+    : lifecycleError.startsWith("Execution configuration check failed.")
     ? "harness_test_failed"
     : lifecycleError.startsWith("Agent lifecycle verification failed.")
       ? "lifecycle_verification_failed" : null;
