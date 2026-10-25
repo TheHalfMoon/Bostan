@@ -51,6 +51,8 @@ export function safeAgentLifecycleDiagnostic(agent) {
   const failureCode = lifecycleError.startsWith(
     "Execution configuration check failed. The selected free provider is rate-limited")
     ? "harness_free_provider_limited"
+    : lifecycleError.startsWith("Execution configuration check failed. The execution tool's hello verification could not complete due to a connection or transport error.")
+    ? "harness_probe_transport_unavailable"
     : lifecycleError.startsWith("Execution configuration check failed. The execution tool launched, but its hello verification request failed.")
     ? "harness_probe_failed"
     : lifecycleError.startsWith("Execution configuration check failed.")

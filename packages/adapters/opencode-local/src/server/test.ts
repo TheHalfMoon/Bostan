@@ -86,6 +86,16 @@ export function safeOpenRouterFreeCapacitySignal(model: string, evidence: string
     .test(evidence);
 }
 
+/**
+ * Classify transport error events from a FAILED, pinned free OpenRouter
+ * hello probe, never ordinary model response text or raw credentials.
+ */
+export function safeOpenRouterFreeTransportSignal(model: string, errorEvidence: string): boolean {
+  if (!/^openrouter\/[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*:free$/.test(model) ||
+      typeof errorEvidence !== "string" || errorEvidence.length > 128_000) return false;
+  return /\b(?:ECONNREFUSED|ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|ENETUNREACH|EHOSTUNREACH)\b|\b(?:fetch failed|network error|connection reset|connection timed out|unable to connect|failed to connect)\b/i.test(errorEvidence);
+}
+
 export async function testEnvironment(
   ctx: AdapterEnvironmentTestContext,
 ): Promise<AdapterEnvironmentTestResult> {
@@ -465,6 +475,15 @@ export async function testEnvironment(
             level: "error",
             message: "The zero-priced OpenRouter model reported a capacity or rate limit.",
             hint: "No paid fallback is allowed. Retry only after free capacity returns.",
+          });
+        } else if (safeOpenRouterFreeTransportSignal(
+          probeModel, [parsed.errorMessage ?? "", probe.stderr].join("\n"),
+        )) {
+          checks.push({
+            code: "opencode_hello_probe_transport_unavailable",
+            level: "error",
+            message: "The pinned free model hello probe reported a connection/transport error.",
+            hint: "Verify local connectivity and free provider availability; no paid fallback.",
           });
         } else if (/ProviderModelNotFoundError/i.test(authEvidence)) {
           checks.push({
