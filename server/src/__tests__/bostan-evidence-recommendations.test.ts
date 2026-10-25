@@ -247,6 +247,55 @@ suite("Bostan B2 recommendations reuse signed board decisions", () => {
     expect(decided).toMatchObject({ status: "decided", chosenOptionId: "pilot" });
     expect(await db.select().from(decisionEffectExecutions)).toHaveLength(0);
   });
+  it("B4-05 revokes positive board review when a previously visible cited document becomes private", async () => {
+    await seed();
+    const documentId = randomUUID();
+    await db.insert(documents).values({ id: documentId, companyId, title: "Private after proposal",
+      latestBody: "Previously accessible test source", latestRevisionNumber: 1 });
+    await db.insert(issueDocuments).values({ companyId, issueId: evidenceIssueId,
+      documentId, key: "private-after-proposal" });
+    const citation = await readBostanIssueDocumentEvidence({ db, companyId,
+      issueId: evidenceIssueId, documentId, issueReadCondition: sql<boolean>`true` });
+    const proposal = await write({ ...base(), evidenceIssueIds: [evidenceIssueId],
+      evidenceDocuments: [{ issueId: evidenceIssueId, documentId,
+        expectedSnapshotHmacSha256: citation!.sourceSnapshotHmacSha256 }] });
+    const [before] = await db.select({ updatedAt: issues.updatedAt })
+      .from(issues).where(eq(issues.id, evidenceIssueId));
+    // Keep the issue evidence timestamp/content exactly unchanged. Only
+    // reviewer-specific privacy is revoked, so an issue HMAC-only gate
+    // cannot detect this change.
+    await db.update(issues).set({ visibility: "private",
+      privacyRootIssueId: evidenceIssueId, responsibleUserId: "foreign-source-owner",
+      createdByUserId: "foreign-source-owner", updatedAt: before.updatedAt })
+      .where(eq(issues.id, evidenceIssueId));
+    const board = { type: "board" as const, userId, companyIds: [companyId],
+      source: "session" as const, memberships: [{ companyId, membershipRole: "member", status: "active" }] };
+    const [unchanged] = await db.select({ updatedAt: issues.updatedAt })
+      .from(issues).where(eq(issues.id, evidenceIssueId));
+    expect(unchanged.updatedAt.getTime()).toBe(before.updatedAt.getTime());
+    const latest = await db.select().from(decisions).where(eq(decisions.id, proposal.id)).then(rows => rows[0]!);
+    const { isBostanRecommendationFresh } = await import("../services/bostan-recommendation-freshness.js");
+    expect(await isBostanRecommendationFresh(db, latest, board)).toBe(false);
+    const readOnlyApp = express(); readOnlyApp.use(express.json());
+    readOnlyApp.use((req, _res, next) => { req.actor = board; next(); });
+    readOnlyApp.use("/api", decisionRoutes(db, serviceOptions)); readOnlyApp.use(errorHandler);
+    const preview = await request(readOnlyApp).get(`/api/decisions/${proposal.id}/bostan-freshness`);
+    expect(preview.status).toBe(200);
+    expect(preview.body).toMatchObject({ current: false, positiveChoiceAllowed: false,
+      authoritativeExecutionAllowed: false });
+    await expect(decisionService(db, serviceOptions).decide({ id: proposal.id, optionId: "pilot",
+      decidedByUserId: userId, userActor: board })).rejects.toMatchObject({
+      status: 409, details: { code: "bostan_recommendation_stale" },
+    });
+    const [retained] = await db.select().from(decisions).where(eq(decisions.id, proposal.id));
+    expect(retained.status).toBe("open");
+    expect(await db.select().from(decisionEffectExecutions)).toHaveLength(0);
+    // A safe abstention never consumes private evidence and remains inert.
+    const deferred = await decisionService(db, serviceOptions).decide({ id: proposal.id,
+      optionId: "defer", decidedByUserId: userId, userActor: board });
+    expect(deferred.chosenOptionId).toBe("defer");
+    expect(await db.select().from(decisionEffectExecutions)).toHaveLength(0);
+  });
   it("B4-04 rejects invalid/foreign/unlinked document citations before proposal", async () => {
     await seed();
     const absentDocument = randomUUID();

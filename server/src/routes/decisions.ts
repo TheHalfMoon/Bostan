@@ -194,7 +194,7 @@ export function decisionRoutes(db: Db, options: DecisionServiceOptions) {
       res.status(404).json({ error: "Bostan recommendation not found" }); return;
     }
     const current = decision.status === "open"
-      ? await isBostanRecommendationFresh(db, decision)
+      ? await isBostanRecommendationFresh(db, decision, req.actor)
       : false;
     res.json({ decisionId: decision.id, status: decision.status, current,
       positiveChoiceAllowed: current && decision.status === "open",

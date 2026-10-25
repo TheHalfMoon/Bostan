@@ -150,6 +150,10 @@ Enforce deletion propagation, tenant boundaries and prompt-injection safety.
   existing human-board decision transaction. Changed document fails closed;
   correct source still permits effect-free human choice. 33/33 real SQL
   and service integration tests PASS; factual relevance still unproven.
+- [x] B4-05: enforce the *current human reviewer's* canonical task-document
+  read condition at positive board decision commit and in its preview, not
+  the agent's earlier source access. A newly private document fails even
+  with unchanged content/version; 34/34 real SQL/HTTP tests PASS.
 - [ ] Extend B4 to general scoped search/OCR, cross-source citation quality,
   provenance through revision conflicts, deletion propagation to external
   caches, injection-resistant agents and reproducible analytics.

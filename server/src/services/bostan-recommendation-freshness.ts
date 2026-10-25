@@ -1,11 +1,12 @@
 import { createHmac } from "node:crypto";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { budgetPolicies, heartbeatRuns, issues, type Db } from "@paperclipai/db";
 import { addCents, unitsToCents, usdToUnits } from "@paperclipai/shared";
 import { budgetPoliciesForRun, computeObservedSpends } from "./budgets.js";
 import { resolveDecisionSigningSecret } from "./decision-signing.js";
 import { readBostanIssueDocumentEvidence } from "./bostan-knowledge-evidence.js";
+import { issueReadSqlCondition, type AuthorizationActor } from "./authorization.js";
 
 /** Recheck a signed B2 recommendation at board-choice time. This is advice
  * only, so it does not allocate funds or grant an external effect. Callers
@@ -13,7 +14,7 @@ import { readBostanIssueDocumentEvidence } from "./bostan-knowledge-evidence.js"
 export async function isBostanRecommendationFresh(db: Db, decision: {
   companyId: string; originAgentId: string; originRunId: string;
   metadata: Record<string, unknown>;
-}): Promise<boolean> {
+}, reviewingActor: AuthorizationActor): Promise<boolean> {
   const metadata = decision.metadata;
   const evidenceIds = metadata.evidenceIssueIds;
   if (!Array.isArray(evidenceIds) || !evidenceIds.length || evidenceIds.length > 10 ||
@@ -47,10 +48,17 @@ export async function isBostanRecommendationFresh(db: Db, decision: {
         evidenceIds.includes(ref.issueId)) ||
       new Set(documentRefs.map(ref => `${ref.issueId}:${ref.documentId}`)).size !== documentRefs.length ||
       metadata.evidenceDocumentCount !== documentRefs.length) return false;
+    // A recommendation's original agent may have been entitled to a
+    // private source that the deciding human may NOT read. Never promote
+    // agent-side visibility into broader board authority. The real board
+    // actor's task-privacy condition is applied inside the locked source
+    // query, after consulting current memberships and admin grants.
+    if (reviewingActor.type !== "board") return false;
+    const reviewerReadCondition = await issueReadSqlCondition(db, reviewingActor);
     for (const ref of documentRefs) {
       const current = await readBostanIssueDocumentEvidence({
         db, companyId: decision.companyId, issueId: ref.issueId, documentId: ref.documentId,
-        issueReadCondition: sql<boolean>`true`, lockForShare: true,
+        issueReadCondition: reviewerReadCondition, lockForShare: true,
       });
       if (!current || current.sourceSnapshotHmacSha256 !== ref.sourceSnapshotHmacSha256) return false;
     }

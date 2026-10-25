@@ -685,7 +685,7 @@ export function decisionService(db: Db, options: DecisionServiceOptions) {
         if (locked.options.some(option => option.effects.length > 0)) {
           throw forbidden("Bostan recommendations cannot execute effects");
         }
-        if (!safeAbstention && !(await isBostanRecommendationFresh(tx as unknown as Db, locked))) {
+        if (!safeAbstention && !(await isBostanRecommendationFresh(tx as unknown as Db, locked, input.userActor))) {
           throw conflict("Recommendation evidence or budget has changed; request fresh advice", {
             code: "bostan_recommendation_stale",
           });
