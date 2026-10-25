@@ -635,10 +635,10 @@ export function InstanceExperimentalSettings() {
         <section className="space-y-3" aria-labelledby="developer-mode-heading">
           <div className="space-y-1">
             <h2 id="developer-mode-heading" className="text-sm font-semibold">
-              Paperclip Developer Mode
+              Bostan Developer Mode
             </h2>
             <p className="text-sm text-muted-foreground">
-              Internal tools for developing, testing, and debugging Paperclip.
+              Internal tools for developing, testing, and debugging Bostan.
             </p>
           </div>
 
@@ -656,6 +656,19 @@ export function InstanceExperimentalSettings() {
           />
 
           <ExperimentalToggleCard
+            title="Bostan Developer Mode"
+            description="Show internal Bostan maintainer tools and observability links, including Honeycomb trace queries on run pages."
+            checked={enablePaperclipDeveloperMode}
+            onCheckedChange={(checked) =>
+              toggleMutation.mutate({ enablePaperclipDeveloperMode: checked })
+            }
+            disabled={toggleMutation.isPending}
+            settingKey="enablePaperclipDeveloperMode"
+            managed={managedKeys.enablePaperclipDeveloperMode}
+            ariaLabel="Toggle Bostan developer mode experimental setting"
+          />
+
+          <ExperimentalToggleCard
             title="Managed Environment Only"
             description="Hide the local environment and run all agents in the platform-managed environment."
             checked={enableManagedSandboxOnly}
@@ -666,19 +679,6 @@ export function InstanceExperimentalSettings() {
             settingKey="enableManagedSandboxOnly"
             managed={managedKeys.enableManagedSandboxOnly}
             ariaLabel="Toggle managed environment only experimental setting"
-          />
-
-          <ExperimentalToggleCard
-            title="Paperclip Developer Mode"
-            description="Show internal Paperclip maintainer tools and observability links, including Honeycomb trace queries on run pages."
-            checked={enablePaperclipDeveloperMode}
-            onCheckedChange={(checked) =>
-              toggleMutation.mutate({ enablePaperclipDeveloperMode: checked })
-            }
-            disabled={toggleMutation.isPending}
-            settingKey="enablePaperclipDeveloperMode"
-            managed={managedKeys.enablePaperclipDeveloperMode}
-            ariaLabel="Toggle Paperclip developer mode experimental setting"
           />
 
           {showWorktreeRunExecution ? (

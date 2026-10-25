@@ -32,6 +32,9 @@ const visibleCopy = new Map([
   ["ui/src/lib/skill-policy-denial.ts", "configured Bostan workspace"],
   ["ui/src/pages/UserProfile.tsx", '"Bostan services"'],
   ["ui/src/pages/Secrets.tsx", 'placeholder="alias/bostan-secrets"'],
+  ["ui/src/pages/InstanceExperimentalSettings.tsx", "Bostan Developer Mode"],
+  ["ui/src/pages/Costs.tsx", "Bostan cannot enforce a Muse spend ceiling."],
+  ["ui/src/pages/McpConnect.tsx", "Connect your assistant to Bostan"],
 ]);
 
 test("first-party agent and local adapter labels expose Bostan identity", () => {
@@ -72,4 +75,12 @@ test("Bostan-facing secrets, workspace and run-control UI never advertises donor
   assert.match(secrets, /paperclip.secrets.viewMode/);
   assert.match(secrets, /paperclip_managed/);
   assert.match(source("ui/src/pages/IssueDetail.tsx"), /paperclip_runner_v1/);
+});
+
+test("assistant connection UI retains stable MCP OAuth permission scopes", () => {
+  const body = source("ui/src/pages/McpConnect.tsx");
+  for (const scope of ["paperclip:agent", "paperclip:write", "paperclip:configure"]) {
+    assert.ok(body.includes(scope), scope + " is a stable scope identifier");
+  }
+  assert.doesNotMatch(body, /Connect your assistant to Paperclip|Write all of your Paperclip data/);
 });
