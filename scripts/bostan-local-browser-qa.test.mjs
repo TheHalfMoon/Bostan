@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { requirePrivateBrowserQaTarget, isAllowedPrivateBrowserRequest,
-  runPrivateBostanBrowserQa } from "./bostan-local-browser-qa.mjs";
+  requireBostanBrowserOnboardingConsent, runPrivateBostanBrowserQa } from "./bostan-local-browser-qa.mjs";
 
 const admitted = { BOSTAN_LIVE_LOCAL_QA_CONFIRM: "1", BOSTAN_LIVE_LOCAL_BROWSER_E2E: "1" };
 test("browser QA accepts only an explicitly confirmed exact local origin", () => {
@@ -52,5 +52,15 @@ test("browser source QA blocks all external HTTP/HTTPS origins", () => {
     "ws://127.0.0.1:31881/socket",
   ]) {
     assert.equal(isAllowedPrivateBrowserRequest(external, origin), false, external);
+  }
+});
+
+test("synthetic company onboarding is a separate three-flag private browser opt-in", () => {
+  const allowed = { ...admitted, BOSTAN_LIVE_LOCAL_BROWSER_ONBOARDING_E2E: "1" };
+  assert.doesNotThrow(() => requireBostanBrowserOnboardingConsent(allowed));
+  for (const removed of Object.keys(allowed)) {
+    assert.throws(() => requireBostanBrowserOnboardingConsent({
+      ...allowed, [removed]: "0",
+    }), /separately confirmed private source wizard/);
   }
 });

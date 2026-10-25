@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 /**
  * A real Chromium/Playwright browser against the Bostan private synthetic app.
  * Source QA only: no installed browser session or external remote service.
@@ -22,6 +23,56 @@ export function requirePrivateBrowserQaTarget(origin, env = process.env) {
 export function isAllowedPrivateBrowserRequest(url, privateOrigin) {
   return url === privateOrigin || url.startsWith(privateOrigin + "/") ||
     url.startsWith("data:") || url.startsWith("blob:");
+}
+
+export function requireBostanBrowserOnboardingConsent(env) {
+  if (env.BOSTAN_LIVE_LOCAL_BROWSER_ONBOARDING_E2E !== "1" ||
+      env.BOSTAN_LIVE_LOCAL_BROWSER_E2E !== "1" ||
+      env.BOSTAN_LIVE_LOCAL_QA_CONFIRM !== "1") {
+    throw new Error("Bostan browser onboarding QA needs separately confirmed private source wizard consent");
+  }
+}
+
+async function runSyntheticPrivateOnboardingWizard(page, privateOrigin) {
+  const name = "Bostan Browser Onboarding QA " + randomUUID();
+  // The donor-compatible localStorage key is an internal persisted protocol,
+  // not product branding, and must not be renamed silently.
+  await page.addInitScript(() => {
+    localStorage.setItem("paperclip-onboarding-state", JSON.stringify({
+      step: 1, companyName: "", createdCompanyId: null,
+    }));
+  });
+  const setting = await page.request.patch(privateOrigin + "/api/instance/settings/experimental", {
+    data: { enableConferenceRoomChat: true },
+    timeout: 15_000,
+  });
+  if (!setting.ok()) throw new Error("Isolated onboarding flag not available to synthetic QA");
+  await page.goto(privateOrigin + "/onboarding", {
+    waitUntil: "domcontentloaded", timeout: 40_000,
+  });
+  const start = page.getByRole("button", { name: /Start Onboarding|New Organization|Add Agent/ });
+  if (await start.count()) await start.first().click();
+  const create = page.getByRole("button", { name: /Build a new organization/ });
+  if (await create.count()) await create.first().click();
+  await page.getByRole("heading", { name: "What is the name of your organization?" })
+    .waitFor({ state: "visible", timeout: 25_000 });
+  await page.getByPlaceholder("e.g. Northwind Labs").fill(name);
+  await page.getByRole("button", { name: /^Continue/ }).click();
+  await page.locator("#onboarding-agent-name")
+    .waitFor({ state: "visible", timeout: 35_000 });
+  const companiesResult = await page.request.get(privateOrigin + "/api/companies");
+  if (!companiesResult.ok()) throw new Error("Browser onboarding could not read persisted new company");
+  const companies = await companiesResult.json();
+  const actual = (Array.isArray(companies) ? companies : companies.companies ?? [])
+    .find(company => company?.name === name);
+  if (!actual?.id) throw new Error("Browser onboarding did not persist the new synthetic company");
+  const goals = await page.request.get(privateOrigin + "/api/companies/" + actual.id + "/goals");
+  if (!goals.ok()) throw new Error("Browser onboarding could not verify synthetic company goals");
+  const goalRows = await goals.json();
+  if ((Array.isArray(goalRows) ? goalRows : []).some(goal => goal.level === "company")) {
+    throw new Error("Browser onboarding invented an unwanted synthetic company goal");
+  }
+  return { companyCreatedByUi: true, noUnrequestedGoal: true };
 }
 
 export async function runPrivateBostanBrowserQa({ origin, expectedCompanyId, env = process.env }) {
@@ -107,8 +158,13 @@ export async function runPrivateBostanBrowserQa({ origin, expectedCompanyId, env
           pageErrorsSeen: browserPageErrors,
         }));
     }
+    const onboarding = env.BOSTAN_LIVE_LOCAL_BROWSER_ONBOARDING_E2E === "1"
+      ? (requireBostanBrowserOnboardingConsent(env),
+        await runSyntheticPrivateOnboardingWizard(page, privateOrigin))
+      : null;
     return { qualified: true, browser: "chromium-headless", mounted: true,
       privateApi: true, persistedCompany: true,
+      ...(onboarding ? { onboarding } : {}),
       pageErrorsSeen: browserPageErrors, blockedExternalRequests };
   } finally {
     await browser.close();
