@@ -205,22 +205,15 @@ export function TrustPresetSection({
                 </div>
               ) : (
                 <div className="rounded-md border border-border/70 bg-background/70 p-3 text-foreground">
-                  <p className="text-sm font-medium">Managed by EE/API</p>
+                  <p className="text-sm font-medium">Managed through API</p>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
                     This policy has {summarizeLowTrustBoundaryTarget(boundary).toLowerCase()} and cannot be edited by the CE single-boundary editor.
                   </p>
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
-                Want to set more than one containment boundary?{" "}
-                <a
-                  className="underline underline-offset-2 hover:text-foreground"
-                  href="https://paperclip.ing/ee"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Get Paperclip EE.
-                </a>
+                This editor supports one containment boundary. Policies with multiple boundaries
+                can be inspected here and managed through the approved API.
               </p>
               <CollapsibleSection
                 title="View policy"

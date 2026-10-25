@@ -164,8 +164,8 @@ export function HermesGatewayConfigFields({
       />
 
       <Field
-        label="Paperclip API URL"
-        hint="Optional Paperclip API URL reachable by the Hermes host. This is not a credential."
+        label="Bostan API URL"
+        hint="Optional Bostan API URL reachable by the Hermes host. This is not a credential."
       >
         <DraftInput
           value={paperclipApiUrl}

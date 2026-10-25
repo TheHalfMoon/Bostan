@@ -4087,7 +4087,7 @@ describe("TaskChatThread queued message actions", () => {
   });
 });
 
-describe("TaskChatThread Paperclip Runner queue", () => {
+describe("TaskChatThread Bostan Runner queue", () => {
   const queuedComment = {
     id: "queued-prp-1",
     companyId: "company-1",

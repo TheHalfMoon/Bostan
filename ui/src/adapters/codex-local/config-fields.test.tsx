@@ -120,7 +120,7 @@ async function editFields(
   }
 }
 
-describe("Paperclip Runner Codex configuration", () => {
+describe("Bostan Runner Codex configuration", () => {
   it.each(["", "--sandbox,read-only"])("shows actual automatic Legacy policy and preserves the explicit toggle (%s)", async (extraArgs) => {
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -323,7 +323,7 @@ describe("Paperclip Runner Codex configuration", () => {
     const html = await renderRunner({ codexPermissionMode: "unrestricted" });
 
     expect(html).toContain("Unsupported saved mode — select a qualified mode");
-    expect(html).toContain("cannot start or recover a Paperclip Runner run");
+    expect(html).toContain("cannot start or recover a Bostan Runner run");
     expect(html).toContain("Select Automatic (isolated) to remediate it");
     expect(html).not.toContain("Full auto (never ask)");
   });
