@@ -31,11 +31,28 @@ export function observeHeartbeatQaStatus(run) {
   return { done: true, result: run };
 }
 
-export function firstAgentLifecycleReadinessTimeoutMs(platform = process.platform) {
-  // The native Windows development source uses cold tsx imports and process
-  // verification; 90s was too short even though the agent later became ready.
-  // This stays bounded and does not alter the macOS release qualification.
-  return platform === "win32" ? 240_000 : 90_000;
+export function firstAgentLifecycleReadinessTimeoutMs(platform = process.platform, evidenceReview = false) {
+  // Existing ordinary source QA stays at the qualified 90-second Mac/Linux
+  // deadline. The explicit cross-agent review admits a longer but FINITE
+  // second bounded model-harness check during cold local runtime startup.
+  // Windows retains its separate 240-second native QA admission.
+  return platform === "win32" ? 240_000 : evidenceReview ? 180_000 : 90_000;
+}
+
+export function safeAgentLifecycleDiagnostic(agent) {
+  // The API may also contain private environment, credentials or tool logs.
+  // Only allowlisted enum-like lifecycle states and a public agent status
+  // can leave the disposable QA boundary in a controlled test failure.
+  const read = (value) => typeof value === "string" &&
+    /^[a-z][a-z0-9_]{0,39}$/.test(value) ? value : null;
+  const lifecycleError = typeof agent?.lifecycleError === "string"
+    ? agent.lifecycleError : "";
+  const failureCode = lifecycleError.startsWith("Execution configuration check failed.")
+    ? "harness_test_failed"
+    : lifecycleError.startsWith("Agent lifecycle verification failed.")
+      ? "lifecycle_verification_failed" : null;
+  return { lifecycleState: read(agent?.lifecycleState), status: read(agent?.status),
+    ...(failureCode ? { failureCode } : {}) };
 }
 
 export function assertHeartbeatQaSucceeded(run) {
@@ -63,20 +80,22 @@ const UUID_PATTERN = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3
  * or a guessed/hallucinated comment reference.
  */
 export function requirePersistedReviewCitation({
-  sourceComments, reviewerComments, sourceAgentId, reviewerAgentId,
+  sourceComments, reviewerComments, sourceAgentId, reviewerAgentId, sourceRunId, reviewerRunId,
   firstMarker = MARKER, secondMarker = SECOND_MARKER,
 }) {
   if (!UUID_PATTERN.test(sourceAgentId) || !UUID_PATTERN.test(reviewerAgentId) ||
-      sourceAgentId === reviewerAgentId) {
-    throw new Error("Review requires two different authenticated agent identities");
+      !UUID_PATTERN.test(sourceRunId) || !UUID_PATTERN.test(reviewerRunId) ||
+      sourceAgentId === reviewerAgentId || sourceRunId === reviewerRunId) {
+    throw new Error("Review requires distinct authenticated agents and completed run IDs");
   }
   const original = sourceComments.find(c => UUID_PATTERN.test(c?.id ?? "") &&
-    c.authorAgentId === sourceAgentId &&
+    c.authorAgentId === sourceAgentId && c.createdByRunId === sourceRunId &&
     String(c.body ?? c.content ?? "").includes(firstMarker));
   if (!original) throw new Error("Review cannot qualify without an actual persisted first-agent source comment");
   const tag = REVIEW_EVIDENCE_LABEL + original.id;
   const review = reviewerComments.find(c => UUID_PATTERN.test(c?.id ?? "") &&
-    c.authorAgentId === reviewerAgentId && c.id !== original.id &&
+    c.authorAgentId === reviewerAgentId && c.createdByRunId === reviewerRunId &&
+    c.id !== original.id &&
     String(c.body ?? c.content ?? "").includes(secondMarker) &&
     String(c.body ?? c.content ?? "").includes(tag));
   if (!review) throw new Error("Second agent did not cite the actual persisted source comment ID");
@@ -161,14 +180,15 @@ async function requestJson(base, endpoint, body) {
   }
   return json;
 }
-async function waitFor(check, { timeoutMs, intervalMs = 3_000, label }) {
+async function waitFor(check, { timeoutMs, intervalMs = 3_000, label, diagnostic }) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const value = await check();
     if (value.done) return value.result;
     await new Promise((r) => setTimeout(r, intervalMs));
   }
-  throw new Error("Bostan QA timed out waiting for " + label);
+  throw new Error("Bostan QA timed out waiting for " + label +
+    (diagnostic ? ": " + JSON.stringify(diagnostic()) : ""));
 }
 export async function runFirstAgentFreeE2e(env = process.env) {
   const { base, home } = qualifyDisposableFirstAgentScope({
@@ -207,14 +227,19 @@ export async function runFirstAgentFreeE2e(env = process.env) {
     budgetMonthlyCents: 0,
   });
   if (agent.adapterType !== "opencode_local") throw new Error("Wrong Bostan agent adapter");
+  let firstLifecycle = null;
   await waitFor(async () => {
     const current = await requestJson(base, "agents/" + agent.id);
+    firstLifecycle = safeAgentLifecycleDiagnostic(current);
+    if (firstLifecycle.failureCode) throw new Error("Bostan first agent admission blocked: " +
+      JSON.stringify(firstLifecycle));
     if (current.lifecycleState === "ready") return { done: true, result: current };
     if (["failed", "terminated"].includes(current.lifecycleState)) {
-      throw new Error("Bostan first agent did not pass lifecycle verification: " + current.lifecycleState);
+      throw new Error("Bostan first agent lifecycle failed: " + JSON.stringify(firstLifecycle));
     }
     return { done: false };
-  }, { timeoutMs: firstAgentLifecycleReadinessTimeoutMs(), label: "agent lifecycle ready" });
+  }, { timeoutMs: firstAgentLifecycleReadinessTimeoutMs(process.platform, env.BOSTAN_E2E_REVIEW_FIRST_AGENT === "1"),
+    label: "first-agent readiness", diagnostic: () => firstLifecycle });
   const issue = await requestJson(base, "companies/" + company.id + "/issues", {
     title: "Synthetic Bostan free agent execution QA " + id,
     description: "Synthetic, disposable QA. Post ONE task comment containing " + MARKER +
@@ -266,14 +291,19 @@ export async function runFirstAgentFreeE2e(env = process.env) {
         secondAgent.adapterType !== "opencode_local") {
       throw new Error("Bostan second QA worker did not have an independent agent identity");
     }
+    let secondLifecycle = null;
     await waitFor(async () => {
       const current = await requestJson(base, "agents/" + secondAgent.id);
+      secondLifecycle = safeAgentLifecycleDiagnostic(current);
+      if (secondLifecycle.failureCode) throw new Error("Bostan second agent admission blocked: " +
+        JSON.stringify(secondLifecycle));
       if (current.lifecycleState === "ready") return { done: true, result: current };
       if (["failed", "terminated"].includes(current.lifecycleState)) {
-        throw new Error("Bostan second agent lifecycle failed: " + current.lifecycleState);
+        throw new Error("Bostan second agent lifecycle failed: " + JSON.stringify(secondLifecycle));
       }
       return { done: false };
-    }, { timeoutMs: firstAgentLifecycleReadinessTimeoutMs(), label: "second agent lifecycle ready" });
+    }, { timeoutMs: firstAgentLifecycleReadinessTimeoutMs(process.platform, env.BOSTAN_E2E_REVIEW_FIRST_AGENT === "1"),
+      label: "second-agent readiness", diagnostic: () => secondLifecycle });
     const reviewMode = env.BOSTAN_E2E_REVIEW_FIRST_AGENT === "1";
     const reviewDescription = reviewMode
       ? buildEvidenceReviewTask({ sourceIssueId: issue.id })
@@ -303,7 +333,8 @@ export async function runFirstAgentFreeE2e(env = process.env) {
       String(entry.body ?? entry.content ?? "").includes(SECOND_MARKER));
     const citation = reviewMode
       ? requirePersistedReviewCitation({ sourceComments: comments, reviewerComments: secondComments,
-        sourceAgentId: agent.id, reviewerAgentId: secondAgent.id })
+        sourceAgentId: agent.id, reviewerAgentId: secondAgent.id,
+        sourceRunId: run.id, reviewerRunId: secondRun.id })
       : null;
     if (secondRun.id === run.id || secondRun.status !== "succeeded" ||
         secondRun.exitCode !== 0 || secondRun.errorCode != null ||

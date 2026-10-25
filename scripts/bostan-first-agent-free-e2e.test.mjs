@@ -5,7 +5,7 @@ import os from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel, syntheticFreeAgentAdapterConfig, observeHeartbeatQaStatus, assertHeartbeatQaSucceeded, firstAgentLifecycleReadinessTimeoutMs } from "./bostan-first-agent-free-e2e.mjs";
+import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel, syntheticFreeAgentAdapterConfig, observeHeartbeatQaStatus, assertHeartbeatQaSucceeded, firstAgentLifecycleReadinessTimeoutMs, safeAgentLifecycleDiagnostic } from "./bostan-first-agent-free-e2e.mjs";
 
 function fixture() {
   const home = mkdtempSync(path.join(os.tmpdir(), "bostan-free-agent-guard-"));
@@ -152,4 +152,26 @@ test("Windows agent readiness is bounded but tolerates native cold verification"
   assert.equal(firstAgentLifecycleReadinessTimeoutMs("win32"), 240_000);
   assert.equal(firstAgentLifecycleReadinessTimeoutMs("darwin"), 90_000);
   assert.equal(firstAgentLifecycleReadinessTimeoutMs("linux"), 90_000);
+  assert.equal(firstAgentLifecycleReadinessTimeoutMs("darwin", true), 180_000);
+  assert.equal(firstAgentLifecycleReadinessTimeoutMs("linux", true), 180_000);
+  assert.equal(firstAgentLifecycleReadinessTimeoutMs("win32", true), 240_000);
+});
+
+test("agent readiness diagnostics allow only safe status enums; never echo private config", () => {
+  assert.deepEqual(safeAgentLifecycleDiagnostic({
+    lifecycleState: "provisioning", status: "active", adapterConfig: { password: "private" },
+  }), { lifecycleState: "provisioning", status: "active" });
+  assert.deepEqual(safeAgentLifecycleDiagnostic({
+    lifecycleState: "very-private-token=bad", status: "foo\nsecret=bad",
+  }), { lifecycleState: null, status: null });
+});
+
+test("agent lifecycle harness-failure classification does not leak provider or credentials", () => {
+  const payload = { lifecycleState: "verifying", status: "paused",
+    lifecycleError: "Execution configuration check failed. Authentication failed. secret=private." };
+  const observed = safeAgentLifecycleDiagnostic(payload);
+  assert.deepEqual(observed, {
+    lifecycleState: "verifying", status: "paused", failureCode: "harness_test_failed",
+  });
+  assert.doesNotMatch(JSON.stringify(observed), /Authentication|private|secret/);
 });
