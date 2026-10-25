@@ -52,6 +52,7 @@ export function assertHeartbeatQaSucceeded(run) {
 }
 
 const MARKER = "BOSTAN_CLEAN_RUN_PASS";
+const SECOND_MARKER = "BOSTAN_SECOND_AGENT_PASS";
 const MANAGED = "bostan-managed-source-runtime-v1";
 
 function tempRoots() {
@@ -200,6 +201,73 @@ export async function runFirstAgentFreeE2e(env = process.env) {
       runId: run.id, runStatus: run.status, exitCode: run.exitCode,
       issueStatus: finalIssue.status, exactMarkerFound: hasMarker,
       reportedCostUsd: run.usageJson?.costUsd ?? null }));
+
+  // B5-18: a strictly opt-in second actual free-model worker on another task
+  // within the SAME synthetic company. This is sequential multi-agent
+  // execution, NOT independent factual verification or canonical B5 review.
+  if (env.BOSTAN_E2E_TWO_AGENT_TEAM === "1") {
+    const secondWorkspace = path.join(home, ".bostan", "second-agent-e2e-workspace");
+    fs.mkdirSync(secondWorkspace, { recursive: true, mode: 0o700 });
+    const secondAgent = await requestJson(base, "companies/" + company.id + "/agents", {
+      name: "Bostan Synthetic Second Free QA Worker",
+      role: "engineer",
+      adapterType: "opencode_local",
+      runner: "legacy",
+      adapterConfig: syntheticFreeAgentAdapterConfig({
+        model, workspace: secondWorkspace, binary: env.BOSTAN_E2E_OPENCODE_EXE,
+      }),
+      budgetMonthlyCents: 0,
+    });
+    if (!secondAgent?.id || secondAgent.id === agent.id ||
+        secondAgent.adapterType !== "opencode_local") {
+      throw new Error("Bostan second QA worker did not have an independent agent identity");
+    }
+    await waitFor(async () => {
+      const current = await requestJson(base, "agents/" + secondAgent.id);
+      if (current.lifecycleState === "ready") return { done: true, result: current };
+      if (["failed", "terminated"].includes(current.lifecycleState)) {
+        throw new Error("Bostan second agent lifecycle failed: " + current.lifecycleState);
+      }
+      return { done: false };
+    }, { timeoutMs: firstAgentLifecycleReadinessTimeoutMs(), label: "second agent lifecycle ready" });
+    const secondIssue = await requestJson(base, "companies/" + company.id + "/issues", {
+      title: "Independent second worker synthetic execution QA " + id,
+      description: "Synthetic disposable second worker task following a previously completed " +
+        "first worker task. Post ONE task comment containing " + SECOND_MARKER +
+        ", mark THIS issue done, give your final answer and immediately stop. " +
+        "Do not inspect unrelated files or use extra shell commands.",
+      status: "todo", assigneeAgentId: secondAgent.id,
+    });
+    if (!secondIssue?.id || secondIssue.id === issue.id) {
+      throw new Error("Bostan second QA issue must be independent of the first task");
+    }
+    const invoked = await requestJson(base, "agents/" + secondAgent.id + "/heartbeat/invoke", {});
+    const secondRun = await waitFor(async () => {
+      const current = await requestJson(base, "heartbeat-runs/" + invoked.id);
+      return observeHeartbeatQaStatus(current);
+    }, { timeoutMs: 175_000, label: "second agent heartbeat terminal status" });
+    assertHeartbeatQaSucceeded(secondRun);
+    const secondResult = await requestJson(base, "issues/" + secondIssue.id);
+    const secondCommentsResponse = await requestJson(base, "issues/" + secondIssue.id + "/comments");
+    const secondComments = Array.isArray(secondCommentsResponse) ? secondCommentsResponse
+      : secondCommentsResponse.comments ?? [];
+    const secondMarkerFound = secondComments.some(entry =>
+      String(entry.body ?? entry.content ?? "").includes(SECOND_MARKER));
+    if (secondRun.id === run.id || secondRun.status !== "succeeded" ||
+        secondRun.exitCode !== 0 || secondRun.errorCode != null ||
+        secondResult.status !== "done" || !secondMarkerFound) {
+      throw new Error("Second actual Bostan worker did not qualify the distinct completion " +
+        JSON.stringify({ status: secondRun.status, exitCode: secondRun.exitCode,
+          issueStatus: secondResult.status, secondMarkerFound }));
+    }
+    console.log("Bostan B5-18 distinct second real free agent E2E PASS: " +
+      JSON.stringify({ model, companyId: company.id, firstAgentId: agent.id,
+        secondAgentId: secondAgent.id, firstIssueId: issue.id,
+        secondIssueId: secondIssue.id, firstRunId: run.id, secondRunId: secondRun.id,
+        secondRunStatus: secondRun.status, secondExitCode: secondRun.exitCode,
+        secondIssueStatus: secondResult.status, secondExactMarkerFound: secondMarkerFound,
+        reportedCostUsd: secondRun.usageJson?.costUsd ?? null }));
+  }
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

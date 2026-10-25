@@ -29,6 +29,9 @@ export function requireBostanSourceSmokeAdmission(env = process.env, platform = 
   if (platform !== "darwin" && platform !== "linux") {
     throw new Error("Bostan live local QA is not qualified for Windows; use its separate TEMP-only workflow");
   }
+  if (env.BOSTAN_E2E_TWO_AGENT_TEAM === "1" && env.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E !== "1") {
+    throw new Error("Two-agent QA also requires the explicit real free-agent E2E opt-in");
+  }
   if (env.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E === "1") {
     if (env.BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL !== "1") {
       throw new Error("Free online agent QA requires explicit BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL=1");
@@ -152,6 +155,7 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
         BOSTAN_E2E_CONFIRM_TEMP_DATA: "1",
         BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL: "1",
         BOSTAN_E2E_FREE_MODEL: qualifyFreeQaModel(env.BOSTAN_E2E_FREE_MODEL),
+        BOSTAN_E2E_TWO_AGENT_TEAM: env.BOSTAN_E2E_TWO_AGENT_TEAM === "1" ? "1" : "0",
       });
     }
     await stop();
@@ -161,6 +165,7 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
     return { qualified: true, platform: process.platform,
       verified: "private-health,company-create,clean-stop,restart,persistence" +
         (env.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E === "1" ? ",real-free-agent-heartbeat-task-comment-done" : "") +
+        (env.BOSTAN_E2E_TWO_AGENT_TEAM === "1" ? ",second-distinct-free-agent-same-company" : "") +
         ",clean-stop" };
   } finally {
     if (proc && proc.exitCode === null) {

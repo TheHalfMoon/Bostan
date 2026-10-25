@@ -29,3 +29,21 @@ test("real free-model runtime requires separate opt-in and an allowlisted model 
     ...base, BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL: "1",
   }, "win32"), /not qualified for Windows/);
 });
+
+
+test("two-agent live QA requires both the free agent and online provider opt-ins", () => {
+  assert.throws(() => requireBostanSourceSmokeAdmission({
+    BOSTAN_LIVE_LOCAL_QA_CONFIRM: "1", BOSTAN_E2E_TWO_AGENT_TEAM: "1",
+    BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL: "1",
+  }, "darwin"), /explicit real free-agent/);
+  assert.throws(() => requireBostanSourceSmokeAdmission({
+    BOSTAN_LIVE_LOCAL_QA_CONFIRM: "1", BOSTAN_E2E_TWO_AGENT_TEAM: "1",
+    BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E: "1",
+  }, "darwin"), /explicit BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL/);
+  assert.doesNotThrow(() => requireBostanSourceSmokeAdmission({
+    BOSTAN_LIVE_LOCAL_QA_CONFIRM: "1", BOSTAN_E2E_TWO_AGENT_TEAM: "1",
+    BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E: "1",
+    BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL: "1",
+    BOSTAN_E2E_FREE_MODEL: "opencode/deepseek-v4.1-flash-free",
+  }, "darwin"));
+});
