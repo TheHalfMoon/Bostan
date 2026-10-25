@@ -119,6 +119,38 @@ describe("opencode remote environment diagnostics", () => {
     },
   );
 
+  it("fails closed with a public typed code when the free model limit is reached", async () => {
+    runAdapterExecutionTargetProcess.mockResolvedValueOnce({
+      exitCode: 1, signal: null, timedOut: false, stdout: "",
+      stderr: "Free usage limit reached. Connect a provider or subscribe to OpenCode Go to keep going, or switch models.",
+    } as Awaited<ReturnType<typeof runAdapterExecutionTargetProcess>>);
+    const result = await testEnvironment({
+      companyId: "synthetic", adapterType: "paperclip_runner",
+      config: { model: "opencode/deepseek-v4.1-flash-free", env: { XDG_CONFIG_HOME: configHome } },
+    });
+    expect(result.status).toBe("fail");
+    const quota = result.checks.find(check => check.code === "opencode_free_usage_limit_reached");
+    expect(quota).toMatchObject({ level: "error" });
+    expect(quota?.message).not.toContain("subscribe");
+    expect(quota?.message).not.toContain("Connect a provider");
+    expect(result.checks).not.toContainEqual(expect.objectContaining({ code: "opencode_hello_probe_failed" }));
+  });
+
+  it("distinguishes free provider usage exhaustion from missing authentication", async () => {
+    vi.stubEnv("BOSTAN_OPENCODE_STANDALONE", "1");
+    runAdapterExecutionTargetProcess.mockResolvedValueOnce({
+      exitCode: 1, signal: null, timedOut: false, stdout: "",
+      stderr: "Free tier quota exhausted.",
+    } as Awaited<ReturnType<typeof runAdapterExecutionTargetProcess>>);
+    const result = await testEnvironment({
+      companyId: "synthetic", adapterType: "opencode_local",
+      config: { model: "opencode/deepseek-v4.1-flash-free", env: { XDG_CONFIG_HOME: configHome } },
+    });
+    expect(result.status).toBe("fail");
+    expect(result.checks.map(check => check.code)).toContain("opencode_free_usage_limit_reached");
+    expect(discoverOpenCodeModels).not.toHaveBeenCalled();
+  });
+
   it("rejects a malformed native model before starting the probe", async () => {
     const result = await testEnvironment({ companyId: "company-1", adapterType: "paperclip_runner",
       config: { model: "missing-provider", env: { XDG_CONFIG_HOME: configHome } } });

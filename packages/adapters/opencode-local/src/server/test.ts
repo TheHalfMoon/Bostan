@@ -64,7 +64,13 @@ function normalizeEnv(input: unknown): Record<string, string> {
 }
 
 const OPENCODE_AUTH_REQUIRED_RE =
-  /(?:auth(?:entication)?\s+required|api\s*key|invalid\s*api\s*key|not\s+logged\s+in|opencode\s+auth\s+login|free\s+usage\s+exceeded)/i;
+  /(?:auth(?:entication)?\s+required|api\s*key|invalid\s*api\s*key|not\s+logged\s+in|opencode\s+auth\s+login)/i;
+
+// Do not conflate a free provider's usage ceiling with invalid credentials,
+// missing models, or a broken CLI. This is a provider-account capacity gate,
+// not an opportunity to activate a paid provider or retry indefinitely.
+export const OPENCODE_FREE_USAGE_LIMIT_RE =
+  /(?:free\s+usage\s+(?:limit\s+)?(?:reached|exceeded)|free\s+(?:tier\s+)?quota\s+(?:reached|exceeded|exhausted))/i;
 
 export async function testEnvironment(
   ctx: AdapterEnvironmentTestContext,
@@ -429,6 +435,13 @@ export async function testEnvironment(
               : {
                   hint: "Run `opencode run --format json` manually and prompt `Respond with hello` to inspect output.",
                 }),
+          });
+        } else if (OPENCODE_FREE_USAGE_LIMIT_RE.test(authEvidence)) {
+          checks.push({
+            code: "opencode_free_usage_limit_reached",
+            level: "error",
+            message: "The selected free OpenCode provider has reached its current usage allowance.",
+            hint: "No paid provider was used. Resume when free usage is available, or select an already approved free model.",
           });
         } else if (/ProviderModelNotFoundError/i.test(authEvidence)) {
           checks.push({
