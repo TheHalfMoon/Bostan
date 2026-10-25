@@ -165,7 +165,7 @@ import { adapterRoutes } from "./routes/adapters.js";
 import { managedAgentProfileRoutes } from "./routes/managed-agent-profiles.js";
 import { remoteAgentProfileRoutes } from "./routes/remote-agent-profiles.js";
 import { pluginUiStaticRoutes } from "./routes/plugin-ui-static.js";
-import { readBrandedStaticIndexHtml } from "./static-index-html.js";
+import { readBrandedStaticIndexHtml, setBostanStaticHtmlPrivacyHeaders } from "./static-index-html.js";
 import { staticUiCacheControl } from "./static-ui-cache.js";
 import { staticUiCompression } from "./middleware/static-ui-compression.js";
 import { applyUiBranding } from "./ui-branding.js";
@@ -1134,6 +1134,7 @@ export async function createApp(
       );
       // Serve root/index through the same runtime HTML transform as SPA routes.
       staticUi.get(["/", "/index.html"], (_req, res) => {
+        setBostanStaticHtmlPrivacyHeaders(res);
         res.type("html").set("Cache-Control", "no-cache").send(readBrandedStaticIndexHtml(uiDist));
       });
       // Non-hashed static files (favicon.ico, manifest, robots.txt, etc.):
@@ -1162,6 +1163,7 @@ export async function createApp(
           res.status(404).end();
           return;
         }
+        setBostanStaticHtmlPrivacyHeaders(res);
         res
           .status(200)
           .set("Content-Type", "text/html")

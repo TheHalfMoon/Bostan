@@ -38,6 +38,10 @@ export function requireBostanSourceSmokeAdmission(env = process.env, platform = 
       env.BOSTAN_LIVE_LOCAL_BROWSER_E2E !== "1") {
     throw new Error("Private lazy task bundle QA requires the headless Chromium source opt-in");
   }
+  if (env.BOSTAN_LIVE_LOCAL_BROWSER_HTML_HEADERS_E2E === "1" &&
+      env.BOSTAN_LIVE_LOCAL_BROWSER_E2E !== "1") {
+    throw new Error("Private static HTML privacy QA requires real Chromium opt-in");
+  }
   if (env.BOSTAN_LIVE_LOCAL_BROWSER_INSIGHTS_E2E === "1" &&
       env.BOSTAN_LIVE_LOCAL_BROWSER_E2E !== "1") {
     throw new Error("Private task-insights browser QA requires confirmed private Chromium opt-in");
@@ -274,6 +278,7 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
         (browserReport?.onboarding?.firstAgentDraft ? ",real-browser-first-agent-inactive-draft" : "") +
         (browserReport?.onboarding?.firstAgentDraft?.localAdapterSelected ? ",real-browser-adapter-selected-still-paused" : "") +
         (browserReport?.insights ? ",real-browser-private-task-insights" : "") +
+        (browserReport?.htmlPrivacy ? ",real-browser-html-no-referrer" : "") +
         (browserReport?.lazyIssue ? ",real-browser-route-scoped-issue-bundle" : "") +
         (browserReport?.ocr ? ",real-browser-bilingual-ocr-no-document-write" : "") +
         (browserReport?.ocr?.actualLargeImageNormalizedToJpeg

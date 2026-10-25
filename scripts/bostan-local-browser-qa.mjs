@@ -470,6 +470,31 @@ export async function runPrivateBostanBrowserQa({
       }
       lazyIssueReport = { initialIssueChunkRequests: 0, issueRouteChunkRequests: 1 };
     }
+    let htmlPrivacyReport = null;
+    if (env.BOSTAN_LIVE_LOCAL_BROWSER_HTML_HEADERS_E2E === "1") {
+      const htmlUrls = [
+        "/index.html",
+        "/oauth-handoff?code=SYNTHETIC_CODE&state=SYNTHETIC_STATE",
+        "/BO/dashboard",
+      ];
+      for (const route of htmlUrls) {
+        // Playwright sees the actual response headers of the running Bostan
+        // Express static-SPA server, including the OAuth fallback route.
+        const pageResponse = await page.request.get(privateOrigin + route);
+        if (pageResponse.status() !== 200 ||
+            !String(pageResponse.headers()["content-type"] ?? "").includes("text/html") ||
+            pageResponse.headers()["referrer-policy"] !== "no-referrer" ||
+            pageResponse.headers()["x-content-type-options"] !== "nosniff" ||
+            pageResponse.headers()["cache-control"] !== "no-cache") {
+          throw new Error("Real Bostan static HTML response is missing privacy headers");
+        }
+        const body = await pageResponse.text();
+        if (body.includes("SYNTHETIC_CODE") || body.includes("SYNTHETIC_STATE")) {
+          throw new Error("Real Bostan static HTML echoed synthetic callback parameters");
+        }
+      }
+      htmlPrivacyReport = { protectedStaticHtmlRoutes: htmlUrls.length };
+    }
     const onboarding = env.BOSTAN_LIVE_LOCAL_BROWSER_ONBOARDING_E2E === "1"
       ? (requireBostanBrowserOnboardingConsent(env),
         await runSyntheticPrivateOnboardingWizard(page, privateOrigin, env))
@@ -485,6 +510,7 @@ export async function runPrivateBostanBrowserQa({
       ...(onboarding ? { onboarding } : {}),
       ...(ocr ? { ocr } : {}),
       ...(insights ? { insights } : {}),
+      ...(htmlPrivacyReport ? { htmlPrivacy: htmlPrivacyReport } : {}),
       ...(lazyIssueReport ? { lazyIssue: lazyIssueReport } : {}),
       pageErrorsSeen: browserPageErrors, blockedExternalRequests };
   } finally {

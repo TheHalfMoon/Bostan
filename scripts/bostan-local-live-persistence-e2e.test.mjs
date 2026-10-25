@@ -109,3 +109,14 @@ test("browser route-scoped lazy task bundle QA requires explicit real Chromium a
     ...env, BOSTAN_LIVE_LOCAL_BROWSER_E2E: "1",
   }, "darwin"));
 });
+
+
+test("private HTML/referrer leak QA requires separate disposable browser opt-in", () => {
+  const env = { BOSTAN_LIVE_LOCAL_QA_CONFIRM: "1",
+    BOSTAN_LIVE_LOCAL_BROWSER_HTML_HEADERS_E2E: "1" };
+  assert.throws(() => requireBostanSourceSmokeAdmission(env, "darwin"),
+    /Private static HTML privacy QA requires real Chromium opt-in/);
+  assert.doesNotThrow(() => requireBostanSourceSmokeAdmission({
+    ...env, BOSTAN_LIVE_LOCAL_BROWSER_E2E: "1",
+  }, "darwin"));
+});
