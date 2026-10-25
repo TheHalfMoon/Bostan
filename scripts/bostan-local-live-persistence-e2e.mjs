@@ -34,6 +34,10 @@ export function requireBostanSourceSmokeAdmission(env = process.env, platform = 
       env.BOSTAN_LIVE_LOCAL_BROWSER_OCR_E2E !== "1") {
     throw new Error("Large image browser OCR QA requires the existing isolated OCR route opt-in");
   }
+  if (env.BOSTAN_LIVE_LOCAL_BROWSER_LAZY_ISSUE_E2E === "1" &&
+      env.BOSTAN_LIVE_LOCAL_BROWSER_E2E !== "1") {
+    throw new Error("Private lazy task bundle QA requires the headless Chromium source opt-in");
+  }
   if (env.BOSTAN_LIVE_LOCAL_BROWSER_INSIGHTS_E2E === "1" &&
       env.BOSTAN_LIVE_LOCAL_BROWSER_E2E !== "1") {
     throw new Error("Private task-insights browser QA requires confirmed private Chromium opt-in");
@@ -203,6 +207,15 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
     if (ocrIssue && (!ocrIssue.id || ocrIssue.companyId !== company.id)) {
       throw new Error("Synthetic OCR source task was not persisted in its company");
     }
+    const lazyIssue = env.BOSTAN_LIVE_LOCAL_BROWSER_LAZY_ISSUE_E2E === "1"
+      ? await requestJson(origin, "companies/" + company.id + "/issues", {
+          title: "Bostan synthetic lazy issue chunk QA " + randomUUID(),
+          status: "todo",
+        })
+      : null;
+    if (lazyIssue && (!lazyIssue.id || lazyIssue.companyId !== company.id)) {
+      throw new Error("Lazy issue route source QA did not persist its synthetic task");
+    }
     const insightsIssue = env.BOSTAN_LIVE_LOCAL_BROWSER_INSIGHTS_E2E === "1"
       ? (ocrIssue ?? await requestJson(origin, "companies/" + company.id + "/issues", {
           title: "Bostan synthetic task insights " + randomUUID(),
@@ -222,6 +235,10 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
           issuePrefix: company.issuePrefix } } : {}),
         ...(insightsIssue ? { insightCompanyId: {
           id: company.id, issuePrefix: company.issuePrefix,
+        } } : {}),
+        ...(lazyIssue ? { lazyIssue: {
+          id: lazyIssue.id, title: lazyIssue.title,
+          issuePrefix: company.issuePrefix,
         } } : {}),
       });
     }
@@ -257,6 +274,7 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
         (browserReport?.onboarding?.firstAgentDraft ? ",real-browser-first-agent-inactive-draft" : "") +
         (browserReport?.onboarding?.firstAgentDraft?.localAdapterSelected ? ",real-browser-adapter-selected-still-paused" : "") +
         (browserReport?.insights ? ",real-browser-private-task-insights" : "") +
+        (browserReport?.lazyIssue ? ",real-browser-route-scoped-issue-bundle" : "") +
         (browserReport?.ocr ? ",real-browser-bilingual-ocr-no-document-write" : "") +
         (browserReport?.ocr?.actualLargeImageNormalizedToJpeg
           ? ",real-browser-large-image-local-jpeg-preprocessing" : "") +

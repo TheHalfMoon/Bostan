@@ -1,5 +1,5 @@
 import path from "path";
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { createUiDevWatchOptions } from "./src/lib/vite-watch";
@@ -9,26 +9,15 @@ import { readBrowserBuildCommit } from "./src/lib/vite-build-commit";
 
 const apiProxy = createApiProxy();
 
-function preloadIssueDetail(): Plugin {
-  return {
-    name: "paperclip-preload-issue-detail",
-    apply: "build",
-    transformIndexHtml(_html, { bundle }) {
-      const issueDetail = Object.values(bundle ?? {}).find((chunk) =>
-        chunk.type === "chunk" && chunk.moduleIds.some((id) => id.endsWith("/src/pages/IssueDetail.tsx")),
-      );
-      return issueDetail ? [{ tag: "link", attrs: { rel: "modulepreload", href: `/${issueDetail.fileName}`, crossorigin: "" }, injectTo: "head" }] : [];
-    },
-  };
-}
-
 export default defineConfig(({ mode }) => ({
   define: {
     __PAPERCLIP_BUILD_COMMIT__: JSON.stringify(
       readBrowserBuildCommit(__dirname),
     ),
   },
-  plugins: [react(), tailwindcss(), serviceWorkerBuildIdPlugin(), preloadIssueDetail()],
+  // IssueDetail already uses React.lazy and route-scoped prefetch in App.tsx.
+  // Never preload its multi-MiB chunk in index.html for login/dashboard.
+  plugins: [react(), tailwindcss(), serviceWorkerBuildIdPlugin()],
   build: {
     minify: "esbuild",
     rolldownOptions: {
@@ -36,7 +25,6 @@ export default defineConfig(({ mode }) => ({
         codeSplitting: {
           groups: [
             { name: "board-startup", tags: ["$initial"], priority: 10 },
-            { name: "issue-detail", test: /\/src\/pages\/IssueDetail\.tsx$/, priority: 5 },
           ],
         },
       },

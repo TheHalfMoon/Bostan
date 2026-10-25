@@ -98,3 +98,14 @@ test("real analytics Chromium QA requires the explicit disposable browser admiss
   assert.throws(() => requireBostanSourceSmokeAdmission(bad, "darwin"),
     /Private task-insights browser QA requires/);
 });
+
+
+test("browser route-scoped lazy task bundle QA requires explicit real Chromium admission", () => {
+  const env = { BOSTAN_LIVE_LOCAL_QA_CONFIRM: "1",
+    BOSTAN_LIVE_LOCAL_BROWSER_LAZY_ISSUE_E2E: "1" };
+  assert.throws(() => requireBostanSourceSmokeAdmission(env, "darwin"),
+    /Private lazy task bundle QA requires/);
+  assert.doesNotThrow(() => requireBostanSourceSmokeAdmission({
+    ...env, BOSTAN_LIVE_LOCAL_BROWSER_E2E: "1",
+  }, "darwin"));
+});

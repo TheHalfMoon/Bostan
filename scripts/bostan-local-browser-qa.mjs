@@ -334,7 +334,7 @@ async function runPrivateBostanTaskInsightsUi(page, origin, company) {
 
 export async function runPrivateBostanBrowserQa({
   origin, expectedCompanyId, env = process.env, ocrIssue = null,
-  insightCompanyId = null,
+  insightCompanyId = null, lazyIssue = null,
 }) {
   const privateOrigin = requirePrivateBrowserQaTarget(origin, env);
   if (typeof expectedCompanyId !== "string" ||
@@ -351,6 +351,12 @@ export async function runPrivateBostanBrowserQa({
     });
     let browserPageErrors = 0;
     let blockedExternalRequests = 0;
+    let issueBundleRequests = 0;
+    page.on("request", request => {
+      if (/\/assets\/(?:IssueDetail|issue-detail)-[^/]+\.js(?:\?|$)/.test(request.url())) {
+        issueBundleRequests += 1;
+      }
+    });
     page.on("pageerror", () => { browserPageErrors += 1; });
     // Even vendor scripts/fonts are blocked. Nothing outside localhost may
     // receive synthetic company IDs or connect to an external provider.
@@ -363,13 +369,22 @@ export async function runPrivateBostanBrowserQa({
         await route.abort("blockedbyclient");
       }
     });
-    const response = await page.goto(privateOrigin + "/", {
+    // The root route can legitimately restore a remembered Inbox/Issues
+    // page and proactively load IssueDetail. The perf regression must start
+    // specifically on Dashboard, where the issue chunk is NOT needed.
+    const nonTaskEntry = env.BOSTAN_LIVE_LOCAL_BROWSER_LAZY_ISSUE_E2E === "1"
+      ? "/" + lazyIssue.issuePrefix + "/dashboard"
+      : "/";
+    const response = await page.goto(privateOrigin + nonTaskEntry, {
       waitUntil: "domcontentloaded",
       timeout: 40_000,
     });
     if (!response || response.status() !== 200) {
       throw new Error("Bostan browser did not load the real private application document");
     }
+    const servedHtmlPreloadsIssue = env.BOSTAN_LIVE_LOCAL_BROWSER_LAZY_ISSUE_E2E === "1"
+      ? /<link[^>]+(?:modulepreload)[^>]+(?:IssueDetail|issue-detail)-[^>]*>/i.test(await response.text())
+      : false;
     await page.waitForFunction(() => {
       const root = document.querySelector("#root");
       return root && root.childElementCount > 0 &&
@@ -418,6 +433,43 @@ export async function runPrivateBostanBrowserQa({
           pageErrorsSeen: browserPageErrors,
         }));
     }
+    let lazyIssueReport = null;
+    if (env.BOSTAN_LIVE_LOCAL_BROWSER_LAZY_ISSUE_E2E === "1") {
+      if (!lazyIssue || typeof lazyIssue.id !== "string" ||
+          !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(lazyIssue.id) ||
+          typeof lazyIssue.issuePrefix !== "string" ||
+          !/^[A-Z]{2,12}$/.test(lazyIssue.issuePrefix) ||
+          typeof lazyIssue.title !== "string" ||
+          !lazyIssue.title.startsWith("Bostan synthetic lazy issue chunk QA ")) {
+        throw new Error("Private lazy bundle QA requires an exact synthetic task");
+      }
+      // The initial app route must be hydrated before observing that no
+      // issue chunk was fetched; DOMContentLoaded alone is insufficient.
+      await page.waitForTimeout(700);
+      if (!page.url().endsWith("/" + lazyIssue.issuePrefix + "/dashboard")) {
+        throw new Error("Bostan did not remain on the non-task Dashboard QA route");
+      }
+      if (issueBundleRequests !== 0) {
+        throw new Error("Non-task app entry fetched IssueDetail before navigation: " +
+          JSON.stringify({
+            servedHtmlPreloadsIssue,
+            dashboardRoute: page.url().endsWith("/" + lazyIssue.issuePrefix + "/dashboard"),
+            initialIssueBundleRequestCount: issueBundleRequests,
+          }));
+      }
+      const chunkRequest = page.waitForRequest(request =>
+        /\/assets\/(?:IssueDetail|issue-detail)-[^/]+\.js(?:\?|$)/.test(request.url()),
+        { timeout: 35_000 });
+      await page.goto(privateOrigin + "/" + lazyIssue.issuePrefix +
+        "/issues/" + lazyIssue.id, { waitUntil: "domcontentloaded", timeout: 40_000 });
+      await chunkRequest;
+      await page.waitForFunction(title => document.body.innerText.includes(title),
+        lazyIssue.title, { timeout: 35_000 });
+      if (issueBundleRequests !== 1) {
+        throw new Error("IssueDetail route did not load exactly one lazy module chunk");
+      }
+      lazyIssueReport = { initialIssueChunkRequests: 0, issueRouteChunkRequests: 1 };
+    }
     const onboarding = env.BOSTAN_LIVE_LOCAL_BROWSER_ONBOARDING_E2E === "1"
       ? (requireBostanBrowserOnboardingConsent(env),
         await runSyntheticPrivateOnboardingWizard(page, privateOrigin, env))
@@ -433,6 +485,7 @@ export async function runPrivateBostanBrowserQa({
       ...(onboarding ? { onboarding } : {}),
       ...(ocr ? { ocr } : {}),
       ...(insights ? { insights } : {}),
+      ...(lazyIssueReport ? { lazyIssue: lazyIssueReport } : {}),
       pageErrorsSeen: browserPageErrors, blockedExternalRequests };
   } finally {
     await browser.close();
