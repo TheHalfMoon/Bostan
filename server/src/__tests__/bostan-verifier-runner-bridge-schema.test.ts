@@ -41,5 +41,9 @@ describe("Bostan B5-13 native runner REST catalog", () => {
     expect(operation.description).toContain("key=bostan-verification");
     expect(JSON.stringify(operation.requestBody)).toContain("json");
     expect(JSON.stringify(operation.requestBody)).toContain("markdown");
+    const source = runnerApiOperation("GET /api/companies/{companyId}/issues/{issueId}/bostan-verification/sources/{documentId}/snapshot");
+    expect(source.transport).toBe("rest");
+    expect(source.allowedModes).toContain("standard");
+    expect(source.description).toContain("delivered distinct-agent handoff");
   });
 });

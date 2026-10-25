@@ -230,6 +230,11 @@ interruption, recovery, spend and policy failure scenarios.
   scoped run/agent ownership, duplicate call ID is replay-safe, wrong-key
   and ended-run writes rejected. 19/19 combined real integration PASS.
   No actual model inference or outside-provider effect was attempted.
+- [x] B5-15: the original B5-06 scoped reviewer HMAC GET is now discoverable
+  via OpenAPI/Native Runner `call_api`. A genuine signed JWT from an active
+  native first-party agent successfully retrieves only current task-linked
+  source digest over local authenticated HTTP, before the B5-14 JSON write.
+  20/20 combined SQL/HTTP/Native tests PASS; no LLM run or external effect.
 - [ ] Integrate real authorized agent-run delegation, independent effect
   readback, verifier sign-off and evidence-backed founder summary end-to-end.
   Test duplicate effects, interruption, recovery and budget/consent fences.

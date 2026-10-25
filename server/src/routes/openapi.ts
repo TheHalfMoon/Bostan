@@ -4544,6 +4544,19 @@ registry.registerPath({
   responses: { 200: r.ok(), 401: r.unauthorized, 404: r.notFound },
 });
 
+// A normal native reviewer MUST have a discoverable source-only REST read
+// contract before it can author a B5 source-HMAC-bound JSON report. Actual
+// run/tenant/delivered independent handoff auth remains in issueRoutes.
+registry.registerPath({
+  method: "get",
+  path: "/api/companies/{companyId}/issues/{issueId}/bostan-verification/sources/{documentId}/snapshot",
+  tags: ["issues"],
+  summary: "Read a current task-scoped Bostan source HMAC for independent review",
+  description: "Agent-only, currently running assigned independent verifier with a delivered distinct-agent handoff. Returns only source document ID, current revision number and opaque source HMAC plus conservative status flags. No source body, title, full document, signing key, broad company read or tool authorization. The original REST route validates all permissions, including after pending terminal intent.",
+  request: { params: z.object({ companyId: z.uuid(), issueId: z.uuid(), documentId: z.uuid() }) },
+  responses: { 200: r.ok(), 401: r.unauthorized, 403: r.forbidden, 404: r.notFound },
+});
+
 registry.registerPath({
   method: "put",
   path: "/api/issues/{id}/documents/{key}",

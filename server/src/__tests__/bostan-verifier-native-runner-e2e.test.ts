@@ -87,6 +87,17 @@ suite("Bostan B5-14 — full native tool/JWT/HTTP/PG reviewer report authoring",
     else process.env.PAPERCLIP_DECISION_SIGNING_SECRET = previousDecisionSecret;
   });
 
+  it("B5-15 lets active native verifier GET current task-scoped source digest over signed agent JWT and real HTTP", async () => {
+    const operationId = "GET /api/companies/{companyId}/issues/{issueId}/bostan-verification/sources/{documentId}/snapshot";
+    const result = await authority.execute({ tool: "call_api", callId: "bostan-b5-15-digest",
+      arguments: { operationId, pathParams: { companyId, issueId, documentId: sourceDocumentId } } });
+    expect(result).toMatchObject({ ok: true, status: 200, apiOperationId: operationId });
+    const exposed = JSON.stringify(result);
+    expect(exposed).toContain("bostan.verification.source-snapshot.v1");
+    expect(exposed).toContain(JSON.parse(body).sources[0].expectedSnapshotHmacSha256);
+    expect(exposed).not.toContain("Synthetic output inspected by native reviewer");
+  });
+
   it("executes native agent tool over signed JWT and live local HTTP; persists true run-attributed report exactly once", async () => {
     const toolName = "write_task_document";
     expect(authority.definitions().some(tool => tool.name === toolName)).toBe(true);
