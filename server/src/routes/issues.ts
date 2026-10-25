@@ -2,6 +2,8 @@ import { taskInterruptionPresentation, taskInterruptionPresentations } from "../
 import { readBostanIssueDocumentEvidence, checkBostanIssueDocumentSnapshot,
   checkBostanDocumentSnapshotBatch } from "../services/bostan-knowledge-evidence.js";
 import { bostanVerifierReport } from "../services/bostan-current-verification-evidence.js";
+import { BostanLocalOcrBusyError, BostanLocalOcrInputError,
+  previewBostanLocalImageOcr } from "../services/bostan-local-ocr.js";
 import { parseObject } from "../adapters/utils.js";
 import { prepareRestrictedWorkspaceRetry } from "../services/restricted-workspace-retry.js";
 import { issueSummariesQuerySchema, type IssueSummary } from "@paperclipai/shared";
@@ -8159,6 +8161,54 @@ export function issueRoutes(
       issueReadCondition: await issueReadSqlCondition(db, req.actor), sources: parsed.data.sources });
     res.setHeader("Cache-Control", "no-store");
     res.json(result);
+  });
+
+  // Explicitly opt-in, preview-only offline OCR for a readable task.
+  // The result is untrusted text, never an automatic document revision,
+  // B4 citation, recommendation, signed decision or action permission.
+  router.post("/companies/:companyId/issues/:issueId/bostan-evidence/ocr-preview", async (req, res) => {
+    assertBoard(req);
+    res.setHeader("Cache-Control", "no-store");
+    if (process.env.BOSTAN_LOCAL_OCR_PREVIEW_ENABLE !== "1") {
+      res.status(404).json({ error: "Bostan local OCR preview is not enabled" }); return;
+    }
+    const companyId = req.params.companyId as string;
+    const issueId = req.params.issueId as string;
+    assertCompanyAccess(req, companyId);
+    if (![companyId, issueId].every(id => z.string().uuid().safeParse(id).success)) {
+      res.status(400).json({ error: "Valid company and task identifiers required" }); return;
+    }
+    const parsed = z.object({
+      mimeType: z.enum(["image/png", "image/jpeg"]),
+      base64: z.string().min(12).max(349_528),
+      language: z.enum(["eng", "ara", "eng+ara"]),
+    }).strict().safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid bounded local OCR preview request" }); return;
+    }
+    const companyAccess = await access.decide({ actor: req.actor, action: "company_scope:read",
+      resource: { type: "company", companyId } });
+    if (!companyAccess.allowed) { res.status(403).json({ error: "OCR task read unauthorized" }); return; }
+    const [visibleIssue] = await db.select({ id: issueRows.id }).from(issueRows).where(and(
+      eq(issueRows.id, issueId), eq(issueRows.companyId, companyId),
+      isNull(issueRows.hiddenAt), isNull(issueRows.harnessKind),
+      await issueReadSqlCondition(db, req.actor),
+    )).limit(1);
+    if (!visibleIssue) { res.status(404).json({ error: "OCR source task not accessible" }); return; }
+    try {
+      const preview = await previewBostanLocalImageOcr(parsed.data);
+      res.json(preview);
+    } catch (error) {
+      if (error instanceof BostanLocalOcrInputError) {
+        res.status(400).json({ error: "Invalid local OCR image data" }); return;
+      }
+      if (error instanceof BostanLocalOcrBusyError) {
+        res.setHeader("Retry-After", "1");
+        res.status(429).json({ error: "Local OCR concurrency capacity reached" }); return;
+      }
+      // Never reflect raw OCR stderr, image contents, host paths or token text.
+      res.status(503).json({ error: "Local offline OCR could not process this image" });
+    }
   });
 
   router.post("/companies/:companyId/issues/:issueId/bostan-evidence/documents/:documentId/freshness", async (req, res) => {
