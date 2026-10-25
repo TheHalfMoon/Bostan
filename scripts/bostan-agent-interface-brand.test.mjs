@@ -39,6 +39,14 @@ const visibleCopy = new Map([
   ["ui/src/pages/ProjectWorkspaceDetail.tsx", "A local path Bostan can use directly."],
   ["ui/src/pages/ExecutionWorkspaceDetail.tsx", "Bostan created a run using this execution workspace."],
   ["ui/src/pages/agent-skills/AgentSkillsTab.tsx", "stable Bostan-managed prompt bundle"],
+  ["ui/src/pages/tools/connection-dialogs.tsx", "Bostan stores only the"],
+  ["ui/src/pages/tools/McpConfigHelpDialog.tsx", "back into Bostan."],
+  ["ui/src/pages/tools/PasteConfigTab.tsx", "Bostan couldn’t start secure sign-in."],
+  ["ui/src/pages/tools/AuditTab.tsx", 'Recorded by Bostan.'],
+  ["ui/src/pages/secrets/SetMyUserSecretDialog.tsx", "Bostan stores the"],
+  ["ui/src/pages/ProfileSettings.tsx", "Bostan file storage"],
+  ["ui/src/pages/CompanyAccess.tsx", "Bostan continues enforcing organization boundaries"],
+  ["ui/src/pages/apps/app-detail/BrowserUseSettingsPanel.tsx", "remaining Bostan budget"],
 ]);
 
 test("first-party agent and local adapter labels expose Bostan identity", () => {
@@ -104,4 +112,26 @@ test("operational workspace and agent tool screens show Bostan without renaming 
   // These are technical legacy compatibility identifiers, not product copy.
   assert.match(skills, /agent\.adapterType === "paperclip_runner"/);
   assert.match(skills, /legacy Paperclip operational skill/);
+});
+
+
+test("connector, secret, audit, account and browser budget copy never exposes donor branding", () => {
+  const files = [
+    "ui/src/pages/tools/connection-dialogs.tsx",
+    "ui/src/pages/tools/McpConfigHelpDialog.tsx",
+    "ui/src/pages/tools/PasteConfigTab.tsx",
+    "ui/src/pages/tools/AuditTab.tsx",
+    "ui/src/pages/secrets/SetMyUserSecretDialog.tsx",
+    "ui/src/pages/ProfileSettings.tsx",
+    "ui/src/pages/CompanyAccess.tsx",
+    "ui/src/pages/apps/app-detail/BrowserUseSettingsPanel.tsx",
+  ];
+  for (const filename of files) {
+    assert.doesNotMatch(source(filename), /Paperclip/, filename);
+  }
+  // Security contracts stay unchanged: no raw secret persistence or
+  // unauthorized command activation can be inferred from marketing copy.
+  assert.match(source("ui/src/pages/tools/connection-dialogs.tsx"), /vault:\/\//);
+  assert.match(source("ui/src/pages/tools/PasteConfigTab.tsx"), /draft-only/);
+  assert.match(source("ui/src/pages/secrets/SetMyUserSecretDialog.tsx"), /reference, not the value/);
 });
