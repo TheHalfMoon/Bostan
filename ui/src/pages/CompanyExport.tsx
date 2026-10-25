@@ -487,7 +487,7 @@ function generateReadmeFromSelection(
   lines.push("## Getting Started");
   lines.push("");
   lines.push("```bash");
-  lines.push("npx paperclipai company import this-github-url-or-folder");
+  lines.push("bostan company import this-github-url-or-folder --dry-run");
   lines.push("```");
   lines.push("");
   lines.push("See [Bostan](https://github.com/TheHalfMoon/Bostan) for more information.");

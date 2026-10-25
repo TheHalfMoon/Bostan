@@ -54,7 +54,7 @@ export function GrokBotConnection({ companyId, agentId }: { companyId?: string; 
   const recovering = state.data?.recoveryNeeded || routine?.recoveryNeeded;
   const pending = exchange && ["prepared", "sending", "accepted"].includes(exchange.status) && Date.parse(exchange.expiresAt) > Date.now();
   return <section aria-label="Grok Bot connection" className="space-y-4 text-sm">
-    <p className="text-muted-foreground">Runs in Grok Bot. The Bot retains its apps and persistent context. Paperclip supplies task coordination and first-party tools. Usage and spending are not reported.</p>
+    <p className="text-muted-foreground">Runs in Grok Bot. The Bot retains its apps and persistent context. Bostan supplies task coordination and first-party tools. Usage and spending are not reported.</p>
     {state.isPending && <p role="status">Loading connection…</p>}
     {error && <p role="alert" className="text-destructive">{error.message}</p>}
     {state.data && !state.data.enabled && <p className="text-muted-foreground">Enable Grok Bot, Assistant connections (MCP), and Bostan Runner on an authenticated public HTTPS instance.</p>}
@@ -83,13 +83,13 @@ export function GrokBotConnection({ companyId, agentId }: { companyId?: string; 
             <Input id={pairingCodeId} type="password" autoComplete="off" readOnly value={pairing.pairingCode} onFocus={e => e.target.select()} />
             <CopyText text={pairing.pairingCode} ariaLabel="Copy pairing code" className={buttonVariants({ variant: "outline", size: "sm" })}>Copy code</CopyText>
           </div>
-          <p className="text-xs text-muted-foreground">Copy this code into Paperclip’s authorization page. Keep it out of Bot chat.</p>
+          <p className="text-xs text-muted-foreground">Copy this code into Bostan's authorization page. Keep it out of Bot chat.</p>
         </div>
       </>}
     </>}
-    {binding?.assignment && <div className="space-y-2"><p>{binding.assignment.status === "offered" ? "Awaiting acknowledgement" : "Working in a Paperclip work session"}</p><Button variant="outline" disabled={busy} onClick={() => stop.mutate(binding.assignment!.runId)}>Stop Paperclip work</Button><p className="text-xs text-muted-foreground">Revokes this session’s Paperclip authority and stops future dispatch. Remote execution may continue. Open Grok Bot to inspect it.</p></div>}
+    {binding?.assignment && <div className="space-y-2"><p>{binding.assignment.status === "offered" ? "Awaiting acknowledgement" : "Working in a Bostan work session"}</p><Button variant="outline" disabled={busy} onClick={() => stop.mutate(binding.assignment!.runId)}>Stop Bostan work</Button><p className="text-xs text-muted-foreground">Revokes this session's Bostan authority and stops future dispatch. Remote execution may continue. Open Grok Bot to inspect it.</p></div>}
     {recovering && <div className="space-y-3 rounded-md border border-border p-3">
-      <p className="font-medium">Recovery needed</p><p className="text-muted-foreground">Paperclip cannot determine whether Grok is still working. Open Grok Bot, inspect this Bot and stop the old work before clearing the hold. The session must be stopped in Paperclip too.</p>
+      <p className="font-medium">Recovery needed</p><p className="text-muted-foreground">Bostan cannot determine whether Grok is still working. Open Grok Bot, inspect this Bot and stop the old work before clearing the hold. The session must be stopped in Bostan too.</p>
       <label className="flex items-start gap-2"><input type="checkbox" checked={inspected} onChange={e => setInspected(e.target.checked)} /><span>I inspected Grok and resolved the old work.</span></label>
       <Button variant="outline" disabled={busy || !inspected || !!binding?.assignment} onClick={() => recover.mutate()}>Clear recovery hold</Button>
       <p className="text-xs text-muted-foreground">This records your inspection. It does not confirm remote termination. Verify the routine again before new work.</p>
