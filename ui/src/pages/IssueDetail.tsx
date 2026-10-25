@@ -205,6 +205,7 @@ import { workModeMetaFor } from "../lib/work-mode-meta";
 import { IssueContinuationHandoff } from "../components/IssueContinuationHandoff";
 import { IssueAttachmentsSection } from "../components/IssueAttachmentsSection";
 import { IssueDocumentsSection } from "../components/IssueDocumentsSection";
+import { BostanOcrPreview } from "../components/BostanOcrPreview";
 import { IssuePlanDecompositionsSection } from "../components/IssuePlanDecompositionsSection";
 import { IssueOutputSection } from "../components/issue-output/IssueOutputSection";
 import { isImageAttachment, isVideoAttachment } from "../lib/issue-attachments";
@@ -7910,6 +7911,13 @@ export function TaskDetailSurface({ conversation, tasksTab }: { tasksTab?: TaskS
               issueIdentifier={issue.identifier}
               agentMap={agentMap}
             />
+          ) : null}
+
+          {/* Optional, local-only image OCR is reachable from the normal
+          chat-style task body even when the Artifacts sidebar is closed or
+          lacks an established document. It never saves a revision by itself. */}
+          {taskChatShellEnabled && import.meta.env.VITE_BOSTAN_LOCAL_OCR_PREVIEW_ENABLE === "1" ? (
+            <BostanOcrPreview key={issue.id} companyId={issue.companyId} issueId={issue.id} />
           ) : null}
 
           {/* Flag ON: attachments/work products/workspace live in the properties

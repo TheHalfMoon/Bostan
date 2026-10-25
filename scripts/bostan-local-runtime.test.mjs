@@ -41,6 +41,23 @@ test("isolated application environment ignores inherited telemetry, external pro
   }
 });
 
+test("local OCR opt-in survives isolated server launch without leaking provider secrets", () => {
+  const options = { home: "/tmp/bostan-ocr-source-test", port: 41322,
+    databaseUrl: "postgres://bostan@127.0.0.1/test",
+    jwt: "synthetic-jwt", config: "/tmp/bostan-ocr-source-test/config.json" };
+  const env = { PATH: "/usr/bin:/bin", OPENAI_API_KEY: "not-for-child",
+    ANTHROPIC_API_KEY: "not-for-child", BOSTAN_LOCAL_OCR_PREVIEW_ENABLE: "1" };
+  const accepted = isolatedEnv(options, env);
+  assert.equal(accepted.BOSTAN_LOCAL_OCR_PREVIEW_ENABLE, "1");
+  assert.equal(accepted.OPENAI_API_KEY, undefined);
+  assert.equal(accepted.ANTHROPIC_API_KEY, undefined);
+  assert.equal(accepted.HOST, "127.0.0.1");
+  for (const invalid of ["0", "true", "enabled", " 1 ", "", undefined]) {
+    const child = isolatedEnv(options, { ...env, BOSTAN_LOCAL_OCR_PREVIEW_ENABLE: invalid });
+    assert.equal(child.BOSTAN_LOCAL_OCR_PREVIEW_ENABLE, undefined);
+  }
+});
+
 test("doctor reports missing prerequisites without creating files", () => {
   const dir = mkdtempSync(join(tmpdir(), "bostan-app-doctor-"));
   try {

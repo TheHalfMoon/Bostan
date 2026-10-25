@@ -59,3 +59,18 @@ test("cross-agent source review is a separate gated opt-in", () => {
     BOSTAN_E2E_FREE_MODEL: "opencode/deepseek-v4.1-flash-free",
   }, "darwin"));
 });
+
+
+test("private OCR browser requires actual Chromium and explicitly enabled offline OCR", () => {
+  for (const absent of ["BOSTAN_LIVE_LOCAL_BROWSER_E2E", "BOSTAN_LOCAL_OCR_PREVIEW_ENABLE"]) {
+    const env = {
+      BOSTAN_LIVE_LOCAL_QA_CONFIRM: "1",
+      BOSTAN_LIVE_LOCAL_BROWSER_E2E: "1",
+      BOSTAN_LIVE_LOCAL_BROWSER_OCR_E2E: "1",
+      BOSTAN_LOCAL_OCR_PREVIEW_ENABLE: "1",
+      [absent]: "0",
+    };
+    assert.throws(() => requireBostanSourceSmokeAdmission(env, "darwin"),
+      /Private OCR browser QA requires/);
+  }
+});

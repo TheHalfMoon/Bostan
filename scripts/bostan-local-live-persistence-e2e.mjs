@@ -30,6 +30,11 @@ export function requireBostanSourceSmokeAdmission(env = process.env, platform = 
   if (platform !== "darwin" && platform !== "linux") {
     throw new Error("Bostan live local QA is not qualified for Windows; use its separate TEMP-only workflow");
   }
+  if (env.BOSTAN_LIVE_LOCAL_BROWSER_OCR_E2E === "1" &&
+      (env.BOSTAN_LIVE_LOCAL_BROWSER_E2E !== "1" ||
+        env.BOSTAN_LOCAL_OCR_PREVIEW_ENABLE !== "1")) {
+    throw new Error("Private OCR browser QA requires real browser and enabled local OCR");
+  }
   if (env.BOSTAN_LIVE_LOCAL_BROWSER_E2E === "1" &&
       env.BOSTAN_LIVE_LOCAL_QA_CONFIRM !== "1") {
     throw new Error("Real browser QA requires explicit temporary Bostan app consent");
@@ -178,12 +183,26 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
     if (!Array.isArray(records) || !records.some(value => value.id === company.id && value.name === marker)) {
       throw new Error("Bostan company did not survive a real PostgreSQL restart");
     }
+    // OCR browser acceptance needs a *real task*, not a bare isolated
+    // component. It is synthetic and only created inside disposable PG.
+    const ocrIssue = env.BOSTAN_LIVE_LOCAL_BROWSER_OCR_E2E === "1"
+      ? await requestJson(origin, "companies/" + company.id + "/issues", {
+          title: "Bostan synthetic local image OCR browser QA " + randomUUID(),
+          description: "Disposable read-only OCR source preview task",
+          status: "todo",
+        })
+      : null;
+    if (ocrIssue && (!ocrIssue.id || ocrIssue.companyId !== company.id)) {
+      throw new Error("Synthetic OCR source task was not persisted in its company");
+    }
     // Browser checks exercise actual React hydration and private HTTP state
     // without installing an app, using remote providers, or leaving localhost.
     if (env.BOSTAN_LIVE_LOCAL_BROWSER_E2E === "1") {
       const { runPrivateBostanBrowserQa } = await import("./bostan-local-browser-qa.mjs");
       browserReport = await runPrivateBostanBrowserQa({
         origin: origin + "/", expectedCompanyId: company.id, env,
+        ...(ocrIssue ? { ocrIssue: { id: ocrIssue.id,
+          issuePrefix: company.issuePrefix } } : {}),
       });
     }
     // An explicit separate opt-in extends the existing private app lifecycle
@@ -217,6 +236,7 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
         (browserReport?.onboarding ? ",real-browser-new-company-onboarding" : "") +
         (browserReport?.onboarding?.firstAgentDraft ? ",real-browser-first-agent-inactive-draft" : "") +
         (browserReport?.onboarding?.firstAgentDraft?.localAdapterSelected ? ",real-browser-adapter-selected-still-paused" : "") +
+        (browserReport?.ocr ? ",real-browser-bilingual-ocr-no-document-write" : "") +
         (env.BOSTAN_E2E_TWO_AGENT_TEAM === "1" ? ",second-distinct-free-agent-same-company" : "") +
         (env.BOSTAN_E2E_REVIEW_FIRST_AGENT === "1" ? ",second-agent-cites-first-persisted-comment" : "") +
         ",clean-stop" };

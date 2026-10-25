@@ -209,6 +209,12 @@ export function isolatedEnv({ home, port, databaseUrl, jwt, config }, original =
     PAPERCLIP_TELEMETRY_DISABLED: "1",
     DO_NOT_TRACK: "1",
     BOSTAN_ANNOUNCEMENTS_ENABLED: "0",
+    // The private, user-explicitly-enabled B4 OCR preview runs fully on this
+    // loopback-only source server. Do not drop its opt-in in the child env,
+    // and do not inherit any arbitrary provider variables in its place.
+    ...(original.BOSTAN_LOCAL_OCR_PREVIEW_ENABLE === "1" ? {
+      BOSTAN_LOCAL_OCR_PREVIEW_ENABLE: "1",
+    } : {}),
     // Every agent probe and run must use a fresh private OpenCode daemon.
     // Inheriting the user's background server can collide or cross sessions.
     BOSTAN_OPENCODE_STANDALONE: "1",

@@ -323,7 +323,8 @@ export function IssueProperties({
   // products, documents (redundant with the Plan tab, intentionally), and
   // attachments from agents and people.
   const hasArtifactsTab =
-    (paneTabWorkProducts?.length ?? 0) > 0
+    import.meta.env.VITE_BOSTAN_LOCAL_OCR_PREVIEW_ENABLE === "1"
+    || (paneTabWorkProducts?.length ?? 0) > 0
     || paneTabStandaloneDocuments.length > 0
     || selectArtifactAttachments(paneTabAttachments, paneTabWorkProducts).length > 0;
   const [paneTab, setPaneTab] = useState<IssuePaneTab>("properties");

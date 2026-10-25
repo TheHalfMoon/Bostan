@@ -39,6 +39,7 @@ import { Check, Copy, Diff, Download, FilePenLine, FileText, Lock, MoreHorizonta
 import { DocumentDiffModal } from "./DocumentDiffModal";
 import { DocumentFrameHeader, type DocumentFrameHeaderRevisionActor } from "./DocumentFrameHeader";
 import { SourceTrustBadge } from "./SourceTrustBadge";
+import { BostanOcrPreview } from "./BostanOcrPreview";
 import { Badge } from "@/components/ui/badge";
 
 type DraftState = {
@@ -914,6 +915,9 @@ export function IssueDocumentsSection({
         </div>
       )}
 
+      {issue && import.meta.env.VITE_BOSTAN_LOCAL_OCR_PREVIEW_ENABLE === "1" && (
+        <BostanOcrPreview key={issue.id} companyId={issue.companyId} issueId={issue.id} />
+      )}
       {error && <p className="text-xs text-destructive">{error}</p>}
 
       {draft?.isNew && (

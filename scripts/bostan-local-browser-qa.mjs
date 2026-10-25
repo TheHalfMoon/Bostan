@@ -184,7 +184,62 @@ async function runSyntheticPrivateOnboardingWizard(page, privateOrigin, env) {
     ...(firstAgentDraft ? { firstAgentDraft } : {}) };
 }
 
-export async function runPrivateBostanBrowserQa({ origin, expectedCompanyId, env = process.env }) {
+async function runSyntheticPrivateOcrUi(page, privateOrigin, issue) {
+  if (typeof issue.id !== "string" ||
+      !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(issue.id) ||
+      typeof issue.issuePrefix !== "string" ||
+      !/^[A-Z]{2,12}$/.test(issue.issuePrefix)) {
+    throw new Error("Bostan OCR browser QA requires a real synthetic task and scoped company");
+  }
+  const documentsRoute = "/api/issues/" + issue.id + "/documents";
+  const firstDocuments = await page.request.get(privateOrigin + documentsRoute);
+  if (!firstDocuments.ok()) throw new Error("Bostan OCR synthetic documents were unreadable");
+  const initial = await firstDocuments.json();
+  const originalCount = Array.isArray(initial) ? initial.length : null;
+  if (originalCount === null) throw new Error("Bostan OCR synthetic documents were malformed");
+
+  await page.goto(privateOrigin + "/" + issue.issuePrefix + "/issues/" + issue.id, {
+    waitUntil: "domcontentloaded", timeout: 45_000,
+  });
+  // The modern default chat-style task UI keeps documents in Artifacts,
+  // rather than the legacy center-pane IssueDocumentsSection.
+  const panelButton = page.getByRole("button", { name: "Extract text from image" });
+  // DOMContentLoaded is earlier than React lazy-route hydration. An
+  // immediate count()==0 is not evidence the control is absent.
+  let buttonVisible = false;
+  try {
+    await panelButton.first().waitFor({ state: "visible", timeout: 15_000 });
+    buttonVisible = true;
+  } catch { /* Only after hydration timeout try the properties-pane path. */ }
+  if (!buttonVisible) {
+    const showProperties = page.getByRole("button", { name: "Show properties" });
+    if (await showProperties.count()) await showProperties.first().click();
+    const artifacts = page.getByRole("tab", { name: "Artifacts" });
+    await artifacts.first().waitFor({ state: "visible", timeout: 20_000 });
+    await artifacts.first().click();
+    await panelButton.first().waitFor({ state: "visible", timeout: 20_000 });
+  }
+  await panelButton.first().click();
+  await page.getByLabel("OCR language").selectOption("ara");
+  const image = new URL("../server/src/__tests__/fixtures/bostan-ocr-synthetic-arabic.png",
+    import.meta.url);
+  await page.getByLabel("OCR image").setInputFiles(image.pathname);
+  const preview = page.getByLabel("Extracted OCR text");
+  await preview.waitFor({ state: "visible", timeout: 35_000 });
+  const recognized = await preview.inputValue();
+  if (!recognized.includes("بستان")) throw new Error("Bostan browser did not display real offline Arabic OCR");
+  const laterDocuments = await page.request.get(privateOrigin + documentsRoute);
+  if (!laterDocuments.ok()) throw new Error("Bostan could not re-read OCR source task documents");
+  const after = await laterDocuments.json();
+  if (!Array.isArray(after) || after.length !== originalCount) {
+    throw new Error("Bostan OCR preview silently saved a document or altered source evidence");
+  }
+  return { actualBrowserArabicPreview: true, autoDocumentWrites: false };
+}
+
+export async function runPrivateBostanBrowserQa({
+  origin, expectedCompanyId, env = process.env, ocrIssue = null,
+}) {
   const privateOrigin = requirePrivateBrowserQaTarget(origin, env);
   if (typeof expectedCompanyId !== "string" ||
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(expectedCompanyId)) {
@@ -271,9 +326,13 @@ export async function runPrivateBostanBrowserQa({ origin, expectedCompanyId, env
       ? (requireBostanBrowserOnboardingConsent(env),
         await runSyntheticPrivateOnboardingWizard(page, privateOrigin, env))
       : null;
+    const ocr = env.BOSTAN_LIVE_LOCAL_BROWSER_OCR_E2E === "1"
+      ? await runSyntheticPrivateOcrUi(page, privateOrigin, ocrIssue)
+      : null;
     return { qualified: true, browser: "chromium-headless", mounted: true,
       privateApi: true, persistedCompany: true,
       ...(onboarding ? { onboarding } : {}),
+      ...(ocr ? { ocr } : {}),
       pageErrorsSeen: browserPageErrors, blockedExternalRequests };
   } finally {
     await browser.close();
