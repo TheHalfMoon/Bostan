@@ -209,6 +209,13 @@ interruption, recovery, spend and policy failure scenarios.
   authorized founder/board Case readers using the original B5 evidence
   verifier; hide stale reports and distinguish provenance from factual
   truth. 14/14 real PostgreSQL/HTTP, 16/16 React, UI typecheck/build PASS.
+- [x] B5-11: fix the real reviewer authoring gap: REST task document
+  validation formerly accepted only Markdown though governed B5 required
+  JSON. Strict report-only JSON PUT is now allowed only for the active
+  independently delivered task verifier, with original agent/run and
+  revision attribution. 14/14 real PostgreSQL/HTTP tests PASS, including
+  authorized initial/resumed/terminal-pending reports and negative actors.
+  MCP tool schema integration still remains open.
 - [ ] Integrate real authorized agent-run delegation, independent effect
   readback, verifier sign-off and evidence-backed founder summary end-to-end.
   Test duplicate effects, interruption, recovery and budget/consent fences.

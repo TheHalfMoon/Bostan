@@ -8,7 +8,7 @@ type DbTransaction = Parameters<Parameters<Db["transaction"]>[0]>[0];
 type CaseRow = typeof cases.$inferSelect;
 type IssueRow = typeof issues.$inferSelect;
 
-const bostanVerifierReport = z.object({
+export const bostanVerifierReport = z.object({
   schema: z.literal("bostan.verification.report.v1"),
   verdict: z.literal("pass"),
   summary: z.string().trim().min(40).max(3_000),

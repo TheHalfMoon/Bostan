@@ -4,7 +4,7 @@ import request from "supertest";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { agents, caseAccessSources, caseHandoffs, cases, companies,
-  createDb, heartbeatRuns, issues, toolInvocations } from "@paperclipai/db";
+  createDb, documentRevisions, heartbeatRuns, issues, toolInvocations } from "@paperclipai/db";
 import { caseHandoffService } from "../services/case-handoffs.js";
 import { issueService } from "../services/issues.js";
 import { documentService } from "../services/documents.js";
@@ -156,15 +156,47 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
     });
     await expect(service.handoff(f.companyId, board, terminal(2, afterAssign.statusVersion)))
       .rejects.toMatchObject({ status: 409, details: { code: "bostan_verifier_run_required" } });
-    const revised = await documentService(db).upsertIssueDocument({
-      issueId: f.issueId, key: "bostan-verification", title: "Verifier assessment",
-      format: "json", body: reportText(scopedSource.body.sourceSnapshotHmacSha256),
-      baseRevisionId: note.document.latestRevisionId,
-      createdByAgentId: f.verifierId, createdByRunId: reviewedRunId,
-    });
+    // B5-11: exercise the actual authenticated agent REST deliverable write,
+    // not the test-only direct documentService shortcut. The run is live
+    // and assigned, the original delivered case handoff is still current.
+    const verifierWriteApp = (currentRunId: string) => {
+      const app = express(); app.use(express.json());
+      app.use((req, _res, next) => { req.actor = { type: "agent", source: "agent_jwt",
+        companyId: f.companyId, agentId: f.verifierId, runId: currentRunId }; next(); });
+      app.use("/api", issueRoutes(db, {} as never)); app.use(errorHandler);
+      return app;
+    };
+    const writeApp = verifierWriteApp(reviewedRunId);
+    const reportUrl = `/api/issues/${f.issueId}/documents/bostan-verification`;
+    const negativeWrite = { title: "Verifier assessment", format: "json",
+      body: reportText(scopedSource.body.sourceSnapshotHmacSha256),
+      baseRevisionId: note.document.latestRevisionId };
+    const otherFormat = await request(writeApp)
+      .put(`/api/issues/${f.issueId}/documents/unrelated-json`).send(negativeWrite);
+    expect(otherFormat.status).toBe(400);
+    const malformedReport = await request(writeApp).put(reportUrl)
+      .send({ ...negativeWrite, body: JSON.stringify({ schema: "bostan.verification.report.v1", verdict: "pass" }) });
+    expect(malformedReport.status).toBe(400);
+    const boardReportApp = express(); boardReportApp.use(express.json());
+    boardReportApp.use((req, _res, next) => { req.actor = { type: "board", source: "local_implicit",
+      userId: "synthetic-founder", isInstanceAdmin: true }; next(); });
+    boardReportApp.use("/api", issueRoutes(db, {} as never)); boardReportApp.use(errorHandler);
+    expect((await request(boardReportApp).put(reportUrl).send(negativeWrite)).status).toBe(403);
+    const writeReview = await request(writeApp)
+      .put(reportUrl)
+      .send({ title: "Verifier assessment", format: "json",
+        body: reportText(scopedSource.body.sourceSnapshotHmacSha256),
+        baseRevisionId: note.document.latestRevisionId });
+    expect(writeReview.status, JSON.stringify(writeReview.body)).toBe(200);
+    const revised = { document: (await documentService(db).getIssueDocumentByKey(f.issueId, "bostan-verification"))! };
+    const [actualRevision] = await db.select({ agentId: documentRevisions.createdByAgentId,
+      runId: documentRevisions.createdByRunId }).from(documentRevisions)
+      .where(eq(documentRevisions.id, revised.document.latestRevisionId));
+    expect(actualRevision).toMatchObject({ agentId: f.verifierId, runId: reviewedRunId });
     await new Promise(resolve => setTimeout(resolve, 30));
     await db.update(heartbeatRuns).set({ status: "succeeded", finishedAt: new Date() })
       .where(eq(heartbeatRuns.id, reviewedRunId));
+    expect((await request(writeApp).put(reportUrl).send(negativeWrite)).status).toBe(403);
     // The actual underlying implementation source changes after review:
     // a well-attributed run/report is NOT enough if its cited facts are stale.
     await documentService(db).upsertIssueDocument({
@@ -193,12 +225,12 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
     const refreshedSource = await getActiveSourceSnapshot(resumedRunId);
     expect(refreshedSource.status).toBe(200);
     expect(refreshedSource.body.sourceSnapshotHmacSha256).not.toBe(scopedSource.body.sourceSnapshotHmacSha256);
-    const finalReviewed = await documentService(db).upsertIssueDocument({
-      issueId: f.issueId, key: "bostan-verification", title: "Verifier assessment",
-      format: "json", body: reportText(refreshedSource.body.sourceSnapshotHmacSha256),
-      baseRevisionId: tampered.document.latestRevisionId,
-      createdByAgentId: f.verifierId, createdByRunId: resumedRunId,
-    });
+    const resumedWrite = await request(verifierWriteApp(resumedRunId)).put(reportUrl)
+      .send({ title: "Verifier assessment", format: "json",
+        body: reportText(refreshedSource.body.sourceSnapshotHmacSha256),
+        baseRevisionId: tampered.document.latestRevisionId });
+    expect(resumedWrite.status, JSON.stringify(resumedWrite.body)).toBe(200);
+    const finalReviewed = { document: (await documentService(db).getIssueDocumentByKey(f.issueId, "bostan-verification"))! };
     await new Promise(resolve => setTimeout(resolve, 30));
     await db.update(heartbeatRuns).set({ status: "succeeded", finishedAt: new Date() })
       .where(eq(heartbeatRuns.id, resumedRunId));
@@ -235,12 +267,11 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
     const finalDigest = await getActiveSourceSnapshot(finalRunId);
     expect(finalDigest.status).toBe(200);
     expect(finalDigest.body.sourceSnapshotHmacSha256).not.toBe(refreshedSource.body.sourceSnapshotHmacSha256);
-    await documentService(db).upsertIssueDocument({
-      issueId: f.issueId, key: "bostan-verification", title: "Verifier assessment",
-      format: "json", body: reportText(finalDigest.body.sourceSnapshotHmacSha256),
-      baseRevisionId: finalReviewed.document.latestRevisionId,
-      createdByAgentId: f.verifierId, createdByRunId: finalRunId,
-    });
+    const finalWrite = await request(verifierWriteApp(finalRunId)).put(reportUrl)
+      .send({ title: "Verifier assessment", format: "json",
+        body: reportText(finalDigest.body.sourceSnapshotHmacSha256),
+        baseRevisionId: finalReviewed.document.latestRevisionId });
+    expect(finalWrite.status, JSON.stringify(finalWrite.body)).toBe(200);
     await new Promise(resolve => setTimeout(resolve, 35));
     await db.update(heartbeatRuns).set({ status: "succeeded", finishedAt: new Date() })
       .where(eq(heartbeatRuns.id, finalRunId));

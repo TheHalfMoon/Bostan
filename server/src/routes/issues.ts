@@ -1,6 +1,7 @@
 import { taskInterruptionPresentation, taskInterruptionPresentations } from "../services/task-interruption-presentation.js";
 import { readBostanIssueDocumentEvidence, checkBostanIssueDocumentSnapshot,
   checkBostanDocumentSnapshotBatch } from "../services/bostan-knowledge-evidence.js";
+import { bostanVerifierReport } from "../services/bostan-current-verification-evidence.js";
 import { parseObject } from "../adapters/utils.js";
 import { prepareRestrictedWorkspaceRetry } from "../services/restricted-workspace-retry.js";
 import { issueSummariesQuerySchema, type IssueSummary } from "@paperclipai/shared";
@@ -10885,7 +10886,11 @@ export function issueRoutes(
 
   router.put(
     "/issues/:id/documents/:key",
-    validate(upsertIssueDocumentSchema),
+    // Existing issue documents remain markdown-only. The B5 independently
+    // reviewed report has one narrow JSON exception using its own key.
+    validate(upsertIssueDocumentSchema.or(
+      upsertIssueDocumentSchema.extend({ format: z.literal("json") }),
+    )),
     async (req, res) => {
       const id = req.params.id as string;
       const issue = await getAccessibleResource(
@@ -10913,6 +10918,56 @@ export function issueRoutes(
         return;
       }
 
+      if (req.body.format === "json") {
+        if (keyParsed.data !== "bostan-verification") {
+          res.status(400).json({ error: "JSON document format is reserved for Bostan verification reports" });
+          return;
+        }
+        // B5-11: JSON is an exception for the actual *running* assigned
+        // independent verifier, not a general-purpose document format or a
+        // board shortcut for minting agent-authored provenance.
+        if (req.actor.type !== "agent" || !req.actor.runId || !req.actor.agentId ||
+          req.actor.companyId !== issue.companyId || req.actor.agentId !== issue.assigneeAgentId) {
+          res.status(403).json({ error: "Active assigned verifier agent required" }); return;
+        }
+        const [reviewRun] = await db.select({ startedAt: heartbeatRuns.startedAt }).from(heartbeatRuns)
+          .where(and(eq(heartbeatRuns.id, req.actor.runId), eq(heartbeatRuns.companyId, issue.companyId),
+            eq(heartbeatRuns.agentId, req.actor.agentId), eq(heartbeatRuns.status, "running"),
+            or(eq(heartbeatRuns.issueId, issue.id), eq(heartbeatRuns.nativeIssueId, issue.id),
+              sql`${heartbeatRuns.contextSnapshot}->>'issueId' = ${issue.id}`))).limit(1);
+        const [reviewCase] = await db.select({ id: cases.id, version: cases.handoffVersion,
+          phase: cases.phase }).from(cases).where(and(eq(cases.companyId, issue.companyId),
+            eq(cases.workIssueId, issue.id), sql`${cases.fields}->>'bostanIndependentVerificationRequired' = 'true'`)).limit(1);
+        if (!reviewRun?.startedAt || !reviewCase || reviewCase.phase !== "verification") {
+          res.status(403).json({ error: "Current independent verifier run required" }); return;
+        }
+        // A board may have already admitted an inert terminal intent while
+        // a newer reviewer run is correcting a stale source. In that case
+        // look at the immediately preceding independent delivery version.
+        const [terminalIntent] = await db.select({ id: caseHandoffs.id }).from(caseHandoffs).where(and(
+          eq(caseHandoffs.companyId, issue.companyId), eq(caseHandoffs.caseId, reviewCase.id),
+          eq(caseHandoffs.issueId, issue.id), eq(caseHandoffs.version, reviewCase.version),
+          eq(caseHandoffs.destinationKind, "done"), eq(caseHandoffs.state, "awaiting_completion"),
+          eq(caseHandoffs.fromAgentId, req.actor.agentId))).limit(1);
+        const version = terminalIntent ? reviewCase.version - 1 : reviewCase.version;
+        const [delivered] = await db.select({ deliveredAt: caseHandoffs.deliveredAt }).from(caseHandoffs)
+          .where(and(eq(caseHandoffs.companyId, issue.companyId), eq(caseHandoffs.caseId, reviewCase.id),
+            eq(caseHandoffs.issueId, issue.id), eq(caseHandoffs.version, version),
+            eq(caseHandoffs.phase, "verification"), eq(caseHandoffs.destinationKind, "agent"),
+            eq(caseHandoffs.state, "delivered"), eq(caseHandoffs.toAgentId, req.actor.agentId),
+            sql`${caseHandoffs.fromAgentId} is not null and ${caseHandoffs.fromAgentId} <> ${caseHandoffs.toAgentId}`))
+          .limit(1);
+        if (!delivered?.deliveredAt || reviewRun.startedAt < delivered.deliveredAt) {
+          res.status(403).json({ error: "Delivered independent verifier handoff required" }); return;
+        }
+        let candidate: unknown;
+        try { candidate = JSON.parse(req.body.body); } catch { candidate = null; }
+        const report = bostanVerifierReport.safeParse(candidate);
+        if (!report.success) {
+          res.status(400).json({ error: "Invalid bounded Bostan verifier report" });
+          return;
+        }
+      }
       const actor = getActorInfo(req);
       const sourceTrust = await sourceTrustForActorWrite(issue, actor);
       const referenceSummaryBefore =
