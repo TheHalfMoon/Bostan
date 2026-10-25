@@ -117,6 +117,24 @@ describe("read-only CaseDetail", () => {
     expect(cases.listEvents).not.toHaveBeenCalled();
   });
 
+  it("B5-02 shows the independent-review policy without exposing an edit control", async () => {
+    cases.get.mockResolvedValue({ ...detail(), fields: { ...detail().fields,
+      bostanIndependentVerificationRequired: true } });
+    render();
+    await waitFor(() => expect(container.querySelector('[data-testid="bostan-independent-review-required"]')).not.toBeNull());
+    const status = container.querySelector('[data-testid="bostan-independent-review-required"]')!;
+    expect(status.textContent).toContain("Independent verifier handoff required");
+    expect(status.textContent).toContain("different agent");
+    expect(container.querySelector('table[aria-label="Case fields"]')?.textContent)
+      .not.toContain("bostanIndependentVerificationRequired");
+    expect(container.querySelector('input,textarea,[contenteditable="true"]')).toBeNull();
+    expect(cases.patch).not.toHaveBeenCalled();
+  });
+  it("B5-02 does not invent an independent-review requirement for legacy cases", async () => {
+    render();
+    await waitFor(() => expect(container.textContent).toContain("Hermes agent launch post"));
+    expect(container.querySelector('[data-testid="bostan-independent-review-required"]')).toBeNull();
+  });
   it("shows Work before Details and reads nested fields as compact dotted key/value rows", async () => {
     const items = [{ quantity: 2, unitPrice: 3 }];
     const metadata = { source: { name: "Coffee shop", reference: "receipt-1" }, verified: true };

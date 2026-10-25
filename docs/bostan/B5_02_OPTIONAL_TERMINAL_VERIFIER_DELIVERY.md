@@ -85,3 +85,25 @@ isolated real PostgreSQL, synthetic company created, clean shutdown,
 restart with exact company persisted, second clean shutdown, successful
 disposable test profile cleaned. `git diff --check` PASS. This is not a
 real live-provider run, verifier sign-off or Windows product acceptance.
+
+## Read-only founder/board UI policy visibility
+
+The existing `ui/src/pages/CaseDetail.tsx` is intentionally read-only;
+authorized agent/API callers create and mutate cases. The page now renders
+a visible **independent verifier handoff required** policy notice when the
+canonical case `fields.bostanIndependentVerificationRequired` is exactly
+`true`. It explains that a different agent must receive the review task
+before the case can request closure. Legacy cases without the flag are
+unchanged. The field is not duplicated as an editable arbitrary key in
+the details table, and no new input or mutation control is introduced.
+
+`pnpm --filter @paperclipai/ui exec vitest run src/pages/CaseDetail.test.tsx --maxWorkers=2`:
+**14/14 PASS**, with two B5-02 regressions for enabled/disabled policy and
+read-only UI behavior.
+
+`pnpm --filter @paperclipai/ui exec tsc -b --pretty false`:
+**PASS, exit 0**.
+
+`CI=1 pnpm --filter @paperclipai/ui build`:
+**PASS, exit 0**. Inherited >500kB bundle chunk warnings remain, not a
+build failure. No network deployment or model run was needed.

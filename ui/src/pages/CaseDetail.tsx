@@ -81,7 +81,8 @@ export function CaseDetail() {
   // A document is the authoritative version of a field with the same key.
   const documentKeys = new Set(caseData.documents.map(document => document.key.toLowerCase()));
   const taskDocuments = caseData.taskDocuments ?? [];
-  const fields = Object.entries(caseData.fields).filter(([key, value]) => !documentKeys.has(key.toLowerCase())
+  const independentReviewRequired = caseData.fields.bostanIndependentVerificationRequired === true;
+  const fields = Object.entries(caseData.fields).filter(([key, value]) => key !== "bostanIndependentVerificationRequired" && !documentKeys.has(key.toLowerCase())
     && !(key.toLowerCase() === "title" && value === caseData.title)
     && !(key.toLowerCase() === "description" && value === caseData.summary));
   const relatedTasks = caseData.issueLinks.filter(link => link.issueId !== caseData.workIssueId);
@@ -97,6 +98,11 @@ export function CaseDetail() {
       </div>
       <h1 className="text-2xl font-semibold tracking-tight">{caseData.title}</h1>
       {caseData.summary && <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{caseData.summary}</p>}
+      {independentReviewRequired && <p role="status" data-testid="bostan-independent-review-required"
+        className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-foreground">
+        <strong>Independent verifier handoff required.</strong>{" "}
+        A different agent must receive the verification task before the case can request closure.
+      </p>}
       {caseData.labels.length > 0 && <div className="flex flex-wrap gap-1.5" aria-label="Case labels">{caseData.labels.map(label => <Badge key={label.id} variant="secondary" className="font-normal">{label.name}</Badge>)}</div>}
     </header>
 
