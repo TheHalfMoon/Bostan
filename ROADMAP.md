@@ -182,6 +182,12 @@ interruption, recovery, spend and policy failure scenarios.
   distinct reviewer during an actually started-and-succeeded post-delivery
   run. Latest implementer rewrites invalidate review; 3/3 SQL and 14/14
   read-only UI tests PASS. No claim of independent external effect proof.
+- [x] B5-05: current verifier-run report is now bounded JSON citing 1–10
+  real same-task canonical B4 document HMAC snapshots. Missing, edited or
+  unlinked sources invalidate an otherwise accepted report at terminal
+  transaction. 3/3 real PostgreSQL and 14/14 CaseDetail UI tests PASS.
+  Agent-facing source-fingerprint retrieval and actual fact verification
+  remain open.
 - [ ] Integrate real authorized agent-run delegation, independent effect
   readback, verifier sign-off and evidence-backed founder summary end-to-end.
   Test duplicate effects, interruption, recovery and budget/consent fences.

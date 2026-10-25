@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { z } from "zod";
 import { and, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { agents, caseAccessSources, caseEvents, caseHandoffs, caseIssueLinks, cases, chatConversations, companies, documentRevisions, documents, heartbeatRuns, issueDocuments, issues, projects } from "@paperclipai/db";
@@ -15,6 +16,7 @@ import { DELIVERY_QUEUES, notifyDeliveryWork } from "./delivery-work-notificatio
 import { instanceSettingsService } from "./instance-settings.js";
 import { issueService } from "./issues.js";
 import { documentService } from "./documents.js";
+import { checkBostanIssueDocumentSnapshot } from "./bostan-knowledge-evidence.js";
 import { applyCaseWorkflow, captureCaseWorkflow } from "./case-workflows.js";
 import type { CurrentCloudOwnerAuthority } from "./cloud-tenant-authority.js";
 import { resolveActorSourceTrustForIssue } from "./source-trust.js";
@@ -25,6 +27,20 @@ export type CaseHandoffRow = typeof caseHandoffs.$inferSelect;
 type CaseRow = typeof cases.$inferSelect;
 type IssueRow = typeof issues.$inferSelect;
 const PENDING = ["awaiting_release", "pending_dispatch", "awaiting_completion"] as const;
+
+const bostanVerifierReport = z.object({
+  schema: z.literal("bostan.verification.report.v1"),
+  verdict: z.literal("pass"),
+  summary: z.string().trim().min(40).max(3_000),
+  sources: z.array(z.object({
+    documentId: z.string().uuid(),
+    expectedSnapshotHmacSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  }).strict()).min(1).max(10),
+}).strict().superRefine((report, context) => {
+  if (new Set(report.sources.map(source => source.documentId)).size !== report.sources.length) {
+    context.addIssue({ code: "custom", path: ["sources"], message: "Review sources must be unique" });
+  }
+});
 
 function publicHandoff(row: CaseHandoffRow) {
   const { actorContext: _actorContext, workflowPrompt: _prompt, baseWorkflowDocumentRevisionId: _base, ...publicRow } = row;
@@ -346,7 +362,7 @@ export function caseHandoffService(db: Db) {
     // different/old run. The private content is never copied into a case
     // field, comment or a second evidence store.
     const [reviewDocument] = await tx.select({
-      id: documents.id, body: documents.latestBody,
+      id: documents.id, body: documents.latestBody, format: documents.format,
       revisionAt: documentRevisions.createdAt,
       runId: documentRevisions.createdByRunId,
     }).from(issueDocuments)
@@ -366,12 +382,37 @@ export function caseHandoffService(db: Db) {
       )).for("share").limit(1);
     const matchingRun = successfulReviewerRuns.find(run => run.id === reviewDocument?.runId);
     if (!reviewDocument || !matchingRun?.startedAt || !matchingRun.finishedAt ||
-      reviewDocument.body.trim().length < 40 ||
       reviewDocument.revisionAt < matchingRun.startedAt ||
       reviewDocument.revisionAt > matchingRun.finishedAt) {
       throw conflict("Current independent reviewer document has no completed-run provenance", {
         code: "bostan_verifier_document_required",
       });
+    }
+    // A free-form model claim does not bind the asserted review to any real
+    // source. The current reviewer-authored JSON report must cite actual
+    // CURRENT canonical issue documents by their B4 private snapshot HMACs.
+    // This validates version/provenance, not model factual judgment.
+    let rawReport: unknown;
+    try { rawReport = JSON.parse(reviewDocument.body); } catch { rawReport = null; }
+    const parsed = reviewDocument.format === "json"
+      ? bostanVerifierReport.safeParse(rawReport) : { success: false as const };
+    if (!parsed.success || parsed.data.sources.some(source => source.documentId === reviewDocument.id)) {
+      throw conflict("Independent reviewer report is missing bounded linked evidence", {
+        code: "bostan_verifier_report_invalid",
+      });
+    }
+    for (const source of parsed.data.sources) {
+      const current = await checkBostanIssueDocumentSnapshot({
+        db: tx, companyId: caseRow.companyId, issueId: issue.id,
+        documentId: source.documentId,
+        expectedSnapshotHmacSha256: source.expectedSnapshotHmacSha256,
+        issueReadCondition: sql<boolean>`true`, lockForShare: true,
+      });
+      if (!current?.snapshotCurrent) {
+        throw conflict("Review report refers to missing or changed source evidence", {
+          code: "bostan_verifier_source_stale",
+        });
+      }
     }
   }
 

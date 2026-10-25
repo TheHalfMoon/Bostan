@@ -5,6 +5,7 @@ import { agents, caseAccessSources, caseHandoffs, cases, companies,
   createDb, heartbeatRuns, issues, toolInvocations } from "@paperclipai/db";
 import { caseHandoffService } from "../services/case-handoffs.js";
 import { documentService } from "../services/documents.js";
+import { readBostanIssueDocumentEvidence } from "../services/bostan-knowledge-evidence.js";
 import { instanceSettingsService } from "../services/instance-settings.js";
 import {
   getBostanFeedbackPostgresTestSupport,
@@ -22,9 +23,10 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
     backend = await startBostanFeedbackPostgresTestDatabase("bostan-b5-verifier-");
     db = createDb(backend.connectionString);
     await instanceSettingsService(db).updateExperimental({ enableCases: true });
+    process.env.PAPERCLIP_DECISION_SIGNING_SECRET = "bostan-b5-synthetic-signing-test-0123456789";
   }, 120_000);
   afterEach(async () => { await db.execute(sql`TRUNCATE TABLE companies CASCADE`); });
-  afterAll(async () => { await db?.$client?.end?.({ timeout: 0 }); await backend?.cleanup(); });
+  afterAll(async () => { await db?.$client?.end?.({ timeout: 0 }); await backend?.cleanup(); delete process.env.PAPERCLIP_DECISION_SIGNING_SECRET; });
 
   async function setup() {
     const companyId = randomUUID(), ceoId = randomUUID(), specialistId = randomUUID(), verifierId = randomUUID();
@@ -107,6 +109,20 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
       .rejects.toMatchObject({ status: 409, details: { code: "bostan_verifier_run_required" } });
     // Synthetic source-runtime completion row; no AI/model/provider actually
     // executed in this test. It proves only the canonical DB run gate.
+    const sourceDocument = await documentService(db).upsertIssueDocument({
+      issueId: f.issueId, key: "bostan-source", title: "Implementation source",
+      format: "markdown", body: "Original synthetic result to be independently checked for acceptance.",
+      createdByAgentId: f.specialistId, createdByRunId: otherRunId,
+    });
+    const sourceEvidence = await readBostanIssueDocumentEvidence({ db,
+      companyId: f.companyId, issueId: f.issueId,
+      documentId: sourceDocument.document.id, issueReadCondition: sql<boolean>`true`,
+    });
+    const reportText = (hmac: string) => JSON.stringify({
+      schema: "bostan.verification.report.v1", verdict: "pass",
+      summary: "Synthetic reviewer checked the current implementation source and recorded a bounded observation.",
+      sources: [{ documentId: sourceDocument.document.id, expectedSnapshotHmacSha256: hmac }],
+    });
     const reviewedRunId = randomUUID();
     await db.insert(heartbeatRuns).values({ id: reviewedRunId, companyId: f.companyId,
       agentId: f.verifierId, issueId: f.issueId, status: "running",
@@ -123,13 +139,23 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
       .rejects.toMatchObject({ status: 409, details: { code: "bostan_verifier_run_required" } });
     const revised = await documentService(db).upsertIssueDocument({
       issueId: f.issueId, key: "bostan-verification", title: "Verifier assessment",
-      format: "markdown", body: "Independent synthetic reviewer checked the exact reported task outcomes for acceptance.",
+      format: "json", body: reportText(sourceEvidence!.sourceSnapshotHmacSha256),
       baseRevisionId: note.document.latestRevisionId,
       createdByAgentId: f.verifierId, createdByRunId: reviewedRunId,
     });
     await new Promise(resolve => setTimeout(resolve, 30));
     await db.update(heartbeatRuns).set({ status: "succeeded", finishedAt: new Date() })
       .where(eq(heartbeatRuns.id, reviewedRunId));
+    // The actual underlying implementation source changes after review:
+    // a well-attributed run/report is NOT enough if its cited facts are stale.
+    await documentService(db).upsertIssueDocument({
+      issueId: f.issueId, key: "bostan-source", title: "Implementation source",
+      format: "markdown", body: "Changed implementation source that invalidates the prior reviewer citation.",
+      baseRevisionId: sourceDocument.document.latestRevisionId,
+      createdByAgentId: f.specialistId, createdByRunId: otherRunId,
+    });
+    await expect(service.handoff(f.companyId, board, terminal(2, afterAssign.statusVersion)))
+      .rejects.toMatchObject({ status: 409, details: { code: "bostan_verifier_source_stale" } });
     // Historical verifier-owned content is not sufficient after the latest
     // revision is rewritten by an implementer. This must reject before the
     // canonical terminal comment or version advances.
@@ -147,7 +173,10 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
       startedAt: new Date(), contextSnapshot: { issueId: f.issueId } });
     await documentService(db).upsertIssueDocument({
       issueId: f.issueId, key: "bostan-verification", title: "Verifier assessment",
-      format: "markdown", body: "The independent reviewer restored the current test report after rejecting the unexpected revision.",
+      format: "json", body: reportText((await readBostanIssueDocumentEvidence({ db,
+        companyId: f.companyId, issueId: f.issueId, documentId: sourceDocument.document.id,
+        issueReadCondition: sql<boolean>`true`,
+      }))!.sourceSnapshotHmacSha256),
       baseRevisionId: tampered.document.latestRevisionId,
       createdByAgentId: f.verifierId, createdByRunId: resumedRunId,
     });

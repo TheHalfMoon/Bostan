@@ -126,7 +126,8 @@ describe("read-only CaseDetail", () => {
     expect(status.textContent).toContain("Independent verifier handoff required");
     expect(status.textContent).toContain("different agent");
     expect(status.textContent).toContain("successful verification run");
-    expect(status.textContent).toContain("current verification report");
+    expect(status.textContent).toContain("current report");
+    expect(status.textContent).toContain("unchanged source documents");
     expect(container.querySelector('table[aria-label="Case fields"]')?.textContent)
       .not.toContain("bostanIndependentVerificationRequired");
     expect(container.querySelector('input,textarea,[contenteditable="true"]')).toBeNull();
