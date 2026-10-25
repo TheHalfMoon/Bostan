@@ -75,6 +75,34 @@ const REVIEW_EVIDENCE_LABEL = "BOSTAN_REVIEW_SOURCE_COMMENT_ID:";
 const UUID_PATTERN = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 
 /**
+ * A marker alone is NOT a successful model-driven task receipt. Only a
+ * persisted, attributed comment created by this exact successful heartbeat
+ * run is eligible; stale model output and board comments never count.
+ */
+function hasStandaloneEvidenceMarker(body, marker) {
+  // Callers validate markers against the static, punctuation-free allowlist.
+  // Refuse misleading strings such as NOT_BOSTAN_CLEAN_RUN_PASS.
+  const re = new RegExp("(^|[^A-Za-z0-9_])" + marker + "(?=$|[^A-Za-z0-9_])");
+  return re.test(String(body ?? ""));
+}
+
+export function requirePersistedRunComment({ comments, agentId, runId, marker }) {
+  if (!Array.isArray(comments) || !UUID_PATTERN.test(agentId) ||
+      !UUID_PATTERN.test(runId) || ![MARKER, SECOND_MARKER].includes(marker)) {
+    throw new Error("Synthetic Bostan QA requires a valid agent/run and allowlisted marker");
+  }
+  const comment = comments.find(entry =>
+    UUID_PATTERN.test(entry?.id ?? "") && entry.authorAgentId === agentId &&
+    entry.createdByRunId === runId &&
+    hasStandaloneEvidenceMarker(entry.body ?? entry.content, marker));
+  if (!comment) {
+    throw new Error("No persisted comment from the exact expected agent and heartbeat run");
+  }
+  return { commentId: comment.id };
+}
+
+
+/**
  * Only actual persisted source comments qualify; never trust a reviewer's
  * unsupported "verified" prose, a marker copied from the task description,
  * or a guessed/hallucinated comment reference.
@@ -88,18 +116,24 @@ export function requirePersistedReviewCitation({
       sourceAgentId === reviewerAgentId || sourceRunId === reviewerRunId) {
     throw new Error("Review requires distinct authenticated agents and completed run IDs");
   }
-  const original = sourceComments.find(c => UUID_PATTERN.test(c?.id ?? "") &&
-    c.authorAgentId === sourceAgentId && c.createdByRunId === sourceRunId &&
-    String(c.body ?? c.content ?? "").includes(firstMarker));
-  if (!original) throw new Error("Review cannot qualify without an actual persisted first-agent source comment");
-  const tag = REVIEW_EVIDENCE_LABEL + original.id;
+  const originalId = (() => {
+    try {
+      return requirePersistedRunComment({
+        comments: sourceComments, agentId: sourceAgentId, runId: sourceRunId,
+        marker: firstMarker,
+      }).commentId;
+    } catch {
+      throw new Error("Review cannot qualify without an actual persisted first-agent source comment");
+    }
+  })();
+  const tag = REVIEW_EVIDENCE_LABEL + originalId;
   const review = reviewerComments.find(c => UUID_PATTERN.test(c?.id ?? "") &&
     c.authorAgentId === reviewerAgentId && c.createdByRunId === reviewerRunId &&
-    c.id !== original.id &&
-    String(c.body ?? c.content ?? "").includes(secondMarker) &&
+    c.id !== originalId &&
+    hasStandaloneEvidenceMarker(c.body ?? c.content, secondMarker) &&
     String(c.body ?? c.content ?? "").includes(tag));
   if (!review) throw new Error("Second agent did not cite the actual persisted source comment ID");
-  return { sourceCommentId: original.id, reviewCommentId: review.id ?? null };
+  return { sourceCommentId: originalId, reviewCommentId: review.id ?? null };
 }
 
 export function buildEvidenceReviewTask({ sourceIssueId }) {
@@ -256,19 +290,22 @@ export async function runFirstAgentFreeE2e(env = process.env) {
   const finalIssue = await requestJson(base, "issues/" + issue.id);
   const commentResult = await requestJson(base, "issues/" + issue.id + "/comments");
   const comments = Array.isArray(commentResult) ? commentResult : commentResult.comments ?? [];
-  const hasMarker = comments.some((entry) =>
-    String(entry.body ?? entry.content ?? "").includes(MARKER));
+  const sourceReceipt = requirePersistedRunComment({
+    comments, agentId: agent.id, runId: run.id, marker: MARKER,
+  });
   const clean = run.status === "succeeded" && run.exitCode === 0
-    && run.errorCode == null && finalIssue.status === "done" && hasMarker;
+    && run.errorCode == null && finalIssue.status === "done";
   if (!clean) {
     throw new Error("Bostan first agent did not qualify clean completion: " +
       JSON.stringify({ runStatus: run.status, exitCode: run.exitCode,
-        errorCode: run.errorCode, issueStatus: finalIssue.status, hasMarker }));
+        errorCode: run.errorCode, issueStatus: finalIssue.status,
+        attributedCommentId: sourceReceipt.commentId }));
   }
   console.log("Bostan first real free agent E2E PASS: " +
     JSON.stringify({ model, companyId: company.id, agentId: agent.id, issueId: issue.id,
       runId: run.id, runStatus: run.status, exitCode: run.exitCode,
-      issueStatus: finalIssue.status, exactMarkerFound: hasMarker,
+      issueStatus: finalIssue.status, exactMarkerFound: true,
+      attributedCommentId: sourceReceipt.commentId,
       reportedCostUsd: run.usageJson?.costUsd ?? null }));
 
   // B5-18: a strictly opt-in second actual free-model worker on another task
@@ -329,8 +366,10 @@ export async function runFirstAgentFreeE2e(env = process.env) {
     const secondCommentsResponse = await requestJson(base, "issues/" + secondIssue.id + "/comments");
     const secondComments = Array.isArray(secondCommentsResponse) ? secondCommentsResponse
       : secondCommentsResponse.comments ?? [];
-    const secondMarkerFound = secondComments.some(entry =>
-      String(entry.body ?? entry.content ?? "").includes(SECOND_MARKER));
+    const secondReceipt = requirePersistedRunComment({
+      comments: secondComments, agentId: secondAgent.id,
+      runId: secondRun.id, marker: SECOND_MARKER,
+    });
     const citation = reviewMode
       ? requirePersistedReviewCitation({ sourceComments: comments, reviewerComments: secondComments,
         sourceAgentId: agent.id, reviewerAgentId: secondAgent.id,
@@ -338,17 +377,18 @@ export async function runFirstAgentFreeE2e(env = process.env) {
       : null;
     if (secondRun.id === run.id || secondRun.status !== "succeeded" ||
         secondRun.exitCode !== 0 || secondRun.errorCode != null ||
-        secondResult.status !== "done" || !secondMarkerFound) {
+        secondResult.status !== "done") {
       throw new Error("Second actual Bostan worker did not qualify the distinct completion " +
         JSON.stringify({ status: secondRun.status, exitCode: secondRun.exitCode,
-          issueStatus: secondResult.status, secondMarkerFound }));
+          issueStatus: secondResult.status, attributedCommentId: secondReceipt.commentId }));
     }
     console.log("Bostan B5-18 distinct second real free agent E2E PASS: " +
       JSON.stringify({ model, companyId: company.id, firstAgentId: agent.id,
         secondAgentId: secondAgent.id, firstIssueId: issue.id,
         secondIssueId: secondIssue.id, firstRunId: run.id, secondRunId: secondRun.id,
         secondRunStatus: secondRun.status, secondExitCode: secondRun.exitCode,
-        secondIssueStatus: secondResult.status, secondExactMarkerFound: secondMarkerFound,
+        secondIssueStatus: secondResult.status, secondExactMarkerFound: true,
+        secondAttributedCommentId: secondReceipt.commentId,
         ...(citation ? { persistedSourceCommentCited: true,
           sourceCommentId: citation.sourceCommentId,
           reviewerCommentId: citation.reviewCommentId } : {}),

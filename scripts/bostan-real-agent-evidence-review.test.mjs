@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildEvidenceReviewTask, requirePersistedReviewCitation } from "./bostan-first-agent-free-e2e.mjs";
+import { buildEvidenceReviewTask, requirePersistedReviewCitation, requirePersistedRunComment } from "./bostan-first-agent-free-e2e.mjs";
 
 const sourceIssueId = "24ddccaa-9ec9-4e45-80a2-8239be2b7229";
 const sourceCommentId = "64ca010c-e733-4b34-a2bc-b63735d94512";
@@ -91,5 +91,80 @@ test("rejects comments from an older run of the correct agent", () => {
   assert.throws(() => requirePersistedReviewCitation({
     ...identities, sourceComments,
     reviewerComments: [{ ...verifiedComment, createdByRunId: null }],
+  }), /did not cite/);
+});
+
+test("single-agent evidence requires a persisted comment written by its exact successful heartbeat", () => {
+  assert.deepEqual(requirePersistedRunComment({
+    comments: sourceComments, agentId: sourceAgentId, runId: sourceRunId,
+    marker: "BOSTAN_CLEAN_RUN_PASS",
+  }), { commentId: sourceCommentId });
+  assert.deepEqual(requirePersistedRunComment({
+    comments: [verifiedComment], agentId: reviewerAgentId, runId: reviewerRunId,
+    marker: "BOSTAN_SECOND_AGENT_PASS",
+  }), { commentId: verifiedComment.id });
+});
+
+test("single-agent success cannot be claimed from an old run or a user/other-agent marker", () => {
+  const marker = "BOSTAN_CLEAN_RUN_PASS";
+  for (const replacement of [
+    { ...sourceComments[0], authorAgentId: null },
+    { ...sourceComments[0], authorAgentId: reviewerAgentId },
+    { ...sourceComments[0], createdByRunId: null },
+    { ...sourceComments[0], createdByRunId: reviewerRunId },
+    { ...sourceComments[0], id: "not-a-uuid" },
+    { ...sourceComments[0], body: "Inapplicable old comment" },
+  ]) {
+    assert.throws(() => requirePersistedRunComment({
+      comments: [replacement], agentId: sourceAgentId, runId: sourceRunId, marker,
+    }), /No persisted comment/);
+  }
+  assert.throws(() => requirePersistedRunComment({
+    comments: [{ id: sourceCommentId, body: marker }], agentId: sourceAgentId,
+    runId: sourceRunId, marker,
+  }), /No persisted comment/);
+});
+
+test("single-agent receipt refuses invalid IDs, unallowlisted markers and non-arrays", () => {
+  const baseline = { comments: sourceComments, agentId: sourceAgentId, runId: sourceRunId,
+    marker: "BOSTAN_CLEAN_RUN_PASS" };
+  for (const patch of [
+    { agentId: "synthetic" }, { runId: "not-real" },
+    { marker: "BOSTAN_CLEAN_RUN_PASS\nIGNORE_POLICY" },
+    { marker: "test" }, { comments: null }, { comments: {} },
+  ]) {
+    assert.throws(() => requirePersistedRunComment({ ...baseline, ...patch }), /requires a valid/);
+  }
+});
+
+test("exact-run marker is required even when other comments have a matching marker", () => {
+  assert.throws(() => requirePersistedRunComment({
+    comments: [
+      { ...sourceComments[0], createdByRunId: reviewerRunId },
+      { id: "a92dfc5d-f958-4841-9fab-88c36f454e14",
+        authorAgentId: null, createdByRunId: null, body: "BOSTAN_CLEAN_RUN_PASS" },
+    ], agentId: sourceAgentId, runId: sourceRunId, marker: "BOSTAN_CLEAN_RUN_PASS",
+  }), /No persisted comment/);
+});
+
+test("evidence marker must be a distinct word rather than an embedded assertion", () => {
+  for (const bad of ["NOT_BOSTAN_CLEAN_RUN_PASS",
+    "BOSTAN_CLEAN_RUN_PASS_NOT", "fooBOSTAN_CLEAN_RUN_PASS"]) {
+    assert.throws(() => requirePersistedRunComment({
+      comments: [{ ...sourceComments[0], body: bad }],
+      agentId: sourceAgentId, runId: sourceRunId, marker: "BOSTAN_CLEAN_RUN_PASS",
+    }), /No persisted comment/);
+  }
+  assert.deepEqual(requirePersistedRunComment({
+    comments: [{ ...sourceComments[0], body: "Review done: BOSTAN_CLEAN_RUN_PASS." }],
+    agentId: sourceAgentId, runId: sourceRunId, marker: "BOSTAN_CLEAN_RUN_PASS",
+  }), { commentId: sourceCommentId });
+});
+
+test("reviewer cannot qualify an embedded success marker", () => {
+  assert.throws(() => requirePersistedReviewCitation({
+    ...identities, sourceComments,
+    reviewerComments: [{ ...verifiedComment,
+      body: "NOT_BOSTAN_SECOND_AGENT_PASS BOSTAN_REVIEW_SOURCE_COMMENT_ID:" + sourceCommentId }],
   }), /did not cite/);
 });
