@@ -215,7 +215,11 @@ interruption, recovery, spend and policy failure scenarios.
   independently delivered task verifier, with original agent/run and
   revision attribution. 14/14 real PostgreSQL/HTTP tests PASS, including
   authorized initial/resumed/terminal-pending reports and negative actors.
-  MCP tool schema integration still remains open.
+  Native runner tool integration follows in B5-12.
+- [x] B5-12: Native Runner `write_task_document` exposes JSON reports for the
+  reserved `bostan-verification` task key only; Markdown remains default
+  and API rollout/mode restrictions remain active. 16/16 combined tests
+  PASS. Real model/tool transport remains unqualified.
 - [ ] Integrate real authorized agent-run delegation, independent effect
   readback, verifier sign-off and evidence-backed founder summary end-to-end.
   Test duplicate effects, interruption, recovery and budget/consent fences.

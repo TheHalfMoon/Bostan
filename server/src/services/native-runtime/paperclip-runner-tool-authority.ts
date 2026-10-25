@@ -9,7 +9,7 @@ import { skillAccessService } from "../skill-access.js";
 import { withExternalExecutionAdmission, type ExternalAdmissionTransaction } from "../../modules/external-agents/index.js";
 import { callTaskWorkspaceTool, pendingTaskRepositoryContinuation } from "../task-workspace-tools.js";
 import { TaskAttachmentReadCache, TASK_ATTACHMENT_DEFINITIONS, TASK_ATTACHMENT_SCHEMAS, listTaskAttachments, readTaskAttachment } from "./runner-task-attachments.js";
-import { RUNNER_BRIDGE_SCHEMAS, runnerBridgeDefinitions, readAssignedSkill, executeWorkspaceTool, readWorkspaceUploadFile, settleRunnerBridgeRead, assertRunnerWorkspacePathAllowed } from "./runner-bridge-tools.js";
+import { RUNNER_BRIDGE_SCHEMAS, runnerBridgeDefinitions, runnerTaskDocumentFormatAllowed, readAssignedSkill, executeWorkspaceTool, readWorkspaceUploadFile, settleRunnerBridgeRead, assertRunnerWorkspacePathAllowed } from "./runner-bridge-tools.js";
 import type { NativeRuntimeContextSnapshot } from "../../vendor/paperclip-runner/index.js";
 import { assertCanManageIssueMonitor, eligibleIssueMonitorWait, prepareIssueMonitorUpdate, setTaskMonitorSchema, summarizeIssueMonitor } from "../issue-monitors.js";
 import { readTaskQuestionContext } from "../issue-question-context.js";
@@ -435,7 +435,10 @@ export class PaperclipRunnerToolAuthority {
       const [method, path] = paths[call.tool]!;
       const operation = runnerApiCatalog().find(operation => operation.method === method && operation.path === path);
       if (!operation) throw new Error("runner_task_api_operation_unavailable");
-      const body = call.tool === "comment_on_task" ? { body: input.body } : call.tool === "write_task_document" ? { title: input.title, format: "markdown", body: input.body, baseRevisionId: input.baseRevisionId } : undefined;
+      if (call.tool === "write_task_document" && !runnerTaskDocumentFormatAllowed(input)) {
+        throw badRequest("JSON task documents are reserved for Bostan independent verification reports");
+      }
+      const body = call.tool === "comment_on_task" ? { body: input.body } : call.tool === "write_task_document" ? { title: input.title, format: input.format ?? "markdown", body: input.body, baseRevisionId: input.baseRevisionId } : undefined;
       const { operationId, ...response } = record(await this.#callApi(call.callId, { operationId: operation.operationId, pathParams: { id: input.taskId, ...(input.key ? { key: input.key } : {}) }, ...(body ? { body } : {}) }));
       return { ...response, apiOperationId: operationId };
     }
