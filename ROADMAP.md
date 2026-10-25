@@ -235,6 +235,11 @@ interruption, recovery, spend and policy failure scenarios.
   native first-party agent successfully retrieves only current task-linked
   source digest over local authenticated HTTP, before the B5-14 JSON write.
   20/20 combined SQL/HTTP/Native tests PASS; no LLM run or external effect.
+- [x] B5-16: same synthetic native signed-JWT reviewer GET→JSON PUT→run
+  success now continues through original `caseHandoffService.to:done` and
+  `issueService.Done` into actual Case + Issue + handoff completion,
+  rejecting direct Issue Done beforehand. 21/21 real SQL/HTTP/Native
+  integration tests PASS. A real model and external effect still OPEN.
 - [ ] Integrate real authorized agent-run delegation, independent effect
   readback, verifier sign-off and evidence-backed founder summary end-to-end.
   Test duplicate effects, interruption, recovery and budget/consent fences.

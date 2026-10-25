@@ -10,6 +10,8 @@ import { errorHandler } from "../middleware/error-handler.js";
 import { issueRoutes } from "../routes/issues.js";
 import { PaperclipRunnerToolAuthority } from "../services/native-runtime/paperclip-runner-tool-authority.js";
 import { documentService } from "../services/documents.js";
+import { caseHandoffService } from "../services/case-handoffs.js";
+import { issueService } from "../services/issues.js";
 import { readBostanIssueDocumentEvidence } from "../services/bostan-knowledge-evidence.js";
 import { instanceSettingsService } from "../services/instance-settings.js";
 import {
@@ -129,5 +131,35 @@ suite("Bostan B5-14 — full native tool/JWT/HTTP/PG reviewer report authoring",
     await expect(authority.execute({ tool: "write_task_document", callId: "bostan-b5-14-revoked",
       arguments: { taskId: issueId, key: "bostan-verification", title: "No", format: "json",
         body, baseRevisionId: null } })).rejects.toThrow("paperclip_runner_tool_binding_not_authorized");
+  });
+  it("B5-16 closes the original Case only after native authenticated report and successful reviewer run", async () => {
+    // The B5-15 native GET and B5-14 native PUT established authentic source
+    // HMAC and immutable revision/run provenance. B5-14 also closed the run.
+    // Attempt to skip the terminal handoff from the original Issue service
+    // must fail without touching either the work task or its review Case.
+    const finish = () => issueService(db).update(issueId, { status: "done",
+      actorUserId: "synthetic-founder", companyGuard: companyId });
+    await expect(finish()).rejects.toMatchObject({
+      status: 409, details: { code: "bostan_case_terminal_handoff_required" },
+    });
+    const [currentIssue] = await db.select().from(issues).where(eq(issues.id, issueId));
+    const accepted = await caseHandoffService(db).handoff(companyId,
+      { type: "board", source: "local_implicit" }, {
+        case: { id: caseId }, to: "done", idempotencyKey: "b5-16-complete-native-verified-case",
+        expectedHandoffVersion: 2,
+        expectedIssueStatusVersion: currentIssue.statusVersion,
+        instructions: "Close this case after its independently delivered native review",
+      });
+    expect(accepted).toMatchObject({ destinationKind: "done", state: "awaiting_completion" });
+    await finish();
+    const [[finalIssue], [finalCase]] = await Promise.all([
+      db.select().from(issues).where(eq(issues.id, issueId)),
+      db.select().from(cases).where(eq(cases.id, caseId)),
+    ]);
+    expect(finalIssue.status).toBe("done");
+    expect(finalCase.status).toBe("done");
+    const [completedIntent] = await db.select().from(caseHandoffs).where(and(
+      eq(caseHandoffs.id, accepted.handoffId), eq(caseHandoffs.caseId, caseId)));
+    expect(completedIntent.state).toBe("completed");
   });
 });
