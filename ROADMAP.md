@@ -177,6 +177,11 @@ interruption, recovery, spend and policy failure scenarios.
   finished after delivery; incorrect/older/missing review runs fail closed.
   3/3 real SQL and 14/14 read-only CaseDetail UI tests PASS. Independently
   signed review output and actual model/provider verification remain open.
+- [x] B5-04: opt-in case closure also needs a current, trusted-source-only
+  `bostan-verification` document whose latest revision was written by the
+  distinct reviewer during an actually started-and-succeeded post-delivery
+  run. Latest implementer rewrites invalidate review; 3/3 SQL and 14/14
+  read-only UI tests PASS. No claim of independent external effect proof.
 - [ ] Integrate real authorized agent-run delegation, independent effect
   readback, verifier sign-off and evidence-backed founder summary end-to-end.
   Test duplicate effects, interruption, recovery and budget/consent fences.

@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
-import { and, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
-import { agents, caseAccessSources, caseEvents, caseHandoffs, caseIssueLinks, cases, chatConversations, companies, heartbeatRuns, issues, projects } from "@paperclipai/db";
+import { agents, caseAccessSources, caseEvents, caseHandoffs, caseIssueLinks, cases, chatConversations, companies, documentRevisions, documents, heartbeatRuns, issueDocuments, issues, projects } from "@paperclipai/db";
 import { handoffCaseSchema, isUuidLike, type DoneCaseHandoffInput, type HandoffCaseInput, type HandoffCaseResult } from "@paperclipai/shared";
 import { conflict, forbidden, HttpError, notFound, unprocessable } from "../errors.js";
 import { assertAgentRunWriteAllowed } from "../agent-run-cancellation.js";
@@ -325,17 +325,52 @@ export function caseHandoffService(db: Db) {
     // current reviewer, bound to the exact company and case work task, with
     // its finish after the independent handoff was delivered. The source
     // heartbeat runtime, not a model-authored comment, owns run status.
-    const [completedVerificationRun] = await tx.select({ id: heartbeatRuns.id }).from(heartbeatRuns).where(and(
+    const successfulReviewerRuns = await tx.select({ id: heartbeatRuns.id, startedAt: heartbeatRuns.startedAt, finishedAt: heartbeatRuns.finishedAt }).from(heartbeatRuns).where(and(
       eq(heartbeatRuns.companyId, caseRow.companyId),
       eq(heartbeatRuns.agentId, issue.assigneeAgentId),
       eq(heartbeatRuns.status, "succeeded"),
+      gte(heartbeatRuns.startedAt, delivered.deliveredAt),
       gte(heartbeatRuns.finishedAt, delivered.deliveredAt),
+      lte(heartbeatRuns.finishedAt, new Date()),
       or(eq(heartbeatRuns.issueId, issue.id), eq(heartbeatRuns.nativeIssueId, issue.id),
         sql`${heartbeatRuns.contextSnapshot} ->> 'issueId' = ${issue.id}`),
-    )).limit(1);
-    if (!completedVerificationRun) {
+    )).orderBy(desc(heartbeatRuns.finishedAt)).limit(10).for("share");
+    if (successfulReviewerRuns.length === 0) {
       throw conflict("Independent reviewer has not completed a successful task run", {
         code: "bostan_verifier_run_required",
+      });
+    }
+    // A green agent run is not a review record. Require the current
+    // version of a canonical, linked review document to be authored by the
+    // *same successful verifier run*, not by the original implementer or a
+    // different/old run. The private content is never copied into a case
+    // field, comment or a second evidence store.
+    const [reviewDocument] = await tx.select({
+      id: documents.id, body: documents.latestBody,
+      revisionAt: documentRevisions.createdAt,
+      runId: documentRevisions.createdByRunId,
+    }).from(issueDocuments)
+      .innerJoin(documents, and(eq(documents.id, issueDocuments.documentId),
+        eq(documents.companyId, issueDocuments.companyId)))
+      .innerJoin(documentRevisions, and(eq(documentRevisions.id, documents.latestRevisionId),
+        eq(documentRevisions.documentId, documents.id),
+        eq(documentRevisions.companyId, documents.companyId)))
+      .where(and(
+        eq(issueDocuments.companyId, caseRow.companyId),
+        eq(issueDocuments.issueId, issue.id),
+        eq(issueDocuments.key, "bostan-verification"),
+        sql`${documents.sourceTrust} is null`,
+        eq(documentRevisions.createdByAgentId, issue.assigneeAgentId),
+        inArray(documentRevisions.createdByRunId, successfulReviewerRuns.map(run => run.id)),
+        gte(documentRevisions.createdAt, delivered.deliveredAt),
+      )).for("share").limit(1);
+    const matchingRun = successfulReviewerRuns.find(run => run.id === reviewDocument?.runId);
+    if (!reviewDocument || !matchingRun?.startedAt || !matchingRun.finishedAt ||
+      reviewDocument.body.trim().length < 40 ||
+      reviewDocument.revisionAt < matchingRun.startedAt ||
+      reviewDocument.revisionAt > matchingRun.finishedAt) {
+      throw conflict("Current independent reviewer document has no completed-run provenance", {
+        code: "bostan_verifier_document_required",
       });
     }
   }

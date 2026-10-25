@@ -101,7 +101,7 @@ export function CaseDetail() {
       {independentReviewRequired && <p role="status" data-testid="bostan-independent-review-required"
         className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-foreground">
         <strong>Independent verifier handoff required.</strong>{" "}
-        A different agent must receive the verification task and complete a successful task run before the case can request closure.
+        A different agent must complete a successful verification run and save the current verification report before the case can request closure.
       </p>}
       {caseData.labels.length > 0 && <div className="flex flex-wrap gap-1.5" aria-label="Case labels">{caseData.labels.map(label => <Badge key={label.id} variant="secondary" className="font-normal">{label.name}</Badge>)}</div>}
     </header>

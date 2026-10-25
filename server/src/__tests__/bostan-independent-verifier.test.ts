@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { agents, caseAccessSources, caseHandoffs, cases, companies,
   createDb, heartbeatRuns, issues, toolInvocations } from "@paperclipai/db";
 import { caseHandoffService } from "../services/case-handoffs.js";
+import { documentService } from "../services/documents.js";
 import { instanceSettingsService } from "../services/instance-settings.js";
 import {
   getBostanFeedbackPostgresTestSupport,
@@ -87,7 +88,7 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
       .rejects.toMatchObject({ status: 409 });
     // Simulate the existing worker's durable terminal delivery confirmation.
     // This does not simulate an AI run, independent content review or action.
-    const deliveryAt = new Date();
+    const deliveryAt = new Date(Date.now() - 120_000);
     await db.update(caseHandoffs).set({ state: "delivered", deliveredAt: deliveryAt })
       .where(eq(caseHandoffs.id, submitted.handoffId));
     // B5-03: A delivered handoff alone must not be called a completed review.
@@ -106,9 +107,53 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
       .rejects.toMatchObject({ status: 409, details: { code: "bostan_verifier_run_required" } });
     // Synthetic source-runtime completion row; no AI/model/provider actually
     // executed in this test. It proves only the canonical DB run gate.
-    await db.insert(heartbeatRuns).values({ id: randomUUID(), companyId: f.companyId,
-      agentId: f.verifierId, issueId: f.issueId, status: "succeeded",
-      finishedAt: new Date(deliveryAt.getTime() + 3_000), contextSnapshot: { issueId: f.issueId } });
+    const reviewedRunId = randomUUID();
+    await db.insert(heartbeatRuns).values({ id: reviewedRunId, companyId: f.companyId,
+      agentId: f.verifierId, issueId: f.issueId, status: "running",
+      startedAt: new Date(deliveryAt.getTime() + 60_000),
+      contextSnapshot: { issueId: f.issueId } });
+    await expect(service.handoff(f.companyId, board, terminal(2, afterAssign.statusVersion)))
+      .rejects.toMatchObject({ status: 409, details: { code: "bostan_verifier_run_required" } });
+    const note = await documentService(db).upsertIssueDocument({
+      issueId: f.issueId, key: "bostan-verification", title: "Verifier assessment",
+      format: "markdown", body: "Independent synthetic inspection: test output matches the task acceptance criteria.",
+      createdByAgentId: f.specialistId, createdByRunId: otherRunId,
+    });
+    await expect(service.handoff(f.companyId, board, terminal(2, afterAssign.statusVersion)))
+      .rejects.toMatchObject({ status: 409, details: { code: "bostan_verifier_run_required" } });
+    const revised = await documentService(db).upsertIssueDocument({
+      issueId: f.issueId, key: "bostan-verification", title: "Verifier assessment",
+      format: "markdown", body: "Independent synthetic reviewer checked the exact reported task outcomes for acceptance.",
+      baseRevisionId: note.document.latestRevisionId,
+      createdByAgentId: f.verifierId, createdByRunId: reviewedRunId,
+    });
+    await new Promise(resolve => setTimeout(resolve, 30));
+    await db.update(heartbeatRuns).set({ status: "succeeded", finishedAt: new Date() })
+      .where(eq(heartbeatRuns.id, reviewedRunId));
+    // Historical verifier-owned content is not sufficient after the latest
+    // revision is rewritten by an implementer. This must reject before the
+    // canonical terminal comment or version advances.
+    const tampered = await documentService(db).upsertIssueDocument({
+      issueId: f.issueId, key: "bostan-verification", title: "Verifier assessment",
+      format: "markdown", body: "Original implementer overwrote the independent sign-off after its verification run.",
+      baseRevisionId: revised.document.latestRevisionId,
+      createdByAgentId: f.specialistId, createdByRunId: otherRunId,
+    });
+    await expect(service.handoff(f.companyId, board, terminal(2, afterAssign.statusVersion)))
+      .rejects.toMatchObject({ status: 409, details: { code: "bostan_verifier_document_required" } });
+    const resumedRunId = randomUUID();
+    await db.insert(heartbeatRuns).values({ id: resumedRunId, companyId: f.companyId,
+      agentId: f.verifierId, issueId: f.issueId, status: "running",
+      startedAt: new Date(), contextSnapshot: { issueId: f.issueId } });
+    await documentService(db).upsertIssueDocument({
+      issueId: f.issueId, key: "bostan-verification", title: "Verifier assessment",
+      format: "markdown", body: "The independent reviewer restored the current test report after rejecting the unexpected revision.",
+      baseRevisionId: tampered.document.latestRevisionId,
+      createdByAgentId: f.verifierId, createdByRunId: resumedRunId,
+    });
+    await new Promise(resolve => setTimeout(resolve, 30));
+    await db.update(heartbeatRuns).set({ status: "succeeded", finishedAt: new Date() })
+      .where(eq(heartbeatRuns.id, resumedRunId));
     const accepted = await service.handoff(f.companyId, board, terminal(2, afterAssign.statusVersion));
     expect(accepted).toMatchObject({ destinationKind: "done", state: "awaiting_completion" });
     expect(await db.select().from(toolInvocations)).toHaveLength(0);
