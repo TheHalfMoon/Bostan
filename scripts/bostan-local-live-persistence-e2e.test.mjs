@@ -14,3 +14,18 @@ test("only macOS and Linux admit an explicitly requested isolated smoke", () => 
     assert.doesNotThrow(() => requireBostanSourceSmokeAdmission({BOSTAN_LIVE_LOCAL_QA_CONFIRM:"1"},platform));
   }
 });
+
+test("real free-model runtime requires separate opt-in and an allowlisted model before filesystem use", () => {
+  const base = { BOSTAN_LIVE_LOCAL_QA_CONFIRM: "1", BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E: "1" };
+  assert.throws(() => requireBostanSourceSmokeAdmission(base, "darwin"), /explicit BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL/);
+  assert.throws(() => requireBostanSourceSmokeAdmission({
+    ...base, BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL: "1", BOSTAN_E2E_FREE_MODEL: "anthropic/paid",
+  }, "darwin"), /Only explicitly permitted free test models/);
+  assert.doesNotThrow(() => requireBostanSourceSmokeAdmission({
+    ...base, BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL: "1",
+    BOSTAN_E2E_FREE_MODEL: "opencode/deepseek-v4.1-flash-free",
+  }, "darwin"));
+  assert.throws(() => requireBostanSourceSmokeAdmission({
+    ...base, BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL: "1",
+  }, "win32"), /not qualified for Windows/);
+});

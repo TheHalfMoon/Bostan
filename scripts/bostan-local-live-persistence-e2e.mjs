@@ -10,6 +10,7 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { qualifyFreeQaModel } from "./bostan-free-model-policy.mjs";
 
 const REPO = fileURLToPath(new URL("../", import.meta.url));
 const MARKER = "bostan-managed-source-runtime-v1";
@@ -27,6 +28,12 @@ export function requireBostanSourceSmokeAdmission(env = process.env, platform = 
   }
   if (platform !== "darwin" && platform !== "linux") {
     throw new Error("Bostan live local QA is not qualified for Windows; use its separate TEMP-only workflow");
+  }
+  if (env.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E === "1") {
+    if (env.BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL !== "1") {
+      throw new Error("Free online agent QA requires explicit BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL=1");
+    }
+    qualifyFreeQaModel(env.BOSTAN_E2E_FREE_MODEL);
   }
 }
 
@@ -133,11 +140,28 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
     if (!Array.isArray(records) || !records.some(value => value.id === company.id && value.name === marker)) {
       throw new Error("Bostan company did not survive a real PostgreSQL restart");
     }
+    // An explicit separate opt-in extends the existing private app lifecycle
+    // smoke with the existing real-agent API harness. This runs only on the
+    // disposable restarted PostgreSQL instance; no installed profile is used.
+    if (env.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E === "1") {
+      const { runFirstAgentFreeE2e } = await import("./bostan-first-agent-free-e2e.mjs");
+      await runFirstAgentFreeE2e({
+        ...childEnv,
+        BOSTAN_E2E_URL: origin + "/",
+        BOSTAN_E2E_DISPOSABLE_HOME: home,
+        BOSTAN_E2E_CONFIRM_TEMP_DATA: "1",
+        BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL: "1",
+        BOSTAN_E2E_FREE_MODEL: qualifyFreeQaModel(env.BOSTAN_E2E_FREE_MODEL),
+      });
+    }
     await stop();
     const storedConfig = JSON.parse(fs.readFileSync(path.join(app, "state", "instances", "local", "config.json"), "utf8"));
     if (storedConfig?.bostanManagedLocalRuntime !== MARKER) throw new Error("Unexpected runtime identity");
     clean = true;
-    return { qualified: true, platform: process.platform, verified: "private-health,company-create,clean-stop,restart,persistence,clean-stop" };
+    return { qualified: true, platform: process.platform,
+      verified: "private-health,company-create,clean-stop,restart,persistence" +
+        (env.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E === "1" ? ",real-free-agent-heartbeat-task-comment-done" : "") +
+        ",clean-stop" };
   } finally {
     if (proc && proc.exitCode === null) {
       proc.kill("SIGTERM");
