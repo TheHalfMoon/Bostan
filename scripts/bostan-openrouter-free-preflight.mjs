@@ -54,8 +54,47 @@ export function resolveLocalOpenRouterQaKey(env = process.env, home = os.homedir
   return key;
 }
 
+/**
+ * The public :free catalog says PRICE, not whether this API key has any
+ * requests left. Gate real Bostan source inference on the provider's actual
+ * read-only account quota, without printing private key/account metadata.
+ */
+export function selectOpenRouterFreeDailyAllowance(keyMetadata) {
+  const quota = keyMetadata?.data?.free_model_daily_requests;
+  const valid = value => Number.isSafeInteger(value) && value >= 0;
+  if (!quota || !valid(quota.limit) || quota.limit < 1 ||
+      !valid(quota.used) || !valid(quota.remaining) ||
+      quota.remaining > quota.limit) {
+    throw new Error("OpenRouter free daily allowance could not be safely verified");
+  }
+  if (quota.remaining === 0) {
+    throw new Error("OpenRouter free-model daily allowance exhausted; no inference started");
+  }
+  return quota.remaining;
+}
+
+export async function verifyOpenRouterFreeDailyAllowance({ key, fetchKey = fetch }) {
+  let response;
+  try {
+    response = await fetchKey("https://openrouter.ai/api/v1/key", {
+      method: "GET",
+      redirect: "error",
+      signal: AbortSignal.timeout(12_000),
+      headers: { accept: "application/json", authorization: "Bearer " + key },
+    });
+    if (!response.ok) throw new Error("Key endpoint failed");
+  } catch {
+    throw new Error("OpenRouter free daily allowance endpoint could not be verified");
+  }
+  let metadata;
+  try { metadata = await response.json(); }
+  catch { throw new Error("OpenRouter free daily allowance response was invalid"); }
+  return selectOpenRouterFreeDailyAllowance(metadata);
+}
+
 export async function admitOpenRouterZeroCostQa({
-  model, env = process.env, fetchCatalog = fetch, home = os.homedir(),
+  model, env = process.env, fetchCatalog = fetch, fetchKey = fetch,
+  home = os.homedir(),
 }) {
   const qualifiedModel = qualifyFreeQaModel(model);
   if (!isOpenRouterFreeQaModel(qualifiedModel) ||
@@ -76,5 +115,10 @@ export async function admitOpenRouterZeroCostQa({
   let catalog;
   try { catalog = await response.json(); }
   catch { throw new Error("OpenRouter zero-price model catalog was invalid"); }
-  return { model: selectVerifiedFreeOpenRouterModel(catalog, qualifiedModel), key };
+  const verified = selectVerifiedFreeOpenRouterModel(catalog, qualifiedModel);
+  // Must run before allocating synthetic Bostan app/Postgres state or
+  // scheduling real OpenCode inference. In particular, price=0 does NOT
+  // mean the free tier has any requests left today.
+  await verifyOpenRouterFreeDailyAllowance({ key, fetchKey });
+  return { model: verified, key };
 }
