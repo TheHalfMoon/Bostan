@@ -435,7 +435,12 @@ export class PaperclipRunnerToolAuthority {
       const [method, path] = paths[call.tool]!;
       const operation = runnerApiCatalog().find(operation => operation.method === method && operation.path === path);
       if (!operation) throw new Error("runner_task_api_operation_unavailable");
-      if (call.tool === "write_task_document" && !runnerTaskDocumentFormatAllowed(input)) {
+      // The bridge schema has already validated the full argument record.
+      // Project only the format-guard inputs to retain the required key
+      // contract when TypeScript infers input as a dynamic tool record.
+      if (call.tool === "write_task_document" && !runnerTaskDocumentFormatAllowed({
+        key: input.key, format: input.format,
+      })) {
         throw badRequest("JSON task documents are reserved for Bostan independent verification reports");
       }
       const body = call.tool === "comment_on_task" ? { body: input.body } : call.tool === "write_task_document" ? { title: input.title, format: input.format ?? "markdown", body: input.body, baseRevisionId: input.baseRevisionId } : undefined;
