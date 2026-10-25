@@ -56,6 +56,7 @@ import type { StorageService } from "../storage/types.js";
 import { authorizationService, issueReadSqlCondition, type AuthorizationActor } from "../services/authorization.js";
 import { assertActorCanReadCase, assertActorCanWriteCase, caseReadSqlCondition, filterCasesForActor, retainCaseAccessSource } from "../services/case-access.js";
 import { enrichCaseWork } from "../services/case-work-summary.js";
+import { assertBostanCaseClosurePolicy } from "../services/bostan-case-closure-policy.js";
 import { listCaseTaskDocuments } from "../services/case-task-documents.js";
 import { authorizeCaseCreation, authorizeCaseMutation } from "../services/case-mutation-authorization.js";
 import { logger } from "../middleware/logger.js";
@@ -681,6 +682,8 @@ export function caseRoutes(db: Db, storage: StorageService) {
           companyId, caseId: existing.id, sourceKind: "project", sourceId: body.projectId,
         });
         const status = body.status ?? existing.status;
+        assertBostanCaseClosurePolicy({ currentFields: existing.fields, nextFields: body.fields,
+          currentStatus: existing.status, nextStatus: status });
         const [updated] = await tx.update(cases).set({
           projectId: body.projectId ?? existing.projectId,
           title: body.title,
@@ -704,6 +707,7 @@ export function caseRoutes(db: Db, storage: StorageService) {
 
       const identity = await nextCaseIdentity(tx, companyId);
       const status = body.status ?? "draft";
+      assertBostanCaseClosurePolicy({ nextFields: body.fields, nextStatus: status });
       const [created] = await tx.insert(cases).values({
         companyId,
         projectId: body.projectId ?? null,
@@ -1588,6 +1592,8 @@ export function caseRoutes(db: Db, storage: StorageService) {
         parentCaseId: body.parentCaseId ?? null,
       });
       if (nextLabelIds) await assertLabelsBelongToCompany(tx, caseRow.companyId, nextLabelIds);
+      assertBostanCaseClosurePolicy({ currentFields: currentCase.fields, nextFields: body.fields,
+        currentStatus: currentCase.status, nextStatus: body.status });
 
       const now = new Date();
       const [row] = await tx.update(cases).set(buildCasePatchUpdateValues(body, currentCase, now)).where(eq(cases.id, caseRow.id)).returning();
