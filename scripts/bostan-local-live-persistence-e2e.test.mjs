@@ -47,3 +47,15 @@ test("two-agent live QA requires both the free agent and online provider opt-ins
     BOSTAN_E2E_FREE_MODEL: "opencode/deepseek-v4.1-flash-free",
   }, "darwin"));
 });
+
+test("cross-agent source review is a separate gated opt-in", () => {
+  const withReview = { BOSTAN_LIVE_LOCAL_QA_CONFIRM: "1",
+    BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E: "1",
+    BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL: "1",
+    BOSTAN_E2E_REVIEW_FIRST_AGENT: "1" };
+  assert.throws(() => requireBostanSourceSmokeAdmission(withReview, "darwin"), /separately admitted second free agent/);
+  assert.doesNotThrow(() => requireBostanSourceSmokeAdmission({
+    ...withReview, BOSTAN_E2E_TWO_AGENT_TEAM: "1",
+    BOSTAN_E2E_FREE_MODEL: "opencode/deepseek-v4.1-flash-free",
+  }, "darwin"));
+});

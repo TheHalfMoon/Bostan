@@ -53,6 +53,50 @@ export function assertHeartbeatQaSucceeded(run) {
 
 const MARKER = "BOSTAN_CLEAN_RUN_PASS";
 const SECOND_MARKER = "BOSTAN_SECOND_AGENT_PASS";
+
+const REVIEW_EVIDENCE_LABEL = "BOSTAN_REVIEW_SOURCE_COMMENT_ID:";
+const UUID_PATTERN = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
+
+/**
+ * Only actual persisted source comments qualify; never trust a reviewer's
+ * unsupported "verified" prose, a marker copied from the task description,
+ * or a guessed/hallucinated comment reference.
+ */
+export function requirePersistedReviewCitation({
+  sourceComments, reviewerComments, sourceAgentId, reviewerAgentId,
+  firstMarker = MARKER, secondMarker = SECOND_MARKER,
+}) {
+  if (!UUID_PATTERN.test(sourceAgentId) || !UUID_PATTERN.test(reviewerAgentId) ||
+      sourceAgentId === reviewerAgentId) {
+    throw new Error("Review requires two different authenticated agent identities");
+  }
+  const original = sourceComments.find(c => UUID_PATTERN.test(c?.id ?? "") &&
+    c.authorAgentId === sourceAgentId &&
+    String(c.body ?? c.content ?? "").includes(firstMarker));
+  if (!original) throw new Error("Review cannot qualify without an actual persisted first-agent source comment");
+  const tag = REVIEW_EVIDENCE_LABEL + original.id;
+  const review = reviewerComments.find(c => UUID_PATTERN.test(c?.id ?? "") &&
+    c.authorAgentId === reviewerAgentId && c.id !== original.id &&
+    String(c.body ?? c.content ?? "").includes(secondMarker) &&
+    String(c.body ?? c.content ?? "").includes(tag));
+  if (!review) throw new Error("Second agent did not cite the actual persisted source comment ID");
+  return { sourceCommentId: original.id, reviewCommentId: review.id ?? null };
+}
+
+export function buildEvidenceReviewTask({ sourceIssueId }) {
+  if (!UUID_PATTERN.test(sourceIssueId)) throw new Error("Evidence review requires a persisted source issue UUID");
+  return "Synthetic private Bostan cross-agent review QA. Inspect the PREVIOUS worker issue " +
+    sourceIssueId + " with the available Bostan issue/comment API tools. " +
+    "GET the saved comments on that OTHER issue. Confirm that a real persisted comment " +
+    "includes the text BOSTAN_CLEAN_RUN_PASS. The current task does not reveal " +
+    "the saved comment ID: you must read the previous issue's comments and use the actual returned ID. " +
+    "Only if confirmed, post ONE comment on THIS assigned review task containing " +
+    SECOND_MARKER + " and exactly " + REVIEW_EVIDENCE_LABEL +
+    "<actual source comment UUID>. Then mark ONLY THIS review task done and stop. " +
+    "If you cannot retrieve the real source comment, report that and do NOT mark done. " +
+    "Do not inspect unrelated files, make external side effects, or invent IDs.";
+}
+
 const MANAGED = "bostan-managed-source-runtime-v1";
 
 function tempRoots() {
@@ -230,13 +274,17 @@ export async function runFirstAgentFreeE2e(env = process.env) {
       }
       return { done: false };
     }, { timeoutMs: firstAgentLifecycleReadinessTimeoutMs(), label: "second agent lifecycle ready" });
-    const secondIssue = await requestJson(base, "companies/" + company.id + "/issues", {
-      title: "Independent second worker synthetic execution QA " + id,
-      description: "Synthetic disposable second worker task following a previously completed " +
+    const reviewMode = env.BOSTAN_E2E_REVIEW_FIRST_AGENT === "1";
+    const reviewDescription = reviewMode
+      ? buildEvidenceReviewTask({ sourceIssueId: issue.id })
+      : "Synthetic disposable second worker task following a previously completed " +
         "first worker task. Post ONE task comment containing " + SECOND_MARKER +
         ", mark THIS issue done, give your final answer and immediately stop. " +
-        "Do not inspect unrelated files or use extra shell commands.",
-      status: "todo", assigneeAgentId: secondAgent.id,
+        "Do not inspect unrelated files or use extra shell commands.";
+    const secondIssue = await requestJson(base, "companies/" + company.id + "/issues", {
+      title: (reviewMode ? "Source-citing second worker review QA " :
+        "Independent second worker synthetic execution QA ") + id,
+      description: reviewDescription, status: "todo", assigneeAgentId: secondAgent.id,
     });
     if (!secondIssue?.id || secondIssue.id === issue.id) {
       throw new Error("Bostan second QA issue must be independent of the first task");
@@ -253,6 +301,10 @@ export async function runFirstAgentFreeE2e(env = process.env) {
       : secondCommentsResponse.comments ?? [];
     const secondMarkerFound = secondComments.some(entry =>
       String(entry.body ?? entry.content ?? "").includes(SECOND_MARKER));
+    const citation = reviewMode
+      ? requirePersistedReviewCitation({ sourceComments: comments, reviewerComments: secondComments,
+        sourceAgentId: agent.id, reviewerAgentId: secondAgent.id })
+      : null;
     if (secondRun.id === run.id || secondRun.status !== "succeeded" ||
         secondRun.exitCode !== 0 || secondRun.errorCode != null ||
         secondResult.status !== "done" || !secondMarkerFound) {
@@ -266,6 +318,9 @@ export async function runFirstAgentFreeE2e(env = process.env) {
         secondIssueId: secondIssue.id, firstRunId: run.id, secondRunId: secondRun.id,
         secondRunStatus: secondRun.status, secondExitCode: secondRun.exitCode,
         secondIssueStatus: secondResult.status, secondExactMarkerFound: secondMarkerFound,
+        ...(citation ? { persistedSourceCommentCited: true,
+          sourceCommentId: citation.sourceCommentId,
+          reviewerCommentId: citation.reviewCommentId } : {}),
         reportedCostUsd: secondRun.usageJson?.costUsd ?? null }));
   }
 }
