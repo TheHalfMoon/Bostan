@@ -179,3 +179,42 @@ test("database admission refuses existing non-UTF8 clusters without deleting or 
   }
   assert.throws(() => assertUtf8PostgresEncoding(null, "system database"), /not UTF8/);
 });
+
+test("only a prequalified zero-cost source QA can pass one OpenRouter credential into the local child", () => {
+  const home = mkdtempSync(join(tmpdir(), "bostan-openrouter-isolated-server-"));
+  const options = { home, port: 3421, databaseUrl: "postgres://127.0.0.1/bostan",
+    jwt: "synthetic-test", config: join(home, ".bostan", "app", "config.json") };
+  const base = {
+    BOSTAN_LIVE_LOCAL_QA_CONFIRM: "1",
+    BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E: "1",
+    BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL: "1",
+    BOSTAN_E2E_OPENROUTER_ZERO_PRICE_VERIFIED: "1",
+    BOSTAN_E2E_FREE_MODEL: "openrouter/cohere/north-mini-code:free",
+    OPENROUTER_API_KEY: "sk-or-" + "a".repeat(25),
+    ANTHROPIC_API_KEY: "never-inherit-anthropic",
+    OPENAI_API_KEY: "never-inherit-openai",
+    BOSTAN_TELEMETRY_ENDPOINT: "https://bad.invalid",
+  };
+  try {
+    const allowed = isolatedEnv(options, base);
+    assert.equal(allowed.OPENROUTER_API_KEY, base.OPENROUTER_API_KEY);
+    assert.equal(allowed.PAPERCLIP_OPENCODE_SMALL_MODEL, base.BOSTAN_E2E_FREE_MODEL);
+    assert.equal(allowed.OPENAI_API_KEY, undefined);
+    assert.equal(allowed.ANTHROPIC_API_KEY, undefined);
+    assert.equal(allowed.BOSTAN_TELEMETRY_ENDPOINT, undefined);
+    for (const patch of [
+      { BOSTAN_LIVE_LOCAL_QA_CONFIRM: "0" },
+      { BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E: "0" },
+      { BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL: "0" },
+      { BOSTAN_E2E_OPENROUTER_ZERO_PRICE_VERIFIED: "0" },
+      { BOSTAN_E2E_FREE_MODEL: "openrouter/cohere/north-mini-code" },
+      { BOSTAN_E2E_FREE_MODEL: "openrouter/anthropic/claude-sonnet-5.5" },
+      { OPENROUTER_API_KEY: "invalid" },
+    ]) {
+      const refused = isolatedEnv(options, { ...base, ...patch });
+      assert.equal(refused.OPENROUTER_API_KEY, undefined, JSON.stringify(patch));
+      assert.equal(refused.PAPERCLIP_OPENCODE_SMALL_MODEL, undefined);
+    }
+    assert.equal(isolatedEnv({ ...options, home: "/Users/real-home" }, base).OPENROUTER_API_KEY, undefined);
+  } finally { rmSync(home, { recursive: true, force: true }); }
+});

@@ -245,7 +245,9 @@ export async function testEnvironment(
     const sourceQaFreeModelProbe = ctx.adapterType === "opencode_local" &&
       !targetIsRemote && process.env.BOSTAN_OPENCODE_STANDALONE === "1" &&
       (configuredModel === "opencode/deepseek-v4.1-flash-free" ||
-        configuredModel === "opencode/beam-free");
+        configuredModel === "opencode/beam-free" ||
+        configuredModel === "openrouter/cohere/north-mini-code:free" ||
+        configuredModel === "openrouter/recursive/flint-v1.0:free");
     // Source-only free QA uses a real hello invocation to validate access.
     // Metadata catalog discovery can hang on a background OpenCode daemon
     // even when the free model itself runs. General adapters are unchanged.

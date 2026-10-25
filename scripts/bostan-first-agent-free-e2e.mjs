@@ -4,7 +4,8 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
-import { qualifyFreeQaModel } from "./bostan-free-model-policy.mjs";
+import { qualifyFreeQaModel, isOpenRouterFreeQaModel } from "./bostan-free-model-policy.mjs";
+import { admitOpenRouterZeroCostQa } from "./bostan-openrouter-free-preflight.mjs";
 export { qualifyFreeQaModel } from "./bostan-free-model-policy.mjs";
 export function syntheticFreeAgentAdapterConfig({ model, workspace, binary, platform = process.platform }) {
   qualifyFreeQaModel(model);
@@ -232,6 +233,11 @@ export async function runFirstAgentFreeE2e(env = process.env) {
     onlineModelApproved: env.BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL,
   });
   const model = qualifyFreeQaModel(env.BOSTAN_E2E_FREE_MODEL);
+  // A direct caller must independently verify the live free-only catalog too.
+  // The outer source runtime already performs this before any temp data exists.
+  if (isOpenRouterFreeQaModel(model)) {
+    await admitOpenRouterZeroCostQa({ model, env });
+  }
   // Windows native admission happens before creating any Bostan organization
   // or agent. A model catalog listing is not proof of working inference.
   if (process.platform === "win32") {

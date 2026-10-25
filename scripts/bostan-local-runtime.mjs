@@ -9,6 +9,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { inspectRuntimeLock, removeStoppedRuntimeLock } from "./bostan-runtime-recovery.mjs";
 import { enforceWindowsQaPrivateAcl } from "./bostan-windows-acl.mjs";
 import { startPrivateStopControl } from "./bostan-local-stop.mjs";
+import { isOpenRouterFreeQaModel } from "./bostan-free-model-policy.mjs";
 
 const exec = promisify(execFile);
 export const REPO = fileURLToPath(new URL("../", import.meta.url));
@@ -160,6 +161,24 @@ export function serverStartupLogPath(logDirectory, pid, timestamp = Date.now()) 
 }
 
 export function isolatedEnv({ home, port, databaseUrl, jwt, config }, original = process.env) {
+  // Ordinary Bostan source processes NEVER inherit provider credentials.
+  // Allow exactly one already-zero-price-confirmed, pinned OpenRouter :free
+  // provider credential into a dedicated disposable source test, and nothing
+  // else. This never creates a persistent key file or enables paid fallback.
+  const temporary = (() => {
+    try {
+      return path.isAbsolute(home) &&
+        fs.realpathSync(home).startsWith(fs.realpathSync(os.tmpdir()) + path.sep);
+    } catch { return false; }
+  })();
+  const zeroCostFreeSourceQa = temporary &&
+    original.BOSTAN_LIVE_LOCAL_QA_CONFIRM === "1" &&
+    original.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E === "1" &&
+    original.BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL === "1" &&
+    original.BOSTAN_E2E_OPENROUTER_ZERO_PRICE_VERIFIED === "1" &&
+    isOpenRouterFreeQaModel(original.BOSTAN_E2E_FREE_MODEL) &&
+    typeof original.OPENROUTER_API_KEY === "string" &&
+    /^sk-or-[A-Za-z0-9_-]{8,}$/.test(original.OPENROUTER_API_KEY);
   return {
     PATH: original.PATH || "", HOME: home, LANG: original.LANG || "en_US.UTF-8",
     ...(original.TMPDIR ? { TMPDIR: original.TMPDIR } : {}),
@@ -193,6 +212,10 @@ export function isolatedEnv({ home, port, databaseUrl, jwt, config }, original =
     // Every agent probe and run must use a fresh private OpenCode daemon.
     // Inheriting the user's background server can collide or cross sessions.
     BOSTAN_OPENCODE_STANDALONE: "1",
+    ...(zeroCostFreeSourceQa ? {
+      OPENROUTER_API_KEY: original.OPENROUTER_API_KEY,
+      PAPERCLIP_OPENCODE_SMALL_MODEL: original.BOSTAN_E2E_FREE_MODEL,
+    } : {}),
     OTEL_SDK_DISABLED: "true",
     PAPERCLIP_MIGRATION_AUTO_APPLY: "true",
   };

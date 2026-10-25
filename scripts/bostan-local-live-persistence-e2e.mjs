@@ -10,7 +10,8 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { qualifyFreeQaModel } from "./bostan-free-model-policy.mjs";
+import { qualifyFreeQaModel, isOpenRouterFreeQaModel } from "./bostan-free-model-policy.mjs";
+import { admitOpenRouterZeroCostQa } from "./bostan-openrouter-free-preflight.mjs";
 
 const REPO = fileURLToPath(new URL("../", import.meta.url));
 const MARKER = "bostan-managed-source-runtime-v1";
@@ -86,13 +87,27 @@ async function requestJson(origin, route, body) {
 }
 
 export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
-  // Admission runs before any filesystem or network operation.
+  // Refuse any non-free route before allocating temporary Bostan state.
   requireBostanSourceSmokeAdmission(env);
+  const openRouterQa = env.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E === "1" &&
+    isOpenRouterFreeQaModel(qualifyFreeQaModel(env.BOSTAN_E2E_FREE_MODEL))
+    ? await admitOpenRouterZeroCostQa({
+        model: env.BOSTAN_E2E_FREE_MODEL, env,
+      })
+    : null;
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-live-persistence-"));
   fs.chmodSync(root, 0o700);
   const home = path.join(root, "home");
   fs.mkdirSync(home, { mode: 0o700 });
-  const childEnv = { ...env, HOME: home, DO_NOT_TRACK: "1", OTEL_SDK_DISABLED: "true" };
+  const childEnv = { ...env, HOME: home, DO_NOT_TRACK: "1", OTEL_SDK_DISABLED: "true",
+    ...(openRouterQa ? {
+      // Volatile, non-logged secret, scoped to this disposable source QA only.
+      OPENROUTER_API_KEY: openRouterQa.key,
+      PAPERCLIP_OPENCODE_SMALL_MODEL: openRouterQa.model,
+      BOSTAN_OPENCODE_STANDALONE: "1",
+      BOSTAN_E2E_OPENROUTER_ZERO_PRICE_VERIFIED: "1",
+    } : {}),
+  };
   const port = await freePort();
   const origin = `http://127.0.0.1:${port}`;
   let proc = null;
