@@ -86,9 +86,24 @@ test("saved OpenCode credential import is opt-in and only reads owned nonsymlink
       BOSTAN_E2E_USE_SAVED_OPENROUTER_AUTH: "1",
     }, home), key);
     fs.unlinkSync(file);
-    fs.symlinkSync("/dev/null", file);
-    assert.throws(() => resolveLocalOpenRouterQaKey({
-      BOSTAN_E2E_USE_SAVED_OPENROUTER_AUTH: "1",
-    }, home), /missing or unsafe/);
+    const savedAuthConsent = { BOSTAN_E2E_USE_SAVED_OPENROUTER_AUTH: "1" };
+    // Windows cannot always create symlinks without Developer Mode or admin
+    // rights. Do not weaken production link rejection just to run the test:
+    // cover actual Unix symlink rejection on Unix; cover linked-file refusal
+    // via ordinary same-volume hardlinks on both NTFS and Unix filesystems.
+    if (process.platform !== "win32") {
+      fs.symlinkSync("/dev/null", file);
+      assert.throws(() => resolveLocalOpenRouterQaKey(savedAuthConsent, home),
+        /missing or unsafe/);
+      fs.unlinkSync(file);
+    }
+    const backing = path.join(path.dirname(file), "linked-auth-backing.json");
+    fs.writeFileSync(backing, JSON.stringify({ openrouter: { type: "api", key } }),
+      { mode: 0o600 });
+    fs.linkSync(backing, file);
+    assert.ok(fs.lstatSync(file).nlink > 1,
+      "The attacker-controlled auth path must actually be a hardlink");
+    assert.throws(() => resolveLocalOpenRouterQaKey(savedAuthConsent, home),
+      /missing or unsafe/);
   } finally { fs.rmSync(home, { recursive: true, force: true }); }
 });
