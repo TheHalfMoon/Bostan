@@ -205,6 +205,10 @@ interruption, recovery, spend and policy failure scenarios.
   reviewer records a fresh successful run and current report. Scoped
   reviewer HTTP digest retrieval works through pending terminal intent;
   12/12 combined real PostgreSQL/HTTP tests PASS.
+- [x] B5-10: surface the *current* verifier-authored report claim to
+  authorized founder/board Case readers using the original B5 evidence
+  verifier; hide stale reports and distinguish provenance from factual
+  truth. 14/14 real PostgreSQL/HTTP, 16/16 React, UI typecheck/build PASS.
 - [ ] Integrate real authorized agent-run delegation, independent effect
   readback, verifier sign-off and evidence-backed founder summary end-to-end.
   Test duplicate effects, interruption, recovery and budget/consent fences.

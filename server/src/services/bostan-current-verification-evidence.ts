@@ -126,4 +126,11 @@ export async function assertBostanCurrentVerificationEvidence(tx: Db | DbTransac
       });
     }
   }
+  return {
+    reportSummary: parsed.data.summary,
+    citedDocumentCount: parsed.data.sources.length,
+    reportDocumentId: reviewDocument.id,
+    reviewRunId: matchingRun.id,
+    reviewerAgentId: issue.assigneeAgentId,
+  };
 }

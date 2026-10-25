@@ -9,6 +9,7 @@ import { caseHandoffService } from "../services/case-handoffs.js";
 import { issueService } from "../services/issues.js";
 import { documentService } from "../services/documents.js";
 import { issueRoutes } from "../routes/issues.js";
+import { caseRoutes } from "../routes/cases.js";
 import { errorHandler } from "../middleware/error-handler.js";
 import { readBostanIssueDocumentEvidence } from "../services/bostan-knowledge-evidence.js";
 import { instanceSettingsService } from "../services/instance-settings.js";
@@ -246,6 +247,47 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
     await requestFinalDone();
     const [completedCase] = await db.select().from(cases).where(eq(cases.id, f.caseId));
     expect(completedCase.status).toBe("done");
+    // B5-10: the board sees only a bounded current reviewer claim, not raw
+    // source content, HMAC digest or permission to execute anything.
+    const founderApp = express(); founderApp.use(express.json());
+    founderApp.use((req, _res, next) => { req.actor = { type: "board", source: "local_implicit",
+      userId: "synthetic-founder", isInstanceAdmin: true }; next(); });
+    founderApp.use("/api", caseRoutes(db, {} as never)); founderApp.use(errorHandler);
+    const summaryPath = `/api/cases/${f.caseId}/bostan-verification`;
+    const currentReview = await request(founderApp).get(summaryPath);
+    expect(currentReview.status).toBe(200);
+    expect(currentReview.headers["cache-control"]).toContain("no-store");
+    expect(currentReview.body).toMatchObject({
+      schema: "bostan.verification.board-summary.v1", caseId: f.caseId,
+      caseStatus: "done", current: true, provenanceCurrent: true,
+      citedDocumentCount: 1, reviewerAgentId: f.verifierId,
+      factualRelevanceVerified: false, sourceContentIsUntrusted: true,
+      executionAuthorized: false,
+    });
+    expect(currentReview.body.reportSummary).toContain("Synthetic reviewer checked");
+    expect(JSON.stringify(currentReview.body)).not.toContain("implementation source after");
+    expect(JSON.stringify(currentReview.body)).not.toContain("sourceSnapshotHmacSha256");
+    const agentApp = express(); agentApp.use(express.json());
+    agentApp.use((req, _res, next) => { req.actor = { type: "agent", source: "agent_key",
+      companyId: f.companyId, agentId: f.verifierId }; next(); });
+    agentApp.use("/api", caseRoutes(db, {} as never)); agentApp.use(errorHandler);
+    expect((await request(agentApp).get(summaryPath)).status).toBe(403);
+    const outsideApp = express(); outsideApp.use(express.json());
+    outsideApp.use((req, _res, next) => { req.actor = { type: "board", source: "session",
+      userId: "other-company-user", companyIds: [randomUUID()], isInstanceAdmin: false }; next(); });
+    outsideApp.use("/api", caseRoutes(db, {} as never)); outsideApp.use(errorHandler);
+    expect((await request(outsideApp).get(summaryPath)).status).toBe(404);
+    // Rewriting the original source *after Case Done* revokes any claim that
+    // today's displayed review still cites the current original revision.
+    await documentService(db).upsertIssueDocument({ issueId: f.issueId, key: "bostan-source",
+      title: "Implementation source", format: "markdown",
+      body: "A later document change after Case Done invalidates historical reviewer provenance.",
+      baseRevisionId: (await documentService(db).getIssueDocumentByKey(f.issueId, "bostan-source"))!.latestRevisionId,
+      createdByAgentId: f.specialistId, createdByRunId: otherRunId });
+    const staleReview = await request(founderApp).get(summaryPath);
+    expect(staleReview.status).toBe(200);
+    expect(staleReview.body).toMatchObject({ current: false, provenanceCurrent: false,
+      reportSummary: null, citedDocumentCount: 0, executionAuthorized: false });
     expect(await db.select().from(toolInvocations)).toHaveLength(0);
   });
   it("B5-08 blocks direct Issue Done until the original independent-review terminal handoff is accepted", async () => {

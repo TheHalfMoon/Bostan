@@ -43,6 +43,14 @@ export function CaseDetail() {
     enabled: !!caseIdentifier,
   });
   const caseData = caseQuery.data;
+  const independentReviewEnabled = caseData?.fields.bostanIndependentVerificationRequired === true;
+  const verificationQuery = useQuery({
+    queryKey: ["bostan", "case", caseData?.id, "independent-verification"],
+    queryFn: () => casesApi.getBostanVerification(caseData!.id),
+    enabled: Boolean(independentReviewEnabled && caseData?.workIssueId),
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+  });
   const listPath = `${caseHref()}${search}`;
   const childrenQuery = useQuery({
     queryKey: queryKeys.cases.children(caseData?.id ?? ""),
@@ -81,7 +89,7 @@ export function CaseDetail() {
   // A document is the authoritative version of a field with the same key.
   const documentKeys = new Set(caseData.documents.map(document => document.key.toLowerCase()));
   const taskDocuments = caseData.taskDocuments ?? [];
-  const independentReviewRequired = caseData.fields.bostanIndependentVerificationRequired === true;
+  const independentReviewRequired = independentReviewEnabled;
   const fields = Object.entries(caseData.fields).filter(([key, value]) => key !== "bostanIndependentVerificationRequired" && !documentKeys.has(key.toLowerCase())
     && !(key.toLowerCase() === "title" && value === caseData.title)
     && !(key.toLowerCase() === "description" && value === caseData.summary));
@@ -103,6 +111,20 @@ export function CaseDetail() {
         <strong>Independent verifier handoff required.</strong>{" "}
         A different agent must complete a successful verification run and save a current report citing unchanged source documents before the case can request closure.
       </p>}
+      {independentReviewRequired && caseData.workIssueId && <section
+        aria-label="Independent review evidence" data-testid="bostan-review-summary"
+        className="space-y-2 rounded-md border border-border p-3 text-sm">
+        <h2 className="font-semibold">Independent reviewer evidence</h2>
+        {verificationQuery.isPending ? <p className="text-muted-foreground">Checking current review sources…</p>
+          : verificationQuery.isError ? <p role="alert" className="text-muted-foreground">Review evidence is unavailable. Recheck the case later.</p>
+          : verificationQuery.data?.provenanceCurrent && verificationQuery.data.reportSummary
+            ? <>
+              <p className="font-medium">Source citations are current ({verificationQuery.data.citedDocumentCount} cited).</p>
+              <p className="whitespace-pre-wrap break-words" data-testid="bostan-review-claim">{verificationQuery.data.reportSummary}</p>
+              <p className="text-xs text-muted-foreground">Reviewer-authored claim. Bostan checked report provenance and current source versions, not factual correctness or external effects.</p>
+            </>
+            : <p className="text-muted-foreground">No current independent reviewer report is available. A new verification may be required.</p>}
+      </section>}
       {caseData.labels.length > 0 && <div className="flex flex-wrap gap-1.5" aria-label="Case labels">{caseData.labels.map(label => <Badge key={label.id} variant="secondary" className="font-normal">{label.name}</Badge>)}</div>}
     </header>
 

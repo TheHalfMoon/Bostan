@@ -10,7 +10,7 @@ import { ApiError } from "@/api/client";
 import { CaseDetail } from "./CaseDetail";
 
 const cases = vi.hoisted(() => ({
-  get: vi.fn(), listChildren: vi.fn(), listEvents: vi.fn(), listHandoffs: vi.fn(),
+  get: vi.fn(), getBostanVerification: vi.fn(), listChildren: vi.fn(), listEvents: vi.fn(), listHandoffs: vi.fn(),
   getDocument: vi.fn(), listRevisions: vi.fn(), patch: vi.fn(), upsertDocument: vi.fn(),
   deleteDocument: vi.fn(), restoreDocumentRevision: vi.fn(), retryHandoff: vi.fn(), cancelHandoff: vi.fn(),
 }));
@@ -90,6 +90,10 @@ describe("read-only CaseDetail", () => {
     vi.clearAllMocks();
     container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container);
     cases.get.mockResolvedValue(detail()); cases.listChildren.mockResolvedValue([]); cases.listEvents.mockResolvedValue([]);
+    cases.getBostanVerification.mockResolvedValue({ schema: "bostan.verification.board-summary.v1",
+      caseId: "case-1", caseStatus: "in_review", current: false, provenanceCurrent: false,
+      reportSummary: null, citedDocumentCount: 0, factualRelevanceVerified: false,
+      sourceContentIsUntrusted: true, executionAuthorized: false, checkedAt: "2026-10-25T10:00:00Z" });
     cases.listHandoffs.mockResolvedValue({ items: [], nextCursor: null });
     cases.getDocument.mockResolvedValue({ ...detail().documents[0]!.document, key: "body", body: "Current authorized draft" });
     cases.listRevisions.mockResolvedValue({ key: "body", document: { id: "doc-1", title: "Launch draft", format: "markdown", latestRevisionId: "rev-2", latestRevisionNumber: 2 }, revisions: [{ id: "rev-1", revisionNumber: 1, title: "Launch draft", format: "markdown", body: "Earlier draft", changeSummary: "First version", createdAt: "2026-10-19T09:00:00Z", createdByAgentId: "agent-1", createdByUserId: null, createdByRunId: null, actorAgentName: "Writer", issue: null }] });
@@ -133,6 +137,33 @@ describe("read-only CaseDetail", () => {
     expect(container.querySelector('input,textarea,[contenteditable="true"]')).toBeNull();
     expect(cases.patch).not.toHaveBeenCalled();
   });
+  it("B5-10 shows a current version-checked reviewer claim without making it an approval", async () => {
+    cases.get.mockResolvedValue({ ...detail(), workIssueId: "task-1", fields: {
+      ...detail().fields, bostanIndependentVerificationRequired: true } });
+    cases.getBostanVerification.mockResolvedValue({ schema: "bostan.verification.board-summary.v1",
+      caseId: "case-1", caseStatus: "in_review", current: true, provenanceCurrent: true,
+      reportSummary: "Verifier checked the saved implementation source against its exact revision and found matching evidence.",
+      citedDocumentCount: 1, reviewerAgentId: "agent-2", factualRelevanceVerified: false,
+      sourceContentIsUntrusted: true, executionAuthorized: false, checkedAt: "2026-10-25T10:00:00Z" });
+    render();
+    await waitFor(() => expect(container.querySelector('[data-testid="bostan-review-claim"]')).not.toBeNull());
+    expect(container.textContent).toContain("Source citations are current (1 cited)");
+    expect(container.textContent).toContain("Reviewer-authored claim");
+    expect(container.textContent).toContain("not factual correctness");
+    expect(cases.getBostanVerification).toHaveBeenCalledWith("case-1");
+    expect(container.querySelector('input,textarea,[contenteditable="true"]')).toBeNull();
+  });
+
+  it("B5-10 fails closed when current source/reviewer provenance is missing", async () => {
+    cases.get.mockResolvedValue({ ...detail(), workIssueId: "task-1", fields: {
+      ...detail().fields, bostanIndependentVerificationRequired: true } });
+    render();
+    await waitFor(() => expect(container.querySelector('[data-testid="bostan-review-summary"]')).not.toBeNull());
+    await waitFor(() => expect(container.textContent).toContain("No current independent reviewer report is available"));
+    expect(container.querySelector('[data-testid="bostan-review-claim"]')).toBeNull();
+    expect(cases.getBostanVerification).toHaveBeenCalledWith("case-1");
+  });
+
   it("B5-02 does not invent an independent-review requirement for legacy cases", async () => {
     render();
     await waitFor(() => expect(container.textContent).toContain("Hermes agent launch post"));

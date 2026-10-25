@@ -31,6 +31,7 @@ import {
   caseDocuments,
   caseEvents,
   caseIssueLinks,
+  caseHandoffs,
   caseLabels,
   cases,
   companies,
@@ -56,6 +57,7 @@ import type { StorageService } from "../storage/types.js";
 import { authorizationService, issueReadSqlCondition, type AuthorizationActor } from "../services/authorization.js";
 import { assertActorCanReadCase, assertActorCanWriteCase, caseReadSqlCondition, filterCasesForActor, retainCaseAccessSource } from "../services/case-access.js";
 import { enrichCaseWork } from "../services/case-work-summary.js";
+import { assertBostanCurrentVerificationEvidence } from "../services/bostan-current-verification-evidence.js";
 import { assertBostanCaseClosurePolicy } from "../services/bostan-case-closure-policy.js";
 import { listCaseTaskDocuments } from "../services/case-task-documents.js";
 import { authorizeCaseCreation, authorizeCaseMutation } from "../services/case-mutation-authorization.js";
@@ -1551,6 +1553,58 @@ export function caseRoutes(db: Db, storage: StorageService) {
         handoffVersion: row.caseRow.handoffVersion,
       },
     })));
+  });
+
+  // Board-readable, current snapshot of the independent verifier's
+  // evidence *claims*. No model execution, source body or approval granted.
+  router.get("/cases/:id/bostan-verification", async (req, res) => {
+    await assertCasesEnabled(db);
+    if (req.actor.type !== "board") throw forbidden("Board review access required");
+    const caseRow = await assertCaseAccess(db, req, req.params.id as string);
+    if (caseRow.fields?.bostanIndependentVerificationRequired !== true || !caseRow.workIssueId) {
+      throw notFound("Independent review is not configured for this case");
+    }
+    res.setHeader("Cache-Control", "private, no-store");
+    const result = await db.transaction(async (tx) => {
+      // Match source task -> case -> review ordering while holding a single
+      // transaction view. The validator checks the actual current report
+      // and all cited B4 sources under `FOR SHARE` locks.
+      const [issue] = await tx.select().from(issues).where(and(
+        eq(issues.id, caseRow.workIssueId!), eq(issues.companyId, caseRow.companyId),
+      )).for("share").limit(1);
+      const [currentCase] = await tx.select().from(cases).where(and(
+        eq(cases.id, caseRow.id), eq(cases.companyId, caseRow.companyId),
+      )).for("share").limit(1);
+      if (!issue || !currentCase || !currentCase.workIssueId ||
+        currentCase.fields?.bostanIndependentVerificationRequired !== true) throw notFound("Case work not found");
+      await assertActorCanReadCase(tx as unknown as Db, req.actor, currentCase);
+      const [terminal] = await tx.select({ id: caseHandoffs.id }).from(caseHandoffs).where(and(
+        eq(caseHandoffs.companyId, currentCase.companyId),
+        eq(caseHandoffs.caseId, currentCase.id), eq(caseHandoffs.issueId, issue.id),
+        eq(caseHandoffs.version, currentCase.handoffVersion),
+        eq(caseHandoffs.destinationKind, "done"),
+        inArray(caseHandoffs.state, ["awaiting_completion", "completed"]),
+        eq(caseHandoffs.fromAgentId, issue.assigneeAgentId!),
+      )).limit(1);
+      const version = terminal ? currentCase.handoffVersion - 1 : currentCase.handoffVersion;
+      const verifyingCase = currentCase.phase === "done" && terminal
+        ? { ...currentCase, phase: "verification" } : currentCase;
+      try {
+        const evidence = await assertBostanCurrentVerificationEvidence(tx, verifyingCase, issue, version);
+        if (!evidence) return { current: false, reportSummary: null, citedDocumentCount: 0 };
+        return { current: true, ...evidence };
+      } catch (error) {
+        if (error instanceof HttpError && error.status === 409) {
+          return { current: false, reportSummary: null, citedDocumentCount: 0 };
+        }
+        throw error;
+      }
+    });
+    res.json({ schema: "bostan.verification.board-summary.v1", caseId: caseRow.id,
+      caseStatus: caseRow.status, ...result,
+      provenanceCurrent: result.current,
+      factualRelevanceVerified: false, sourceContentIsUntrusted: true,
+      executionAuthorized: false, checkedAt: new Date().toISOString() });
   });
 
   router.get("/cases/:id", async (req, res) => {
