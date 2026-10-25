@@ -224,6 +224,12 @@ interruption, recovery, spend and policy failure scenarios.
   bounded Markdown-or-governed-JSON report contract as REST and Native
   Runner. Existing source role/run verification still controls the write;
   17/17 combined SQL/HTTP/Native/catalog tests PASS.
+- [x] B5-14: native first-party `write_task_document` executed against
+  **actual local authenticated HTTP/Express with a genuinely signed agent
+  JWT** and real isolated PostgreSQL. Canonical document revision proves
+  scoped run/agent ownership, duplicate call ID is replay-safe, wrong-key
+  and ended-run writes rejected. 19/19 combined real integration PASS.
+  No actual model inference or outside-provider effect was attempted.
 - [ ] Integrate real authorized agent-run delegation, independent effect
   readback, verifier sign-off and evidence-backed founder summary end-to-end.
   Test duplicate effects, interruption, recovery and budget/consent fences.
