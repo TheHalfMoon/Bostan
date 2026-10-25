@@ -184,7 +184,46 @@ async function runSyntheticPrivateOnboardingWizard(page, privateOrigin, env) {
     ...(firstAgentDraft ? { firstAgentDraft } : {}) };
 }
 
-async function runSyntheticPrivateOcrUi(page, privateOrigin, issue) {
+async function syntheticLargeArabicImage(page) {
+  const data = await page.evaluate(() => {
+    const width = 1300, height = 950;
+    const canvas = document.createElement("canvas");
+    canvas.width = width; canvas.height = height;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) throw new Error("Synthetic OCR browser image canvas unavailable");
+    context.fillStyle = "white";
+    context.fillRect(0, 0, width, height);
+    context.fillStyle = "#111111";
+    context.direction = "rtl";
+    context.font = "bold 78px Arial";
+    context.fillText("وثيقة بستان عربية", 1230, 170);
+    // Seeded photolike background noise only *below* the text, to create
+    // a genuine >256-KiB image without any actual user/image data.
+    const noise = context.createImageData(width, 560);
+    let state = 15283;
+    for (let i = 0; i < noise.data.length; i += 4) {
+      state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+      const shade = 110 + (state % 145);
+      noise.data[i] = shade;
+      noise.data[i + 1] = shade;
+      noise.data[i + 2] = shade;
+      noise.data[i + 3] = 255;
+    }
+    context.putImageData(noise, 0, 390);
+    return canvas.toDataURL("image/png");
+  });
+  if (typeof data !== "string" || !data.startsWith("data:image/png;base64,")) {
+    throw new Error("Browser synthetic large image MIME contract failed");
+  }
+  const binary = Buffer.from(data.slice("data:image/png;base64,".length), "base64");
+  if (binary.length <= 256 * 1024 || binary.length > 4 * 1024 * 1024) {
+    throw new Error("Browser synthetic large OCR file outside admitted source range");
+  }
+  return { name: "bostan-synthetic-large-arabic.png", mimeType: "image/png",
+    buffer: binary };
+}
+
+async function runSyntheticPrivateOcrUi(page, privateOrigin, issue, env) {
   if (typeof issue.id !== "string" ||
       !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(issue.id) ||
       typeof issue.issuePrefix !== "string" ||
@@ -228,13 +267,35 @@ async function runSyntheticPrivateOcrUi(page, privateOrigin, issue) {
   await preview.waitFor({ state: "visible", timeout: 35_000 });
   const recognized = await preview.inputValue();
   if (!recognized.includes("بستان")) throw new Error("Bostan browser did not display real offline Arabic OCR");
+  if (env.BOSTAN_LIVE_LOCAL_BROWSER_LARGE_OCR_E2E === "1") {
+    const synthetic = await syntheticLargeArabicImage(page);
+    // The browser must send a valid bounded JPEG, not the original multi-MiB
+    // PNG, and never contact any compression or model provider.
+    const responseRequest = page.waitForRequest(request =>
+      request.url().endsWith("/bostan-evidence/ocr-preview") &&
+      request.method() === "POST", { timeout: 30_000 });
+    await page.getByLabel("OCR image").setInputFiles(synthetic);
+    const actualRequest = await responseRequest;
+    const payload = actualRequest.postDataJSON();
+    if (payload?.mimeType !== "image/jpeg" || typeof payload.base64 !== "string" ||
+        Buffer.from(payload.base64, "base64").length > 256 * 1024) {
+      throw new Error("Large Bostan source OCR did not send an allowed local bounded JPEG");
+    }
+    await preview.waitFor({ state: "visible", timeout: 45_000 });
+    if (!(await preview.inputValue()).includes("بستان")) {
+      throw new Error("Large normalized Arabic source lost the synthetic OCR fixture text");
+    }
+  }
   const laterDocuments = await page.request.get(privateOrigin + documentsRoute);
   if (!laterDocuments.ok()) throw new Error("Bostan could not re-read OCR source task documents");
   const after = await laterDocuments.json();
   if (!Array.isArray(after) || after.length !== originalCount) {
     throw new Error("Bostan OCR preview silently saved a document or altered source evidence");
   }
-  return { actualBrowserArabicPreview: true, autoDocumentWrites: false };
+  return { actualBrowserArabicPreview: true, autoDocumentWrites: false,
+    ...(env.BOSTAN_LIVE_LOCAL_BROWSER_LARGE_OCR_E2E === "1" ? {
+      actualLargeImageNormalizedToJpeg: true,
+    } : {}) };
 }
 
 export async function runPrivateBostanBrowserQa({
@@ -327,7 +388,7 @@ export async function runPrivateBostanBrowserQa({
         await runSyntheticPrivateOnboardingWizard(page, privateOrigin, env))
       : null;
     const ocr = env.BOSTAN_LIVE_LOCAL_BROWSER_OCR_E2E === "1"
-      ? await runSyntheticPrivateOcrUi(page, privateOrigin, ocrIssue)
+      ? await runSyntheticPrivateOcrUi(page, privateOrigin, ocrIssue, env)
       : null;
     return { qualified: true, browser: "chromium-headless", mounted: true,
       privateApi: true, persistedCompany: true,

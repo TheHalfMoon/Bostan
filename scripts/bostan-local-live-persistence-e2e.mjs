@@ -30,6 +30,10 @@ export function requireBostanSourceSmokeAdmission(env = process.env, platform = 
   if (platform !== "darwin" && platform !== "linux") {
     throw new Error("Bostan live local QA is not qualified for Windows; use its separate TEMP-only workflow");
   }
+  if (env.BOSTAN_LIVE_LOCAL_BROWSER_LARGE_OCR_E2E === "1" &&
+      env.BOSTAN_LIVE_LOCAL_BROWSER_OCR_E2E !== "1") {
+    throw new Error("Large image browser OCR QA requires the existing isolated OCR route opt-in");
+  }
   if (env.BOSTAN_LIVE_LOCAL_BROWSER_OCR_E2E === "1" &&
       (env.BOSTAN_LIVE_LOCAL_BROWSER_E2E !== "1" ||
         env.BOSTAN_LOCAL_OCR_PREVIEW_ENABLE !== "1")) {
@@ -237,6 +241,8 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
         (browserReport?.onboarding?.firstAgentDraft ? ",real-browser-first-agent-inactive-draft" : "") +
         (browserReport?.onboarding?.firstAgentDraft?.localAdapterSelected ? ",real-browser-adapter-selected-still-paused" : "") +
         (browserReport?.ocr ? ",real-browser-bilingual-ocr-no-document-write" : "") +
+        (browserReport?.ocr?.actualLargeImageNormalizedToJpeg
+          ? ",real-browser-large-image-local-jpeg-preprocessing" : "") +
         (env.BOSTAN_E2E_TWO_AGENT_TEAM === "1" ? ",second-distinct-free-agent-same-company" : "") +
         (env.BOSTAN_E2E_REVIEW_FIRST_AGENT === "1" ? ",second-agent-cites-first-persisted-comment" : "") +
         ",clean-stop" };

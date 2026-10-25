@@ -74,3 +74,18 @@ test("private OCR browser requires actual Chromium and explicitly enabled offlin
       /Private OCR browser QA requires/);
   }
 });
+
+
+test("large local image OCR requires the existing private OCR browser admission", () => {
+  const env = {
+    BOSTAN_LIVE_LOCAL_QA_CONFIRM: "1",
+    BOSTAN_LIVE_LOCAL_BROWSER_E2E: "1",
+    BOSTAN_LOCAL_OCR_PREVIEW_ENABLE: "1",
+    BOSTAN_LIVE_LOCAL_BROWSER_LARGE_OCR_E2E: "1",
+  };
+  assert.throws(() => requireBostanSourceSmokeAdmission(env, "darwin"),
+    /Large image browser OCR QA requires/);
+  assert.doesNotThrow(() => requireBostanSourceSmokeAdmission({
+    ...env, BOSTAN_LIVE_LOCAL_BROWSER_OCR_E2E: "1",
+  }, "darwin"));
+});

@@ -3,6 +3,9 @@ import { api } from "../api/client";
 import { Button } from "./ui/button";
 
 const MAX_IMAGE_BYTES = 256 * 1024;
+const MAX_SOURCE_BYTES = 4 * 1024 * 1024;
+const MAX_SOURCE_PIXELS = 18_000_000;
+const MAX_SOURCE_DIMENSION = 8_192;
 const MIME = new Set(["image/png", "image/jpeg"]);
 type OcrLanguage = "eng" | "ara" | "eng+ara";
 type OcrPreview = {
@@ -16,9 +19,9 @@ type OcrPreview = {
   executionAuthorized: false;
 };
 
-export function readBostanOcrImage(file: File): Promise<{ mimeType: string; base64: string }> {
-  if (!MIME.has(file.type) || file.size === 0 || file.size > MAX_IMAGE_BYTES) {
-    return Promise.reject(new Error("Choose a PNG or JPEG image up to 256 KiB."));
+function readBoundedImageData(file: Blob, mimeType: string): Promise<{ mimeType: string; base64: string }> {
+  if (file.size === 0 || file.size > MAX_IMAGE_BYTES) {
+    return Promise.reject(new Error("Local OCR image was not reduced to the private server size limit."));
   }
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -29,10 +32,74 @@ export function readBostanOcrImage(file: File): Promise<{ mimeType: string; base
         ? /^data:image\/(?:png|jpeg);base64,([A-Za-z0-9+/]+=*)$/.exec(result)
         : null;
       if (!match) { reject(new Error("Unsupported image data.")); return; }
-      resolve({ mimeType: file.type, base64: match[1] });
+      resolve({ mimeType, base64: match[1] });
     };
     reader.readAsDataURL(file);
   });
+}
+
+function canvasJpeg(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => blob && blob.type === "image/jpeg"
+      ? resolve(blob) : reject(new Error("Offline browser JPEG preprocessing is not supported.")),
+    "image/jpeg", quality);
+  });
+}
+
+/** Images never leave the browser except as bounded same-origin Bostan OCR input. */
+export async function readBostanOcrImage(
+  file: File,
+  signal?: AbortSignal,
+): Promise<{ mimeType: string; base64: string }> {
+  if (!MIME.has(file.type) || file.size === 0 || file.size > MAX_SOURCE_BYTES) {
+    throw new Error("Choose a PNG or JPEG image up to 4 MiB.");
+  }
+  if (signal?.aborted) throw new Error("Local OCR was canceled.");
+  if (file.size <= MAX_IMAGE_BYTES) return readBoundedImageData(file, file.type);
+  if (typeof createImageBitmap !== "function") {
+    throw new Error("Offline browser image processing is unavailable.");
+  }
+
+  // Limit source-byte intake before decoding, then bound source pixel count
+  // before canvas allocation. Never accept user-controlled JPEG quality or
+  // output dimensions, which could exceed the private OCR server contract.
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch {
+    throw new Error("Could not decode this local PNG/JPEG image.");
+  }
+  try {
+    if (signal?.aborted) throw new Error("Local OCR was canceled.");
+    if (bitmap.width <= 0 || bitmap.height <= 0 ||
+        bitmap.width > MAX_SOURCE_DIMENSION || bitmap.height > MAX_SOURCE_DIMENSION ||
+        bitmap.width * bitmap.height > MAX_SOURCE_PIXELS) {
+      throw new Error("This image exceeds the supported local OCR pixel limit.");
+    }
+    const canvas = document.createElement("canvas");
+    for (const maxSide of [2000, 1700, 1450, 1200, 980]) {
+      const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const context = canvas.getContext("2d", { alpha: false });
+      if (!context) throw new Error("Local image processing is not available.");
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      for (const quality of [0.86, 0.73, 0.59, 0.45]) {
+        if (signal?.aborted) throw new Error("Local OCR was canceled.");
+        const compressed = await canvasJpeg(canvas, quality);
+        if (compressed.size > 0 && compressed.size <= MAX_IMAGE_BYTES) {
+          return readBoundedImageData(compressed, "image/jpeg");
+        }
+      }
+    }
+    throw new Error("This image cannot fit the private OCR limit without losing too much detail.");
+  } finally {
+    bitmap.close();
+  }
 }
 
 /** Read-only, opt-in OCR. Never saves the preview as a document or evidence. */
@@ -60,7 +127,7 @@ export function BostanOcrPreview({ companyId, issueId }: { companyId: string; is
     setError(null);
     setBusy(true);
     try {
-      const image = await readBostanOcrImage(file);
+      const image = await readBostanOcrImage(file, controller.signal);
       if (current !== requestId.current || controller.signal.aborted) return;
       const next = await api.post<OcrPreview>(
         "/companies/" + companyId + "/issues/" + issueId + "/bostan-evidence/ocr-preview",
@@ -77,8 +144,11 @@ export function BostanOcrPreview({ companyId, issueId }: { companyId: string; is
       setResult(next);
     } catch (cause) {
       if (current === requestId.current) {
-        setError(cause instanceof Error && cause.message === "Choose a PNG or JPEG image up to 256 KiB."
-          ? cause.message : "Local OCR preview was unavailable or could not read the image.");
+        setError(cause instanceof Error && (
+          cause.message.startsWith("Choose a PNG or JPEG image") ||
+          cause.message === "This image exceeds the supported local OCR pixel limit." ||
+          cause.message === "This image cannot fit the private OCR limit without losing too much detail."
+        ) ? cause.message : "Local OCR preview was unavailable or could not read the image.");
       }
     } finally {
       if (current === requestId.current) {
@@ -117,7 +187,7 @@ export function BostanOcrPreview({ companyId, issueId }: { companyId: string; is
             </select>
           </label>
           <label className="block space-y-1 text-sm">
-            <span>Image (PNG/JPEG, max 256 KiB)</span>
+            <span>Image (PNG/JPEG, up to 4 MiB; large images reduced locally)</span>
             <input aria-label="OCR image" type="file" accept="image/png,image/jpeg"
               disabled={busy}
               onChange={event => {
@@ -127,7 +197,7 @@ export function BostanOcrPreview({ companyId, issueId }: { companyId: string; is
               }}
               className="block max-w-full text-sm" />
           </label>
-          {busy && <p role="status" className="text-sm">Extracting locally…</p>}
+          {busy && <p role="status" className="text-sm">Preparing image and extracting locally…</p>}
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
           {result && (
             <label className="block space-y-1 text-sm">
