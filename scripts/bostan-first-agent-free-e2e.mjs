@@ -73,6 +73,41 @@ const MARKER = "BOSTAN_CLEAN_RUN_PASS";
 const SECOND_MARKER = "BOSTAN_SECOND_AGENT_PASS";
 
 const REVIEW_EVIDENCE_LABEL = "BOSTAN_REVIEW_SOURCE_COMMENT_ID:";
+
+/**
+ * Do not ask a small model to infer how a final message changes Bostan state.
+ * The model must use actual authenticated task tools, then read the persisted
+ * result back. This wording never authorizes effects beyond the synthetic task.
+ */
+export function buildFirstWorkerTask() {
+  return [
+    "Isolated synthetic Bostan source QA; this is the ONLY task to change.",
+    "Use the provided Bostan issue/comment API tools to POST one comment on THIS assigned task.",
+    "The comment body must contain the following EXACT uppercase ASCII string:",
+    MARKER,
+    "Copy that token character for character. It starts BOSTAN, NOT BOSTON.",
+    "After the comment is saved, use the authenticated Bostan issue API tool to set THIS task status to done.",
+    "Read the task back through the API and verify that its persisted status equals done.",
+    "A final natural-language answer is not a comment API write or a status update.",
+    "Do not say the task is done if API readback still shows todo or in_progress.",
+    "Do not access other tasks, external accounts, real data, unrelated files or shell commands.",
+    "Only after both the saved comment and done status are confirmed, give a brief final response.",
+  ].join(" ");
+}
+
+export function buildSecondWorkerTask() {
+  return [
+    "Isolated synthetic Bostan second-worker QA in the same company; this is the ONLY task to change.",
+    "Use the Bostan issue/comment API tools to POST exactly one comment on THIS task.",
+    "Its body must contain the EXACT uppercase ASCII token:",
+    SECOND_MARKER,
+    "Copy exactly BOSTAN, NOT BOSTON; an ordinary final answer is not a saved comment.",
+    "Use the authenticated Bostan API tool to change THIS task status to done.",
+    "GET this issue again and verify its persisted status really equals done before claiming completion.",
+    "If a tool is unavailable, describe that failure; do not invent successful tool calls.",
+    "Do not access unrelated tasks, files, shell commands, real accounts or external services.",
+  ].join(" ");
+}
 const UUID_PATTERN = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 
 /**
@@ -139,7 +174,7 @@ export function requirePersistedReviewCitation({
 
 export function buildEvidenceReviewTask({ sourceIssueId }) {
   if (!UUID_PATTERN.test(sourceIssueId)) throw new Error("Evidence review requires a persisted source issue UUID");
-  return "Synthetic private Bostan cross-agent review QA. Inspect the PREVIOUS worker issue " +
+  return "Synthetic private Bostan cross-agent review QA. Use the provided authenticated Bostan API tools, not a final answer, to inspect the PREVIOUS worker issue " +
     sourceIssueId + " with the available Bostan issue/comment API tools. " +
     "GET the saved comments on that OTHER issue. Confirm that a real persisted comment " +
     "includes the text BOSTAN_CLEAN_RUN_PASS. The current task does not reveal " +
@@ -147,7 +182,9 @@ export function buildEvidenceReviewTask({ sourceIssueId }) {
     "Only if confirmed, post ONE comment on THIS assigned review task containing " +
     SECOND_MARKER + " and exactly " + REVIEW_EVIDENCE_LABEL +
     "<actual source comment UUID>. Then mark ONLY THIS review task done and stop. " +
-    "If you cannot retrieve the real source comment, report that and do NOT mark done. " +
+    "Read THIS review task back to confirm persisted status done. " +
+    "Exact token starts BOSTAN, NOT BOSTON. A final answer is not a saved comment or status write. " +
+    "If you cannot retrieve the real source comment or do the actual API writes, report that and do NOT mark done. " +
     "Do not inspect unrelated files, make external side effects, or invent IDs.";
 }
 
@@ -282,9 +319,7 @@ export async function runFirstAgentFreeE2e(env = process.env) {
     label: "first-agent readiness", diagnostic: () => firstLifecycle });
   const issue = await requestJson(base, "companies/" + company.id + "/issues", {
     title: "Synthetic Bostan free agent execution QA " + id,
-    description: "Synthetic, disposable QA. Post ONE task comment containing " + MARKER +
-      ", mark this issue done, give your final answer, and immediately stop. " +
-      "Do not inspect files or run unrelated shell commands.",
+    description: buildFirstWorkerTask(),
     status: "todo", assigneeAgentId: agent.id,
   });
   const started = await requestJson(base, "agents/" + agent.id + "/heartbeat/invoke", {});
@@ -296,11 +331,24 @@ export async function runFirstAgentFreeE2e(env = process.env) {
   const finalIssue = await requestJson(base, "issues/" + issue.id);
   const commentResult = await requestJson(base, "issues/" + issue.id + "/comments");
   const comments = Array.isArray(commentResult) ? commentResult : commentResult.comments ?? [];
+  // Surface the exact persisted status even if the model hallucinated a
+  // comment marker. Never mark a synthetic run passed on status alone.
+  if (finalIssue.status !== "done") {
+    throw new Error("Bostan worker did not persist issue Done: " +
+      JSON.stringify({ issueStatus: finalIssue.status,
+        commentCount: comments.length,
+        runAttributedComments: comments.filter(c =>
+          c.authorAgentId === agent.id && c.createdByRunId === run.id).length,
+        exactMarkerPresent: comments.some(c =>
+          c.authorAgentId === agent.id && c.createdByRunId === run.id &&
+          hasStandaloneEvidenceMarker(c.body ?? c.content, MARKER)),
+      }));
+  }
   const sourceReceipt = requirePersistedRunComment({
     comments, agentId: agent.id, runId: run.id, marker: MARKER,
   });
   const clean = run.status === "succeeded" && run.exitCode === 0
-    && run.errorCode == null && finalIssue.status === "done";
+    && run.errorCode == null;
   if (!clean) {
     throw new Error("Bostan first agent did not qualify clean completion: " +
       JSON.stringify({ runStatus: run.status, exitCode: run.exitCode,
@@ -350,10 +398,7 @@ export async function runFirstAgentFreeE2e(env = process.env) {
     const reviewMode = env.BOSTAN_E2E_REVIEW_FIRST_AGENT === "1";
     const reviewDescription = reviewMode
       ? buildEvidenceReviewTask({ sourceIssueId: issue.id })
-      : "Synthetic disposable second worker task following a previously completed " +
-        "first worker task. Post ONE task comment containing " + SECOND_MARKER +
-        ", mark THIS issue done, give your final answer and immediately stop. " +
-        "Do not inspect unrelated files or use extra shell commands.";
+      : buildSecondWorkerTask();
     const secondIssue = await requestJson(base, "companies/" + company.id + "/issues", {
       title: (reviewMode ? "Source-citing second worker review QA " :
         "Independent second worker synthetic execution QA ") + id,
@@ -372,6 +417,19 @@ export async function runFirstAgentFreeE2e(env = process.env) {
     const secondCommentsResponse = await requestJson(base, "issues/" + secondIssue.id + "/comments");
     const secondComments = Array.isArray(secondCommentsResponse) ? secondCommentsResponse
       : secondCommentsResponse.comments ?? [];
+    if (secondResult.status !== "done") {
+      throw new Error("Bostan second worker did not persist issue Done: " +
+        JSON.stringify({ issueStatus: secondResult.status,
+          commentCount: secondComments.length,
+          runAttributedComments: secondComments.filter(c =>
+            c.authorAgentId === secondAgent.id &&
+            c.createdByRunId === secondRun.id).length,
+          exactMarkerPresent: secondComments.some(c =>
+            c.authorAgentId === secondAgent.id &&
+            c.createdByRunId === secondRun.id &&
+            hasStandaloneEvidenceMarker(c.body ?? c.content, SECOND_MARKER)),
+        }));
+    }
     const secondReceipt = requirePersistedRunComment({
       comments: secondComments, agentId: secondAgent.id,
       runId: secondRun.id, marker: SECOND_MARKER,

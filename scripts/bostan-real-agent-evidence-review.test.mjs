@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildEvidenceReviewTask, requirePersistedReviewCitation, requirePersistedRunComment } from "./bostan-first-agent-free-e2e.mjs";
+import { buildEvidenceReviewTask, buildFirstWorkerTask, buildSecondWorkerTask,
+  requirePersistedReviewCitation, requirePersistedRunComment } from "./bostan-first-agent-free-e2e.mjs";
 
 const sourceIssueId = "24ddccaa-9ec9-4e45-80a2-8239be2b7229";
 const sourceCommentId = "64ca010c-e733-4b34-a2bc-b63735d94512";
@@ -167,4 +168,26 @@ test("reviewer cannot qualify an embedded success marker", () => {
     reviewerComments: [{ ...verifiedComment,
       body: "NOT_BOSTAN_SECOND_AGENT_PASS BOSTAN_REVIEW_SOURCE_COMMENT_ID:" + sourceCommentId }],
   }), /did not cite/);
+});
+
+test("first worker must be directed to perform and verify authenticated Bostan writes, not claim them", () => {
+  const task = buildFirstWorkerTask();
+  for (const required of ["BOSTAN_CLEAN_RUN_PASS", "BOSTAN, NOT BOSTON",
+    "API", "comment", "status", "done", "Read the task back",
+    "final natural-language answer is not a comment API write"]) {
+    assert.ok(task.includes(required), required);
+  }
+  assert.doesNotMatch(task, /curl|https?:/i);
+});
+
+test("reviewer and second worker must verify saved task status and exact source citation", () => {
+  const source = buildEvidenceReviewTask({ sourceIssueId });
+  const second = buildSecondWorkerTask();
+  assert.match(source, /authenticated Bostan API tools/);
+  assert.match(source, /Read THIS review task back/);
+  assert.match(source, /BOSTAN, NOT BOSTON/);
+  for (const expected of ["BOSTAN_SECOND_AGENT_PASS", "issue/comment API",
+    "GET this issue again", "status really equals done"]) {
+    assert.ok(second.includes(expected), expected);
+  }
 });
