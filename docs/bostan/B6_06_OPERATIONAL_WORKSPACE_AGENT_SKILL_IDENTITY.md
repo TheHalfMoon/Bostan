@@ -19,8 +19,20 @@ Extend `scripts/bostan-agent-interface-brand.test.mjs` with four Bostan-copy fix
 
 The file changes are literal human-visible strings only; they do not alter component structure, state, endpoints, permissions, command execution, or APIs.
 
-## Qualification and limitations
+## Verified Mac qualification — 2026-10-25
 
-This PR was authored through the connected GitHub API after the authorized Mac's Remote Desktop Commander tool reached its monthly usage limit. Static source and exact-match replacement guards were checked via GitHub fetches, but **local Vitest, TypeScript, Vite production build, actual Mac/Windows browser E2E and Alibaba CLI review were not executed on this branch**. They are required before merging/releasing and must not be inferred from earlier branches. GitHub Actions intentionally remain disabled.
+After Desktop Commander was reconnected, the exact B6-06 head was fetched into an isolated Bostan checkout and the previously unavailable local validation was performed successfully.
 
-The global application is still not release-ready: free-model two-agent independent reviewer proof, B4 knowledge/OCR analytics, B6 installers, Windows/Chromium qualification and independent security review remain open. **Release NO-GO.**
+- Local Bostan identity Node tests: **6/6 PASS**.
+- Vitest focused UI tests for AgentToolsTab, ProjectWorkspaceDetail, and ExecutionWorkspaceDetail: **27/27 PASS** (three test files). React emitted non-blocking act(...) warnings for some presence-related asynchronous state.
+- Bostan general Node source regression: **114/114 PASS, 9 Windows-only tests SKIPPED** (123 tests total).
+- UI TypeScript check (pnpm --filter @paperclipai/ui typecheck): **PASS**, with structural Storybook catalog of 316 files and 2973 stories. This does not execute Storybook journeys.
+- UI Vite production bundle (pnpm --filter @paperclipai/ui build): **PASS**. Existing chunks larger than 500 kB caused size/code-splitting warnings; no measured performance claim.
+- Alibaba Open Code Review (ocr delegate preview on this branch relative to B5-26): **PASS**, five relevant changed files selected out of six; local static delegation and rules, **not** an AI reviewer or paid LLM.
+- git diff --check: **PASS**.
+
+## Remaining limits
+
+These checks qualify the changed source copy and UI compilation, not a real installed Mac or Windows browser journey, production-like user acceptance, autonomous agent model behavior, B4 knowledge/analytics, B5 independent native review or an external security audit. Full release remains **NO-GO**.
+
+The source branch remains on a private GitHub Draft PR, with inherited Actions disabled, no main merge, deployment or publication. Original required license/attribution and protocol identifiers remain intact.
