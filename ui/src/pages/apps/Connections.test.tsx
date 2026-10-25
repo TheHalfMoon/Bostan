@@ -172,7 +172,7 @@ describe("Connections table (M1b / PAP-13254 door 2)", () => {
     getCloudConnectorEnrollmentMock.mockResolvedValue({
       configured: true,
       status: "active",
-      brokerBaseUrl: "https://my.paperclip.app",
+      brokerBaseUrl: "https://broker.bostan.example",
       instanceId: "instance-test",
       environment: "development",
       origins: ["http://localhost:3100"],
@@ -199,6 +199,32 @@ describe("Connections table (M1b / PAP-13254 door 2)", () => {
     });
     await flushReact();
   }
+
+  it("does not display or initiate legacy Cloud enrollment for local Bostan without an approved broker", async () => {
+    getCloudConnectorEnrollmentMock.mockResolvedValue({
+      configured: false, status: "not_configured", brokerBaseUrl: "",
+      instanceId: null, environment: "development", origins: [],
+    });
+    await renderApps();
+    expect(container.textContent).not.toContain("Enable configured broker sign-in");
+    expect(container.textContent).not.toContain("Paperclip Cloud");
+    expect(startCloudConnectorEnrollmentMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects an untrusted pending broker link without starting a second enrollment", async () => {
+    getCloudConnectorEnrollmentMock.mockResolvedValue({
+      configured: false, status: "pending", brokerBaseUrl: "https://broker.bostan.example",
+      instanceId: "fixture", environment: "development", origins: [],
+      verificationUrl: "https://evil.example/connections/enroll?id=forged",
+    });
+    await renderApps();
+    expect(container.textContent).toContain("Finish connector broker enrollment");
+    const button = Array.from(container.querySelectorAll("button")).find(el => el.textContent === "Continue enrollment");
+    expect(button).toBeTruthy();
+    await act(async () => { button?.click(); });
+    expect(pushToastMock).toHaveBeenCalledWith(expect.objectContaining({ title: "Enrollment link rejected" }));
+    expect(startCloudConnectorEnrollmentMock).not.toHaveBeenCalled();
+  });
 
   it("renders applications without connections as not connected with a Connect action", async () => {
     listApplicationsMock.mockResolvedValue({

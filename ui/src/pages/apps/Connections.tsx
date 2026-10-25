@@ -45,6 +45,7 @@ import {
 } from "./app-definition-display";
 import { useReviewCount } from "./useReviewCount";
 import { connectionNameForCredentialPolicy, connectionTypeLabel } from "./connection-identity";
+import { bostanConnectorEnrollmentUrl, hasBostanConnectorBroker } from "@/lib/bostan-connector-enrollment";
 import {
   ConnectionOwnerIdentity,
   connectionDisplayNameForOwner,
@@ -165,10 +166,16 @@ export function Connections() {
   const startConnectorEnrollment = useMutation({
     mutationFn: () => toolsApi.startCloudConnectorEnrollment(selectedCompanyId!, selectedCompany?.name),
     onSuccess: (status) => {
-      if (status.verificationUrl) window.location.assign(status.verificationUrl);
+      const url = bostanConnectorEnrollmentUrl(status);
+      if (url) window.location.assign(url);
+      else pushToast({
+        title: "Enrollment link rejected",
+        body: "Bostan refused an unverified connector broker redirect.",
+        tone: "error",
+      });
     },
     onError: (error) => pushToast({
-      title: "Couldn’t reach Paperclip Cloud",
+      title: "Couldn’t reach the configured broker",
       body: error instanceof Error ? error.message : "Try again in a moment.",
       tone: "error",
     }),
@@ -311,15 +318,24 @@ export function Connections() {
 
   return (
     <div className="max-w-5xl space-y-5">
-      {!connectorEnrollmentQuery.isLoading ? (
+      {!connectorEnrollmentQuery.isLoading && hasBostanConnectorBroker(connectorEnrollmentQuery.data) ? (
         <CloudConnectorEnrollmentBanner
           status={connectorEnrollmentQuery.data}
           unavailable={connectorEnrollmentQuery.isError}
           busy={startConnectorEnrollment.isPending}
           onEnable={() => {
-            const verificationUrl = connectorEnrollmentQuery.data?.verificationUrl;
-            if (verificationUrl) window.location.assign(verificationUrl);
-            else startConnectorEnrollment.mutate();
+            const status = connectorEnrollmentQuery.data;
+            if (status?.status === "pending") {
+              const url = bostanConnectorEnrollmentUrl(status);
+              if (url) window.location.assign(url);
+              else pushToast({
+                title: "Enrollment link rejected",
+                body: "Bostan refused an unverified connector broker redirect.",
+                tone: "error",
+              });
+              return;
+            }
+            startConnectorEnrollment.mutate();
           }}
         />
       ) : null}
@@ -589,7 +605,7 @@ function CloudConnectorEnrollmentBanner({
       <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
         <ShieldCheck className="h-5 w-5 text-primary" />
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold text-foreground">Paperclip-managed sign-in is ready</div>
+          <div className="text-sm font-semibold text-foreground">Configured connector broker is ready</div>
           <div className="truncate text-xs text-muted-foreground">
             Provider authorization uses {status.brokerBaseUrl}; credentials stay in this instance.
           </div>
@@ -601,7 +617,7 @@ function CloudConnectorEnrollmentBanner({
     return (
       <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
         <Cloud className="h-5 w-5 text-muted-foreground" />
-        <div className="text-sm text-muted-foreground">Paperclip Cloud enrollment status is unavailable.</div>
+        <div className="text-sm text-muted-foreground">Bostan connector enrollment status is unavailable.</div>
       </div>
     );
   }
@@ -610,10 +626,10 @@ function CloudConnectorEnrollmentBanner({
       <Cloud className="h-5 w-5 text-muted-foreground" />
       <div className="min-w-0 flex-1">
         <div className="text-sm font-semibold text-foreground">
-          {status?.status === "pending" ? "Finish Paperclip Cloud enrollment" : "Enable Paperclip-managed sign-in"}
+          {status?.status === "pending" ? "Finish connector broker enrollment" : "Enable configured broker sign-in"}
         </div>
         <div className="text-xs text-muted-foreground">
-          Confirm this server’s exact address before Cloud can return encrypted Google credentials to it.
+          Confirm this server’s exact address before the configured broker can return encrypted provider credentials to it.
         </div>
       </div>
       <Button variant="outline" size="sm" disabled={busy} onClick={onEnable}>
