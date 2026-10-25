@@ -195,6 +195,11 @@ interruption, recovery, spend and policy failure scenarios.
   bypass for opted-in independent-review cases and make existing case
   review requirements immutable. 2/2 actual PostgreSQL+HTTP tests PASS;
   ordinary cases retain original status transitions.
+- [x] B5-08: prevent the original Issue completion service from skipping a
+  current governed case `awaiting_completion` intent when the work task's
+  case opted into independent verification. 4/4 real SQL source-integration
+  tests PASS, including the legitimate canonical case Done path; final
+  point-in-time source freshness on task Done still needs requalification.
 - [ ] Integrate real authorized agent-run delegation, independent effect
   readback, verifier sign-off and evidence-backed founder summary end-to-end.
   Test duplicate effects, interruption, recovery and budget/consent fences.

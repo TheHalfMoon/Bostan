@@ -6,6 +6,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { agents, caseAccessSources, caseHandoffs, cases, companies,
   createDb, heartbeatRuns, issues, toolInvocations } from "@paperclipai/db";
 import { caseHandoffService } from "../services/case-handoffs.js";
+import { issueService } from "../services/issues.js";
 import { documentService } from "../services/documents.js";
 import { issueRoutes } from "../routes/issues.js";
 import { errorHandler } from "../middleware/error-handler.js";
@@ -202,8 +203,36 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
       .where(eq(heartbeatRuns.id, resumedRunId));
     const accepted = await service.handoff(f.companyId, board, terminal(2, afterAssign.statusVersion));
     expect(accepted).toMatchObject({ destinationKind: "done", state: "awaiting_completion" });
+    // Only the original protected terminal intent can now allow Issue Done;
+    // completion remains in the issue/case/handoff source transaction.
+    await issueService(db).update(f.issueId, { status: "done", actorUserId: "synthetic-founder",
+      companyGuard: f.companyId });
+    const [completedCase] = await db.select().from(cases).where(eq(cases.id, f.caseId));
+    expect(completedCase.status).toBe("done");
     expect(await db.select().from(toolInvocations)).toHaveLength(0);
   });
+  it("B5-08 blocks direct Issue Done until the original independent-review terminal handoff is accepted", async () => {
+    const f = await setup();
+    const requestDone = () => issueService(db).update(f.issueId, {
+      status: "done", actorUserId: "synthetic-founder", companyGuard: f.companyId,
+    });
+    await expect(requestDone()).rejects.toMatchObject({
+      status: 409, details: { code: "bostan_case_terminal_handoff_required" },
+    });
+    const [before] = await db.select().from(issues).where(eq(issues.id, f.issueId));
+    expect(before.status).toBe("todo");
+    const [caseRow] = await db.select().from(cases).where(eq(cases.id, f.caseId));
+    expect(caseRow.status).toBe("in_progress");
+    expect(caseRow.handoffVersion).toBe(1);
+    expect(await db.select().from(caseHandoffs)).toHaveLength(0);
+
+    // The opt-out behavior is deliberately unchanged for legacy Cases.
+    await db.update(cases).set({ fields: {} }).where(eq(cases.id, f.caseId));
+    await requestDone();
+    const [afterOrdinary] = await db.select().from(issues).where(eq(issues.id, f.issueId));
+    expect(afterOrdinary.status).toBe("done");
+  });
+
   it("retains the real source handoff authority for a distinct verifier", async () => {
     const f = await setup();
     const accepted = await caseHandoffService(db).handoff(f.companyId, board, {
