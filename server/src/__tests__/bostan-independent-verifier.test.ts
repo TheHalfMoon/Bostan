@@ -192,7 +192,7 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
     const refreshedSource = await getActiveSourceSnapshot(resumedRunId);
     expect(refreshedSource.status).toBe(200);
     expect(refreshedSource.body.sourceSnapshotHmacSha256).not.toBe(scopedSource.body.sourceSnapshotHmacSha256);
-    await documentService(db).upsertIssueDocument({
+    const finalReviewed = await documentService(db).upsertIssueDocument({
       issueId: f.issueId, key: "bostan-verification", title: "Verifier assessment",
       format: "json", body: reportText(refreshedSource.body.sourceSnapshotHmacSha256),
       baseRevisionId: tampered.document.latestRevisionId,
@@ -203,10 +203,47 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
       .where(eq(heartbeatRuns.id, resumedRunId));
     const accepted = await service.handoff(f.companyId, board, terminal(2, afterAssign.statusVersion));
     expect(accepted).toMatchObject({ destinationKind: "done", state: "awaiting_completion" });
-    // Only the original protected terminal intent can now allow Issue Done;
-    // completion remains in the issue/case/handoff source transaction.
-    await issueService(db).update(f.issueId, { status: "done", actorUserId: "synthetic-founder",
-      companyGuard: f.companyId });
+    // B5-09: source changes AFTER the case accepted terminal intent but
+    // BEFORE the final task Done. A previously accepted receipt is stale.
+    await documentService(db).upsertIssueDocument({
+      issueId: f.issueId, key: "bostan-source", title: "Implementation source",
+      format: "markdown", body: "A changed implementation source after the case accepted terminal intent",
+      baseRevisionId: (await documentService(db).getIssueDocumentByKey(f.issueId, "bostan-source"))!.latestRevisionId,
+      createdByAgentId: f.specialistId, createdByRunId: otherRunId,
+    });
+    const requestFinalDone = () => issueService(db).update(f.issueId, {
+      status: "done", actorUserId: "synthetic-founder", companyGuard: f.companyId,
+    });
+    await expect(requestFinalDone()).rejects.toMatchObject({
+      status: 409, details: { code: "bostan_verifier_source_stale" },
+    });
+    const [[stillOpenTask], [stillOpenCase], [pendingIntent]] = await Promise.all([
+      db.select().from(issues).where(eq(issues.id, f.issueId)),
+      db.select().from(cases).where(eq(cases.id, f.caseId)),
+      db.select().from(caseHandoffs).where(eq(caseHandoffs.id, accepted.handoffId)),
+    ]);
+    expect(stillOpenTask.status).not.toBe("done");
+    expect(stillOpenCase.status).not.toBe("done");
+    expect(pendingIntent.state).toBe("awaiting_completion");
+    // The same active agent must re-review the changed source in a NEW
+    // successful run and update the latest review document accordingly.
+    const finalRunId = randomUUID();
+    await db.insert(heartbeatRuns).values({ id: finalRunId, companyId: f.companyId,
+      agentId: f.verifierId, issueId: f.issueId, status: "running", startedAt: new Date(),
+      contextSnapshot: { issueId: f.issueId } });
+    const finalDigest = await getActiveSourceSnapshot(finalRunId);
+    expect(finalDigest.status).toBe(200);
+    expect(finalDigest.body.sourceSnapshotHmacSha256).not.toBe(refreshedSource.body.sourceSnapshotHmacSha256);
+    await documentService(db).upsertIssueDocument({
+      issueId: f.issueId, key: "bostan-verification", title: "Verifier assessment",
+      format: "json", body: reportText(finalDigest.body.sourceSnapshotHmacSha256),
+      baseRevisionId: finalReviewed.document.latestRevisionId,
+      createdByAgentId: f.verifierId, createdByRunId: finalRunId,
+    });
+    await new Promise(resolve => setTimeout(resolve, 35));
+    await db.update(heartbeatRuns).set({ status: "succeeded", finishedAt: new Date() })
+      .where(eq(heartbeatRuns.id, finalRunId));
+    await requestFinalDone();
     const [completedCase] = await db.select().from(cases).where(eq(cases.id, f.caseId));
     expect(completedCase.status).toBe("done");
     expect(await db.select().from(toolInvocations)).toHaveLength(0);

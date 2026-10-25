@@ -8222,10 +8222,22 @@ export function issueRoutes(
       activeCase.phase !== "verification") {
       res.status(403).json({ error: "This task is not in governed independent verification" }); return;
     }
+    // After the board accepts an inert terminal intent, the newest case
+    // version belongs to its `awaiting_completion` row. The same reviewer
+    // may need to re-review a changed source before final Issue Done.
+    // Recognize only an authentic current terminal intent from this same
+    // agent, then bind to the immediately preceding delivered review.
+    const [terminalIntent] = await db.select({ id: caseHandoffs.id }).from(caseHandoffs).where(and(
+      eq(caseHandoffs.companyId, companyId), eq(caseHandoffs.caseId, activeCase.id),
+      eq(caseHandoffs.issueId, issueId), eq(caseHandoffs.version, activeCase.version),
+      eq(caseHandoffs.destinationKind, "done"), eq(caseHandoffs.state, "awaiting_completion"),
+      eq(caseHandoffs.fromAgentId, req.actor.agentId),
+    )).limit(1);
+    const reviewVersion = terminalIntent ? activeCase.version - 1 : activeCase.version;
     const [delivered] = await db.select({ deliveredAt: caseHandoffs.deliveredAt })
       .from(caseHandoffs).where(and(
         eq(caseHandoffs.companyId, companyId), eq(caseHandoffs.caseId, activeCase.id),
-        eq(caseHandoffs.issueId, issueId), eq(caseHandoffs.version, activeCase.version),
+        eq(caseHandoffs.issueId, issueId), eq(caseHandoffs.version, reviewVersion),
         eq(caseHandoffs.phase, "verification"), eq(caseHandoffs.state, "delivered"),
         eq(caseHandoffs.toAgentId, req.actor.agentId),
         sql`${caseHandoffs.fromAgentId} is not null and ${caseHandoffs.fromAgentId} <> ${caseHandoffs.toAgentId}`,

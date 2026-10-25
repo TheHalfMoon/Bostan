@@ -198,8 +198,13 @@ interruption, recovery, spend and policy failure scenarios.
 - [x] B5-08: prevent the original Issue completion service from skipping a
   current governed case `awaiting_completion` intent when the work task's
   case opted into independent verification. 4/4 real SQL source-integration
-  tests PASS, including the legitimate canonical case Done path; final
-  point-in-time source freshness on task Done still needs requalification.
+  tests PASS, including the legitimate canonical case Done path.
+- [x] B5-09: reuse the complete source review/provenance verifier inside
+  the final locked Issue Done transaction. A source changed **after** the
+  terminal intent now blocks Issue/Case completion until the independent
+  reviewer records a fresh successful run and current report. Scoped
+  reviewer HTTP digest retrieval works through pending terminal intent;
+  12/12 combined real PostgreSQL/HTTP tests PASS.
 - [ ] Integrate real authorized agent-run delegation, independent effect
   readback, verifier sign-off and evidence-backed founder summary end-to-end.
   Test duplicate effects, interruption, recovery and budget/consent fences.

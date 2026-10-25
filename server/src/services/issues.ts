@@ -11225,10 +11225,7 @@ export function issueService(db: Db) {
           assertLegacyRunTaskOwnership(actorRun, receiptExisting);
         }
         if (patch.status === "done" && receiptExisting.status !== "done") {
-          await assertBostanIssueCompletionHandoff(tx, {
-            companyId: receiptExisting.companyId, issueId: receiptExisting.id,
-            assigneeAgentId: receiptExisting.assigneeAgentId,
-          });
+          await assertBostanIssueCompletionHandoff(tx, { issue: receiptExisting });
         }
         if (actorAgentId && patch.status === "done") {
           const [review] = await tx.select({ id: toolActionRequests.id }).from(toolActionRequests).where(and(eq(toolActionRequests.companyId, existing.companyId), eq(toolActionRequests.issueId, id), inArray(toolActionRequests.status, ["pending", "approved", "executing"]))).limit(1);
