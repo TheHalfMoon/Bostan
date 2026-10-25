@@ -9,6 +9,7 @@ const reasons = {
   harness_command_unavailable: "The execution command was not found. Check the command and its installation in the agent's environment, then retry.",
   harness_cwd_invalid: "The working directory is unavailable. Check the working directory in Configuration, then retry.",
   harness_probe_timed_out: "The execution test timed out. Paperclip will retry automatically. If this continues, run the agent test in Configuration.",
+  harness_probe_failed: "The execution tool launched, but its hello verification request failed. Run the agent test in Configuration for the check codes; no task was executed.",
   harness_probe_unexpected_output: "The execution test did not return the expected response. Run the agent test in Configuration to inspect the failed checks.",
   test_environment_unavailable: "The test environment is unavailable. Check the agent's environment in Configuration. Paperclip will retry automatically.",
   required_plugin_unavailable: "A required plugin is unavailable. Check the plugin's status in Settings. Paperclip will retry automatically.",

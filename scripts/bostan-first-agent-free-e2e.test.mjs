@@ -166,6 +166,18 @@ test("agent readiness diagnostics allow only safe status enums; never echo priva
   }), { lifecycleState: null, status: null });
 });
 
+test("failed real hello probe remains failed but reports safe precise stage, never raw output", () => {
+  const observed = safeAgentLifecycleDiagnostic({
+    lifecycleState: "verifying", status: "paused",
+    lifecycleError: "Execution configuration check failed. The execution tool launched, but its hello verification request failed. Run the agent test in Configuration for the check codes; no task was executed. secret=private",
+  });
+  assert.deepEqual(observed, {
+    lifecycleState: "verifying", status: "paused",
+    failureCode: "harness_probe_failed",
+  });
+  assert.doesNotMatch(JSON.stringify(observed), /secret|private/);
+});
+
 test("free-provider lifecycle capacity is safely classified without echoing provider data", () => {
   const observed = safeAgentLifecycleDiagnostic({
     lifecycleState: "verifying", status: "paused",
