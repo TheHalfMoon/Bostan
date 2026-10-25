@@ -60,3 +60,19 @@ test("technical/provenance identifiers remain intact where compatibility require
   assert.match(source("ui/src/components/GrokBotConnection.tsx"),
     /import type \{ DotPairing \} from "@paperclipai\/shared"/);
 });
+
+test("first-admin setup never suggests an unshipped donor npm bootstrap executable", () => {
+  const sourceFiles = [
+    "ui/src/bootstrapSetup.ts",
+    "ui/src/components/BootstrapPendingPage.tsx",
+    "ui/src/pages/BootstrapSetupUxLab.tsx",
+  ];
+  for (const file of sourceFiles) {
+    const content = source(file);
+    assert.doesNotMatch(content, /\bnpx\s+paperclipai\b|BOOTSTRAP_FALLBACK_COMMAND/,
+      file + " must not suggest unsupported external donor package execution");
+  }
+  assert.match(source("ui/src/bootstrapSetup.ts"),
+    /BOSTAN_BOOTSTRAP_PREVIEW_NOTICE/);
+  assert.match(source("cli/src/bostan-preview.mjs"), /Bostan: \$\{command\} unavailable/);
+});

@@ -45,6 +45,7 @@ test("inherited high-risk commands are uniformly refused with no side effects", 
     ["install"], ["install", "--repo", "paperclipai/paperclip", "--ref", "master", "--yes"],
     ["update"], ["upgrade"], ["uninstall"], ["service", "install"], ["service", "start"],
     ["onboard", "--install-service"], ["run"], ["runtime", "setup", "pi"],
+    ["auth", "bootstrap-ceo"],
     ["--nonsense"],
   ]) {
     const result = isolatedRun(args);

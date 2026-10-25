@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { Loader2, ShieldCheck, Terminal, TriangleAlert } from "lucide-react";
+import { Loader2, ShieldCheck, TriangleAlert } from "lucide-react";
 import { Link } from "@/lib/router";
 import { Button } from "@/components/ui/button";
-import { BOOTSTRAP_FALLBACK_COMMAND } from "@/bootstrapSetup";
+import { BOSTAN_BOOTSTRAP_PREVIEW_NOTICE } from "@/bootstrapSetup";
 import type { AuthSession } from "@paperclipai/shared";
 import { Card } from "@/components/ui/card";
 
@@ -19,17 +19,16 @@ function CliFallback({ hasActiveInvite = false }: { hasActiveInvite?: boolean })
   return (
     <div className="mt-6 border-t border-border pt-5">
       <div className="flex items-center gap-2 text-sm font-medium">
-        <Terminal className="size-4 text-muted-foreground" aria-hidden />
         <span>Prefer to finish setup from the host?</span>
       </div>
       <p className="mt-2 text-sm text-muted-foreground">
         {hasActiveInvite
-          ? "A bootstrap invite is already active. Check your Bostan startup logs for the first-admin URL, or run this command on the host to rotate it:"
-          : "Run this command on the host that runs Bostan to print a one-time first-admin invite URL:"}
+          ? "A first-admin invite is already active. The instance operator can find the invitation URL in the Bostan startup logs."
+          : "Ask the instance operator for a first-admin invitation URL. This private Bostan CLI preview cannot create or rotate invitations."}
       </p>
-      <pre className="mt-3 overflow-x-auto rounded-md border border-border bg-muted/30 p-3 font-mono text-xs">
-{BOOTSTRAP_FALLBACK_COMMAND}
-      </pre>
+      <p className="mt-3 rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+        {BOSTAN_BOOTSTRAP_PREVIEW_NOTICE}
+      </p>
     </div>
   );
 }
