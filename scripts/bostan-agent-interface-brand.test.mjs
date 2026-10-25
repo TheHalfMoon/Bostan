@@ -26,6 +26,12 @@ const visibleCopy = new Map([
   ["ui/src/components/AgentRunnerSelect.tsx", "Bostan Runner"],
   ["ui/src/pages/InstanceExperimentalSettings.tsx", 'title="Bostan Runner"'],
   ["ui/src/components/new-agent/NewAgentSetup.tsx", '"Bostan Runner"'],
+  ["ui/src/pages/secrets/ImportFromVaultDialog.tsx", "Bring AWS-managed secrets into Bostan"],
+  ["ui/src/pages/IssueDetail.tsx", '"Stop Bostan work"'],
+  ["ui/src/lib/workspace-access-state.ts", "Bostan is still confirming the clone."],
+  ["ui/src/lib/skill-policy-denial.ts", "configured Bostan workspace"],
+  ["ui/src/pages/UserProfile.tsx", '"Bostan services"'],
+  ["ui/src/pages/Secrets.tsx", 'placeholder="alias/bostan-secrets"'],
 ]);
 
 test("first-party agent and local adapter labels expose Bostan identity", () => {
@@ -46,4 +52,24 @@ test("local trust policy editor has no inherited paid SaaS promotion or external
   assert.match(copy, /managed through the approved API/);
   assert.match(copy, /Managed through API/);
   assert.doesNotMatch(copy, /paperclip\.ing\/ee|Get Paperclip EE|href="https?:\/\/paperclip/i);
+});
+
+
+test("Bostan-facing secrets, workspace and run-control UI never advertises donor identity", () => {
+  for (const filename of [
+    "ui/src/pages/secrets/ImportFromVaultDialog.tsx",
+    "ui/src/lib/workspace-access-state.ts",
+    "ui/src/lib/skill-policy-denial.ts",
+  ]) {
+    assert.doesNotMatch(source(filename), /Paperclip/, filename);
+  }
+  const secrets = source("ui/src/pages/Secrets.tsx");
+  for (const placeholder of ['placeholder="paperclip"', 'placeholder="paperclip-prod"',
+    'placeholder="alias/paperclip-secrets"', 'placeholder="paperclip/prod"']) {
+    assert.ok(!secrets.includes(placeholder), placeholder);
+  }
+  // Retain deployed local state and server protocol identities.
+  assert.match(secrets, /paperclip.secrets.viewMode/);
+  assert.match(secrets, /paperclip_managed/);
+  assert.match(source("ui/src/pages/IssueDetail.tsx"), /paperclip_runner_v1/);
 });
