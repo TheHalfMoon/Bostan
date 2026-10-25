@@ -150,6 +150,17 @@ async function resolveHandoffTaskParent(tx: Db, actor: AuthorizationActor, compa
   return null;
 }
 
+/** A Bostan implementation cannot independently sign off on itself.
+ * This protects the pre-dispatch case routing authority (and is repeated
+ * at delayed delivery), without creating a parallel agent supervisor. */
+function requireIndependentVerifier(phase: string, fromAgentId: string | null, toAgentId: string | null) {
+  if (phase === "verification" && fromAgentId && toAgentId === fromAgentId) {
+    throw unprocessable("Verification must be assigned to a different agent from the implementer", {
+      code: "bostan_independent_verifier_required",
+    });
+  }
+}
+
 async function eligible(tx: Db, issue: IssueRow) {
   if (issue.conversationAgentId || (await tx.select({ id: chatConversations.id }).from(chatConversations)
     .where(and(eq(chatConversations.companyId, issue.companyId), eq(chatConversations.issueId, issue.id))).limit(1)).length) {
@@ -245,6 +256,7 @@ export function caseHandoffService(db: Db) {
         issue.assigneeAgentId !== row.fromAgentId || issue.assigneeUserId) throw conflict("Handoff was superseded by a newer task decision");
     await assertCaseTrustedForExecution(tx, caseRow);
     await eligible(tx, issue);
+    requireIndependentVerifier(row.phase, row.fromAgentId, row.toAgentId);
     const sourceAuthorizer = await assertCaseHandoffDispatchAuthority(tx, row, issue, caseRow);
     const assigningActor = originalActor ?? await restoreCaseHandoffActor(tx, row, issue, sourceAuthorizer, cloudAuthority);
     // Acceptance does not reserve permission. Recheck the original principal at
@@ -443,6 +455,7 @@ export function caseHandoffService(db: Db) {
         }
         const parent = issue ? null : await resolveHandoffTaskParent(tx, actor, companyId, projectId, input.toAgentId,
           casePrivacyParent ?? sourceIssue, casePrivacyParent?.visibility === "private");
+        if (issue) requireIndependentVerifier(input.phase, issue.assigneeAgentId, input.toAgentId);
         await authorizeTask(tx, actor, companyId, issue, issue?.projectId ?? projectId, input.toAgentId, {
           invalidRecipientAsUnprocessable: true, ...(issue ? {} : { parentIssueId: parent?.id ?? null }),
         });

@@ -164,6 +164,14 @@ Founder → CEO → specialist → permitted action → independent verifier →
 evidence-backed summary. Include retries, duplicate effects, stale approvals,
 interruption, recovery, spend and policy failure scenarios.
 
+- [x] B5-01: enforce specialist/verifier agent separation in the canonical
+  case handoff request and delayed apply authority, not merely in a prompt.
+  Actual Mac PostgreSQL source handoff tests 2/2 and imported schema tests
+  29/29 PASS; no external provider was executed.
+- [ ] Integrate real authorized agent-run delegation, independent effect
+  readback, verifier sign-off and evidence-backed founder summary end-to-end.
+  Test duplicate effects, interruption, recovery and budget/consent fences.
+
 ## B6 — Distribution readiness (no release without instruction)
 
 Complete branding, onboarding, accessibility, secure default privacy,
