@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { agents, caseAccessSources, caseHandoffs, cases, companies,
-  createDb, issues, toolInvocations } from "@paperclipai/db";
+  createDb, heartbeatRuns, issues, toolInvocations } from "@paperclipai/db";
 import { caseHandoffService } from "../services/case-handoffs.js";
 import { instanceSettingsService } from "../services/instance-settings.js";
 import {
@@ -87,8 +87,28 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
       .rejects.toMatchObject({ status: 409 });
     // Simulate the existing worker's durable terminal delivery confirmation.
     // This does not simulate an AI run, independent content review or action.
-    await db.update(caseHandoffs).set({ state: "delivered", deliveredAt: new Date() })
+    const deliveryAt = new Date();
+    await db.update(caseHandoffs).set({ state: "delivered", deliveredAt: deliveryAt })
       .where(eq(caseHandoffs.id, submitted.handoffId));
+    // B5-03: A delivered handoff alone must not be called a completed review.
+    await expect(service.handoff(f.companyId, board, terminal(2, afterAssign.statusVersion)))
+      .rejects.toMatchObject({ status: 409, details: { code: "bostan_verifier_run_required" } });
+    const otherRunId = randomUUID();
+    await db.insert(heartbeatRuns).values({ id: otherRunId, companyId: f.companyId,
+      agentId: f.specialistId, issueId: f.issueId, status: "succeeded",
+      finishedAt: new Date(deliveryAt.getTime() + 2_000), contextSnapshot: { issueId: f.issueId } });
+    await expect(service.handoff(f.companyId, board, terminal(2, afterAssign.statusVersion)))
+      .rejects.toMatchObject({ status: 409, details: { code: "bostan_verifier_run_required" } });
+    await db.insert(heartbeatRuns).values({ id: randomUUID(), companyId: f.companyId,
+      agentId: f.verifierId, issueId: f.issueId, status: "succeeded",
+      finishedAt: new Date(deliveryAt.getTime() - 2_000), contextSnapshot: { issueId: f.issueId } });
+    await expect(service.handoff(f.companyId, board, terminal(2, afterAssign.statusVersion)))
+      .rejects.toMatchObject({ status: 409, details: { code: "bostan_verifier_run_required" } });
+    // Synthetic source-runtime completion row; no AI/model/provider actually
+    // executed in this test. It proves only the canonical DB run gate.
+    await db.insert(heartbeatRuns).values({ id: randomUUID(), companyId: f.companyId,
+      agentId: f.verifierId, issueId: f.issueId, status: "succeeded",
+      finishedAt: new Date(deliveryAt.getTime() + 3_000), contextSnapshot: { issueId: f.issueId } });
     const accepted = await service.handoff(f.companyId, board, terminal(2, afterAssign.statusVersion));
     expect(accepted).toMatchObject({ destinationKind: "done", state: "awaiting_completion" });
     expect(await db.select().from(toolInvocations)).toHaveLength(0);

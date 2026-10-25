@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { agents, caseAccessSources, caseEvents, caseHandoffs, caseIssueLinks, cases, chatConversations, companies, heartbeatRuns, issues, projects } from "@paperclipai/db";
 import { handoffCaseSchema, isUuidLike, type DoneCaseHandoffInput, type HandoffCaseInput, type HandoffCaseResult } from "@paperclipai/shared";
@@ -304,7 +304,7 @@ export function caseHandoffService(db: Db) {
         code: "bostan_verification_handoff_required",
       });
     }
-    const [delivered] = await tx.select({ id: caseHandoffs.id }).from(caseHandoffs).where(and(
+    const [delivered] = await tx.select({ id: caseHandoffs.id, deliveredAt: caseHandoffs.deliveredAt }).from(caseHandoffs).where(and(
       eq(caseHandoffs.companyId, caseRow.companyId),
       eq(caseHandoffs.caseId, caseRow.id),
       eq(caseHandoffs.version, caseRow.handoffVersion),
@@ -315,9 +315,27 @@ export function caseHandoffService(db: Db) {
       eq(caseHandoffs.toAgentId, issue.assigneeAgentId),
       sql`${caseHandoffs.fromAgentId} is not null and ${caseHandoffs.fromAgentId} <> ${caseHandoffs.toAgentId}`,
     )).limit(1);
-    if (!delivered) {
+    if (!delivered?.deliveredAt) {
       throw conflict("Independent verifier handoff delivery has not been recorded", {
         code: "bostan_verification_handoff_required",
+      });
+    }
+    // A queued/delivered assignment is NOT evidence that the verifier
+    // executed anything. Require a real, finished successful run from the
+    // current reviewer, bound to the exact company and case work task, with
+    // its finish after the independent handoff was delivered. The source
+    // heartbeat runtime, not a model-authored comment, owns run status.
+    const [completedVerificationRun] = await tx.select({ id: heartbeatRuns.id }).from(heartbeatRuns).where(and(
+      eq(heartbeatRuns.companyId, caseRow.companyId),
+      eq(heartbeatRuns.agentId, issue.assigneeAgentId),
+      eq(heartbeatRuns.status, "succeeded"),
+      gte(heartbeatRuns.finishedAt, delivered.deliveredAt),
+      or(eq(heartbeatRuns.issueId, issue.id), eq(heartbeatRuns.nativeIssueId, issue.id),
+        sql`${heartbeatRuns.contextSnapshot} ->> 'issueId' = ${issue.id}`),
+    )).limit(1);
+    if (!completedVerificationRun) {
+      throw conflict("Independent reviewer has not completed a successful task run", {
+        code: "bostan_verifier_run_required",
       });
     }
   }

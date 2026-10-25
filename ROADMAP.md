@@ -172,6 +172,11 @@ interruption, recovery, spend and policy failure scenarios.
   current task's distinct verifier handoff to be actually delivered, not
   merely queued; 3/3 real PostgreSQL handoff tests PASS. Verifier's actual
   signed approval/effect evidence is still open.
+- [x] B5-03: opt-in case closure also requires a real canonical successful
+  reviewer `heartbeat_runs` record for the same task, agent and company
+  finished after delivery; incorrect/older/missing review runs fail closed.
+  3/3 real SQL and 14/14 read-only CaseDetail UI tests PASS. Independently
+  signed review output and actual model/provider verification remain open.
 - [ ] Integrate real authorized agent-run delegation, independent effect
   readback, verifier sign-off and evidence-backed founder summary end-to-end.
   Test duplicate effects, interruption, recovery and budget/consent fences.
