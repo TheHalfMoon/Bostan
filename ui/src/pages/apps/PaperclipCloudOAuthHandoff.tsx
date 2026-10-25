@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { safeBostanOAuthError } from "@/lib/bostan-connection-errors";
 import { navigateTopLevel } from "@/lib/browserNavigation";
 import {
   clearPendingCloudHandoff,
@@ -38,7 +39,7 @@ export function ManagedOAuthHandoffState({
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {failed
-              ? error ?? "Bostan couldn't prepare the provider sign-in. Try again."
+              ? safeBostanOAuthError(error)
               : phase === "reauthenticating"
                 ? "Your Bostan sign-in is being refreshed."
                 : "Bostan is opening the provider securely."}
@@ -78,9 +79,11 @@ export function PaperclipCloudOAuthHandoffPage() {
       }
       clearPendingCloudHandoff();
       navigateTopLevel(target.url);
-    } catch (caught) {
+    } catch (cause) {
       setPhase("error");
-      setError(caught instanceof Error ? caught.message : "Bostan couldn't prepare secure sign-in.");
+      // Only preserve a fixed, known local state error. Arbitrary
+      // provider exceptions can contain OAuth codes, state and URLs.
+      setError(safeBostanOAuthError(cause instanceof Error ? cause.message : null));
     }
   }, []);
 

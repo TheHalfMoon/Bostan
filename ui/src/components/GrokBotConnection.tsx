@@ -8,6 +8,7 @@ import { CopyText } from "./CopyText";
 import { Button, buttonVariants } from "./ui/button";
 import { Input } from "./ui/input";
 import { queryKeys } from "@/lib/queryKeys";
+import { safeBostanGrokConnectionError } from "@/lib/bostan-connection-errors";
 
 /** Configuration writes update the authoritative binding, never an unsaved agent form. */
 export function GrokBotConnection({ companyId, agentId }: { companyId?: string; agentId?: string }) {
@@ -56,7 +57,7 @@ export function GrokBotConnection({ companyId, agentId }: { companyId?: string; 
   return <section aria-label="Grok Bot connection" className="space-y-4 text-sm">
     <p className="text-muted-foreground">Runs in Grok Bot. The Bot retains its apps and persistent context. Bostan supplies task coordination and first-party tools. Usage and spending are not reported.</p>
     {state.isPending && <p role="status">Loading connection…</p>}
-    {error && <p role="alert" className="text-destructive">{error.message}</p>}
+    {error && <p role="alert" className="text-destructive">{safeBostanGrokConnectionError(error)}</p>}
     {state.data && !state.data.enabled && <p className="text-muted-foreground">Enable Grok Bot, Assistant connections (MCP), and Bostan Runner on an authenticated public HTTPS instance.</p>}
     {binding?.connected ? <>
       <p>Agent access connected. {routine?.verified && !recovering ? "Routine round trip verified." : "Assignments require a verified routine round trip."}</p>
