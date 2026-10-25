@@ -33,7 +33,14 @@ export function requireBostanBrowserOnboardingConsent(env) {
   }
 }
 
-async function runSyntheticPrivateOnboardingWizard(page, privateOrigin) {
+export function requireBostanBrowserAgentDraftConsent(env) {
+  requireBostanBrowserOnboardingConsent(env);
+  if (env.BOSTAN_LIVE_LOCAL_BROWSER_AGENT_DRAFT_E2E !== "1") {
+    throw new Error("Bostan first-agent draft QA needs a separate no-model browser consent");
+  }
+}
+
+async function runSyntheticPrivateOnboardingWizard(page, privateOrigin, env) {
   const name = "Bostan Browser Onboarding QA " + randomUUID();
   // The donor-compatible localStorage key is an internal persisted protocol,
   // not product branding, and must not be renamed silently.
@@ -72,7 +79,40 @@ async function runSyntheticPrivateOnboardingWizard(page, privateOrigin) {
   if ((Array.isArray(goalRows) ? goalRows : []).some(goal => goal.level === "company")) {
     throw new Error("Browser onboarding invented an unwanted synthetic company goal");
   }
-  return { companyCreatedByUi: true, noUnrequestedGoal: true };
+  let firstAgentDraft = null;
+  if (env.BOSTAN_LIVE_LOCAL_BROWSER_AGENT_DRAFT_E2E === "1") {
+    requireBostanBrowserAgentDraftConsent(env);
+    const name = "Bostan Synthetic Agent " + randomUUID();
+    await page.locator("#onboarding-agent-name").fill(name);
+    const createResponse = page.waitForResponse(response =>
+      response.request().method() === "POST" &&
+      response.url().endsWith("/api/companies/" + actual.id + "/agents"),
+    { timeout: 30_000 });
+    await page.getByRole("button", { name: "Next", exact: true }).click();
+    const response = await createResponse;
+    if (!response.ok()) throw new Error("Bostan wizard agent draft API rejected creation");
+    const agent = await response.json();
+    if (!agent?.id || agent.name !== name || agent.pauseReason !== "setup" ||
+        agent.metadata?.setupAdapterPending !== true) {
+      throw new Error("Bostan wizard created an unexpected active or fabricated agent");
+    }
+    // The next step must be choosing an adapter. Never select a provider
+    // or trigger inference in this purely offline synthetic source smoke.
+    await page.getByRole("radio").first().waitFor({ state: "visible", timeout: 25_000 });
+    const persistedResponse = await page.request.get(
+      privateOrigin + "/api/agents/" + agent.id + "?companyId=" + actual.id,
+    );
+    if (!persistedResponse.ok()) throw new Error("Bostan draft agent was not persisted");
+    const persisted = await persistedResponse.json();
+    if (persisted.id !== agent.id || persisted.name !== name ||
+        persisted.pauseReason !== "setup" ||
+        persisted.metadata?.setupAdapterPending !== true) {
+      throw new Error("Bostan draft agent changed state before an adapter was selected");
+    }
+    firstAgentDraft = { persistedInactive: true, awaitingAdapter: true };
+  }
+  return { companyCreatedByUi: true, noUnrequestedGoal: true,
+    ...(firstAgentDraft ? { firstAgentDraft } : {}) };
 }
 
 export async function runPrivateBostanBrowserQa({ origin, expectedCompanyId, env = process.env }) {
@@ -160,7 +200,7 @@ export async function runPrivateBostanBrowserQa({ origin, expectedCompanyId, env
     }
     const onboarding = env.BOSTAN_LIVE_LOCAL_BROWSER_ONBOARDING_E2E === "1"
       ? (requireBostanBrowserOnboardingConsent(env),
-        await runSyntheticPrivateOnboardingWizard(page, privateOrigin))
+        await runSyntheticPrivateOnboardingWizard(page, privateOrigin, env))
       : null;
     return { qualified: true, browser: "chromium-headless", mounted: true,
       privateApi: true, persistedCompany: true,

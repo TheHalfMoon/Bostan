@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { requirePrivateBrowserQaTarget, isAllowedPrivateBrowserRequest,
-  requireBostanBrowserOnboardingConsent, runPrivateBostanBrowserQa } from "./bostan-local-browser-qa.mjs";
+  requireBostanBrowserOnboardingConsent,
+  requireBostanBrowserAgentDraftConsent, runPrivateBostanBrowserQa } from "./bostan-local-browser-qa.mjs";
 
 const admitted = { BOSTAN_LIVE_LOCAL_QA_CONFIRM: "1", BOSTAN_LIVE_LOCAL_BROWSER_E2E: "1" };
 test("browser QA accepts only an explicitly confirmed exact local origin", () => {
@@ -62,5 +63,18 @@ test("synthetic company onboarding is a separate three-flag private browser opt-
     assert.throws(() => requireBostanBrowserOnboardingConsent({
       ...allowed, [removed]: "0",
     }), /separately confirmed private source wizard/);
+  }
+});
+
+test("first-agent draft QA requires a fourth opt-in and cannot activate the LLM provider", () => {
+  const allowed = {
+    ...admitted, BOSTAN_LIVE_LOCAL_BROWSER_ONBOARDING_E2E: "1",
+    BOSTAN_LIVE_LOCAL_BROWSER_AGENT_DRAFT_E2E: "1",
+  };
+  assert.doesNotThrow(() => requireBostanBrowserAgentDraftConsent(allowed));
+  for (const removed of Object.keys(allowed)) {
+    assert.throws(() => requireBostanBrowserAgentDraftConsent({
+      ...allowed, [removed]: "0",
+    }), /private source wizard consent|separate no-model browser consent/);
   }
 });
