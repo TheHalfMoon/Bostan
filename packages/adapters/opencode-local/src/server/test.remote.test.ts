@@ -135,6 +135,37 @@ describe("opencode remote environment diagnostics", () => {
     expect((await stat(configHome)).isDirectory()).toBe(true);
   });
 
+  it("uses real hello validation for Bostan isolated allowlisted free QA", async () => {
+    vi.stubEnv("BOSTAN_OPENCODE_STANDALONE", "1");
+    const result = await testEnvironment({ companyId: "synthetic", adapterType: "opencode_local",
+      config: { model: "opencode/deepseek-v4.1-flash-free", env: { XDG_CONFIG_HOME: configHome } } });
+    expect(result.status).toBe("pass");
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      code: "opencode_model_validation_via_probe", level: "info",
+    }));
+    expect(discoverOpenCodeModels).not.toHaveBeenCalled();
+    expect(ensureOpenCodeModelConfiguredAndAvailable).not.toHaveBeenCalled();
+    expect(runAdapterExecutionTargetProcess).toHaveBeenCalledOnce();
+    const call = runAdapterExecutionTargetProcess.mock.calls[0] as unknown as [unknown, unknown, unknown, string[]];
+    expect(call[3]).toContain("--standalone");
+    const invocation = runAdapterExecutionTargetProcess.mock.calls[0] as unknown as [
+      unknown, unknown, unknown, string[], { stdin: string }
+    ];
+    expect(invocation[4].stdin).toBe("Respond with hello.");
+  });
+
+  it("does not skip catalog validation for non-allowlisted models in source QA", async () => {
+    vi.stubEnv("BOSTAN_OPENCODE_STANDALONE", "1");
+    vi.mocked(discoverOpenCodeModels).mockResolvedValueOnce([{ id: "provider/paid", label: "paid" }]);
+    vi.mocked(ensureOpenCodeModelConfiguredAndAvailable).mockResolvedValueOnce([
+      { id: "provider/paid", label: "paid" },
+    ]);
+    await testEnvironment({ companyId: "synthetic", adapterType: "opencode_local",
+      config: { model: "provider/paid", env: { XDG_CONFIG_HOME: configHome } } });
+    expect(discoverOpenCodeModels).toHaveBeenCalledOnce();
+    expect(ensureOpenCodeModelConfiguredAndAvailable).toHaveBeenCalledOnce();
+  });
+
   it("keeps catalog validation for the legacy local adapter", async () => {
     vi.mocked(discoverOpenCodeModels).mockResolvedValueOnce([{ id: "provider/model", label: "Model" }]);
     vi.mocked(ensureOpenCodeModelConfiguredAndAvailable).mockResolvedValueOnce([{ id: "provider/model", label: "Model" }]);

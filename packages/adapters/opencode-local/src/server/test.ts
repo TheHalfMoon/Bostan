@@ -236,7 +236,15 @@ export async function testEnvironment(
     // The native runner already selects a concrete model. Its real hello probe
     // verifies model access and credentials; a full catalog scan adds another
     // cold CLI launch (and discovery retries) without verifying that request.
-    const nativeModelProbe = ctx.adapterType === "paperclip_runner" && Boolean(configuredModel);
+    const sourceQaFreeModelProbe = ctx.adapterType === "opencode_local" &&
+      !targetIsRemote && process.env.BOSTAN_OPENCODE_STANDALONE === "1" &&
+      (configuredModel === "opencode/deepseek-v4.1-flash-free" ||
+        configuredModel === "opencode/beam-free");
+    // Source-only free QA uses a real hello invocation to validate access.
+    // Metadata catalog discovery can hang on a background OpenCode daemon
+    // even when the free model itself runs. General adapters are unchanged.
+    const nativeModelProbe = (ctx.adapterType === "paperclip_runner" ||
+      sourceQaFreeModelProbe) && Boolean(configuredModel);
 
     // Model discovery and validation use local child processes against
     // OpenCode's `models` subcommand and JSON config; these are not yet
@@ -250,7 +258,7 @@ export async function testEnvironment(
         checks.push({
           code: "opencode_model_validation_via_probe",
           level: "info",
-          message: "The configured native-runner model will be validated by the hello probe.",
+          message: "The configured model will be validated by the real hello probe.",
         });
       } catch (error) {
         checks.push({ code: "opencode_model_invalid", level: "error",
@@ -371,7 +379,6 @@ export async function testEnvironment(
       if (variant) args.push("--variant", variant);
       args.push(...bostanStandaloneArgs(extraArgs, targetIsRemote));
       if (extraArgs.length > 0) args.push(...extraArgs);
-
       // Sandbox bridges still add cold-start and transport overhead, but the
       // standard-2 Cloudflare tier now probes quickly enough that 90s keeps
       // useful headroom without letting slow hangs linger.

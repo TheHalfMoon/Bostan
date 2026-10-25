@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import os from "node:os";
+import path from "node:path";
 import * as serverUtils from "@paperclipai/adapter-utils/server-utils";
 import {
   discoverOpenCodeModels,
@@ -14,7 +16,43 @@ describe("openCode models", () => {
     delete process.env.OPENCODE_ALLOW_ALL_MODELS;
     resetOpenCodeModelsCacheForTests();
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
     vi.useRealTimers();
+  });
+
+  it("preserves disposable HOME in Bostan standalone source-only model discovery", async () => {
+    vi.stubEnv("BOSTAN_OPENCODE_STANDALONE", "1");
+    const isolatedHome = path.join(os.tmpdir(), "bostan-source-only-model-fixture");
+    const spy = vi.spyOn(serverUtils, "runChildProcess").mockResolvedValue({
+      exitCode: 0, signal: null, timedOut: false, stdout: "opencode/beam-free\n",
+      stderr: "", pid: 1, startedAt: new Date().toISOString(),
+    });
+    await expect(discoverOpenCodeModels({ env: { HOME: isolatedHome } }))
+      .resolves.toContainEqual({ id: "opencode/beam-free", label: "opencode/beam-free" });
+    expect(spy).toHaveBeenCalledOnce();
+    const options = spy.mock.calls[0]?.[3];
+    expect(options?.env.HOME).toBe(isolatedHome);
+    expect(options?.env.OPENCODE_DISABLE_PROJECT_CONFIG).toBe("true");
+  });
+
+  it("never trusts an arbitrary relative HOME as a Bostan isolated home", async () => {
+    vi.stubEnv("BOSTAN_OPENCODE_STANDALONE", "1");
+    const spy = vi.spyOn(serverUtils, "runChildProcess").mockResolvedValue({
+      exitCode: 0, signal: null, timedOut: false, stdout: "opencode/beam-free\n",
+      stderr: "", pid: 1, startedAt: new Date().toISOString(),
+    });
+    await discoverOpenCodeModels({ env: { HOME: "../unsafe-relative-home" } });
+    expect(spy.mock.calls[0]?.[3]?.env.HOME).not.toBe("../unsafe-relative-home");
+  });
+
+  it("preserves ordinary non-Bostan runuser HOME correction", async () => {
+    vi.stubEnv("BOSTAN_OPENCODE_STANDALONE", "0");
+    const spy = vi.spyOn(serverUtils, "runChildProcess").mockResolvedValue({
+      exitCode: 0, signal: null, timedOut: false, stdout: "opencode/beam-free\n",
+      stderr: "", pid: 1, startedAt: new Date().toISOString(),
+    });
+    await discoverOpenCodeModels({ env: { HOME: path.join(os.tmpdir(), "fake-bostan-home") } });
+    expect(spy.mock.calls[0]?.[3]?.env.HOME).toBe(os.userInfo().homedir);
   });
 
   it("returns an empty list when discovery command is unavailable", async () => {

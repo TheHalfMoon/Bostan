@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import os from "node:os";
+import path from "node:path";
 import type { AdapterModel } from "@paperclipai/adapter-utils";
 import {
   asString,
@@ -158,12 +159,20 @@ export async function discoverOpenCodeModels(
     // /etc/passwd entry (e.g. `docker run --user 1234` with a minimal
     // image). Fall back to process.env.HOME.
   }
+  // Ordinary runuser invocations may inherit a stale HOME and must continue
+  // to prefer the actual target account home. Bostan's explicit standalone
+  // source-only runtime is different: it owns an isolated disposable HOME.
+  // Never replace that HOME with the real account during model discovery or
+  // test its provider settings using another user's files / daemon.
+  const isolatedHome = isTruthyEnvFlag(process.env.BOSTAN_OPENCODE_STANDALONE) &&
+    typeof env.HOME === "string" && path.isAbsolute(env.HOME)
+    ? env.HOME : null;
   // Prevent OpenCode from writing an opencode.json into the working directory.
   const runtimeEnv = normalizeEnv(
     ensurePathInEnv({
       ...process.env,
       ...env,
-      ...(resolvedHome ? { HOME: resolvedHome } : {}),
+      ...(isolatedHome ? { HOME: isolatedHome } : resolvedHome ? { HOME: resolvedHome } : {}),
       OPENCODE_DISABLE_PROJECT_CONFIG: "true",
     }),
   );
