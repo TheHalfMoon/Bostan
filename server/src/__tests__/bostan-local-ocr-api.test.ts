@@ -14,6 +14,7 @@ const support = await getBostanFeedbackPostgresTestSupport();
 const suite = support.supported ? describe : describe.skip;
 const png = readFileSync(new URL("./fixtures/bostan-ocr-synthetic.png", import.meta.url));
 const image = { mimeType: "image/png", language: "eng", base64: png.toString("base64") };
+const jpeg = readFileSync(new URL("./fixtures/bostan-ocr-synthetic.jpg", import.meta.url));
 const arabicImage = { ...image, language: "ara",
   base64: readFileSync(new URL("./fixtures/bostan-ocr-synthetic-arabic.png", import.meta.url))
     .toString("base64") };
@@ -69,6 +70,44 @@ suite("B4-06 opt-in offline OCR preview route, native Postgres and tenant ACLs",
       executionAuthorized: false, persistedAsDocument: false,
     });
     expect(resp.body).not.toHaveProperty("sourceSnapshotHmacSha256");
+  });
+  it("admits a real JPEG through the authenticated task OCR API", async () => {
+    if (process.platform !== "darwin") return;
+    const s = await seed();
+    const result = await request(appFor(board(s.companyId)))
+      .post(uri(s.companyId, s.issueId))
+      .send({ ...image, mimeType: "image/jpeg", base64: jpeg.toString("base64") });
+    expect(result.status).toBe(200);
+    expect(result.body.text).toContain("BOSTAN");
+    expect(result.body.persistedAsDocument).toBe(false);
+  });
+  it("refuses compressed image headers with hazardous pixel dimensions via actual HTTP before Tesseract", async () => {
+    const s = await seed();
+    const target = uri(s.companyId, s.issueId);
+    const app = appFor(board(s.companyId));
+    const bombPng = Buffer.from(png);
+    bombPng.writeUInt32BE(12_000, 16);
+    bombPng.writeUInt32BE(12_000, 20);
+    const bombJpeg = Buffer.from(jpeg);
+    let sof = -1;
+    for (let i = 0; i < bombJpeg.length - 9; i++) {
+      if (bombJpeg[i] === 0xff && [0xc0, 0xc1, 0xc2, 0xc3].includes(bombJpeg[i + 1])) {
+        sof = i; break;
+      }
+    }
+    expect(sof).toBeGreaterThan(0);
+    bombJpeg.writeUInt16BE(6000, sof + 5);
+    bombJpeg.writeUInt16BE(6000, sof + 7);
+    for (const bad of [
+      { ...image, base64: bombPng.toString("base64") },
+      { ...image, mimeType: "image/jpeg", base64: bombJpeg.toString("base64") },
+    ]) {
+      const reply = await request(app).post(target).send(bad);
+      expect(reply.status).toBe(400);
+      expect(reply.headers["cache-control"]).toContain("no-store");
+      expect(JSON.stringify(reply.body)).not.toContain("12000");
+      expect(JSON.stringify(reply.body)).not.toContain("6000");
+    }
   });
   it("returns Arabic OCR only to an authorized viewer, without treating it as a signed source", async () => {
     if (process.platform !== "darwin") return;

@@ -12,6 +12,68 @@ const MAX_BASE64_CHARS = Math.ceil(MAX_IMAGE_BYTES / 3) * 4;
 const PNG_MAGIC = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 const SUPPORTED_MIME = ["image/png", "image/jpeg"] as const;
 const SUPPORTED_LANG = ["eng", "ara", "eng+ara"] as const;
+// Independent server-side cap. A tiny compressed file can decode into an
+// enormous bitmap; checking only its on-disk bytes is not a memory budget.
+const MAX_IMAGE_DIMENSION = 8192;
+const MAX_IMAGE_PIXELS = 18_000_000;
+
+function validateDimensions(width: number, height: number): void {
+  if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) ||
+      width <= 0 || height <= 0 ||
+      width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION ||
+      width * height > MAX_IMAGE_PIXELS) {
+    throw new BostanLocalOcrInputError("OCR image dimensions exceed private processing budget");
+  }
+}
+
+/** Admit real PNG IHDR or JPEG SOF geometry before passing bytes to Tesseract. */
+export function validateBostanOcrImageGeometry(bytes: Buffer, mimeType: string): {
+  width: number; height: number;
+} {
+  if (mimeType === "image/png") {
+    if (bytes.length < 33 || !bytes.subarray(0, 8).equals(PNG_MAGIC) ||
+        bytes.readUInt32BE(8) !== 13 ||
+        bytes.toString("ascii", 12, 16) !== "IHDR") {
+      throw new BostanLocalOcrInputError("Invalid PNG geometry header");
+    }
+    const width = bytes.readUInt32BE(16);
+    const height = bytes.readUInt32BE(20);
+    validateDimensions(width, height);
+    return { width, height };
+  }
+  if (mimeType !== "image/jpeg" || bytes.length < 12 ||
+      bytes[0] !== 0xff || bytes[1] !== 0xd8) {
+    throw new BostanLocalOcrInputError("Invalid JPEG image header");
+  }
+  let offset = 2;
+  while (offset < bytes.length) {
+    if (bytes[offset] !== 0xff) break;
+    while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
+    if (offset >= bytes.length) break;
+    const marker = bytes[offset++];
+    // Geometry must precede any compressed scan. Do not parse compressed
+    // entropy bytes as JPEG segment markers.
+    if (marker === 0xd9 || marker === 0xda || marker === 0x00) break;
+    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd8)) continue;
+    if (offset + 2 > bytes.length) break;
+    const length = bytes.readUInt16BE(offset);
+    if (length < 2 || offset + length > bytes.length) break;
+    const sof = (marker >= 0xc0 && marker <= 0xc3) ||
+      (marker >= 0xc5 && marker <= 0xc7) ||
+      (marker >= 0xc9 && marker <= 0xcb) ||
+      (marker >= 0xcd && marker <= 0xcf);
+    if (sof) {
+      if (length < 8) break;
+      const height = bytes.readUInt16BE(offset + 3);
+      const width = bytes.readUInt16BE(offset + 5);
+      validateDimensions(width, height);
+      return { width, height };
+    }
+    offset += length;
+  }
+  throw new BostanLocalOcrInputError("JPEG start-of-frame dimensions unavailable");
+}
+
 
 export class BostanLocalOcrInputError extends Error {}
 export class BostanLocalOcrBusyError extends Error {}
@@ -37,6 +99,7 @@ export function decodeBostanOcrImage(input: {
         !(bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff))) {
     throw new BostanLocalOcrInputError("Image data is not a correctly encoded bounded PNG/JPEG");
   }
+  validateBostanOcrImageGeometry(bytes, input.mimeType);
   return bytes;
 }
 
