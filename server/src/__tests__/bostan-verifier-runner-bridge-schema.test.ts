@@ -33,3 +33,13 @@ describe("Bostan B5-12 native agent authoring tool contract", () => {
       .some(item => item.name === "write_task_document")).toBe(false);
   });
 });
+
+describe("Bostan B5-13 native runner REST catalog", () => {
+  it("advertises the narrow JSON report exception in real OpenAPI REST operation", async () => {
+    const { runnerApiOperation } = await import("../services/native-runtime/runner-api-catalog.js");
+    const operation = runnerApiOperation("PUT /api/issues/{id}/documents/{key}");
+    expect(operation.description).toContain("key=bostan-verification");
+    expect(JSON.stringify(operation.requestBody)).toContain("json");
+    expect(JSON.stringify(operation.requestBody)).toContain("markdown");
+  });
+});

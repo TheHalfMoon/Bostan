@@ -4548,10 +4548,12 @@ registry.registerPath({
   method: "put",
   path: "/api/issues/{id}/documents/{key}",
   tags: ["issues"],
-  summary: "Upsert an issue document",
+  summary: "Upsert an issue document (Markdown; governed Bostan verifier JSON exception)",
+  description: "The normal task document format is markdown. JSON is reserved for key=bostan-verification and requires an active, assigned, independently delivered Bostan verifier run with a bounded current-source-cited report. The route checks run, tenant, task, case and document permissions; a JSON schema alone never authorizes report writing or approval.",
   request: {
     params: z.object({ id: z.string(), key: z.string() }),
-    body: jsonBody(upsertIssueDocumentSchema),
+    body: jsonBody(z.union([upsertIssueDocumentSchema,
+      upsertIssueDocumentSchema.extend({ format: z.literal("json") })])),
   },
   responses: { 200: r.ok(), 400: r.badRequest, 401: r.unauthorized },
 });

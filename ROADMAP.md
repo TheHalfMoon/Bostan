@@ -220,6 +220,10 @@ interruption, recovery, spend and policy failure scenarios.
   reserved `bostan-verification` task key only; Markdown remains default
   and API rollout/mode restrictions remain active. 16/16 combined tests
   PASS. Real model/tool transport remains unqualified.
+- [x] B5-13: OpenAPI and Runner API catalog now advertise the same
+  bounded Markdown-or-governed-JSON report contract as REST and Native
+  Runner. Existing source role/run verification still controls the write;
+  17/17 combined SQL/HTTP/Native/catalog tests PASS.
 - [ ] Integrate real authorized agent-run delegation, independent effect
   readback, verifier sign-off and evidence-backed founder summary end-to-end.
   Test duplicate effects, interruption, recovery and budget/consent fences.
