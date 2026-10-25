@@ -30,6 +30,10 @@ export function requireBostanSourceSmokeAdmission(env = process.env, platform = 
   if (platform !== "darwin" && platform !== "linux") {
     throw new Error("Bostan live local QA is not qualified for Windows; use its separate TEMP-only workflow");
   }
+  if (env.BOSTAN_LIVE_LOCAL_BROWSER_E2E === "1" &&
+      env.BOSTAN_LIVE_LOCAL_QA_CONFIRM !== "1") {
+    throw new Error("Real browser QA requires explicit temporary Bostan app consent");
+  }
   if (env.BOSTAN_E2E_REVIEW_FIRST_AGENT === "1" && env.BOSTAN_E2E_TWO_AGENT_TEAM !== "1") {
     throw new Error("Evidence-read review requires the separately admitted second free agent");
   }
@@ -114,6 +118,7 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
   let recent = "";
   let clean = false;
   let marker = null;
+  let browserReport = null;
   const app = path.join(home, ".bostan", "app");
 
   async function start() {
@@ -161,6 +166,14 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
     if (!Array.isArray(records) || !records.some(value => value.id === company.id && value.name === marker)) {
       throw new Error("Bostan company did not survive a real PostgreSQL restart");
     }
+    // Browser checks exercise actual React hydration and private HTTP state
+    // without installing an app, using remote providers, or leaving localhost.
+    if (env.BOSTAN_LIVE_LOCAL_BROWSER_E2E === "1") {
+      const { runPrivateBostanBrowserQa } = await import("./bostan-local-browser-qa.mjs");
+      browserReport = await runPrivateBostanBrowserQa({
+        origin: origin + "/", expectedCompanyId: company.id, env,
+      });
+    }
     // An explicit separate opt-in extends the existing private app lifecycle
     // smoke with the existing real-agent API harness. This runs only on the
     // disposable restarted PostgreSQL instance; no installed profile is used.
@@ -182,8 +195,13 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
     if (storedConfig?.bostanManagedLocalRuntime !== MARKER) throw new Error("Unexpected runtime identity");
     clean = true;
     return { qualified: true, platform: process.platform,
+      ...(browserReport ? {
+        browserPageErrors: browserReport.pageErrorsSeen,
+        browserExternalRequestsBlocked: browserReport.blockedExternalRequests,
+      } : {}),
       verified: "private-health,company-create,clean-stop,restart,persistence" +
         (env.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E === "1" ? ",real-free-agent-heartbeat-task-comment-done" : "") +
+        (env.BOSTAN_LIVE_LOCAL_BROWSER_E2E === "1" ? ",real-headless-chromium-private-ui" : "") +
         (env.BOSTAN_E2E_TWO_AGENT_TEAM === "1" ? ",second-distinct-free-agent-same-company" : "") +
         (env.BOSTAN_E2E_REVIEW_FIRST_AGENT === "1" ? ",second-agent-cites-first-persisted-comment" : "") +
         ",clean-stop" };
