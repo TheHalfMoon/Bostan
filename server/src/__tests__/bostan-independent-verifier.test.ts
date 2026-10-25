@@ -39,7 +39,8 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
       assigneeAgentId: specialistId });
     await db.insert(cases).values({ id: caseId, companyId, caseNumber: 1, identifier: "BST-C1",
       caseType: "work", title: "Build and independently verify", status: "in_progress",
-      phase: "implementation", handoffVersion: 1, workIssueId: issueId });
+      phase: "implementation", handoffVersion: 1, workIssueId: issueId,
+      fields: { bostanIndependentVerificationRequired: true } });
     await db.insert(caseAccessSources).values({ companyId, caseId, sourceKind: "issue", sourceId: issueId });
     const [issue] = await db.select().from(issues).where(eq(issues.id, issueId));
     return { companyId, ceoId, specialistId, verifierId, issueId, caseId, statusVersion: issue.statusVersion };
@@ -58,6 +59,38 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
       statusVersion: f.statusVersion });
     expect(caseRow.handoffVersion).toBe(1);
     expect(await db.select().from(caseHandoffs)).toHaveLength(0);
+    expect(await db.select().from(toolInvocations)).toHaveLength(0);
+  });
+  it("B5-02 refuses opt-in case closure until a distinct verifier handoff is delivered", async () => {
+    const f = await setup();
+    const service = caseHandoffService(db);
+    const terminal = (handoffVersion: number, statusVersion: number) => ({
+      to: "done" as const, idempotencyKey: `close-${handoffVersion}`,
+      case: { id: f.caseId }, expectedHandoffVersion: handoffVersion,
+      expectedIssueStatusVersion: statusVersion,
+      instructions: "Close the already-reviewed task",
+    });
+    await expect(service.handoff(f.companyId, board, terminal(1, f.statusVersion)))
+      .rejects.toMatchObject({ status: 409, details: { code: "bostan_verification_handoff_required" } });
+    expect(await db.select().from(caseHandoffs)).toHaveLength(0);
+    const submitted = await service.handoff(f.companyId, board, {
+      case: { id: f.caseId }, idempotencyKey: "handoff-to-independent-verifier",
+      expectedHandoffVersion: 1, expectedIssueStatusVersion: f.statusVersion,
+      toAgentId: f.verifierId, phase: "verification", instructions: "Independently inspect the output",
+    });
+    const [afterAssign] = await db.select().from(issues).where(eq(issues.id, f.issueId));
+    const [afterCase] = await db.select().from(cases).where(eq(cases.id, f.caseId));
+    expect(afterAssign.assigneeAgentId).toBe(f.verifierId);
+    expect(afterCase.handoffVersion).toBe(2);
+    // Dispatch acknowledgement alone is not an actual *delivered* handoff.
+    await expect(service.handoff(f.companyId, board, terminal(2, afterAssign.statusVersion)))
+      .rejects.toMatchObject({ status: 409 });
+    // Simulate the existing worker's durable terminal delivery confirmation.
+    // This does not simulate an AI run, independent content review or action.
+    await db.update(caseHandoffs).set({ state: "delivered", deliveredAt: new Date() })
+      .where(eq(caseHandoffs.id, submitted.handoffId));
+    const accepted = await service.handoff(f.companyId, board, terminal(2, afterAssign.statusVersion));
+    expect(accepted).toMatchObject({ destinationKind: "done", state: "awaiting_completion" });
     expect(await db.select().from(toolInvocations)).toHaveLength(0);
   });
   it("retains the real source handoff authority for a distinct verifier", async () => {

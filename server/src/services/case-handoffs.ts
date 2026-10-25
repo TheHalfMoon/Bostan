@@ -294,6 +294,34 @@ export function caseHandoffService(db: Db) {
     return applied!;
   }
 
+  /** Opt-in cases cannot be closed straight from implementation. The
+   * canonical handoff *delivery* receipt must identify a distinct agent who
+   * now owns the verification task. Delivery is NOT review completion. */
+  async function requireIndependentVerificationDelivery(tx: Db, caseRow: CaseRow, issue: IssueRow) {
+    if (caseRow.fields?.bostanIndependentVerificationRequired !== true) return;
+    if (caseRow.phase !== "verification" || !issue.assigneeAgentId) {
+      throw conflict("Independent verification has not been handed to a reviewer", {
+        code: "bostan_verification_handoff_required",
+      });
+    }
+    const [delivered] = await tx.select({ id: caseHandoffs.id }).from(caseHandoffs).where(and(
+      eq(caseHandoffs.companyId, caseRow.companyId),
+      eq(caseHandoffs.caseId, caseRow.id),
+      eq(caseHandoffs.version, caseRow.handoffVersion),
+      eq(caseHandoffs.issueId, issue.id),
+      eq(caseHandoffs.phase, "verification"),
+      eq(caseHandoffs.destinationKind, "agent"),
+      eq(caseHandoffs.state, "delivered"),
+      eq(caseHandoffs.toAgentId, issue.assigneeAgentId),
+      sql`${caseHandoffs.fromAgentId} is not null and ${caseHandoffs.fromAgentId} <> ${caseHandoffs.toAgentId}`,
+    )).limit(1);
+    if (!delivered) {
+      throw conflict("Independent verifier handoff delivery has not been recorded", {
+        code: "bostan_verification_handoff_required",
+      });
+    }
+  }
+
   async function acceptTerminal(tx: Db, companyId: string, actor: AuthorizationActor, input: DoneCaseHandoffInput,
     source: typeof heartbeatRuns.$inferSelect | null, sourceIssue: IssueRow | null, fingerprint: string,
     publications: ActivityPublication[]) {
@@ -320,6 +348,7 @@ export function caseHandoffService(db: Db) {
     await assertActorCanReadCase(tx, actor, caseRow);
     await assertCaseTrustedForExecution(tx, caseRow);
     await assertCaseContentsFitTask(tx, caseRow, issue);
+    await requireIndependentVerificationDelivery(tx, caseRow, issue);
     if ((await tx.select({ id: caseHandoffs.id }).from(caseHandoffs).where(and(eq(caseHandoffs.caseId, caseRow.id),
       inArray(caseHandoffs.state, PENDING))).limit(1)).length) throw conflict("A handoff is already pending for this case");
     const who = identity(actor);

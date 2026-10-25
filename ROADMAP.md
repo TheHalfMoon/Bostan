@@ -168,6 +168,10 @@ interruption, recovery, spend and policy failure scenarios.
   case handoff request and delayed apply authority, not merely in a prompt.
   Actual Mac PostgreSQL source handoff tests 2/2 and imported schema tests
   29/29 PASS; no external provider was executed.
+- [x] B5-02: opt-in case terminal completion requests now require the
+  current task's distinct verifier handoff to be actually delivered, not
+  merely queued; 3/3 real PostgreSQL handoff tests PASS. Verifier's actual
+  signed approval/effect evidence is still open.
 - [ ] Integrate real authorized agent-run delegation, independent effect
   readback, verifier sign-off and evidence-backed founder summary end-to-end.
   Test duplicate effects, interruption, recovery and budget/consent fences.
