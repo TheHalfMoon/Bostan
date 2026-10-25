@@ -5,7 +5,7 @@ import os from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel, syntheticFreeAgentAdapterConfig, observeHeartbeatQaStatus, assertHeartbeatQaSucceeded, firstAgentLifecycleReadinessTimeoutMs, safeAgentLifecycleDiagnostic } from "./bostan-first-agent-free-e2e.mjs";
+import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel, syntheticFreeAgentAdapterConfig, observeHeartbeatQaStatus, assertHeartbeatQaSucceeded, firstAgentLifecycleReadinessTimeoutMs, safeAgentLifecycleDiagnostic, safeFreeProviderFailureSignal } from "./bostan-first-agent-free-e2e.mjs";
 
 function fixture() {
   const home = mkdtempSync(path.join(os.tmpdir(), "bostan-free-agent-guard-"));
@@ -174,4 +174,33 @@ test("agent lifecycle harness-failure classification does not leak provider or c
     lifecycleState: "verifying", status: "paused", failureCode: "harness_test_failed",
   });
   assert.doesNotMatch(JSON.stringify(observed), /Authentication|private|secret/);
+});
+
+test("source QA reports allowlisted adapter rate-limit and outage signals, without exposing model logs", () => {
+  const cases = [
+    ["HTTP 429 Too Many Requests", "adapter_rate_limit_signaled"],
+    ["Rate limited, retry later", "adapter_rate_limit_signaled"],
+    ["Provider error: 503 Service Unavailable", "adapter_provider_unavailable_signaled"],
+    ["ETIMEDOUT during provider request", "adapter_timeout_signaled"],
+  ];
+  for (const [error, safeSignal] of cases) {
+    const failed = { status: "failed", errorCode: "adapter_failed", error,
+      stderrExcerpt: "Bearer private-test-value", executionStage: "dispatching" };
+    assert.equal(safeFreeProviderFailureSignal(failed), safeSignal);
+    assert.throws(() => assertHeartbeatQaSucceeded(failed), e =>
+      e.message.includes(safeSignal) &&
+      !e.message.includes("private-test-value") &&
+      !e.message.includes("Bearer"));
+  }
+});
+
+test("source QA never diagnoses rate-limit from a successful or unrelated failed run", () => {
+  for (const row of [
+    { status: "succeeded", errorCode: null, error: "HTTP 429" },
+    { status: "failed", errorCode: "harness_test_failed", stderrExcerpt: "HTTP 429" },
+    { status: "running", errorCode: "adapter_failed", error: "HTTP 429" },
+    { status: "failed", errorCode: "adapter_failed", error: "Unrelated private-error" },
+  ]) {
+    assert.equal(safeFreeProviderFailureSignal(row), null);
+  }
 });

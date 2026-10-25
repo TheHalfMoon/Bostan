@@ -56,6 +56,25 @@ export function safeAgentLifecycleDiagnostic(agent) {
     ...(failureCode ? { failureCode } : {}) };
 }
 
+export function safeFreeProviderFailureSignal(run) {
+  // Only classify already-failed adapter heartbeats. Never return raw model
+  // output, URLs, provider errors or credentials in a public QA receipt.
+  if (run?.status !== "failed" || run?.errorCode !== "adapter_failed") return null;
+  const evidence = [run.error, run.stderrExcerpt, run.stdoutExcerpt]
+    .filter(value => typeof value === "string")
+    .join("\n");
+  if (/(?:\b429\b|TooManyRequests|rate[ -]?limit(?:ed|ing)?|free (?:usage|tier) (?:limit|quota))/i.test(evidence)) {
+    return "adapter_rate_limit_signaled";
+  }
+  if (/(?:\b503\b|\b502\b|service unavailable|provider unavailable|bad gateway)/i.test(evidence)) {
+    return "adapter_provider_unavailable_signaled";
+  }
+  if (/(?:ETIMEDOUT|request timed out|connection timeout|timeout after)/i.test(evidence)) {
+    return "adapter_timeout_signaled";
+  }
+  return null;
+}
+
 export function assertHeartbeatQaSucceeded(run) {
   if (run?.status === "succeeded") return;
   // The provider may never have been called. Persisted interruption is
@@ -65,8 +84,10 @@ export function assertHeartbeatQaSucceeded(run) {
   const errorCode = typeof code === "string" && /^[a-z][a-z0-9_]{0,63}$/.test(code) ? code : null;
   const executionStage = typeof stage === "string" &&
     /^(preparing|dispatching|executing|settled)$/.test(stage) ? stage : null;
+  const safeSignal = safeFreeProviderFailureSignal(run);
   throw new Error("Bostan synthetic heartbeat ended without success: " +
-    JSON.stringify({ status: run?.status ?? null, errorCode, executionStage }));
+    JSON.stringify({ status: run?.status ?? null, errorCode, executionStage,
+      ...(safeSignal ? { safeSignal } : {}) }));
 }
 
 const MARKER = "BOSTAN_CLEAN_RUN_PASS";
