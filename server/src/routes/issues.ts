@@ -4,6 +4,8 @@ import { readBostanIssueDocumentEvidence, checkBostanIssueDocumentSnapshot,
 import { bostanVerifierReport } from "../services/bostan-current-verification-evidence.js";
 import { BostanLocalOcrBusyError, BostanLocalOcrInputError,
   previewBostanLocalImageOcr } from "../services/bostan-local-ocr.js";
+import { parseTaskInsightWindow, readBostanTaskInsights
+} from "../services/bostan-task-insights.js";
 import { parseObject } from "../adapters/utils.js";
 import { prepareRestrictedWorkspaceRetry } from "../services/restricted-workspace-retry.js";
 import { issueSummariesQuerySchema, type IssueSummary } from "@paperclipai/shared";
@@ -8420,6 +8422,28 @@ export function issueRoutes(
       projectReadCondition: await projectReadSqlCondition(db, req.actor),
     });
     res.json(result);
+  });
+
+  // Board-only time-window analytics over the same task privacy scope as
+  // task lists, without returning titles, details or agent conversations.
+  router.get("/companies/:companyId/bostan-analytics/task-insights", async (req, res) => {
+    assertBoard(req);
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const parsed = z.object({ days: z.enum(["7", "30", "90"]).optional() })
+      .strict().safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Choose exactly 7, 30 or 90 days" }); return;
+    }
+    const permission = await access.decide({ actor: req.actor,
+      action: "company_scope:read", resource: { type: "company", companyId } });
+    if (!permission.allowed) { res.status(403).json({ error: "Task insights unauthorized" }); return; }
+    const insights = await readBostanTaskInsights(db, {
+      companyId, days: parseTaskInsightWindow(parsed.data.days),
+      visible: await issueReadSqlCondition(db, req.actor),
+    });
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json(insights);
   });
 
   router.get("/companies/:companyId/issues/summaries", async (req, res) => {

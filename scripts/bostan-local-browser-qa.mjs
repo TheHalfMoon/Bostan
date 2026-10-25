@@ -298,8 +298,43 @@ async function runSyntheticPrivateOcrUi(page, privateOrigin, issue, env) {
     } : {}) };
 }
 
+async function runPrivateBostanTaskInsightsUi(page, origin, company) {
+  const companyId = company?.id;
+  if (typeof companyId !== "string" ||
+      !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(companyId) ||
+      typeof company?.issuePrefix !== "string" ||
+      !/^[A-Z]{2,12}$/.test(company.issuePrefix)) {
+    throw new Error("Private task insights UI requires exact source company identity and prefix");
+  }
+  await page.goto(origin + "/" + company.issuePrefix + "/dashboard", {
+    waitUntil: "domcontentloaded", timeout: 45_000,
+  });
+  await page.getByRole("heading", { name: "Task insights" })
+    .waitFor({ state: "visible", timeout: 35_000 });
+  const response = await page.request.get(
+    origin + "/api/companies/" + companyId + "/bostan-analytics/task-insights?days=30",
+  );
+  if (!response.ok()) throw new Error("Bostan real task insights API not available to browser");
+  const metrics = await response.json();
+  if (metrics.schema !== "bostan.task-insights.v1" ||
+      metrics.grain !== "visible_operational_tasks" ||
+      metrics.days !== 30 || metrics.flow?.created < 1) {
+    throw new Error("Real Bostan dashboard source analytics were not visible or scoped");
+  }
+  // The genuine UI request, not a mocked component, must load the current
+  // company's privacy-scoped metric labels and a real created task.
+  const created = page.getByText("Tasks created in period");
+  await created.waitFor({ state: "visible", timeout: 30_000 });
+  const group = page.getByRole("group", { name: "Task insights time window" });
+  if (await group.getByRole("button", { name: "30 days" }).getAttribute("aria-pressed") !== "true") {
+    throw new Error("Bostan dashboard did not open with the accurate 30-day window");
+  }
+  return { visibleAuthorizedTaskFlow: true, defaultPeriodDays: 30 };
+}
+
 export async function runPrivateBostanBrowserQa({
   origin, expectedCompanyId, env = process.env, ocrIssue = null,
+  insightCompanyId = null,
 }) {
   const privateOrigin = requirePrivateBrowserQaTarget(origin, env);
   if (typeof expectedCompanyId !== "string" ||
@@ -390,10 +425,14 @@ export async function runPrivateBostanBrowserQa({
     const ocr = env.BOSTAN_LIVE_LOCAL_BROWSER_OCR_E2E === "1"
       ? await runSyntheticPrivateOcrUi(page, privateOrigin, ocrIssue, env)
       : null;
+    const insights = env.BOSTAN_LIVE_LOCAL_BROWSER_INSIGHTS_E2E === "1"
+      ? await runPrivateBostanTaskInsightsUi(page, privateOrigin, insightCompanyId)
+      : null;
     return { qualified: true, browser: "chromium-headless", mounted: true,
       privateApi: true, persistedCompany: true,
       ...(onboarding ? { onboarding } : {}),
       ...(ocr ? { ocr } : {}),
+      ...(insights ? { insights } : {}),
       pageErrorsSeen: browserPageErrors, blockedExternalRequests };
   } finally {
     await browser.close();

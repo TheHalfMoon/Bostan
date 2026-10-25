@@ -89,3 +89,12 @@ test("large local image OCR requires the existing private OCR browser admission"
     ...env, BOSTAN_LIVE_LOCAL_BROWSER_OCR_E2E: "1",
   }, "darwin"));
 });
+
+
+test("real analytics Chromium QA requires the explicit disposable browser admission", () => {
+  const bad = { BOSTAN_LIVE_LOCAL_QA_CONFIRM: "1",
+    BOSTAN_LIVE_LOCAL_BROWSER_INSIGHTS_E2E: "1",
+    BOSTAN_LIVE_LOCAL_BROWSER_E2E: "0" };
+  assert.throws(() => requireBostanSourceSmokeAdmission(bad, "darwin"),
+    /Private task-insights browser QA requires/);
+});
