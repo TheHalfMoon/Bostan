@@ -34,6 +34,10 @@ export function requireBostanSourceSmokeAdmission(env = process.env, platform = 
       env.BOSTAN_LIVE_LOCAL_QA_CONFIRM !== "1") {
     throw new Error("Real browser QA requires explicit temporary Bostan app consent");
   }
+  if (env.BOSTAN_LIVE_LOCAL_BROWSER_ADAPTER_SELECTION_E2E === "1" &&
+      env.BOSTAN_LIVE_LOCAL_BROWSER_AGENT_DRAFT_E2E !== "1") {
+    throw new Error("Browser adapter selection QA requires the inactive first-agent draft opt-in");
+  }
   if (env.BOSTAN_LIVE_LOCAL_BROWSER_AGENT_DRAFT_E2E === "1" &&
       env.BOSTAN_LIVE_LOCAL_BROWSER_ONBOARDING_E2E !== "1") {
     throw new Error("First-agent draft browser QA requires the onboarding wizard opt-in");
@@ -212,6 +216,7 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
         (env.BOSTAN_LIVE_LOCAL_BROWSER_E2E === "1" ? ",real-headless-chromium-private-ui" : "") +
         (browserReport?.onboarding ? ",real-browser-new-company-onboarding" : "") +
         (browserReport?.onboarding?.firstAgentDraft ? ",real-browser-first-agent-inactive-draft" : "") +
+        (browserReport?.onboarding?.firstAgentDraft?.localAdapterSelected ? ",real-browser-adapter-selected-still-paused" : "") +
         (env.BOSTAN_E2E_TWO_AGENT_TEAM === "1" ? ",second-distinct-free-agent-same-company" : "") +
         (env.BOSTAN_E2E_REVIEW_FIRST_AGENT === "1" ? ",second-agent-cites-first-persisted-comment" : "") +
         ",clean-stop" };

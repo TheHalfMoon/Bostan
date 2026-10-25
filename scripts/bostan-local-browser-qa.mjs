@@ -40,6 +40,32 @@ export function requireBostanBrowserAgentDraftConsent(env) {
   }
 }
 
+export function requireBostanBrowserAdapterSelectionConsent(env) {
+  requireBostanBrowserAgentDraftConsent(env);
+  if (env.BOSTAN_LIVE_LOCAL_BROWSER_ADAPTER_SELECTION_E2E !== "1") {
+    throw new Error("Bostan adapter selection QA requires a separate no-inference browser consent");
+  }
+}
+
+/**
+ * Selecting OpenAI in the UI can intentionally resolve to the native
+ * Bostan Runner whose persisted internal adapter ID is paperclip_runner.
+ * That route is correct ONLY when the persisted provider is codex; never
+ * treat arbitrary built-in runners as an OpenAI selection.
+ */
+export function isPersistedPausedCodexSetup(agent) {
+  const matchesProvider =
+    (agent?.adapterType === "codex_local" &&
+      (!agent?.adapterConfig?.provider || agent?.adapterConfig.provider === "codex")) ||
+    (agent?.adapterType === "paperclip_runner" &&
+      agent?.adapterConfig?.provider === "codex");
+  return Boolean(matchesProvider &&
+    agent?.metadata?.setupAdapterPending === false &&
+    agent?.pauseReason === "setup" &&
+    agent?.status === "paused" &&
+    agent?.runtimeConfig?.heartbeat?.enabled !== true);
+}
+
 async function runSyntheticPrivateOnboardingWizard(page, privateOrigin, env) {
   const name = "Bostan Browser Onboarding QA " + randomUUID();
   // The donor-compatible localStorage key is an internal persisted protocol,
@@ -110,6 +136,49 @@ async function runSyntheticPrivateOnboardingWizard(page, privateOrigin, env) {
       throw new Error("Bostan draft agent changed state before an adapter was selected");
     }
     firstAgentDraft = { persistedInactive: true, awaitingAdapter: true };
+    if (env.BOSTAN_LIVE_LOCAL_BROWSER_ADAPTER_SELECTION_E2E === "1") {
+      requireBostanBrowserAdapterSelectionConsent(env);
+      // Selection is allowed only for a stopped setup draft. Stop before any
+      // login, adapter test or model launch, which are separate release gates.
+      const adapterChoice = page.getByRole("radio").filter({ hasText: /OpenAI/ }).first();
+      await adapterChoice.waitFor({ state: "visible", timeout: 20_000 });
+      await adapterChoice.click();
+      await page.getByRole("heading", { name: "Connect a model" })
+        .waitFor({ state: "visible", timeout: 25_000 });
+      const updated = await page.request.get(
+        privateOrigin + "/api/agents/" + agent.id + "?companyId=" + actual.id,
+      );
+      if (!updated.ok()) throw new Error("Bostan did not persist adapter selection");
+      let agentAfterAdapter = await updated.json();
+      // Native Codex intentionally stores paperclip_runner with provider=codex.
+      // Verify actual provider/config and persisted paused state, not a UI
+      // adapter alias that differs from the correct internal runner identity.
+      for (let attempt = 0; attempt < 12 &&
+          !isPersistedPausedCodexSetup(agentAfterAdapter); attempt++) {
+        await page.waitForTimeout(250);
+        const res = await page.request.get(
+          privateOrigin + "/api/agents/" + agent.id + "?companyId=" + actual.id,
+        );
+        if (!res.ok()) throw new Error("Bostan adapter selection follow-up read failed");
+        agentAfterAdapter = await res.json();
+      }
+      if (!isPersistedPausedCodexSetup(agentAfterAdapter)) {
+        throw new Error("Bostan selected adapter was not persisted as an inactive setup draft: " +
+          JSON.stringify({
+            correctAdapter: isPersistedPausedCodexSetup(agentAfterAdapter),
+            nativeCodexProvider: agentAfterAdapter.adapterType === "paperclip_runner" &&
+              agentAfterAdapter.adapterConfig?.provider === "codex",
+            pendingFlagCleared: agentAfterAdapter.metadata?.setupAdapterPending === false,
+            setupPauseReason: agentAfterAdapter.pauseReason === "setup",
+            pausedStatus: agentAfterAdapter.status === "paused",
+            heartbeatEnabled: agentAfterAdapter.runtimeConfig?.heartbeat?.enabled === true,
+            statusCategory: ["paused", "idle", "active"].includes(agentAfterAdapter.status)
+              ? agentAfterAdapter.status : "other",
+          }));
+      }
+      firstAgentDraft = { persistedInactive: true, awaitingAdapter: false,
+        localAdapterSelected: true, noActiveWorker: true };
+    }
   }
   return { companyCreatedByUi: true, noUnrequestedGoal: true,
     ...(firstAgentDraft ? { firstAgentDraft } : {}) };

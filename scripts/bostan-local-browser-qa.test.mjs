@@ -2,7 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { requirePrivateBrowserQaTarget, isAllowedPrivateBrowserRequest,
   requireBostanBrowserOnboardingConsent,
-  requireBostanBrowserAgentDraftConsent, runPrivateBostanBrowserQa } from "./bostan-local-browser-qa.mjs";
+  requireBostanBrowserAgentDraftConsent,
+  requireBostanBrowserAdapterSelectionConsent,
+  isPersistedPausedCodexSetup, runPrivateBostanBrowserQa } from "./bostan-local-browser-qa.mjs";
 
 const admitted = { BOSTAN_LIVE_LOCAL_QA_CONFIRM: "1", BOSTAN_LIVE_LOCAL_BROWSER_E2E: "1" };
 test("browser QA accepts only an explicitly confirmed exact local origin", () => {
@@ -76,5 +78,47 @@ test("first-agent draft QA requires a fourth opt-in and cannot activate the LLM 
     assert.throws(() => requireBostanBrowserAgentDraftConsent({
       ...allowed, [removed]: "0",
     }), /private source wizard consent|separate no-model browser consent/);
+  }
+});
+
+test("adapter selection QA requires a fifth opt-in without triggering paid inference", () => {
+  const allowed = {
+    ...admitted, BOSTAN_LIVE_LOCAL_BROWSER_ONBOARDING_E2E: "1",
+    BOSTAN_LIVE_LOCAL_BROWSER_AGENT_DRAFT_E2E: "1",
+    BOSTAN_LIVE_LOCAL_BROWSER_ADAPTER_SELECTION_E2E: "1",
+  };
+  assert.doesNotThrow(() => requireBostanBrowserAdapterSelectionConsent(allowed));
+  for (const removed of Object.keys(allowed)) {
+    assert.throws(() => requireBostanBrowserAdapterSelectionConsent({
+      ...allowed, [removed]: "0",
+    }), /private source wizard consent|separate no-model browser consent|separate no-inference browser consent/);
+  }
+});
+
+test("actual paused native Bostan runner for OpenAI is qualified by provider codex", () => {
+  const agent = {
+    adapterType: "paperclip_runner",
+    adapterConfig: { provider: "codex", model: "synthetic" },
+    metadata: { setupAdapterPending: false },
+    pauseReason: "setup", status: "paused",
+    runtimeConfig: { heartbeat: { enabled: false } },
+  };
+  assert.equal(isPersistedPausedCodexSetup(agent), true);
+  assert.equal(isPersistedPausedCodexSetup({
+    ...agent, adapterType: "codex_local",
+  }), true);
+  for (const forged of [
+    { adapterConfig: { provider: "claude" } },
+    { adapterConfig: { provider: "acpx", acpxAgent: "copilot" } },
+    { adapterType: "process" },
+    { adapterType: "claude_local" },
+    { adapterType: "codex_local", adapterConfig: { provider: "claude" } },
+    { status: "active" },
+    { pauseReason: null },
+    { metadata: { setupAdapterPending: true } },
+    { runtimeConfig: { heartbeat: { enabled: true } } },
+  ]) {
+    assert.equal(isPersistedPausedCodexSetup({ ...agent, ...forged }), false,
+      JSON.stringify(Object.keys(forged)));
   }
 });
