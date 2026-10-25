@@ -61,6 +61,8 @@ import {
   chatEndpoints,
   chatPublications,
   companyMemberships,
+  caseHandoffs,
+  cases,
   documents,
   executionWorkspaces,
   heartbeatRuns,
@@ -8178,6 +8180,70 @@ export function issueRoutes(
     if (!assessment) { res.status(404).json({ error: "Scoped source no longer accessible" }); return; }
     res.setHeader("Cache-Control", "no-store");
     res.json(assessment);
+  });
+
+  // The B5 verifier must be able to author a B4-linked review report
+  // without inheriting the board's company-wide knowledge read permission.
+  // This narrow digest-only route requires the ORIGINAL running agent,
+  // current assigned work item and an actually delivered independent
+  // verification handoff. No excerpts, body or document title are emitted.
+  router.get("/companies/:companyId/issues/:issueId/bostan-verification/sources/:documentId/snapshot", async (req, res) => {
+    const companyId = req.params.companyId as string;
+    const issueId = req.params.issueId as string;
+    const documentId = req.params.documentId as string;
+    if (req.actor.type !== "agent" || !req.actor.agentId || !req.actor.runId) {
+      res.status(403).json({ error: "Active verification agent execution required" }); return;
+    }
+    assertCompanyAccess(req, companyId);
+    if (![companyId, issueId, documentId].every(id => z.string().uuid().safeParse(id).success)) {
+      res.status(400).json({ error: "Valid company, task and source UUIDs are required" }); return;
+    }
+    const [task] = await db.select({ id: issueRows.id, assigneeAgentId: issueRows.assigneeAgentId })
+      .from(issueRows).where(and(eq(issueRows.id, issueId), eq(issueRows.companyId, companyId))).limit(1);
+    if (!task || task.assigneeAgentId !== req.actor.agentId) {
+      res.status(403).json({ error: "Active task verifier identity required" }); return;
+    }
+    const [run] = await db.select({ id: heartbeatRuns.id, startedAt: heartbeatRuns.startedAt })
+      .from(heartbeatRuns).where(and(
+        eq(heartbeatRuns.id, req.actor.runId),
+        eq(heartbeatRuns.companyId, companyId),
+        eq(heartbeatRuns.agentId, req.actor.agentId),
+        eq(heartbeatRuns.status, "running"),
+        or(eq(heartbeatRuns.issueId, issueId), eq(heartbeatRuns.nativeIssueId, issueId),
+          sql`${heartbeatRuns.contextSnapshot} ->> 'issueId' = ${issueId}`),
+      )).limit(1);
+    if (!run?.startedAt) {
+      res.status(403).json({ error: "Current verifier run is not active for this task" }); return;
+    }
+    const [activeCase] = await db.select({ id: cases.id, fields: cases.fields,
+      phase: cases.phase, version: cases.handoffVersion })
+      .from(cases).where(and(eq(cases.companyId, companyId), eq(cases.workIssueId, issueId))).limit(1);
+    if (!activeCase || activeCase.fields?.bostanIndependentVerificationRequired !== true ||
+      activeCase.phase !== "verification") {
+      res.status(403).json({ error: "This task is not in governed independent verification" }); return;
+    }
+    const [delivered] = await db.select({ deliveredAt: caseHandoffs.deliveredAt })
+      .from(caseHandoffs).where(and(
+        eq(caseHandoffs.companyId, companyId), eq(caseHandoffs.caseId, activeCase.id),
+        eq(caseHandoffs.issueId, issueId), eq(caseHandoffs.version, activeCase.version),
+        eq(caseHandoffs.phase, "verification"), eq(caseHandoffs.state, "delivered"),
+        eq(caseHandoffs.toAgentId, req.actor.agentId),
+        sql`${caseHandoffs.fromAgentId} is not null and ${caseHandoffs.fromAgentId} <> ${caseHandoffs.toAgentId}`,
+      )).limit(1);
+    if (!delivered?.deliveredAt || run.startedAt < delivered.deliveredAt) {
+      res.status(403).json({ error: "Independent reviewer handoff has not authorized this run" }); return;
+    }
+    const source = await readBostanIssueDocumentEvidence({ db, companyId, issueId, documentId,
+      issueReadCondition: await issueReadSqlCondition(db, req.actor) });
+    if (!source || source.documentKey === "bostan-verification") {
+      res.status(404).json({ error: "Scoped source document not found" }); return;
+    }
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json({ schema: "bostan.verification.source-snapshot.v1", documentId,
+      latestRevisionNumber: source.latestRevisionNumber,
+      sourceSnapshotHmacSha256: source.sourceSnapshotHmacSha256,
+      sourceContentIsUntrusted: true, executionAuthorized: false,
+      factualRelevanceVerified: false });
   });
 
   router.get("/companies/:companyId/issues/:issueId/bostan-evidence/documents/:documentId", async (req, res) => {

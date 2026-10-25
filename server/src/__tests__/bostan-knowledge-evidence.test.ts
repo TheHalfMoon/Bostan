@@ -3,7 +3,7 @@ import express from "express";
 import request from "supertest";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { companies, createDb, documents, issueDocuments, issues } from "@paperclipai/db";
+import { agents, caseHandoffs, cases, companies, createDb, documents, heartbeatRuns, issueDocuments, issues } from "@paperclipai/db";
 import { issueRoutes } from "../routes/issues.js";
 import { errorHandler } from "../middleware/error-handler.js";
 import { readBostanIssueDocumentEvidence } from "../services/bostan-knowledge-evidence.js";
@@ -189,6 +189,58 @@ suite("Bostan B4-01 versioned, tenant-scoped task document evidence", () => {
     const hidden = await request(appFor(board(s.companyId))).post(path).send({ sources });
     expect(hidden.status).toBe(200);
     expect(hidden.body).toMatchObject({ allSnapshotsCurrent: false, decisionCommitAuthorized: false });
+  });
+  it("B5-06 returns digest-only evidence to the active, delivered, independent task verifier", async () => {
+    const s = await seed();
+    const specialistId = randomUUID(), verifierId = randomUUID();
+    await db.insert(agents).values([
+      { id: specialistId, companyId: s.companyId, name: "Implementer", role: "engineer", status: "active" },
+      { id: verifierId, companyId: s.companyId, name: "Reviewer", role: "engineer", status: "active" },
+    ]);
+    await db.update(issues).set({ assigneeAgentId: verifierId }).where(eq(issues.id, s.issueId));
+    const caseId = randomUUID();
+    await db.insert(cases).values({ id: caseId, companyId: s.companyId, caseNumber: 1,
+      identifier: "BKN-C1", caseType: "work", title: "Verifiable work", phase: "verification",
+      workIssueId: s.issueId, handoffVersion: 2,
+      fields: { bostanIndependentVerificationRequired: true } });
+    const handoffId = randomUUID(), handoffAt = new Date(Date.now() - 60_000);
+    await db.insert(caseHandoffs).values({ id: handoffId, companyId: s.companyId, caseId,
+      issueId: s.issueId, version: 2, phase: "verification", fromAgentId: specialistId,
+      toAgentId: verifierId, instructions: "Independently inspect source",
+      actorType: "user", actorId: "local", state: "delivered", deliveredAt: handoffAt,
+      idempotencyKey: "verify", inputFingerprint: "test", wakeupRequestId: randomUUID() });
+    const runId = randomUUID();
+    await db.insert(heartbeatRuns).values({ id: runId, companyId: s.companyId,
+      agentId: verifierId, status: "running", startedAt: new Date(Date.now()-30_000),
+      contextSnapshot: { issueId: s.issueId } });
+    const agent = { type: "agent", source: "agent_jwt", companyId: s.companyId,
+      agentId: verifierId, runId };
+    const route = `/api/companies/${s.companyId}/issues/${s.issueId}/bostan-verification/sources/${s.documentId}/snapshot`;
+    const result = await request(appFor(agent)).get(route);
+    expect(result.status).toBe(200);
+    expect(result.headers["cache-control"]).toContain("no-store");
+    expect(result.body).toMatchObject({ schema: "bostan.verification.source-snapshot.v1",
+      documentId: s.documentId, latestRevisionNumber: 1,
+      executionAuthorized: false, factualRelevanceVerified: false });
+    expect(result.body.sourceSnapshotHmacSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(result.body)).not.toContain(s.original);
+    expect(result.body.excerpt).toBeUndefined();
+    const outsider = { ...agent, companyId: s.otherCompany };
+    expect((await request(appFor(outsider)).get(route)).status).toBe(403);
+    expect((await request(appFor({ ...agent, agentId: specialistId })).get(route)).status).toBe(403);
+    expect((await request(appFor({ type: "board", source: "local_implicit", companyIds: [s.companyId] })).get(route)).status).toBe(403);
+    expect((await request(appFor(agent)).get(route.replace(s.documentId, randomUUID()))).status).toBe(404);
+    await db.update(caseHandoffs).set({ fromAgentId: verifierId }).where(eq(caseHandoffs.id, handoffId));
+    expect((await request(appFor(agent)).get(route)).status).toBe(403);
+    await db.update(caseHandoffs).set({ fromAgentId: specialistId }).where(eq(caseHandoffs.id, handoffId));
+    await db.update(heartbeatRuns).set({ status: "succeeded" }).where(eq(heartbeatRuns.id, runId));
+    expect((await request(appFor(agent)).get(route)).status).toBe(403);
+    await db.update(heartbeatRuns).set({ status: "running" }).where(eq(heartbeatRuns.id, runId));
+    await db.update(issues).set({ hiddenAt: new Date() }).where(eq(issues.id, s.issueId));
+    expect((await request(appFor(agent)).get(route)).status).toBe(404);
+    await db.update(issues).set({ hiddenAt: null }).where(eq(issues.id, s.issueId));
+    await db.delete(issueDocuments).where(eq(issueDocuments.documentId, s.documentId));
+    expect((await request(appFor(agent)).get(route)).status).toBe(404);
   });
   it("B4-02 denies hidden/unauthorized source even with a valid old snapshot", async () => {
     const s = await seed();

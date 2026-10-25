@@ -186,8 +186,11 @@ interruption, recovery, spend and policy failure scenarios.
   real same-task canonical B4 document HMAC snapshots. Missing, edited or
   unlinked sources invalidate an otherwise accepted report at terminal
   transaction. 3/3 real PostgreSQL and 14/14 CaseDetail UI tests PASS.
-  Agent-facing source-fingerprint retrieval and actual fact verification
-  remain open.
+- [x] B5-06: a read-only, run/tenant/task/independent-handoff-scoped reviewer
+  agent HTTP endpoint now supplies only the canonical source HMAC needed
+  for B5-05 reports. Full in-process reviewer GET→report→source-revision
+  invalidation→fresh report→inert case closure tests 11/11 real SQL/HTTP
+  PASS; actual model fact verification is still unproven.
 - [ ] Integrate real authorized agent-run delegation, independent effect
   readback, verifier sign-off and evidence-backed founder summary end-to-end.
   Test duplicate effects, interruption, recovery and budget/consent fences.

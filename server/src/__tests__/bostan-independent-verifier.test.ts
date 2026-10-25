@@ -1,10 +1,14 @@
 import { randomUUID } from "node:crypto";
+import express from "express";
+import request from "supertest";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { agents, caseAccessSources, caseHandoffs, cases, companies,
   createDb, heartbeatRuns, issues, toolInvocations } from "@paperclipai/db";
 import { caseHandoffService } from "../services/case-handoffs.js";
 import { documentService } from "../services/documents.js";
+import { issueRoutes } from "../routes/issues.js";
+import { errorHandler } from "../middleware/error-handler.js";
 import { readBostanIssueDocumentEvidence } from "../services/bostan-knowledge-evidence.js";
 import { instanceSettingsService } from "../services/instance-settings.js";
 import {
@@ -123,6 +127,13 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
       summary: "Synthetic reviewer checked the current implementation source and recorded a bounded observation.",
       sources: [{ documentId: sourceDocument.document.id, expectedSnapshotHmacSha256: hmac }],
     });
+    const getActiveSourceSnapshot = async (currentRunId: string) => {
+      const app = express(); app.use(express.json());
+      app.use((req, _res, next) => { req.actor = { type: "agent", source: "agent_jwt",
+        companyId: f.companyId, agentId: f.verifierId, runId: currentRunId }; next(); });
+      app.use("/api", issueRoutes(db, {} as never)); app.use(errorHandler);
+      return request(app).get(`/api/companies/${f.companyId}/issues/${f.issueId}/bostan-verification/sources/${sourceDocument.document.id}/snapshot`);
+    };
     const reviewedRunId = randomUUID();
     await db.insert(heartbeatRuns).values({ id: reviewedRunId, companyId: f.companyId,
       agentId: f.verifierId, issueId: f.issueId, status: "running",
@@ -130,6 +141,12 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
       contextSnapshot: { issueId: f.issueId } });
     await expect(service.handoff(f.companyId, board, terminal(2, afterAssign.statusVersion)))
       .rejects.toMatchObject({ status: 409, details: { code: "bostan_verifier_run_required" } });
+    // B5-06: the actual reviewer GET endpoint, not an internal bypass,
+    // supplies the digest needed by the JSON evidence report.
+    const scopedSource = await getActiveSourceSnapshot(reviewedRunId);
+    expect(scopedSource.status).toBe(200);
+    expect(scopedSource.body.sourceSnapshotHmacSha256).toBe(sourceEvidence!.sourceSnapshotHmacSha256);
+    expect(scopedSource.body.excerpt).toBeUndefined();
     const note = await documentService(db).upsertIssueDocument({
       issueId: f.issueId, key: "bostan-verification", title: "Verifier assessment",
       format: "markdown", body: "Independent synthetic inspection: test output matches the task acceptance criteria.",
@@ -139,7 +156,7 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
       .rejects.toMatchObject({ status: 409, details: { code: "bostan_verifier_run_required" } });
     const revised = await documentService(db).upsertIssueDocument({
       issueId: f.issueId, key: "bostan-verification", title: "Verifier assessment",
-      format: "json", body: reportText(sourceEvidence!.sourceSnapshotHmacSha256),
+      format: "json", body: reportText(scopedSource.body.sourceSnapshotHmacSha256),
       baseRevisionId: note.document.latestRevisionId,
       createdByAgentId: f.verifierId, createdByRunId: reviewedRunId,
     });
@@ -171,12 +188,12 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
     await db.insert(heartbeatRuns).values({ id: resumedRunId, companyId: f.companyId,
       agentId: f.verifierId, issueId: f.issueId, status: "running",
       startedAt: new Date(), contextSnapshot: { issueId: f.issueId } });
+    const refreshedSource = await getActiveSourceSnapshot(resumedRunId);
+    expect(refreshedSource.status).toBe(200);
+    expect(refreshedSource.body.sourceSnapshotHmacSha256).not.toBe(scopedSource.body.sourceSnapshotHmacSha256);
     await documentService(db).upsertIssueDocument({
       issueId: f.issueId, key: "bostan-verification", title: "Verifier assessment",
-      format: "json", body: reportText((await readBostanIssueDocumentEvidence({ db,
-        companyId: f.companyId, issueId: f.issueId, documentId: sourceDocument.document.id,
-        issueReadCondition: sql<boolean>`true`,
-      }))!.sourceSnapshotHmacSha256),
+      format: "json", body: reportText(refreshedSource.body.sourceSnapshotHmacSha256),
       baseRevisionId: tampered.document.latestRevisionId,
       createdByAgentId: f.verifierId, createdByRunId: resumedRunId,
     });
