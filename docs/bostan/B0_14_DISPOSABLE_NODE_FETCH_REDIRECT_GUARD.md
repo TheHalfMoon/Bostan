@@ -26,3 +26,11 @@ No production Bostan runtime, actual browser fetch policy, OAuth integration, pr
 ## Outstanding security limits
 
 This test-only JavaScript preload is NOT a comprehensive firewall, whole-host network namespace or security audit. Native executables, direct syscalls, processes not inheriting this preload, runtime code outside known transport APIs, and user-authorized integrations are not generally covered. B0-05 full network audit and the official server build, real model-authored independent governed Case, installed Windows application and comprehensive external security review remain open. Release NO-GO.
+
+## Completed exact-head cross-platform verification
+
+- Native Windows Abdulaziz Bostan Node source suite: 183 PASS, 0 FAIL, 8 platform/opt-in SKIP (191 total); the actual local-to-local redirect regression passes there as well.
+- Native Mac Node source: 181 PASS, 0 FAIL, 10 platform/opt-in SKIP (191 total).
+- Five canonical Case/JWT/HTTP/native verifier/real PostgreSQL suites: 22 PASS, 0 FAIL.
+- Actual disposable Bostan HTTP/PostgreSQL clean stop and restart with persisted company plus headless Chromium under BOTH browser and Node network probes: PASS; the Node guard armed twice, with no recorded external Node API attempts, browser errors or browser external requests.
+- No Windows installer, paid provider, full-server compiler or native model-driven independent report was qualified in these tests.
