@@ -12,6 +12,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { qualifyFreeQaModel, isOpenRouterFreeQaModel } from "./bostan-free-model-policy.mjs";
 import { requireNativeCaseQaHost } from "./bostan-governed-case-free-e2e.mjs";
+import {
+  ownedNativeQaGroupAdmission, createOwnedNativeQaProcessGroup,
+  terminateOwnedNativeQaProcessGroup,
+} from "./bostan-disposable-native-process-group.mjs";
 import { admitOpenRouterZeroCostQa } from "./bostan-openrouter-free-preflight.mjs";
 
 const REPO = fileURLToPath(new URL("../", import.meta.url));
@@ -201,13 +205,19 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
   let clean = false;
   let marker = null;
   let browserReport = null;
+  const groupIsolated = ownedNativeQaGroupAdmission(env);
+  let ownedQaGroup = null;
   const app = path.join(home, ".bostan", "app");
 
   async function start() {
     recent = "";
     proc = spawn(process.execPath, ["cli/src/bostan-preview.mjs", "app", "run", "--local", "--port", String(port)], {
       cwd: REPO, env: childEnv, stdio: ["ignore", "pipe", "pipe"],
+      ...(groupIsolated ? { detached: true } : {}),
     });
+    ownedQaGroup = groupIsolated
+      ? createOwnedNativeQaProcessGroup(proc, true)
+      : null;
     for (const output of [proc.stdout, proc.stderr]) {
       output.on("data", piece => { recent = (recent + piece.toString()).slice(-MAX_LOG_BYTES); });
     }
@@ -235,6 +245,13 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
     proc = null;
     if (result.code !== 0) throw new Error(`Bostan graceful stop returned ${result.code ?? result.signal}`);
     assertStopped(home);
+    // Even if the source launcher exited cleanly, its pinned native worker
+    // bridge could leave detached children. Reap only our own QA process group
+    // AFTER Bostan/Postgres completed their normal graceful shutdown.
+    if (ownedQaGroup) {
+      terminateOwnedNativeQaProcessGroup(ownedQaGroup);
+      ownedQaGroup = null;
+    }
   }
   try {
     await start();
@@ -354,6 +371,12 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
     if (proc && proc.exitCode === null) {
       proc.kill("SIGTERM");
       try { await waitExit(proc, WAIT_STOP_MS); } catch { /* Preserve diagnostic profile */ }
+    }
+    if (ownedQaGroup) {
+      // A failed governed run cannot leak its local native runnerd. It was
+      // launched in this exclusive POSIX group from a disposable test HOME.
+      terminateOwnedNativeQaProcessGroup(ownedQaGroup);
+      ownedQaGroup = null;
     }
     // Cleanup is deliberately conservative and only touches our exact
     // newly generated mkdtemp root when both DB and run.lock are absent.
