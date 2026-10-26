@@ -21,6 +21,8 @@ const CREDENTIAL_ERROR_COPY = {
   appHealth: "This app connection needs attention. Check its credentials or reconnect.",
   appReconnect: "Could not reconnect this app. Check its credentials and try again.",
   appCredential: "Credential check failed. Review the key and retry.",
+  githubHealth: "GitHub connection needs attention. Reconnect to verify access.",
+  githubCredential: "Could not verify this GitHub App. Review its saved credentials and retry.",
 
   oauthStart: "Bostan couldn’t start secure sign-in. Try again.",
 } as const;

@@ -5,7 +5,7 @@ const actions: CredentialErrorAction[] = [
   "gatewayLoad", "gatewayCreate", "gatewayTokenCreate", "gatewayTokenRevoke", "clipboard",
   "configImport", "configConnect", "configFinish", "oauthStart",
   "connectionCatalog", "connectionCreate", "connectionProbe", "connectionActivate", "connectionHealth",
-  "appLoad", "appHealth", "appReconnect", "appCredential",
+  "appLoad", "appHealth", "appReconnect", "appCredential", "githubHealth", "githubCredential",
 ];
 describe("Bostan credential UI error privacy", () => {
   it.each(actions)("%s refuses provider tokens, state, passwords and signed URLs", (action) => {
