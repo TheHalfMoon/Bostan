@@ -109,7 +109,7 @@ function checkServerRuntimeAssets() {
       .join("\n");
 
     fail(
-      `Missing server runtime asset(s) in dist:\n${missingList}\nRun pnpm --filter @paperclipai/server build and ensure source runtime asset trees are copied into dist.`,
+      `Missing server runtime asset(s) in dist:\n${missingList}\nRun pnpm --filter @bostan/server build and ensure source runtime asset trees are copied into dist.`,
     );
   }
 

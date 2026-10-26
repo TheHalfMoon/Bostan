@@ -44,6 +44,22 @@ test("Bostan board UI package is private and cannot be packed or published", () 
   assert.equal(read("scripts/generate-ui-package-json.mjs").includes("bostan-release-disabled.mjs"), true);
 });
 
+test("Bostan server workspace and CLI provider imports use private Bostan ownership", () => {
+  const server = json("server/package.json");
+  const cli = json("cli/package.json");
+  assert.equal(server.name, "@bostan/server");
+  assert.equal(server.private, true);
+  assert.equal(server.publishConfig, undefined);
+  assert.equal(server.repository.url, "https://github.com/TheHalfMoon/Bostan");
+  assert.match(server.scripts.prepack, /bostan-release-disabled/);
+  assert.match(server.scripts.prepublishOnly, /bostan-release-disabled/);
+  assert.equal(server.scripts.postpack, undefined);
+  assert.equal(cli.dependencies["@bostan/server"], "workspace:*");
+  assert.equal(cli.dependencies["@paperclipai/server"], undefined);
+  assert.match(read("cli/src/commands/run.ts"), /import\("@bostan\/server"\)/);
+  assert.match(read("cli/src/commands/runtime.ts"), /resolve\("@bostan\/server"\)/);
+});
+
 test("all inherited CI release packages are disabled and cannot be published", () => {
   const manifest = json("scripts/release-package-manifest.json");
   assert.ok(manifest.length >= 30);

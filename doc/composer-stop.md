@@ -121,7 +121,7 @@ verification belongs to the isolated browser suite below.
 
 ```sh
 pnpm exec vitest run --project @bostan/ui ui/src/components/task-chat/TaskChatComposer.test.tsx ui/src/components/TaskChatThread.test.tsx ui/src/pages/IssueDetail.test.tsx ui/src/lib/wait-for-stopped-runs.test.ts
-pnpm exec vitest run --project @paperclipai/server server/src/__tests__/issue-tree-control-routes.test.ts
+pnpm exec vitest run --project @bostan/server server/src/__tests__/issue-tree-control-routes.test.ts
 pnpm check:token-gates
 pnpm build-storybook
 pnpm -r typecheck

@@ -27,7 +27,7 @@ Prefer the hosted major version when practical and disclose version differences.
 Set `SLOW_QUERY_BASELINE` to a verified pre-fix commit and pass it explicitly:
 
 ```sh
-pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-run-history.ts --baseline-ref="$SLOW_QUERY_BASELINE"
+pnpm --filter @bostan/server exec tsx ../scripts/benchmark-run-history.ts --baseline-ref="$SLOW_QUERY_BASELINE"
 ```
 
 Resolve the ref to a SHA in the report. `origin/master` may already contain the

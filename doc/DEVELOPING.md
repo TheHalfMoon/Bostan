@@ -572,7 +572,7 @@ Primary-instance rebuilds that restart `paperclip.service` can request one-shot 
 
 ```sh
 old_main_pid="$(systemctl show paperclip.service -p MainPID --value)"
-pnpm --filter @paperclipai/server exec tsx ../scripts/request-hot-restart.ts --server-pid "$old_main_pid"
+pnpm --filter @bostan/server exec tsx ../scripts/request-hot-restart.ts --server-pid "$old_main_pid"
 systemctl restart paperclip.service
 ```
 
@@ -614,7 +614,7 @@ drain-and-retry path:
 
 ```sh
 old_main_pid="$(systemctl show paperclip.service -p MainPID --value)"
-pnpm --filter @paperclipai/server exec tsx ../scripts/request-hot-restart.ts \
+pnpm --filter @bostan/server exec tsx ../scripts/request-hot-restart.ts \
   --server-pid "$old_main_pid" --drain-required
 systemctl restart paperclip.service
 ```
@@ -808,7 +808,7 @@ stamp is for this platform, every recorded output is still there at its
 recorded size, and the current digest matches. Anything else (no stamp, a
 changed input, a deleted or truncated output, a stamp from another platform)
 runs `pnpm --filter @paperclipai/paperclip-runner build` exactly as before, so
-a standalone `pnpm --filter @paperclipai/server build` on a fresh checkout
+a standalone `pnpm --filter @bostan/server build` on a fresh checkout
 still builds the Runner itself. Inside `pnpm build` the Runner has just been
 built by the same command, and the step skips a 12-16s rebuild. The step
 prints one `paperclip.runner-vendor.timing.v1` line saying which it did.
@@ -837,7 +837,7 @@ per-query results and latency measurements; scale measurements are opt-in.
 Measure a fresh checkout with and without the repository object cache:
 
 ```sh
-pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-repository-object-cache.ts
+pnpm --filter @bostan/server exec tsx ../scripts/benchmark-repository-object-cache.ts
 ```
 
 This uses a synthetic 32 MiB repository and the real `file://` Git transport.
@@ -849,8 +849,8 @@ measurement.
 Measure cold sandbox staging with a disposable 10,000-file Git repository:
 
 ```sh
-pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-workspace-staging.ts --baseline-ref=origin/master
-pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-workspace-staging.ts --baseline-ref=origin/master --transfer-delay-ms=3000
+pnpm --filter @bostan/server exec tsx ../scripts/benchmark-workspace-staging.ts --baseline-ref=origin/master
+pnpm --filter @bostan/server exec tsx ../scripts/benchmark-workspace-staging.ts --baseline-ref=origin/master --transfer-delay-ms=3000
 ```
 
 The benchmark alternates the baseline and current implementations. Both pack,
@@ -1379,7 +1379,7 @@ guards. Close readiness derives ancestry from its existing ahead/behind
 comparison, avoiding a second history walk with `merge-base`.
 
 Measure the avoided reads on synthetic workspaces with
-`pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-workspace-record-reads.ts`.
+`pnpm --filter @bostan/server exec tsx ../scripts/benchmark-workspace-record-reads.ts`.
 The benchmark checks identical persisted fields and reports wall time and actual
 Git command counts. Use `--resident-mib=1536` to exercise a large Node process on
 Linux. It measures workspace reads, not end-to-end agent latency.
@@ -2874,7 +2874,7 @@ runs cannot publish late progress from an old executor snapshot.
 Run the deterministic native event replay with the normal server test runner:
 
 ```sh
-pnpm --filter @paperclipai/server exec vitest run src/__tests__/native-observer-replay.test.ts
+pnpm --filter @bostan/server exec vitest run src/__tests__/native-observer-replay.test.ts
 ```
 
 The test uses disposable PostgreSQL and the production event persistence and
@@ -3157,7 +3157,7 @@ replaced with remote clones because of historical file ownership.
 The disposable workspace-preparation performance harness is:
 
 ```sh
-pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-workspace-preparation-history.ts --baseline-ref=df80616d98119cbf5abd40549794d9980a5fabf6
+pnpm --filter @bostan/server exec tsx ../scripts/benchmark-workspace-preparation-history.ts --baseline-ref=df80616d98119cbf5abd40549794d9980a5fabf6
 ```
 
 It compares actual preparation guards with synthetic history. Local timings are
@@ -3186,8 +3186,8 @@ policy controls admission until their terminal charge is known.
 Use a disposable real PostgreSQL database to compare cost evaluation and complete admission:
 
 ```sh
-pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-budget-enforcement.ts --baseline-ref=6c9b87d0922f1ebfc43e8b0c36889ac5ba7b9837 > /tmp/budget-forward.json
-pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-budget-enforcement.ts --baseline-ref=6c9b87d0922f1ebfc43e8b0c36889ac5ba7b9837 --reverse > /tmp/budget-reverse.json
+pnpm --filter @bostan/server exec tsx ../scripts/benchmark-budget-enforcement.ts --baseline-ref=6c9b87d0922f1ebfc43e8b0c36889ac5ba7b9837 > /tmp/budget-forward.json
+pnpm --filter @bostan/server exec tsx ../scripts/benchmark-budget-enforcement.ts --baseline-ref=6c9b87d0922f1ebfc43e8b0c36889ac5ba7b9837 --reverse > /tmp/budget-reverse.json
 ```
 
 The cost comparison keeps one company policy and no active runs while adding 0,

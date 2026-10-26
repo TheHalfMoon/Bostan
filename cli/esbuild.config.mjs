@@ -29,9 +29,9 @@ const workspacePaths = [
 ];
 
 // Workspace packages that should NOT be bundled — they'll be published
-// to npm and resolved at runtime (e.g. @paperclipai/server uses dynamic import).
+// to npm and resolved at runtime (e.g. @bostan/server uses dynamic import).
 const externalWorkspacePackages = new Set([
-  "@paperclipai/server",
+  "@bostan/server",
 ]);
 
 // Collect all external (non-workspace) npm package names

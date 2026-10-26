@@ -10,7 +10,7 @@ import { basename, join, resolve } from 'node:path';
 export function retainRunnerQualificationPackages({ repo, output, sourceRevision, releaseVersion, publicArchives, env = process.env }) {
   assert.match(sourceRevision, /^[a-f0-9]{40}$/);
   assert.equal(JSON.parse(readFileSync(join(repo, 'server/dist/build-info.json'))).commit, sourceRevision);
-  assert.ok(publicArchives.some(a => a.name === '@paperclipai/server'));
+  assert.ok(publicArchives.some(a => a.name === '@bostan/server'));
   assert.ok(publicArchives.some(a => a.name === 'paperclipai'));
   assert.ok(publicArchives.some(a => a.name === '@paperclipai/plugin-sdk'));
   assert.equal(new Set(publicArchives.map(a => a.name)).size, publicArchives.length);

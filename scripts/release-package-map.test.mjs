@@ -65,7 +65,7 @@ test("release package configuration validates successfully", () => {
 
 test("guard flags a publishFromCi:true package depending on a publishFromCi:false package", () => {
   const problems = findUnpublishableWorkspaceEdges([
-    pkg("@paperclipai/server", {
+    pkg("@bostan/server", {
       publishFromCi: true,
       dependencies: { "@bostan/skills-catalog": "workspace:*" },
     }),
@@ -73,13 +73,13 @@ test("guard flags a publishFromCi:true package depending on a publishFromCi:fals
   ]);
 
   assert.equal(problems.length, 1);
-  assert.match(problems[0], /@paperclipai\/server/);
+  assert.match(problems[0], /@bostan\/server/);
   assert.match(problems[0], /@bostan\/skills-catalog/);
 });
 
 test("guard inspects optional and peer dependency sections too", () => {
   const problems = findUnpublishableWorkspaceEdges([
-    pkg("@paperclipai/server", {
+    pkg("@bostan/server", {
       publishFromCi: true,
       optionalDependencies: { "@paperclipai/opt": "workspace:^" },
       peerDependencies: { "@paperclipai/peer": "workspace:*" },
@@ -93,7 +93,7 @@ test("guard inspects optional and peer dependency sections too", () => {
 
 test("guard treats a workspace dep on an unknown @paperclipai package as unpublishable", () => {
   const problems = findUnpublishableWorkspaceEdges([
-    pkg("@paperclipai/server", {
+    pkg("@bostan/server", {
       publishFromCi: true,
       dependencies: { "@paperclipai/private-internal": "workspace:*" },
     }),
@@ -104,7 +104,7 @@ test("guard treats a workspace dep on an unknown @paperclipai package as unpubli
 
 test("guard allows true->true workspace edges", () => {
   const problems = findUnpublishableWorkspaceEdges([
-    pkg("@paperclipai/server", {
+    pkg("@bostan/server", {
       publishFromCi: true,
       dependencies: { "@paperclipai/shared": "workspace:*" },
     }),
@@ -116,7 +116,7 @@ test("guard allows true->true workspace edges", () => {
 
 test("guard ignores non-workspace specs, non-internal deps, and edges from off-train packages", () => {
   const problems = findUnpublishableWorkspaceEdges([
-    pkg("@paperclipai/server", {
+    pkg("@bostan/server", {
       publishFromCi: true,
       dependencies: {
         "@paperclipai/pinned": "0.3.1",

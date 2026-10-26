@@ -1,30 +1,19 @@
 {
-  "name": "@paperclipai/server",
+  "name": "@bostan/server",
   "version": "0.3.1",
   "license": "MIT",
-  "homepage": "https://github.com/paperclipai/paperclip",
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
   "bugs": {
-    "url": "https://github.com/paperclipai/paperclip/issues"
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/paperclipai/paperclip",
+    "url": "https://github.com/TheHalfMoon/Bostan",
     "directory": "server"
   },
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
-  },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js"
-      }
-    },
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts"
   },
   "files": [
     "dist",
@@ -37,14 +26,14 @@
     "dev:watch": "cross-env PAPERCLIP_MIGRATION_PROMPT=never PAPERCLIP_MIGRATION_AUTO_APPLY=true tsx ./scripts/dev-watch.ts",
     "prepare:ui-dist": "bash ../scripts/prepare-server-ui-dist.sh",
     "build": "pnpm run prepare:runner-vendor && node scripts/verify-runner-vendor-dependencies.mjs && tsc && mkdir -p dist/onboarding-assets dist/built-ins dist/services/scripts dist/vendor/paperclip-runner && cp -R src/onboarding-assets/. dist/onboarding-assets/ && cp -R src/built-ins/. dist/built-ins/ && cp -R src/services/scripts/. dist/services/scripts/ && cp -Rf ../packages/paperclip-runner/dist/. dist/vendor/paperclip-runner/ && cp ../packages/paperclip-runner/scripts/install-copilot-assets.mjs ../packages/paperclip-runner/scripts/materialize-copilot-binary.mjs ../packages/paperclip-runner/scripts/copilot-inner-distribution.mjs dist/ && node dist/install-copilot-assets.mjs && node scripts/write-build-stamp.mjs",
-    "prepack": "pnpm run prepare:ui-dist && pnpm run build",
-    "postpack": "rm -rf ui-dist",
+    "prepack": "node ../scripts/bostan-release-disabled.mjs",
     "clean": "rm -rf dist",
     "build:runtime": "node scripts/bundle-runtime.mjs",
     "start": "node dist/index.js",
     "prepare:runner-vendor": "node scripts/prepare-runner-vendor.mjs",
     "typecheck": "pnpm run prepare:runner-vendor && pnpm --filter @paperclipai/plugin-sdk ensure-build-deps && tsc --noEmit",
-    "postinstall": "node scripts/install-copilot-assets.mjs"
+    "postinstall": "node scripts/install-copilot-assets.mjs",
+    "prepublishOnly": "node ../scripts/bostan-release-disabled.mjs"
   },
   "dependencies": {
     "@1password/sdk": "0.5.0",
@@ -194,5 +183,6 @@
     "@github/copilot-darwin-arm64": "1.0.88",
     "@github/copilot-darwin-x64": "1.0.88",
     "@github/copilot-linux-x64": "1.0.88"
-  }
+  },
+  "private": true
 }

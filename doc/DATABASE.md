@@ -65,7 +65,7 @@ wakeup-history index.
 To compare all three queries on the same disposable local PostgreSQL fixture:
 
 ```sh
-pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-slow-queries.ts --baseline-ref=origin/master
+pnpm --filter @bostan/server exec tsx ../scripts/benchmark-slow-queries.ts --baseline-ref=origin/master
 ```
 
 Use a revision before these fixes for `--baseline-ref` after they merge. The
@@ -102,7 +102,7 @@ their existing transaction and data reads.
 To measure authentication query responses on disposable synthetic data:
 
 ```sh
-pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-agent-authentication.ts --baseline-ref=06689c1b3410000bcd65ff40cb469e600209c4db
+pnpm --filter @bostan/server exec tsx ../scripts/benchmark-agent-authentication.ts --baseline-ref=06689c1b3410000bcd65ff40cb469e600209c4db
 ```
 
 This compares the current query with the original query in that revision. It
@@ -113,7 +113,7 @@ or fleet-wide savings.
 To compare the real summary and full history queries with an earlier revision:
 
 ```sh
-pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-run-history.ts --baseline-ref=1e731520bb
+pnpm --filter @bostan/server exec tsx ../scripts/benchmark-run-history.ts --baseline-ref=1e731520bb
 ```
 
 The fixture has 1,400 synthetic runs with 192 KiB contexts. Both queries return
@@ -135,7 +135,7 @@ suite checks both plans and verifies the attached and retained source results.
 To compare this query on a disposable fixture with 13,429 tasks:
 
 ```sh
-pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-workspace-authorization.ts --baseline-ref=5c7a025032
+pnpm --filter @bostan/server exec tsx ../scripts/benchmark-workspace-authorization.ts --baseline-ref=5c7a025032
 ```
 
 The benchmark loads the baseline authorization module with current dependencies,
@@ -1026,7 +1026,7 @@ These service measurements exclude network acquisition, copying, environment
 acquisition, and provider startup. Reproduce with:
 
 ```sh
-pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-workspace-preparation-history.ts --baseline-ref=df80616d98119cbf5abd40549794d9980a5fabf6
+pnpm --filter @bostan/server exec tsx ../scripts/benchmark-workspace-preparation-history.ts --baseline-ref=df80616d98119cbf5abd40549794d9980a5fabf6
 ```
 
 Workspace-record and workspace-operation `_issuePrivacySources` /
@@ -1061,7 +1061,7 @@ indexes can filter candidates before reading large contexts. Native bindings
 continue to override legacy context IDs. No new index or migration is needed.
 
 ```sh
-pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-recovery-queries.ts --baseline-ref=1e731520bb
+pnpm --filter @bostan/server exec tsx ../scripts/benchmark-recovery-queries.ts --baseline-ref=1e731520bb
 ```
 
 This disposable fixture compares the real ownership, recovery-action and status

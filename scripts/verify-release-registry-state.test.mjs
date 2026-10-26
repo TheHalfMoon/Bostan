@@ -77,7 +77,7 @@ test("collectInternalDependencyProblems accepts version-specific manifests when 
 test("collectInternalDependencyProblems ignores peer dependency range specifiers", () => {
   const manifest = {
     peerDependencies: {
-      "@paperclipai/server": "^2026.430.0-canary.0",
+      "@bostan/server": "^2026.430.0-canary.0",
     },
   };
 
@@ -278,14 +278,14 @@ test("verifyPackageRegistryState allows intentional canary latest but still chec
         versions: {
           "2026.427.0-canary.3": {
             dependencies: {
-              "@paperclipai/server": "2026.427.0-canary.3",
+              "@bostan/server": "2026.427.0-canary.3",
             },
           },
         },
       },
     ],
     [
-      "@paperclipai/server",
+      "@bostan/server",
       {
         versions: {
           "2026.427.0-canary.3": {},
@@ -356,7 +356,7 @@ test("verifyPackageRegistryState ignores internal peer dependency ranges", () =>
         versions: {
           "2026.430.0-canary.0": {
             peerDependencies: {
-              "@paperclipai/server": "^2026.430.0-canary.0",
+              "@bostan/server": "^2026.430.0-canary.0",
             },
           },
         },

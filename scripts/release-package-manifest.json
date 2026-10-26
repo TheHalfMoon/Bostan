@@ -96,7 +96,7 @@
   },
   {
     "dir": "server",
-    "name": "@paperclipai/server",
+    "name": "@bostan/server",
     "publishFromCi": false
   },
   {

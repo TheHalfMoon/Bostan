@@ -77,6 +77,9 @@ importers:
 
   cli:
     dependencies:
+      '@bostan/server':
+        specifier: workspace:*
+        version: link:../server
       '@clack/prompts':
         specifier: ^1.7.0
         version: 1.7.0
@@ -119,9 +122,6 @@ importers:
       '@paperclipai/hermes-paperclip-adapter':
         specifier: workspace:*
         version: link:../packages/adapters/hermes
-      '@paperclipai/server':
-        specifier: workspace:*
-        version: link:../server
       '@paperclipai/shared':
         specifier: workspace:*
         version: link:../packages/shared

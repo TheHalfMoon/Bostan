@@ -481,7 +481,7 @@ async function runGeneralGroup(routeTests, groupName, shardIndex = null, shardCo
     // Each invocation gets its own temporary home and embedded PostgreSQL.
     // Wait for both children even on failure so no sibling is abandoned.
     const results = await Promise.allSettled(chatShardWorkers(shardIndex, shardCount).map((shard) =>
-      runVitest(["--project", "@paperclipai/server", ...serializedServerVitestArgs, chatSuite],
+      runVitest(["--project", "@bostan/server", ...serializedServerVitestArgs, chatSuite],
         "chat integration test shard", shard),
     ));
     const failed = results.find((result) => result.status === "rejected");
@@ -490,7 +490,7 @@ async function runGeneralGroup(routeTests, groupName, shardIndex = null, shardCo
   }
   if (groupName === generalServerNativeRunnerGroupName) {
     await runVitest(
-      ["--project", "@paperclipai/server", ...serializedServerVitestArgs, ...nativeRunnerSuites],
+      ["--project", "@bostan/server", ...serializedServerVitestArgs, ...nativeRunnerSuites],
       "native runner vertical-slice suite",
     );
     return;
@@ -515,7 +515,7 @@ async function runGeneralGroup(routeTests, groupName, shardIndex = null, shardCo
       await runVitest(
         [
           "--project",
-          "@paperclipai/server",
+          "@bostan/server",
           // Files have separate fork processes and isolated homes/configs.
           // Keep each file's cases serial; overlap only two independent files.
           // An explicit shared test database cannot be isolated this way.
@@ -536,7 +536,7 @@ async function runGeneralGroup(routeTests, groupName, shardIndex = null, shardCo
     await runVitest(
       [
         "--project",
-        "@paperclipai/server",
+        "@bostan/server",
         ...serializedServerVitestArgs,
         ...excludeRouteArgs,
       ],
@@ -577,7 +577,7 @@ async function runSerializedSuites(routeTests, shardIndex, shardCount) {
     await runVitest(
       [
         "--project",
-        "@paperclipai/server",
+        "@bostan/server",
         ...shardTests.map((test) => test.repoPath),
         "--pool=forks",
         "--isolate",

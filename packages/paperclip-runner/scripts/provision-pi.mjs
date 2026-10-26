@@ -32,7 +32,7 @@ export async function provisionPackageRoot(entrypoint) {
     if (!before.isFile() || before.size > 65536n || before.nlink !== 1n) throw new Error("Pi setup package manifest is invalid");
     const bytes = await handle.readFile(); const after = await handle.stat({ bigint: true }); const named = await lstat(manifest, { bigint: true });
     if (before.ino !== after.ino || before.dev !== after.dev || before.ctimeNs !== after.ctimeNs || before.mtimeNs !== after.mtimeNs || bytes.length !== Number(before.size) || named.ino !== before.ino || named.dev !== before.dev) throw new Error("Pi setup package manifest changed");
-    const expected = vendored ? "@paperclipai/server" : "@paperclipai/paperclip-runner";
+    const expected = vendored ? "@bostan/server" : "@paperclipai/paperclip-runner";
     if (JSON.parse(bytes.toString()).name !== expected) throw new Error("Pi setup package identity does not match its layout");
   } finally { await handle.close(); }
   return { root, manifest, cli, assetRoot: vendored ? resolve(cli, "..") : root };

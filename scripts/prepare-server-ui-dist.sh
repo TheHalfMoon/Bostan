@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # prepare-server-ui-dist.sh — Build the UI and copy it into server/ui-dist.
-# This keeps @paperclipai/server publish artifacts self-contained for static UI serving.
+# This keeps @bostan/server publish artifacts self-contained for static UI serving.
 # When PAPERCLIP_RELEASE_REUSE_UI_DIST=1 and ui/dist already exists, reuse that
 # output instead of rebuilding it again inside the release packaging flow.
 
