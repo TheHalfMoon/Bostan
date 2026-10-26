@@ -39,3 +39,12 @@ No publication or main-branch changes.
 - External generated `@bostan/test-external-plugin` was installed in a **unique disposable test-only `/private/tmp` directory** with public npm metadata and `--ignore-scripts` (72 free registry dependencies); its actual esbuild bundle completed, and its own Vitest suite returned **2 PASS, 0 FAIL**. Prior attempted `--offline` failed only due missing npm metadata, not a broken Bostan SDK link. No third-party code executed through install lifecycle scripts; no SDK packing or publishing occurred.
 - Root Bostan plugin-init CLI Vitest **10 PASS, 0 FAIL**. Bostan CLI `tsc --noEmit` **PASS**. Full native Mac Bostan source + private release inventory **226 PASS, 0 FAIL, 10 SKIP** (236 total) before the extra developer skill guard.
 - Source Bostan HTTP/real PostgreSQL clean stop/restart/persisted company/headless Chromium on renamed scaffold source **PASS**, with 0 browser page errors and 0 blocked browser requests. No running Bostan app left by the smoke.
+
+## Final exact-head Windows / Mac qualification
+
+- Native Mac Bostan Node source and guarded release map: **227 PASS, 0 FAIL, 10 opt-in/platform SKIP (237 total)**.
+- Native Windows `Abdulaziz` Bostan Node source and guarded release map on B0-22 code: **229 PASS, 0 FAIL, 8 opt-in/platform SKIP (237 total)**, including new plugin generator path/identity/release checks.
+- The private Bostan plugin creation package TypeScript build PASS, its 4 native Vitest entrypoint tests PASS and CLI plugin-init 10 PASS. The exact-head Bostan CLI TypeScript compiler PASS.
+- Real outside source-linked sample: public free npm deps installation with `--ignore-scripts` PASS, actual bundled build PASS, internal generated plugin tests **2 PASS**; this was not a public Bostan package install and no Bostan package registry was used. Browser/PG source smoke on renamed source branch PASS.
+- This is **source-only Windows qualification**; installed Windows application QA and all-platform release packaging remain blocked. Existing Windows untracked QA helpers preserved.
+- B0-22 private Draft PR #171 is stacked after #170. Main remains unchanged; release remains NO-GO.
