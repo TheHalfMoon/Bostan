@@ -88,7 +88,7 @@ const DEV_TSX_LOADER_PATH = path.resolve(__dirname, "../../../cli/node_modules/t
 
 /**
  * Model-provider API keys that sandbox-provider plugins (e.g.
- * `@paperclipai/plugin-kubernetes`) are allowed to read from the
+ * `@bostan/plugin-kubernetes`) are allowed to read from the
  * server's process environment so they can inject them into per-run
  * pod Secrets. All other host env vars remain stripped from plugin
  * workers (see `PluginWorkerManager.spawnProcess`). The passthrough
@@ -106,7 +106,7 @@ const ADAPTER_ENV_PASSTHROUGH = [
 
 /**
  * In-cluster Kubernetes service-discovery vars. A sandbox-provider plugin that
- * runs in-cluster (e.g. `@paperclipai/plugin-kubernetes` with inCluster=true)
+ * runs in-cluster (e.g. `@bostan/plugin-kubernetes` with inCluster=true)
  * builds its API client via `KubeConfig.loadFromCluster()`, which reads these
  * to construct the apiserver URL. Without them the worker fails with "Invalid
  * URL" at lease acquisition. The CA + token are files under
@@ -141,11 +141,11 @@ const SANDBOX_PROVIDER_CREDENTIAL_ENV_PASSTHROUGH: Record<
   string,
   { driverKey: string; envVars: readonly string[] }
 > = {
-  "@paperclipai/plugin-createos": { driverKey: "createos", envVars: ["CREATEOS_API_KEY"] },
-  "@paperclipai/plugin-daytona": { driverKey: "daytona", envVars: ["DAYTONA_API_KEY"] },
-  "@paperclipai/plugin-e2b": { driverKey: "e2b", envVars: ["E2B_API_KEY"] },
-  "@paperclipai/plugin-exe-dev": { driverKey: "exe-dev", envVars: ["EXE_API_KEY"] },
-  "@paperclipai/plugin-novita-sandbox": { driverKey: "novita", envVars: ["NOVITA_API_KEY"] },
+  "@bostan/plugin-createos": { driverKey: "createos", envVars: ["CREATEOS_API_KEY"] },
+  "@bostan/plugin-daytona": { driverKey: "daytona", envVars: ["DAYTONA_API_KEY"] },
+  "@bostan/plugin-e2b": { driverKey: "e2b", envVars: ["E2B_API_KEY"] },
+  "@bostan/plugin-exe-dev": { driverKey: "exe-dev", envVars: ["EXE_API_KEY"] },
+  "@bostan/plugin-novita-sandbox": { driverKey: "novita", envVars: ["NOVITA_API_KEY"] },
 };
 
 export function buildPluginWorkerEnv(input: {

@@ -241,7 +241,7 @@ pnpm build
 
 ### CreateOS sandbox provider
 
-The in-repo [`@paperclipai/plugin-createos`](../../packages/plugins/sandbox-providers/createos/README.md)
+The in-repo [`@bostan/plugin-createos`](../../packages/plugins/sandbox-providers/createos/README.md)
 package implements environment lifecycle hooks and incremental managed-process
 output and binary workspace transfers using CreateOS's public HTTP API. It does
 not advertise interactive login or template capture. Install

@@ -383,7 +383,7 @@ describe("public repository paid workflow security", () => {
       "node scripts/link-plugin-dev-sdk.mjs",
     );
     expect(preparedBeforeProviderAccess).toContain(
-      '"@paperclipai/plugin-daytona"',
+      '"@bostan/plugin-daytona"',
     );
     expect(preparedBeforeProviderAccess).toContain('"@bostan/plugin-sdk"');
     expect(preparedBeforeProviderAccess).toContain(

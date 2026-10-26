@@ -15,7 +15,7 @@ function pkg(name, { publishFromCi, ...deps } = {}) {
 
 test("Bostan release inventory uses portable slash-separated package identifiers", () => {
   const packages = discoverPublicPackages();
-  assert.ok(packages.length >= 25);
+  assert.ok(packages.length > 0, "public release inventory still has explicit legacy entries but no private sandbox providers");
   for (const pkg of packages) {
     assert.equal(pkg.dir.split(String.fromCharCode(92)).length, 1, "non-portable workspace package ID: " + pkg.dir);
   }

@@ -1,6 +1,6 @@
-# `@paperclipai/plugin-exe-dev`
+# `@bostan/plugin-exe-dev`
 
-Published exe.dev sandbox provider plugin for Paperclip.
+Published exe.dev sandbox provider plugin for Bostan.
 
 This package lives in the Paperclip monorepo, but it is intentionally excluded from the root `pnpm` workspace and shaped to publish and install like a standalone npm package. That lets operators install it from the Plugins page by package name without introducing root lockfile churn.
 
@@ -9,7 +9,7 @@ This package lives in the Paperclip monorepo, but it is intentionally excluded f
 From a Paperclip instance, install:
 
 ```text
-@paperclipai/plugin-exe-dev
+@bostan/plugin-exe-dev
 ```
 
 ## Configuration

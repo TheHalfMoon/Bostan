@@ -57,7 +57,7 @@ export async function verifyInstalledDaytonaPlugin(env: NodeJS.ProcessEnv, execu
     await pinned(join(pin.root, pin.entry), pin.entrySha256);
     return manifest;
   }
-  const plugin = await packageAt(a.plugin, "@paperclipai/plugin-daytona");
+  const plugin = await packageAt(a.plugin, "@bostan/plugin-daytona");
   const sdk = await packageAt(a.sdk, "@bostan/plugin-sdk");
   const shared = await packageAt(a.shared, "@paperclipai/shared");
   const daytona = await packageAt(a.daytona, "@daytonaio/sdk");

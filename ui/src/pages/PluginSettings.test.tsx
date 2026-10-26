@@ -65,7 +65,7 @@ function basePlugin(overrides: Record<string, unknown> = {}) {
   return {
     id: "plugin-1",
     pluginKey: "paperclip.e2b-sandbox-provider",
-    packageName: "@paperclipai/plugin-e2b",
+    packageName: "@bostan/plugin-e2b",
     version: "0.1.0",
     status: "error",
     categories: ["automation"],

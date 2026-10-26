@@ -1,4 +1,4 @@
-# Manual smoke test — `@paperclipai/plugin-kubernetes`
+# Manual smoke test — `@bostan/plugin-kubernetes`
 
 Manual sanity check that the plugin works end-to-end against a real
 paperclip-server instance and a real Kubernetes cluster (kind for local

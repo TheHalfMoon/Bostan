@@ -8,6 +8,12 @@ import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 
 export function retainRunnerQualificationPackages({ repo, output, sourceRevision, releaseVersion, publicArchives, env = process.env }) {
+  // Bostan-owned sandbox providers are private and cannot enter inherited public
+  // qualification pack workflows. Reject before touching output or invoking npm.
+  const provider = JSON.parse(readFileSync(join(repo, 'packages/plugins/sandbox-providers/daytona/package.json'), 'utf8'));
+  if (provider.private === true || provider.name.startsWith('@bostan/')) {
+    throw new Error('Bostan private sandbox provider qualification packaging is disabled');
+  }
   assert.match(sourceRevision, /^[a-f0-9]{40}$/);
   assert.equal(JSON.parse(readFileSync(join(repo, 'server/dist/build-info.json'))).commit, sourceRevision);
   assert.ok(publicArchives.some(a => a.name === '@bostan/server'));

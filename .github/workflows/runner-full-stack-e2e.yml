@@ -945,7 +945,7 @@ jobs:
           test ! -L "$daytona_root"
           test ! -L "$sdk_root"
           test -f "$daytona_root/pnpm-lock.yaml"
-          test "$(jq -r .name "$daytona_root/package.json")" = "@paperclipai/plugin-daytona"
+          test "$(jq -r .name "$daytona_root/package.json")" = "@bostan/plugin-daytona"
           test "$(jq -r .name "$sdk_root/package.json")" = "@bostan/plugin-sdk"
           (
             cd "$daytona_root"

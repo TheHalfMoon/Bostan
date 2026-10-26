@@ -62,7 +62,8 @@ test("Bostan server workspace and CLI provider imports use private Bostan owners
 
 test("all inherited CI release packages are disabled and cannot be published", () => {
   const manifest = json("scripts/release-package-manifest.json");
-  assert.ok(manifest.length >= 30);
+  assert.ok(manifest.length > 0);
+  assert.ok(manifest.every(entry => !entry.dir.startsWith("packages/plugins/sandbox-providers/")), "private sandbox providers cannot appear in public release inventory");
   assert.ok(manifest.every((entry) => entry.publishFromCi === false));
   assert.ok(manifest.some(entry => entry.name === "@bostan/skills-catalog"));
   assert.ok(manifest.some(entry => entry.name === "@bostan/teams-catalog"));

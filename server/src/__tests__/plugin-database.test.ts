@@ -204,11 +204,11 @@ describe("buildPluginWorkerEnv", () => {
   });
 
   it.each([
-    { packagePath: null, packageName: "@paperclipai/plugin-createos", driverKey: "createos", allowed: true },
-    { packagePath: "/app/packages/plugins/sandbox-providers/createos", packageName: "@paperclipai/plugin-createos", driverKey: "createos", allowed: true },
-    { packagePath: "/home/operator/plugins/fake-createos", packageName: "@paperclipai/plugin-createos", driverKey: "createos", allowed: false },
+    { packagePath: null, packageName: "@bostan/plugin-createos", driverKey: "createos", allowed: true },
+    { packagePath: "/app/packages/plugins/sandbox-providers/createos", packageName: "@bostan/plugin-createos", driverKey: "createos", allowed: true },
+    { packagePath: "/home/operator/plugins/fake-createos", packageName: "@bostan/plugin-createos", driverKey: "createos", allowed: false },
     { packagePath: null, packageName: "@acme/plugin-createos", driverKey: "createos", allowed: false },
-    { packagePath: null, packageName: "@paperclipai/plugin-createos", driverKey: "daytona", allowed: false },
+    { packagePath: null, packageName: "@bostan/plugin-createos", driverKey: "daytona", allowed: false },
   ])("confines the CreateOS fallback credential to its trusted worker: $packageName / $packagePath / $driverKey", ({ allowed, driverKey, ...installation }) => {
     const env = buildPluginWorkerEnv({
       ...installation,
@@ -233,7 +233,7 @@ describe("buildPluginWorkerEnv", () => {
         capabilities: ["environment.drivers.register"],
         environmentDrivers: [{ driverKey: "daytona" }],
       },
-      packageName: "@paperclipai/plugin-daytona",
+      packageName: "@bostan/plugin-daytona",
       packagePath: null,
       instanceInfo,
       processEnv: {
@@ -256,7 +256,7 @@ describe("buildPluginWorkerEnv", () => {
         capabilities: ["environment.drivers.register"],
         environmentDrivers: [{ driverKey: "daytona" }],
       },
-      packageName: "@paperclipai/plugin-daytona",
+      packageName: "@bostan/plugin-daytona",
       packagePath: "/app/packages/plugins/sandbox-providers/daytona",
       trustedLocalPluginRoots: ["/app/packages/plugins"],
       instanceInfo,
@@ -278,7 +278,7 @@ describe("buildPluginWorkerEnv", () => {
         capabilities: ["environment.drivers.register"],
         environmentDrivers: [{ driverKey: "daytona" }],
       },
-      packageName: "@paperclipai/plugin-daytona",
+      packageName: "@bostan/plugin-daytona",
       packagePath: "/home/operator/.paperclip/plugins/fake-daytona",
       trustedLocalPluginRoots: ["/app/packages/plugins"],
       instanceInfo,
@@ -318,7 +318,7 @@ describe("buildPluginWorkerEnv", () => {
         capabilities: ["environment.drivers.register"],
         environmentDrivers: [{ driverKey: "kubernetes" }],
       },
-      packageName: "@paperclipai/plugin-daytona",
+      packageName: "@bostan/plugin-daytona",
       instanceInfo,
       processEnv: {
         DAYTONA_API_KEY: "daytona-token",
