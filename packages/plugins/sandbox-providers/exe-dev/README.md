@@ -50,7 +50,7 @@ pnpm test
 pnpm typecheck
 ```
 
-These commands assume the repo root has already been installed once so the local `@paperclipai/plugin-sdk` workspace package is available to the compiler during development.
+These commands assume the repo root has already been installed once so the local `@bostan/plugin-sdk` workspace package is available to the compiler during development.
 
 ## Package layout
 

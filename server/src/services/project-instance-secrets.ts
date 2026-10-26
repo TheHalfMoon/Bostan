@@ -10,7 +10,7 @@ import {
   resourceLifecycleEvents,
   type Db,
 } from "@paperclipai/db";
-import type { ResourceLifecycleEvent } from "@paperclipai/plugin-sdk";
+import type { ResourceLifecycleEvent } from "@bostan/plugin-sdk";
 import { z } from "zod";
 import { secretService } from "./secrets.js";
 import { persistActivity, type ActivityPublication } from "./activity-log.js";

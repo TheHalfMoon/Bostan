@@ -1,7 +1,7 @@
 import { aiConnectionMetadataSchema } from "@paperclipai/shared";
 import { and, eq, sql } from "drizzle-orm";
 import { companySecrets, connectionGrants, environmentLeases, toolConnections, type Db } from "@paperclipai/db";
-import { z, type PluginEnvironmentTaskCredential } from "@paperclipai/plugin-sdk";
+import { z, type PluginEnvironmentTaskCredential } from "@bostan/plugin-sdk";
 import { mkdtemp, writeFile, rm, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

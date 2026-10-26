@@ -83,7 +83,7 @@ import {
   toolProfiles,
   toolStdioCommandTemplates,
 } from "@paperclipai/db";
-import type { ToolRunContext } from "@paperclipai/plugin-sdk";
+import type { ToolRunContext } from "@bostan/plugin-sdk";
 import type {
   CreateToolMcpGateway,
   CreateToolMcpGatewayToken,

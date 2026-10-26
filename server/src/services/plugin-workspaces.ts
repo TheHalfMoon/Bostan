@@ -22,7 +22,7 @@ import {
   type PluginWorkspaceOperation,
   type PluginWorkspaceParams,
   type PluginFreshWorkspace,
-} from "@paperclipai/plugin-sdk";
+} from "@bostan/plugin-sdk";
 import type { PluginWorkerManager } from "./plugin-worker-manager.js";
 import { notifyTerminalWorkspaceWork } from "./terminal-workspace-work.js";
 import { withExecutionWorkspaceLifecycleLock } from "./execution-workspace-lifecycle-lock.js";

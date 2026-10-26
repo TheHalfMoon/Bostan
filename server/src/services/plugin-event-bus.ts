@@ -21,7 +21,7 @@
  */
 
 import type { PluginEventType } from "@paperclipai/shared";
-import type { PluginEvent, EventFilter } from "@paperclipai/plugin-sdk";
+import type { PluginEvent, EventFilter } from "@bostan/plugin-sdk";
 
 // ---------------------------------------------------------------------------
 // Internal types

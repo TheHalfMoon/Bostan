@@ -5,7 +5,7 @@ import {
   createRequest, definePlugin, isJsonRpcResponse, JsonRpcCallError, parseMessage,
   readEnvironmentSyncErrorDiagnostic, withEnvironmentSyncTransferStep, recordEnvironmentSyncError,
   PLUGIN_RPC_ERROR_CODES, serializeMessage, startWorkerRpcHost, type JsonRpcResponse,
-} from "@paperclipai/plugin-sdk";
+} from "@bostan/plugin-sdk";
 import {
   getWorkspaceRestoreDiagnostic, withWorkspaceRestoreDiagnostics, withWorkspaceRestoreStep,
 } from "@paperclipai/adapter-utils/workspace-restore-diagnostics";

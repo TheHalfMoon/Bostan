@@ -13,7 +13,7 @@ import {
   type PaperclipPluginManifestV1,
 } from "@paperclipai/shared";
 import { extractExternalObjectCanonicalUrls } from "@paperclipai/shared/external-objects-server";
-import type { PluginExternalObjectRecordSnapshot, PluginExternalObjectResolveResult } from "@paperclipai/plugin-sdk";
+import type { PluginExternalObjectRecordSnapshot, PluginExternalObjectResolveResult } from "@bostan/plugin-sdk";
 import { notFound } from "../errors.js";
 import { logger } from "../middleware/logger.js";
 import { logActivity, type LogActivityInput } from "./activity-log.js";

@@ -7,7 +7,7 @@ import { environmentLeases, environments, type Db } from "@paperclipai/db";
 import { eq } from "drizzle-orm";
 import type { AdapterSandboxExecutionTarget } from "@paperclipai/adapter-utils/execution-target";
 import { readEnvironmentCreationCleanupError, type PluginEnvironmentCreationCleanup,
-  type PluginEnvironmentLease, type PluginEnvironmentTerminationReceipt } from "@paperclipai/plugin-sdk";
+  type PluginEnvironmentLease, type PluginEnvironmentTerminationReceipt } from "@bostan/plugin-sdk";
 
 export async function acquireDaytonaLeaseWithCleanup(input: {
   companyId: string; environmentId: string; runId: string;

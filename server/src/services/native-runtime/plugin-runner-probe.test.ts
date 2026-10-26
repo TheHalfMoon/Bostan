@@ -13,7 +13,7 @@ const { spawnRunner } = await import(new URL("../../../../packages/paperclip-run
 };
 import { readRunnerdArtifactBinding, createRunnerdCodexTransport, canonicalNativeRuntimeContextDigest, type NativeRuntimeContextSnapshot } from "../../vendor/paperclip-runner/index.js";
 import { bindRunnerLaunchResources, createRunnerProviderLaunch, runnerLaunchRequirementsDigest } from "@paperclipai/paperclip-runner";
-import type { PluginEnvironmentTaskOperation, PluginEnvironmentTaskResult } from "@paperclipai/plugin-sdk";
+import type { PluginEnvironmentTaskOperation, PluginEnvironmentTaskResult } from "@bostan/plugin-sdk";
 import { createPluginRunnerTaskOwner } from "./plugin-runner-task.js";
 import { probePluginRunnerEnvironment } from "./plugin-runner-probe.js";
 

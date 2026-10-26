@@ -26,13 +26,13 @@ test("isPrereleaseVersion matches canary and nightly versions", () => {
 test("collectInternalDependencyProblems flags missing internal versions", () => {
   const manifest = {
     dependencies: {
-      "@paperclipai/plugin-sdk": "2026.425.0-canary.5",
+      "@bostan/plugin-sdk": "2026.425.0-canary.5",
       e2b: "^2.19.0",
     },
   };
   const packageDocsByName = new Map([
     [
-      "@paperclipai/plugin-sdk",
+      "@bostan/plugin-sdk",
       {
         versions: {
           "2026.427.0-canary.3": {},
@@ -43,19 +43,19 @@ test("collectInternalDependencyProblems flags missing internal versions", () => 
 
   assert.deepEqual(
     collectInternalDependencyProblems(manifest, packageDocsByName),
-    ["dependencies requires @paperclipai/plugin-sdk@2026.425.0-canary.5, but npm does not expose that version"],
+    ["dependencies requires @bostan/plugin-sdk@2026.425.0-canary.5, but npm does not expose that version"],
   );
 });
 
 test("collectInternalDependencyProblems accepts version-specific manifests when the root document is stale", () => {
   const manifest = {
     dependencies: {
-      "@paperclipai/plugin-sdk": "2026.425.0-canary.5",
+      "@bostan/plugin-sdk": "2026.425.0-canary.5",
     },
   };
   const packageDocsByName = new Map([
     [
-      "@paperclipai/plugin-sdk",
+      "@bostan/plugin-sdk",
       {
         versions: {},
       },
@@ -63,8 +63,8 @@ test("collectInternalDependencyProblems accepts version-specific manifests when 
   ]);
   const packageManifestsByKey = new Map([
     [
-      createManifestLookupKey("@paperclipai/plugin-sdk", "2026.425.0-canary.5"),
-      { name: "@paperclipai/plugin-sdk", version: "2026.425.0-canary.5" },
+      createManifestLookupKey("@bostan/plugin-sdk", "2026.425.0-canary.5"),
+      { name: "@bostan/plugin-sdk", version: "2026.425.0-canary.5" },
     ],
   ]);
 
@@ -168,19 +168,19 @@ test("verifyPackageRegistryState fails when canary latest is left in place by de
         versions: {
           "2026.425.0-canary.5": {
             dependencies: {
-              "@paperclipai/plugin-sdk": "2026.425.0-canary.5",
+              "@bostan/plugin-sdk": "2026.425.0-canary.5",
             },
           },
           "2026.427.0-canary.3": {
             dependencies: {
-              "@paperclipai/plugin-sdk": "2026.427.0-canary.3",
+              "@bostan/plugin-sdk": "2026.427.0-canary.3",
             },
           },
         },
       },
     ],
     [
-      "@paperclipai/plugin-sdk",
+      "@bostan/plugin-sdk",
       {
         versions: {
           "2026.427.0-canary.3": {},
@@ -201,7 +201,7 @@ test("verifyPackageRegistryState fails when canary latest is left in place by de
     }),
     [
       "@paperclipai/plugin-e2b: latest dist-tag still resolves to prerelease 2026.425.0-canary.5; if that state is intentional, rerun the verification script directly with --allow-canary-latest",
-      "@paperclipai/plugin-e2b@2026.425.0-canary.5 via latest: dependencies requires @paperclipai/plugin-sdk@2026.425.0-canary.5, but npm does not expose that version",
+      "@paperclipai/plugin-e2b@2026.425.0-canary.5 via latest: dependencies requires @bostan/plugin-sdk@2026.425.0-canary.5, but npm does not expose that version",
     ],
   );
 });
@@ -348,7 +348,7 @@ test("verifyPackageRegistryState still fails when the dist-tag is stale", () => 
 test("verifyPackageRegistryState ignores internal peer dependency ranges", () => {
   const packageDocsByName = new Map([
     [
-      "@paperclipai/plugin-sdk",
+      "@bostan/plugin-sdk",
       {
         "dist-tags": {
           canary: "2026.430.0-canary.0",
@@ -366,8 +366,8 @@ test("verifyPackageRegistryState ignores internal peer dependency ranges", () =>
 
   assert.deepEqual(
     verifyPackageRegistryState({
-      packageName: "@paperclipai/plugin-sdk",
-      packageDoc: packageDocsByName.get("@paperclipai/plugin-sdk"),
+      packageName: "@bostan/plugin-sdk",
+      packageDoc: packageDocsByName.get("@bostan/plugin-sdk"),
       packageDocsByName,
       channel: "canary",
       distTag: "canary",

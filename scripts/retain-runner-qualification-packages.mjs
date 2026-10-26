@@ -12,7 +12,7 @@ export function retainRunnerQualificationPackages({ repo, output, sourceRevision
   assert.equal(JSON.parse(readFileSync(join(repo, 'server/dist/build-info.json'))).commit, sourceRevision);
   assert.ok(publicArchives.some(a => a.name === '@bostan/server'));
   assert.ok(publicArchives.some(a => a.name === 'paperclipai'));
-  assert.ok(publicArchives.some(a => a.name === '@paperclipai/plugin-sdk'));
+  assert.ok(publicArchives.some(a => a.name === '@bostan/plugin-sdk'));
   assert.equal(new Set(publicArchives.map(a => a.name)).size, publicArchives.length);
   output = resolve(output);
   assert.ok(!existsSync(output), 'Never replace retained qualification packages');

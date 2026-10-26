@@ -1,4 +1,4 @@
-import { environmentTaskResultSchema } from "@paperclipai/plugin-sdk";
+import { environmentTaskResultSchema } from "@bostan/plugin-sdk";
 import { randomUUID } from "node:crypto";
 import type { Db } from "@paperclipai/db";
 import { probeCopilotMetadata, validateCopilotMetadata } from "../vendor/paperclip-runner/live/index.js";

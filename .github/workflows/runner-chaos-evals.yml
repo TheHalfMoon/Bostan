@@ -62,7 +62,7 @@ jobs:
             src/drivers/acpx/runtime-host.test.ts
 
       - name: Build server test dependencies
-        run: pnpm --filter @paperclipai/plugin-sdk ensure-build-deps
+        run: pnpm --filter @bostan/plugin-sdk ensure-build-deps
 
       - name: Run server finalization and recovery suites
         run: |

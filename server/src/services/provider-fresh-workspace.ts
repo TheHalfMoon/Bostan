@@ -8,7 +8,7 @@ import { pipeline } from "node:stream/promises";
 import { Transform } from "node:stream";
 import { and, asc, eq } from "drizzle-orm";
 import { executionWorkspaces, heartbeatRuns, issues, projectWorkspaces, workspaceOperations, type Db } from "@paperclipai/db";
-import { freshWorkspaceSchema, type PluginFreshWorkspace } from "@paperclipai/plugin-sdk";
+import { freshWorkspaceSchema, type PluginFreshWorkspace } from "@bostan/plugin-sdk";
 import { resolvePaperclipInstanceRoot } from "../home-paths.js";
 import { getStorageService } from "../storage/index.js";
 import { recoveryRunAncestry } from "./recovery-run-ancestry.js";

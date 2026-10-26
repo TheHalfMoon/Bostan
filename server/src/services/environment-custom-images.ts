@@ -25,7 +25,7 @@ import type {
   PluginEnvironmentInteractiveSetupSession,
   PluginEnvironmentLeaseObservation,
   PluginEnvironmentTemplateRefKind,
-} from "@paperclipai/plugin-sdk";
+} from "@bostan/plugin-sdk";
 import { conflict, notFound, unprocessable } from "../errors.js";
 import {
   parseEnvironmentDriverConfig,

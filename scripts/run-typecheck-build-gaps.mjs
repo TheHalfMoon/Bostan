@@ -176,7 +176,7 @@ console.log(
 );
 
 if (buildGapPackages.length > 0) {
-  run("pnpm", ["--filter", "@paperclipai/plugin-sdk", "ensure-build-deps"]);
+  run("pnpm", ["--filter", "@bostan/plugin-sdk", "ensure-build-deps"]);
 
   for (const workspacePkg of buildGapPackages) {
     run("pnpm", ["--filter", workspacePkg.name, "typecheck"]);

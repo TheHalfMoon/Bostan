@@ -1,4 +1,4 @@
-import { freshWorkspaceSchema } from "@paperclipai/plugin-sdk";
+import { freshWorkspaceSchema } from "@bostan/plugin-sdk";
 /**
  * Centralized environment run orchestrator.
  *

@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { agents, plugins, pluginCompanySettings, resourceLifecycleEvents, type Db } from "@paperclipai/db";
-import type { PluginAgentRuntimeState } from "@paperclipai/plugin-sdk";
+import type { PluginAgentRuntimeState } from "@bostan/plugin-sdk";
 import { agentRecordQueries } from "../lib/agent-records.js";
 import { conflict, forbidden } from "../errors.js";
 import { agentInstructionsService } from "./agent-instructions.js";

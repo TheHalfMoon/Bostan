@@ -586,7 +586,7 @@ importers:
 
   packages/plugins/create-paperclip-plugin:
     dependencies:
-      '@paperclipai/plugin-sdk':
+      '@bostan/plugin-sdk':
         specifier: workspace:*
         version: link:../sdk
     devDependencies:
@@ -599,7 +599,7 @@ importers:
 
   packages/plugins/examples/plugin-authoring-smoke-example:
     dependencies:
-      '@paperclipai/plugin-sdk':
+      '@bostan/plugin-sdk':
         specifier: workspace:*
         version: link:../../sdk
     devDependencies:
@@ -633,6 +633,9 @@ importers:
 
   packages/plugins/examples/plugin-file-browser-example:
     dependencies:
+      '@bostan/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../sdk
       '@codemirror/lang-javascript':
         specifier: ^6.2.5
         version: 6.2.5
@@ -648,9 +651,6 @@ importers:
       '@lezer/highlight':
         specifier: ^1.2.1
         version: 1.2.3
-      '@paperclipai/plugin-sdk':
-        specifier: workspace:*
-        version: link:../../sdk
       codemirror:
         specifier: ^6.0.1
         version: 6.0.2
@@ -679,7 +679,7 @@ importers:
 
   packages/plugins/examples/plugin-hello-world-example:
     dependencies:
-      '@paperclipai/plugin-sdk':
+      '@bostan/plugin-sdk':
         specifier: workspace:*
         version: link:../../sdk
     devDependencies:
@@ -704,7 +704,7 @@ importers:
 
   packages/plugins/examples/plugin-kitchen-sink-example:
     dependencies:
-      '@paperclipai/plugin-sdk':
+      '@bostan/plugin-sdk':
         specifier: workspace:*
         version: link:../../sdk
       '@paperclipai/shared':
@@ -735,7 +735,7 @@ importers:
 
   packages/plugins/paperclip-plugin-fake-sandbox:
     dependencies:
-      '@paperclipai/plugin-sdk':
+      '@bostan/plugin-sdk':
         specifier: workspace:*
         version: link:../sdk
     devDependencies:
@@ -751,7 +751,7 @@ importers:
 
   packages/plugins/plugin-llm-wiki:
     devDependencies:
-      '@paperclipai/plugin-sdk':
+      '@bostan/plugin-sdk':
         specifier: workspace:*
         version: link:../sdk
       '@rollup/plugin-node-resolve':
@@ -790,7 +790,7 @@ importers:
 
   packages/plugins/plugin-workspace-diff:
     dependencies:
-      '@paperclipai/plugin-sdk':
+      '@bostan/plugin-sdk':
         specifier: workspace:*
         version: link:../sdk
       '@pierre/diffs':
@@ -917,6 +917,9 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.1141.0
         version: 3.1141.0
+      '@bostan/plugin-sdk':
+        specifier: workspace:*
+        version: link:../packages/plugins/sdk
       '@bostan/skills-catalog':
         specifier: workspace:*
         version: link:../packages/skills-catalog
@@ -995,9 +998,6 @@ importers:
       '@paperclipai/hermes-paperclip-adapter':
         specifier: workspace:*
         version: link:../packages/adapters/hermes
-      '@paperclipai/plugin-sdk':
-        specifier: workspace:*
-        version: link:../packages/plugins/sdk
       '@paperclipai/shared':
         specifier: workspace:*
         version: link:../packages/shared
@@ -1307,7 +1307,7 @@ importers:
         specifier: 13.6.32
         version: 13.6.32
     devDependencies:
-      '@paperclipai/plugin-sdk':
+      '@bostan/plugin-sdk':
         specifier: workspace:*
         version: link:../packages/plugins/sdk
       '@sentry/browser':

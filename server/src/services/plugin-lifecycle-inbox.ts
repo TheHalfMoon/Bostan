@@ -2,7 +2,7 @@ import { withAccountHomeSecretMutationLock } from "@paperclipai/adapter-codex-lo
 import { projectInstanceSecretService, type ProjectSecretSnapshot } from "./project-instance-secrets.js";
 import { publishActivity, type ActivityPublication } from "./activity-log.js";
 import { pluginCompanySettings, pluginLifecycleAcknowledgments, plugins, resourceLifecycleEvents, type Db } from "@paperclipai/db";
-import type { ResourceLifecycleEvent } from "@paperclipai/plugin-sdk";
+import type { ResourceLifecycleEvent } from "@bostan/plugin-sdk";
 import { z } from "zod";
 import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 import { badRequest, conflict, forbidden, notFound } from "../errors.js";

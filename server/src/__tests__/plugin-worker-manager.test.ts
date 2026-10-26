@@ -8,7 +8,7 @@ import {
   PLUGIN_RPC_ERROR_CODES,
   type HostServices,
   type HostToWorkerMethods,
-} from "@paperclipai/plugin-sdk";
+} from "@bostan/plugin-sdk";
 
 // Mock the shared logger, so a test reads the exact calls the manager makes
 // when it logs a route event. The child logger returns the same mock object,

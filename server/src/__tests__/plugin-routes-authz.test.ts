@@ -163,7 +163,7 @@ describe("plugin install and upgrade authz", () => {
     expect(packageNames).toContain("@paperclipai/plugin-llm-wiki");
     expect(packageNames).toContain("@paperclipai/plugin-modal");
     expect(packageNames).toContain("@paperclipai/plugin-authoring-smoke-example");
-    expect(packageNames).not.toContain("@paperclipai/plugin-sdk");
+    expect(packageNames).not.toContain("@bostan/plugin-sdk");
     expect(byPackageName.get("@paperclipai/plugin-workspace-diff")?.experimental).toBe(true);
     expect(byPackageName.get("@paperclipai/plugin-llm-wiki")?.experimental).toBe(true);
     expect(byPackageName.get("@paperclipai/plugin-modal")?.experimental).toBe(true);

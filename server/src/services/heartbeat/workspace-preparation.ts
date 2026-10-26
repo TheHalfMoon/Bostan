@@ -1,5 +1,5 @@
 import { reserveFreshPluginTaskWorkspace, stageProviderFreshWorkspace } from "../provider-fresh-workspace.js";
-import { freshWorkspaceSchema, type PluginFreshWorkspace } from "@paperclipai/plugin-sdk";
+import { freshWorkspaceSchema, type PluginFreshWorkspace } from "@bostan/plugin-sdk";
 import { pluginRegistryService } from "../plugin-registry.js";
 import { attachPreservedWorkspaceSnapshots } from "../workspace-recovery-snapshot.js";
 import { materializeFreshWorkspaceSeed } from "../fresh-workspace-seed.js";

@@ -164,7 +164,7 @@ describe("Windows absolute import paths in esbuild QA", () => {
       "../server/src/index.ts",
       "node:fs", "file:///tmp/file.js",
     ]) expect(shouldResolveAsBarePackage(target)).toBe(false);
-    for (const pkg of ["@paperclipai/plugin-sdk", "react", "esbuild", "typescript"]) {
+    for (const pkg of ["@bostan/plugin-sdk", "react", "esbuild", "typescript"]) {
       expect(shouldResolveAsBarePackage(pkg)).toBe(true);
     }
   });

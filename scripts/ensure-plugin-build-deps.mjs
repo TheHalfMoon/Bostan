@@ -24,7 +24,7 @@ const buildTargets = [
     dependencies: [],
   },
   {
-    name: "@paperclipai/plugin-sdk",
+    name: "@bostan/plugin-sdk",
     output: path.join(rootDir, "packages/plugins/sdk/dist/index.js"),
     completion: path.join(rootDir, "packages/plugins/sdk/dist/.paperclip-build-complete"),
     sourceDir: path.join(rootDir, "packages/plugins/sdk/src"),

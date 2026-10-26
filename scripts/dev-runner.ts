@@ -518,7 +518,7 @@ async function maybePreflightMigrations(options: { interactive?: boolean; autoAp
 async function buildPluginSdk() {
   console.log("[paperclip] building plugin sdk...");
   const result = await runPnpm(
-    ["--filter", "@paperclipai/plugin-sdk", "build"],
+    ["--filter", "@bostan/plugin-sdk", "build"],
     { stdio: "inherit" },
   );
   if (result.signal) {

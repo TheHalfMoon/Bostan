@@ -86,7 +86,7 @@
   },
   {
     "dir": "packages/plugins/sdk",
-    "name": "@paperclipai/plugin-sdk",
+    "name": "@bostan/plugin-sdk",
     "publishFromCi": false
   },
   {
