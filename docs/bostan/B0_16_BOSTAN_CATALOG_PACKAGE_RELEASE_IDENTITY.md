@@ -55,3 +55,15 @@ Release NO-GO, repository PRIVATE, Actions OFF, main unchanged.
 ## Windows portability defect found by real native source QA
 
 The initial Windows B0-16 source suite exposed another donor release-map defect: the public package discovery used platform-native `path.join()` for manifest *identifiers*. Windows therefore produced `packages\\skills-catalog`, while the checked-in cross-platform release map stores `packages/skills-catalog`, falsely declaring all public package entries missing. Fixed workspace relative manifest identifiers to always use forward slashes without altering absolute filesystem paths. Added a platform-portable regression test and verified the release-map suite passes 13/13 on Mac. Re-run native Windows source after this follow-up head. This remains a source release mapping test only, not permission to publish.
+
+## Final latest-head two-platform source qualification
+
+- Final Mac Bostan Node source including release inventory and B0-16 identity guards: **199 PASS, 0 FAIL, 10 platform/opt-in SKIP** (209 total).
+- Final Windows Abdulaziz Bostan Node source including release inventory and B0-16 identity guards: **201 PASS, 0 FAIL, 8 platform/opt-in SKIP** (209 total).
+- Previous native Windows run failed because release inventory used backslash filesystem separators for portable workspace package IDs; now corrected and separately tested, with all Windows native source checks passing.
+- Actual source Bostan HTTP/real PostgreSQL clean restart/persistence/Chromium private UI: PASS with zero browser page errors and blocked external requests.
+- Five original canonical independent Case/JWT/HTTP/real PostgreSQL suites: **22 PASS, 0 FAIL**.
+- Both renamed Bostan catalog TypeScript builds passed; server skill catalog install/provenance tests 18 PASS; both catalog manifest suites 18 PASS; official UI TS project typecheck PASS.
+- Native Windows package/installer E2E is *not qualified*; source tests only. The three preexisting Windows untracked B023 QA scripts were preserved, no Windows cleanup or installer was performed.
+
+The entire B0-09 product identity migration is still OPEN. Further package and user-visible UI waves are required; never interpret this partial catalog migration as final product completion.
