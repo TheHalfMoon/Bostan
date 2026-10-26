@@ -29,6 +29,7 @@ import { useCompany } from "@/context/CompanyContext";
 import { useBreadcrumbs } from "@/context/BreadcrumbContext";
 import { useToast } from "@/context/ToastContext";
 import { queryKeys } from "@/lib/queryKeys";
+import { safeCredentialUiError } from "@/lib/credential-ui-error-privacy";
 import { consumeSkillSourceReturn } from "@/lib/skill-source-connect-return";
 import { toolsApi } from "@/api/tools";
 import { agentsApi } from "@/api/agents";
@@ -80,7 +81,7 @@ export function AppDetail(props: { renderActions?: (connection: ToolConnection) 
   const { connectionId = "" } = useParams<{ connectionId: string }>();
   const connection = useQuery({ queryKey: queryKeys.tools.connection(connectionId), queryFn: () => toolsApi.getConnection(connectionId), enabled: !!connectionId });
   if (connection.isPending) return <p role="status">Loading connection…</p>;
-  if (connection.error) return <p role="alert">{connection.error.message}</p>;
+  if (connection.error) return <p role="alert">{safeCredentialUiError(connection.error, "appLoad")}</p>;
   const pluginKey = connection.data && aiConnectionRouterPluginKey(connection.data);
   return pluginKey ? <AiConnectionPoolConnector pluginKey={pluginKey} connection={connection.data} /> : <StandardAppDetail {...props} />;
 }
@@ -353,7 +354,7 @@ function StandardAppDetail({ renderActions, renderAgentSettings, renderConnectio
       } catch (error) {
         pushToast({
           title: "Couldn't start sign-in",
-          body: error instanceof Error ? error.message : "Please try again.",
+          body: safeCredentialUiError(error, "appReconnect"),
           tone: "error",
         });
       }
@@ -361,7 +362,7 @@ function StandardAppDetail({ renderActions, renderAgentSettings, renderConnectio
     onError: (error) =>
       pushToast({
         title: "Couldn't start sign-in",
-        body: error instanceof Error ? error.message : "Please try again.",
+        body: safeCredentialUiError(error, "appReconnect"),
         tone: "error",
       }),
   });
@@ -395,7 +396,7 @@ function StandardAppDetail({ renderActions, renderAgentSettings, renderConnectio
       } catch (error) {
         pushToast({
           title: "Couldn't start sign-in",
-          body: error instanceof Error ? error.message : "Please try again.",
+          body: safeCredentialUiError(error, "appReconnect"),
           tone: "error",
         });
       }
@@ -403,7 +404,7 @@ function StandardAppDetail({ renderActions, renderAgentSettings, renderConnectio
     onError: (error) =>
       pushToast({
         title: "Couldn't start sign-in",
-        body: error instanceof Error ? error.message : "Please try again.",
+        body: safeCredentialUiError(error, "appReconnect"),
         tone: "error",
       }),
   });
@@ -471,7 +472,7 @@ function StandardAppDetail({ renderActions, renderAgentSettings, renderConnectio
     },
     onError: (error) => pushToast({
       title: "Couldn't refresh GitHub access",
-      body: error instanceof Error ? error.message : "Please try again.",
+      body: safeCredentialUiError(error, "appReconnect"),
       tone: "error",
     }),
   });
@@ -593,7 +594,7 @@ function StandardAppDetail({ renderActions, renderAgentSettings, renderConnectio
 
       {status.tone === "attention" && connection.requiresReauthorization === false && (
         <div role="status">
-          <p>{connection.healthMessage || "GitHub access could not be checked. Try again."}</p>
+          <p>{safeCredentialUiError(connection.healthMessage, "appHealth")}</p>
           <Button variant="outline" disabled={refreshGitHubAccess.isPending} onClick={() => refreshGitHubAccess.mutate()}>
             Retry access
           </Button>

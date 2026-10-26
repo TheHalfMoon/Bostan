@@ -50,6 +50,7 @@ import { useCompany } from "@/context/CompanyContext";
 import { useBreadcrumbs } from "@/context/BreadcrumbContext";
 import { useToast } from "@/context/ToastContext";
 import { queryKeys } from "@/lib/queryKeys";
+import { safeCredentialUiError } from "@/lib/credential-ui-error-privacy";
 import { aiConnectionPoolsApi } from "@/api/ai-connection-pools";
 import { toolsApi } from "@/api/tools";
 import { emailApi } from "@/api/email";
@@ -226,12 +227,7 @@ function connectionState(connection: ToolConnection): ConnectionState {
     return {
       kind: "attention",
       label: "Needs attention",
-      message:
-        connection.healthMessage ??
-        connection.lastError ??
-        (connection.authKind === "oauth"
-          ? "Sign in again to restore access."
-          : "Replace the credential to restore access."),
+      message: safeCredentialUiError(connection.healthMessage ?? connection.lastError, "appHealth"),
     };
   }
   return { kind: "connected", label: "Connected", message: null };

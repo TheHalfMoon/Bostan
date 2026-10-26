@@ -1353,6 +1353,21 @@ describe("AppDetail", () => {
     });
   });
 
+  it("never echoes token-bearing provider health diagnostics on the app detail page", async () => {
+    mockParams.tab = "permissions";
+    const token = "PRIVATE_APP_DETAIL_BEARER_TOKEN_NEVER_RENDER";
+    getConnectionMock.mockResolvedValue(connection({
+      healthStatus: "error", requiresReauthorization: false, authKind: "oauth",
+      healthMessage: "Authorization: Bearer " + token,
+      lastError: "https://provider.invalid?token=" + token,
+    }));
+    await renderAppDetail();
+    expect(container.textContent).toContain("This app connection needs attention.");
+    expect(container.textContent).not.toContain(token);
+    expect(container.textContent).not.toContain("provider.invalid");
+    expect(container.textContent).toContain("Retry access");
+  });
+
   it("keeps the header and reconnect banner across tabs", async () => {
     mockParams.tab = "permissions";
     getConnectionMock.mockResolvedValue(connection({
@@ -1365,9 +1380,55 @@ describe("AppDetail", () => {
     expect(container.textContent).toContain("GitHub");
     expect(container.textContent).toContain("Needs attention");
     expect(container.textContent).toContain("This app needs reconnecting");
-    expect(container.textContent).toContain("Token expired.");
+    expect(container.textContent).toContain("This app connection needs attention.");
+    expect(container.textContent).not.toContain("Token expired.");
     expect(container.textContent).toContain("Which agents can use this connection?");
   });
+
+  it("does not show a provider bearer token when app connection loading fails", async () => {
+    mockParams.tab = "permissions";
+    getConnectionMock.mockRejectedValue(new Error(
+      "GET failed Authorization: Bearer PRIVATE_APP_LOAD_TOKEN",
+    ));
+    await renderAppDetail();
+    expect(container.textContent).toContain("Could not load this app connection.");
+    expect(container.textContent).not.toContain("PRIVATE_APP_LOAD_TOKEN");
+  });
+
+  it.each(["rejected", "unhealthy"])(
+    "does not echo a replacement API key from a %s credential check", async (mode) => {
+      mockParams.tab = "permissions";
+      const marker = "PRIVATE_APP_REPLACEMENT_KEY_DO_NOT_RENDER";
+      listGalleryMock.mockResolvedValue({ apps: [] });
+      listApplicationsMock.mockResolvedValue({ applications: [] });
+      getConnectionMock.mockResolvedValue(connection({
+        authKind: "api_key", healthStatus: "missing_secret",
+        credentialRefs: [{ name: "Authorization", placement: "header",
+          key: "Authorization", prefix: "Bearer ", label: "App key",
+          value: null, path: "credentials.authorization", secretId: "old-secret",
+          version: "latest" }],
+      }));
+      if (mode === "rejected") {
+        reconnectConnectionMock.mockRejectedValue(new Error("Bearer " + marker));
+      } else {
+        reconnectConnectionMock.mockResolvedValue({ connection: connection({
+          healthStatus: "error", healthMessage: "https://provider.invalid/?token=" + marker,
+        }) });
+      }
+      await renderAppDetail();
+      const field = container.querySelector<HTMLInputElement>('input[aria-label="App key"]');
+      expect(field).not.toBeNull();
+      await act(() => setInputValue(field!, "new-synthetic-credential"));
+      await act(() => findButton("Check & reconnect")!.click());
+      await flushReact();
+      expect(reconnectConnectionMock).toHaveBeenCalledTimes(1);
+      expect(pushToastMock).toHaveBeenCalledWith(expect.objectContaining({
+        tone: "error", body: "Credential check failed. Review the key and retry.",
+      }));
+      expect(container.textContent).not.toContain(marker);
+      expect(JSON.stringify(pushToastMock.mock.calls)).not.toContain(marker);
+    },
+  );
 
   it.each([
     { name: "remote.url", placement: "url", key: "url", prefix: null, label: "MCP server URL", value: "https://example.com/mcp?token=fresh", path: "remote.url" },
@@ -1440,7 +1501,8 @@ describe("AppDetail", () => {
     await renderAppDetail();
 
     expect(container.textContent).toContain("Reconnect required");
-    expect(container.textContent).toContain("Authorization expired (invalid_grant).");
+    expect(container.textContent).toContain("This app connection needs attention.");
+    expect(container.textContent).not.toContain("invalid_grant");
     expect(container.querySelector('input[placeholder="Paste your new key"]')).toBeNull();
 
     await act(async () => {

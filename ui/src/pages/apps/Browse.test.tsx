@@ -408,16 +408,16 @@ describe("Connectors landing page", () => {
     return document.querySelector<HTMLElement>('[role="menu"]')!;
   }
 
-  it("defaults to Paperclip with five chips, expands search to All, and retains explicit source scope", async () => {
+  it("defaults to Bostan with five chips, expands search to All, and retains explicit source scope", async () => {
     aggregatorCatalogMock.push(indexedApp("Remote App", ["composio"]));
     await renderBrowse(false);
-    expect(container.querySelector('[aria-label="App filters"]')?.textContent).toBe("PaperclipComposioArcadeInstalledAll");
+    expect(container.querySelector('[aria-label="App filters"]')?.textContent).toBe("BostanComposioArcadeInstalledAll");
     expect(container.querySelector('[data-app-slug="remote-app"]')).toBeNull();
     await search("Remote App");
     expect(container.querySelector('[aria-checked="true"]')?.textContent).toBe("All");
     expect(container.querySelector('[data-app-slug="remote-app"]')).toBeTruthy();
     await search("");
-    expect(container.querySelector('[aria-checked="true"]')?.textContent).toBe("Paperclip");
+    expect(container.querySelector('[aria-checked="true"]')?.textContent).toBe("Bostan");
     await clickButton("Arcade", container);
     await search("Remote App");
     expect(container.querySelector('[aria-checked="true"]')?.textContent).toBe("Arcade");
@@ -1292,7 +1292,7 @@ describe("Connectors landing page", () => {
           id: "conn-expired",
           name: "ops@example.com",
           healthStatus: "error",
-          healthMessage: "The saved sign-in expired.",
+          healthMessage: "Bearer PRIVATE_BROWSE_CONNECTION_TOKEN",
         }),
       ],
     });
@@ -1325,7 +1325,8 @@ describe("Connectors landing page", () => {
     expect(notion.textContent).toContain("ops@example.com");
     expect(notion.textContent).not.toContain("Connected by");
     expect(notion.textContent).toContain("Dotta");
-    expect(notion.textContent).toContain("The saved sign-in expired.");
+    expect(notion.textContent).toContain("This app connection needs attention. Check its credentials or reconnect.");
+    expect(notion.textContent).not.toContain("PRIVATE_BROWSE_CONNECTION_TOKEN");
     expect(
       notion.querySelector('button[aria-label="Add account Notion"]'),
     ).toBeTruthy();
@@ -1509,7 +1510,7 @@ describe("Connectors landing page", () => {
     await flushReact();
     expect(chatSetupMock).not.toHaveBeenCalled();
     expect(emailControlMock).not.toHaveBeenCalled();
-    expect(document.body.textContent).toContain("Existing Paperclip tasks and conversation history remain available.");
+    expect(document.body.textContent).toContain("Existing Bostan tasks and conversation history remain available.");
     chatListMock.mockResolvedValue([]);
     await act(() => Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.trim() === "Remove connection")!.click());
     await flushReact();

@@ -17,6 +17,11 @@ const CREDENTIAL_ERROR_COPY = {
   connectionProbe: "Connection probe failed. Check the endpoint and credential configuration.",
   connectionActivate: "Could not activate this connection. Review its settings and retry.",
   connectionHealth: "The connection reported a problem. Check its settings before activation.",
+  appLoad: "Could not load this app connection. Refresh and try again.",
+  appHealth: "This app connection needs attention. Check its credentials or reconnect.",
+  appReconnect: "Could not reconnect this app. Check its credentials and try again.",
+  appCredential: "Credential check failed. Review the key and retry.",
+
   oauthStart: "Bostan couldn’t start secure sign-in. Try again.",
 } as const;
 
