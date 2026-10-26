@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync, existsSync, copyFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, delimiter } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { createZipArchive } from "../../../ui/src/lib/zip.ts";
 
-const source = new URL("../bostan-preview.mjs", import.meta.url).pathname;
-const cli = new URL("../../dist/bostan.js", import.meta.url).pathname;
+const source = fileURLToPath(new URL("../bostan-preview.mjs", import.meta.url));
+const cli = fileURLToPath(new URL("../../dist/bostan.js", import.meta.url));
 const nodeDir = dirname(process.execPath);
 const nativeTest = process.platform === "darwin" || process.platform === "linux" ? test : test.skip;
 
@@ -20,7 +21,7 @@ function fixture() {
 function invoke(home, args, executable = source) {
   const result = spawnSync(executable === "shim" ? join(home, ".local", "bin", "bostan") : process.execPath,
     executable === "shim" ? args : [executable, ...args], {
-      env: { HOME: home, PATH: nodeDir + ":/usr/bin:/bin", NODE_ENV: "test" },
+      env: { HOME: home, PATH: nodeDir + delimiter + (process.env.PATH ?? ""), NODE_ENV: "test" },
       timeout: 4000, encoding: "utf8",
     });
   assert.equal(result.error, undefined);
