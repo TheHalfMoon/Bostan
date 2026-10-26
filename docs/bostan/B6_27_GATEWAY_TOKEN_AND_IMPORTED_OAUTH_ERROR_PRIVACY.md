@@ -21,6 +21,6 @@ The normal success flow still renders the newly issued one-time token only in it
 - Native Mac Bostan Node source: 165 PASS, 0 FAIL, 9 platform SKIP (174 total). Source-brand static check was updated to assert branded copy in the new centralized module instead of requiring its duplicate literal in the page.
 - Real disposable macOS local Bostan HTTP/PostgreSQL stop/restart/persistence + headless Chromium smoke: PASS, browser errors 0, blocked external requests 0. This broad smoke validates app boot and persistence, **not a live malicious OAuth provider interaction**.
 - Five-file canonical governed Case/JWT/HTTP/real PostgreSQL/native bridge suite on the amended head: 22 PASS, 0 FAIL.
-- Native Windows source tests are recorded separately when run on this exact head.
+- Real native Windows Abdulaziz Bostan Node source suite on this B6-27 code head: 167 PASS, 0 FAIL, 7 platform SKIP (174 total). No installer or Windows user profile was changed.
 
 This is an additive, scoped sensitive-UI privacy fix, not a comprehensive security audit. Independent model-authored terminal Case, full official server compiler/build, installed Windows application/installer and complete security signoff remain unqualified; release NO-GO.
