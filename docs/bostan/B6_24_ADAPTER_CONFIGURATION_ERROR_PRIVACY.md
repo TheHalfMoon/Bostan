@@ -30,3 +30,12 @@ AgentConfigForm still showed untrusted exception.message from runner upgrade, mo
 ## Unqualified gates
 
 Full official server compiler/build on properly resourced host; production installed Windows app/browser/installer qualification; genuine independent model-driven signed Case report and actual external-effect consent/readback; comprehensive independent security audit and release acceptance. Release NO-GO.
+
+## Latest-head source regressions and explicit compiler limits
+
+- Broad Bostan Node source tests on the exact B6-24 Mac head: 151 PASS, 0 FAIL, 9 platform-specific SKIP (160 total).
+- Real private Bostan macOS local source and PostgreSQL Chromium E2E: PASS, exit 0. Verified company create, clean stop/restart, persisted company, real headless Chromium UI, zero browser page errors, zero blocked outbound requests and clean stop. No network-based AI task or real customer data. The actual head was tested with the isolated app.
+- A historical B5-31 disposable native TypeScript compiler 7.0.0-dev.20260707.2 was independently installed outside the repository and invoked on the exact 2,747-source server tsconfig on this head with bounded Go memory/CPU. **Timed out after 240 seconds, zero diagnostics produced, no success qualification.** Process was killed, scratch installation deleted, and repository dependencies/lockfiles unchanged. No claim of a successful entire server typecheck or build is made.
+- Windows Abdulaziz capacity remains below the existing 6 GiB free RAM and 12 GiB TEMP/staging disk acceptance budgets, with no qualified installer available. Source tests alone do not waive native distribution qualification.
+
+Result: B6-24 source UI and private Chromium gates PASS; server official qualification, independently governed model-driven Case and native Windows installer remain blocked. Release NO-GO.
