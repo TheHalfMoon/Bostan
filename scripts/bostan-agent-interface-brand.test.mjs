@@ -41,7 +41,7 @@ const visibleCopy = new Map([
   ["ui/src/pages/agent-skills/AgentSkillsTab.tsx", "stable Bostan-managed prompt bundle"],
   ["ui/src/pages/tools/connection-dialogs.tsx", "Bostan stores only the"],
   ["ui/src/pages/tools/McpConfigHelpDialog.tsx", "back into Bostan."],
-  ["ui/src/pages/tools/PasteConfigTab.tsx", "Bostan couldn’t start secure sign-in."],
+  ["ui/src/lib/credential-ui-error-privacy.ts", "Bostan couldn’t start secure sign-in."],
   ["ui/src/pages/tools/AuditTab.tsx", 'Recorded by Bostan.'],
   ["ui/src/pages/secrets/SetMyUserSecretDialog.tsx", "Bostan stores the"],
   ["ui/src/pages/ProfileSettings.tsx", "Bostan file storage"],
@@ -53,6 +53,12 @@ test("first-party agent and local adapter labels expose Bostan identity", () => 
   for (const [path, snippet] of visibleCopy) {
     assert.ok(source(path).includes(snippet), path + " must retain " + snippet);
   }
+});
+
+test("pasted MCP OAuth UI imports the centralized Bostan-branded safe error copy", () => {
+  const page = source("ui/src/pages/tools/PasteConfigTab.tsx");
+  assert.match(page, /safeCredentialUiError/);
+  assert.match(page, /"oauthStart"/);
 });
 
 test("stable inherited internal keys and protocol ids are not silently renamed", () => {

@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ToggleSwitch } from "@/components/ui/toggle-switch";
 import { toolsApi } from "@/api/tools";
 import { navigateTopLevel } from "@/lib/browserNavigation";
+import { safeCredentialUiError } from "@/lib/credential-ui-error-privacy";
 import { prepareOAuthNavigation, savePendingCloudHandoff } from "@/lib/oauthHandoff";
 import { useNavigate } from "@/lib/router";
 import {
@@ -137,7 +138,7 @@ export function PasteConfigTab({ companyId }: { companyId: string }) {
       navigateTopLevel(target.url);
     } catch (error) {
       setOAuthPhase("error");
-      setOAuthError(error instanceof Error ? error.message : "Bostan couldn’t start secure sign-in. Try again.");
+      setOAuthError(safeCredentialUiError(error, "oauthStart"));
     }
   };
 
@@ -146,11 +147,7 @@ export function PasteConfigTab({ companyId }: { companyId: string }) {
     onSuccess: (start) => void openAuthorizationPage(start.authorizationUrl, start.handoff),
     onError: (error) => {
       setOAuthPhase("error");
-      setOAuthError(
-        error instanceof Error
-          ? error.message
-          : "Bostan couldn’t start secure sign-in. Try again.",
-      );
+      setOAuthError(safeCredentialUiError(error, "oauthStart"));
     },
   });
 
@@ -302,7 +299,7 @@ export function PasteConfigTab({ companyId }: { companyId: string }) {
         </span>
       </div>
 
-      {importMutation.isError ? <ErrorState error={importMutation.error} /> : null}
+      {importMutation.isError ? <ErrorState error={new Error(safeCredentialUiError(importMutation.error, "configImport"))} /> : null}
 
       {preview ? (
         drafts.length === 0 ? (
@@ -351,7 +348,7 @@ export function PasteConfigTab({ companyId }: { companyId: string }) {
         )
       ) : null}
 
-      {connectMutation.isError ? <ErrorState error={connectMutation.error} /> : null}
+      {connectMutation.isError ? <ErrorState error={new Error(safeCredentialUiError(connectMutation.error, "configConnect"))} /> : null}
       {connectResult ? (
         <CatalogReview
           result={connectResult}
@@ -369,7 +366,7 @@ export function PasteConfigTab({ companyId }: { companyId: string }) {
           onFinish={() => finishMutation.mutate()}
         />
       ) : null}
-      {finishMutation.isError ? <ErrorState error={finishMutation.error} /> : null}
+      {finishMutation.isError ? <ErrorState error={new Error(safeCredentialUiError(finishMutation.error, "configFinish"))} /> : null}
     </div>
   );
 }
