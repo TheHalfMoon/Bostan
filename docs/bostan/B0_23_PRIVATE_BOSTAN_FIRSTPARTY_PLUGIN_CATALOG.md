@@ -50,3 +50,11 @@ Some other first-party packages and internal runtime wire IDs still carry histor
 - All five renamed plugins built; Wiki 101 PASS, Workspace Diff 26 PASS, Fake Sandbox 6 PASS, Authoring Smoke 2 PASS. Combined package tests **135 PASS, 0 FAIL**.
 - Five renamed packages removed from inherited workspace identity; **26 other @paperclipai/ package manifest names** still remain and B0-09 full identity is therefore OPEN.
 - No source React runtime dependency was added to Wiki. Only a devDependency for local tests; the SDK's documented esbuild bundler treats React and React DOM as external, preserving host React peer semantics.
+
+## Final native Windows and source QA evidence
+
+- Native Windows `Abdulaziz` on B0-23 code: **237 PASS, 0 FAIL, 8 SKIP** (245 total) for Bostan Node source and disabled release/owned package checks.
+- Native Mac: **235 PASS, 0 FAIL, 10 SKIP** (245 total).
+- Five real plugin builds and 135 dedicated package tests PASS. Real server plugin discovery/orchestration/authz with database 82 PASS. UI plugin-settings 6 PASS. Local Bostan HTTP/PostgreSQL/Chromium persisted synthetic company PASS, no browser page errors or external requests.
+- Windows result is **source-only** and not an installed Windows application or installer; no Windows user data, original untracked QA helpers or applications were removed or closed.
+- Draft PR #172 stacked after Draft PR #171, private only. Exactly **26** inherited first-party package names remain visible in local package manifests, plus compatibility and source/legal facts; do not claim B0-09 closed.
