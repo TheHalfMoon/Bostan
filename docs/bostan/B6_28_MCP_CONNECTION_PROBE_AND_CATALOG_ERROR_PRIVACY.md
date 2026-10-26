@@ -22,6 +22,6 @@ Reuse the existing B6-27 fixed-copy safeCredentialUiError(untrusted, action) hel
 - Native Mac Bostan Node source suite: **165 PASS, 0 FAIL, 9 platform SKIP** (174 total).
 - Five original native Case/JWT/HTTP/real PostgreSQL integration suites: **22 PASS, 0 FAIL**.
 - The first local source browser run was blocked by a missing Playwright-pinned chromium-headless-shell v1234 binary. It was restored via the free official Playwright headless-only browser installer (not a paid cloud service), without touching unrelated user apps. The retry on the same amended B6-28 code **PASS**: real private source app/PostgreSQL clean stop/restart/persistence/Chromium smoke, page errors 0, external blocked requests 0.
-- Native Windows source regression is recorded separately upon verification on the amended B6-28 code.
+- Native Windows Abdulaziz source Node suite on the exact B6-28 code head: **167 PASS, 0 FAIL, 7 platform SKIP** (174 total). No Windows installer, app services or user files were changed.
 
 This is a scoped UI privacy fix, NOT evidence of a comprehensive security sign-off, model-authored governed Case, official full-server build or installed Windows application. Release remains NO-GO.
