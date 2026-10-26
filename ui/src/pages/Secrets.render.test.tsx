@@ -938,14 +938,12 @@ describe("Secrets page layout", () => {
           code: "access_denied",
           provider: "aws_secrets_manager",
           operation: "secret.create",
-          providerConfigId: "vault-aws",
+          providerConfigId: rawProviderMessage,
           region: "us-east-1",
-          credentialPath: "Paperclip server runtime/provider credential path",
-          requiredCapability: "secretsmanager:CreateSecret",
-          actionableMessage:
-            "AWS managed secret creation needs secretsmanager:CreateSecret in the selected region for this provider vault.",
-          safeAlternative:
-            "If the secret already exists in AWS, link it as an external reference instead of creating a Paperclip-managed value.",
+          credentialPath: rawProviderMessage,
+          requiredCapability: rawProviderMessage,
+          actionableMessage: rawProviderMessage,
+          safeAlternative: rawProviderMessage,
         },
       }),
     );
@@ -1017,7 +1015,7 @@ describe("Secrets page layout", () => {
     await flushReact();
 
     const errorBanner = document.querySelector('[data-testid="secret-create-error"]');
-    expect(errorBanner?.textContent).toBe("Secret creation failed");
+    expect(errorBanner?.textContent).toBe("Secret request failed. Retry or contact the instance operator.");
 
     await act(async () => {
       root.unmount();
@@ -1097,15 +1095,13 @@ describe("Secrets page layout", () => {
           code: "access_denied",
           provider: "aws_secrets_manager",
           operation: "secret_provider_config.discovery.preview",
-          providerConfigId: "discovery-preview",
-          providerVaultContext: "draft_config",
-          region: "us-west-2",
-          credentialPath: "Paperclip server runtime/provider credential path",
-          requiredCapability: "secretsmanager:ListSecrets",
-          actionableMessage:
-            "AWS discovery preview needs secretsmanager:ListSecrets in the selected region for the Paperclip server runtime/provider credential path.",
-          safeAlternative:
-            "If the operator already knows the exact AWS Secrets Manager ARN, paste/link that ARN instead of using discovery. Exact-resource DescribeSecret and runtime read permissions are still required.",
+          providerConfigId: rawProviderMessage,
+          providerVaultContext: rawProviderMessage,
+          region: rawProviderMessage,
+          credentialPath: rawProviderMessage,
+          requiredCapability: rawProviderMessage,
+          actionableMessage: rawProviderMessage,
+          safeAlternative: rawProviderMessage,
         },
       }),
     );
@@ -1133,7 +1129,7 @@ describe("Secrets page layout", () => {
     expect(errorBanner).not.toBeNull();
     expect(errorBanner?.textContent).toContain("AWS discovery needs ListSecrets permission");
     expect(errorBanner?.textContent).toContain("secretsmanager:ListSecrets");
-    expect(errorBanner?.textContent).toContain("Paperclip server runtime/provider credential path");
+    expect(errorBanner?.textContent).toContain("Bostan server runtime/provider credential path");
     expect(errorBanner?.textContent).toContain("paste/link that ARN");
     expect(errorBanner?.textContent).toContain("DescribeSecret");
     expect(errorBanner?.textContent).toContain("us-west-2");
@@ -1180,8 +1176,8 @@ describe("Secrets page layout", () => {
     const errorBanner = document.querySelector('[data-testid="aws-vault-discovery-error"]');
     expect(errorBanner).not.toBeNull();
     expect(errorBanner?.textContent).toContain("AWS discovery failed");
-    expect(errorBanner?.textContent).toContain("AWS discovery request failed before IAM evaluation.");
-    expect(errorBanner?.textContent).toContain("proxy_forbidden");
+    expect(errorBanner?.textContent).toContain("Secret request failed. Retry or contact the instance operator.");
+    expect(errorBanner?.textContent).not.toContain("proxy_forbidden");
     expect(errorBanner?.textContent).not.toContain("AWS discovery needs ListSecrets permission");
 
     await act(async () => {

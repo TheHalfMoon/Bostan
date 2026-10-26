@@ -182,17 +182,12 @@ type ProviderVaultForm = {
   secretPathPrefix: string;
 };
 
+// Used ONLY to classify known provider error kinds; never print these values.
 type SafeProviderErrorDetails = {
   code?: string;
   provider?: string;
   operation?: string;
-  providerConfigId?: string;
-  providerVaultContext?: string;
   region?: string;
-  credentialPath?: string;
-  requiredCapability?: string;
-  actionableMessage?: string;
-  safeAlternative?: string;
 };
 
 // Provider errors may contain signed URLs, secret values or authorization payloads.
@@ -266,10 +261,20 @@ function isAwsDiscoveryAccessDenied(error: unknown): boolean {
   return apiErrorCode(error) === "access_denied";
 }
 
-function readableErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) return error.message || `Request failed: ${error.status}`;
-  if (error instanceof Error) return error.message;
-  return "Unexpected error";
+function readableErrorMessage(_error: unknown): string {
+  // Provider diagnostics may contain request URLs, OAuth state, account identifiers
+  // and credential fragments. The UI must not trust even labelled "safe" error text.
+  return "Secret request failed. Retry or contact the instance operator.";
+}
+
+function safeAwsRegion(value: unknown): string | undefined {
+  return typeof value === "string" && /^[a-z]{2}(?:-gov)?-[a-z]+-[0-9]$/.test(value)
+    ? value
+    : undefined;
+}
+
+function safeVaultIdentifier(value: string | null): string | undefined {
+  return value && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$/.test(value) ? value : undefined;
 }
 
 function providerVaultFormFromConfig(config: CompanySecretProviderConfig): ProviderVaultForm {
@@ -3944,19 +3949,19 @@ function AwsProviderVaultDiscoveryError({
 }) {
   const details = apiErrorDetails(error);
   const isAccessDenied = isAwsDiscoveryAccessDenied(error);
-  const region = (details?.region ?? form.region.trim()) || "unspecified";
+  // Every copied diagnostic comes from a fixed local value or a validated form field.
+  // API details may identify the machine-readable error kind but are never echoed.
+  const region = safeAwsRegion(form.region.trim()) ?? "unspecified";
   const message = readableErrorMessage(error);
   const safeDetails = {
     message,
     status: error instanceof ApiError ? error.status : undefined,
-    provider: details?.provider ?? form.provider,
-    operation: details?.operation ?? "secret_provider_config.discovery.preview",
-    providerVaultContext: details?.providerVaultContext ?? "draft_config",
+    provider: "aws_secrets_manager",
+    operation: "secret_provider_config.discovery.preview",
+    providerVaultContext: "draft_config",
     region,
-    code: details?.code,
-    requiredCapability: details?.requiredCapability,
-    credentialPath: details?.credentialPath,
-    safeAlternative: details?.safeAlternative,
+    code: isAccessDenied ? "access_denied" : "request_failed",
+    requiredCapability: isAccessDenied ? "secretsmanager:ListSecrets" : undefined,
   };
   const detailsText = JSON.stringify(safeDetails, null, 2);
 
@@ -3975,15 +3980,13 @@ function AwsProviderVaultDiscoveryError({
             </p>
             <p className="mt-1 leading-relaxed text-destructive/85">
               {isAccessDenied
-                ? details?.actionableMessage ??
-                  "Discovery needs secretsmanager:ListSecrets in the selected region for the Bostan server runtime/provider credential path."
+                ? "Discovery needs secretsmanager:ListSecrets in the selected region for the Bostan server runtime/provider credential path."
                 : message}
             </p>
           </div>
           {isAccessDenied ? (
             <p className="leading-relaxed text-destructive/85">
-              {details?.safeAlternative ??
-                "If you already know the exact AWS Secrets Manager ARN, paste/link that ARN instead of using discovery. Exact-resource DescribeSecret and runtime read permissions are still required."}
+              {"If you already know the exact AWS Secrets Manager ARN, paste/link that ARN instead of using discovery. Exact-resource DescribeSecret and runtime read permissions are still required."}
             </p>
           ) : null}
           <dl className="grid gap-1 text-destructive/80 sm:grid-cols-2">
@@ -3993,15 +3996,15 @@ function AwsProviderVaultDiscoveryError({
             </div>
             <div>
               <dt className="font-medium">Operation</dt>
-              <dd>{details?.operation ?? "secret_provider_config.discovery.preview"}</dd>
+              <dd>secret_provider_config.discovery.preview</dd>
             </div>
             <div>
               <dt className="font-medium">Provider</dt>
-              <dd>{details?.provider ?? "aws_secrets_manager"}</dd>
+              <dd>aws_secrets_manager</dd>
             </div>
             <div>
               <dt className="font-medium">Vault context</dt>
-              <dd>{details?.providerVaultContext ?? "draft_config"}</dd>
+              <dd>draft_config</dd>
             </div>
           </dl>
           <div className="rounded-md border border-destructive/20 bg-background/70 p-2 text-foreground">
@@ -4036,14 +4039,12 @@ function SecretCreateError({
   const safeDetails = {
     message,
     status: error instanceof ApiError ? error.status : undefined,
-    provider: details?.provider ?? provider,
-    operation: details?.operation ?? "secret.create",
-    providerConfigId: details?.providerConfigId ?? providerConfigId ?? "deployment-default",
-    region: details?.region,
-    code: details?.code,
-    requiredCapability: details?.requiredCapability,
-    credentialPath: details?.credentialPath,
-    safeAlternative: details?.safeAlternative,
+    provider: isAwsCreateError ? "aws_secrets_manager" : provider,
+    operation: "secret.create",
+    providerConfigId: safeVaultIdentifier(providerConfigId) ?? "deployment-default",
+    region: safeAwsRegion(details?.region),
+    code: isAccessDenied ? "access_denied" : "request_failed",
+    requiredCapability: isAccessDenied ? "secretsmanager:CreateSecret" : undefined,
   };
   const detailsText = JSON.stringify(safeDetails, null, 2);
 
@@ -4069,32 +4070,35 @@ function SecretCreateError({
               {isAccessDenied ? "AWS secret creation needs CreateSecret permission" : "AWS secret creation failed"}
             </p>
             <p className="mt-1 leading-relaxed text-destructive/85">
-              {details?.actionableMessage ?? message}
+              {isAccessDenied ? "AWS secret creation needs secretsmanager:CreateSecret in the selected region for this provider vault." : message}
             </p>
           </div>
-          {details?.safeAlternative ? (
-            <p className="leading-relaxed text-destructive/85">{details.safeAlternative}</p>
+          {isAccessDenied ? (
+            <p className="leading-relaxed text-destructive/85">
+              If the secret is already managed externally, link it as an external reference instead.
+              Exact-resource DescribeSecret and runtime read permissions are still required.
+            </p>
           ) : null}
           <dl className="grid gap-1 text-destructive/80 sm:grid-cols-2">
-            {details?.requiredCapability ? (
+            {isAccessDenied ? (
               <div>
                 <dt className="font-medium">Required IAM capability</dt>
-                <dd className="font-mono">{details.requiredCapability}</dd>
+                <dd className="font-mono">secretsmanager:CreateSecret</dd>
               </div>
             ) : null}
-            {details?.region ? (
+            {safeAwsRegion(details?.region) ? (
               <div>
                 <dt className="font-medium">Region</dt>
-                <dd>{details.region}</dd>
+                <dd>{safeAwsRegion(details?.region)}</dd>
               </div>
             ) : null}
             <div>
               <dt className="font-medium">Provider vault</dt>
-              <dd className="break-all">{details?.providerConfigId ?? providerConfigId ?? "Deployment default"}</dd>
+              <dd className="break-all">{safeVaultIdentifier(providerConfigId) ?? "Deployment default"}</dd>
             </div>
             <div>
               <dt className="font-medium">Operation</dt>
-              <dd>{details?.operation ?? "secret.create"}</dd>
+              <dd>secret.create</dd>
             </div>
           </dl>
           <div className="rounded-md border border-destructive/20 bg-background/70 p-2 text-foreground">
