@@ -28,3 +28,15 @@ Secret management child components still reflected upstream and provider error.m
 ## Remaining gates
 
 No complete security audit is claimed. Other UI/provider errors may still need inspection. Resource-qualified official full server typecheck/build, installed Windows application/installer, full independent model-driven governed Case (not just deterministic signed bridge), independent security signoff and final release qualification remain OPEN. No deploy or publish. Release NO-GO.
+
+## Post-fix real private Chromium qualification
+
+The first disposable Bostan browser E2E attempt did NOT run browser assertions: Playwright 1.62.1 required local chromium-headless-shell v1234, while only an older cached binary was present. This was a missing free browser runtime, not an app assertion failure.
+
+After installing the exact Playwright Chromium headless shell from its free distribution (approximately 94.7 MiB, no cloud usage or user browser modification), the SAME local smoke on the unchanged B6-23 source head was rerun:
+
+BOSTAN_LIVE_LOCAL_QA_CONFIRM=1 BOSTAN_LIVE_LOCAL_BROWSER_E2E=1 node scripts/bostan-local-live-persistence-e2e.mjs
+
+**PASS, exit 0**: actual isolated macOS Bostan server, synthetic company, PostgreSQL persistence across clean stop/restart, genuine headless Chromium UI, browserPageErrors 0, browserExternalRequestsBlocked 0 and clean stop. Final marker: BOSTAN_LOCAL_PERSISTENCE_E2E_PASS. The disposable profile was removed on success. No real customer accounts or model credits used.
+
+This is private macOS browser coverage, NOT installed Windows or full signed governed model-driven Case approval.
