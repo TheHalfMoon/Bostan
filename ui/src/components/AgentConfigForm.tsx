@@ -7,6 +7,7 @@ import { aiRoutingHarness } from "@paperclipai/shared";
 import { AiConnectionField } from "./ai-connections/AiConnectionField";
 import { aiConnectionBindingSchema, aiRuntimeConnectionBindingSchema } from "@paperclipai/shared";
 import { testAgentSetup } from "@/lib/test-agent-setup";
+import { safeAdapterRequestError } from "@/lib/adapter-error-privacy";
 import { setupEfforts } from "../lib/agent-setup-fields";
 import { RuntimeTestCard } from "./RuntimeTestCard";
 import { useState, useEffect, useRef, useMemo, useCallback, Children, isValidElement, type ReactNode } from "react";
@@ -655,7 +656,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
       setRunnerUpgrade(current => current?.agentId === agentId ? { agentId, status: "upgraded" } : current);
     } catch (error) {
       setRunnerUpgrade(current => current?.agentId === agentId ? {
-        agentId, status: "failed", error: error instanceof Error ? error.message : "Could not upgrade this agent. Try again.",
+        agentId, status: "failed", error: safeAdapterRequestError(error, "upgrade"),
       } : current);
     }
   };
@@ -1261,7 +1262,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
     try {
       return await testEnvironment.mutateAsync();
     } catch (error) {
-      setTestActionError(error instanceof Error ? error.message : "Environment test failed");
+      setTestActionError(safeAdapterRequestError(error, "test"));
       throw error;
     } finally {
       setTestActionPending(false);
@@ -1311,11 +1312,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
     if (!props.onTestFeedbackChange) return;
     props.onTestFeedbackChange({
       errorMessage: testActionError
-        ?? (testEnvironment.error instanceof Error
-          ? testEnvironment.error.message
-          : testEnvironment.error
-            ? "Environment test failed"
-            : null),
+        ?? (testEnvironment.error ? safeAdapterRequestError(testEnvironment.error, "test") : null),
       result: testEnvironment.data ?? null,
       // `showAdapterLogin` already requires a selected company and a non-empty
       // environment id, so both are present here.
@@ -1352,7 +1349,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
       const refreshed = await agentsApi.adapterModels(selectedCompanyId, modelAdapterType, { refresh: true, environmentId: currentDefaultEnvironmentId || null, provider: modelProvider, ...(runnerAcpxAgent === "copilot" ? { acpxAgent: runnerAcpxAgent, aiConnection: modelAiBinding, agentId: !isCreate ? props.agent.id : undefined } : {}) });
       queryClient.setQueryData(modelQueryKey, refreshed);
     } catch (error) {
-      setRefreshModelsError(error instanceof Error ? error.message : "Failed to refresh adapter models.");
+      setRefreshModelsError(safeAdapterRequestError(error, "models"));
     } finally {
       setRefreshingModels(false);
     }
@@ -1804,9 +1801,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
           {showInlineAdapterTestEnvironmentFeedback && !props.compactTestFeedback && (testActionError || testEnvironment.error) && (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               {testActionError
-                ?? (testEnvironment.error instanceof Error
-                  ? testEnvironment.error.message
-                  : "Environment test failed")}
+                ?? safeAdapterRequestError(testEnvironment.error, "test")}
             </div>
           )}
 
@@ -1904,9 +1899,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
               {(refreshModelsError || modelError) && (
                 <p className="text-xs text-destructive">
                   {refreshModelsError
-                    ?? (modelError instanceof Error
-                      ? modelError.message
-                      : "Failed to load adapter models.")}
+                    ?? safeAdapterRequestError(modelError, "models")}
                 </p>
               )}
               {adapterType === "opencode_local"
@@ -2292,7 +2285,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
           metadataOnly={adapterType === "paperclip_runner" && runnerAcpxAgent === "copilot"}
           state={testActionPending ? "running" : testActionError || testEnvironment.error ? "fail" : testResult?.status ?? "idle"}
           result={testResult ?? null}
-          error={testActionError ?? (testEnvironment.error instanceof Error ? testEnvironment.error.message : null)}
+          error={testActionError ?? (testEnvironment.error ? safeAdapterRequestError(testEnvironment.error, "test") : null)}
           onTest={triggerTestEnvironment}
           disabled={testEnvironmentDisabled}
         />
@@ -2544,7 +2537,7 @@ function DisplayedCodeLoginPanel({
       setSessionId(session.sessionId);
     },
     onError: (error) => {
-      setStartError(error instanceof Error ? error.message : "Could not start the login.");
+      setStartError(safeAdapterRequestError(error, "login"));
     },
   });
 
@@ -2561,7 +2554,7 @@ function DisplayedCodeLoginPanel({
     mutationFn: () => agentsApi.cancelAdapterAuthLogin(companyId, adapterType, sessionId!),
     onSuccess: clearActiveSession,
     onError: (error) => {
-      setStartError(error instanceof Error ? error.message : "Could not cancel the login.");
+      setStartError(safeAdapterRequestError(error, "cancel"));
     },
   });
 
@@ -2704,9 +2697,7 @@ function DisplayedCodeLoginPanel({
     if (activeSessionQuery.isError) {
       autoStartedRef.current = true;
       setStartError(
-        activeSessionQuery.error instanceof Error
-          ? activeSessionQuery.error.message
-          : "Could not check for an active login.",
+        safeAdapterRequestError(activeSessionQuery.error, "session"),
       );
       return;
     }
@@ -3117,7 +3108,7 @@ function SubmittedBrowserCodeLoginPanel({
       setSessionId(session.sessionId);
     },
     onError: (error) => {
-      setStartError(error instanceof Error ? error.message : "Could not start the login.");
+      setStartError(safeAdapterRequestError(error, "login"));
     },
   });
 
@@ -3144,7 +3135,7 @@ function SubmittedBrowserCodeLoginPanel({
         clearActiveSession();
         return;
       }
-      setStartError(error instanceof Error ? error.message : "Could not cancel the login.");
+      setStartError(safeAdapterRequestError(error, "cancel"));
     },
   });
 
@@ -3308,7 +3299,7 @@ function SubmittedBrowserCodeLoginPanel({
     mutationFn: (code: string) =>
       agentsApi.submitClaudeSetupTokenBrowserCode(companyId, sessionId!, code),
     onError: (error) => {
-      setStartError(error instanceof Error ? error.message : "Could not submit the browser code.");
+      setStartError(safeAdapterRequestError(error, "browserCode"));
     },
   });
 
@@ -3439,9 +3430,7 @@ function SubmittedBrowserCodeLoginPanel({
     if (activeSessionQuery.isError) {
       autoStartedRef.current = true;
       setStartError(
-        activeSessionQuery.error instanceof Error
-          ? activeSessionQuery.error.message
-          : "Could not check for an active login.",
+        safeAdapterRequestError(activeSessionQuery.error, "session"),
       );
       return;
     }

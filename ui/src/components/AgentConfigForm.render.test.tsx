@@ -754,9 +754,10 @@ describe("AgentConfigForm environment selector", () => {
     mockAdaptersApi.list.mockResolvedValueOnce([{ type: "codex_local", supportedRunners: ["legacy", "paperclip"], defaultRunner: "paperclip" }]);
     const result = await renderForm([]);
     roots.push(result.root);
-    result.onSave.mockRejectedValueOnce(new Error("Bostan Runner cannot honor these settings: extraArgs."));
+    result.onSave.mockRejectedValueOnce(new Error("Bostan Runner cannot honor settings: extraArgs?token=sk-private-test."));
     await clickByText(result.container, "Upgrade runner");
-    expect(result.container.querySelector('[role="alert"]')?.textContent).toContain("extraArgs");
+    expect(result.container.querySelector('[role="alert"]')?.textContent).toContain("Could not upgrade this agent.");
+    expect(result.container.querySelector('[role="alert"]')?.textContent).not.toContain("sk-private-test");
     expect(result.onSave).toHaveBeenLastCalledWith({ runner: "paperclip" });
     await clickByText(result.container, "Upgrade runner");
     expect(result.onSave).toHaveBeenCalledTimes(2);
@@ -1531,7 +1532,7 @@ describe("AgentConfigForm environment selector", () => {
   });
 
   it("surfaces request failures instead of converting them into model test checks", async () => {
-    mockAgentsApi.testEnvironment.mockRejectedValueOnce(new Error("Network unavailable"));
+    mockAgentsApi.testEnvironment.mockRejectedValueOnce(new Error("Network unavailable https://auth.invalid/callback?code=sk-test-private&state=secret"));
 
     const result = await renderForm([
       makeEnvironment({ id: "local-1", name: "Local", driver: "local" }),
@@ -1553,7 +1554,9 @@ describe("AgentConfigForm environment selector", () => {
     await flushReact();
 
     expect(mockAgentsApi.testEnvironment).toHaveBeenCalledTimes(1);
-    expect(result.container.textContent).toContain("Network unavailable");
+    expect(result.container.textContent).toContain("Environment test failed. Check the adapter connection and retry.");
+    expect(result.container.textContent).not.toContain("sk-test-private");
+    expect(document.body.textContent).not.toContain("state=secret");
   });
 
   it("moves through model options with the same keyboard controls as the harness picker", async () => {
