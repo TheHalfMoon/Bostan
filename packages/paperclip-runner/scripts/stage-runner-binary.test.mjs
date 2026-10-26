@@ -8,7 +8,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { stageBuiltRunnerBinary, stageRunnerBinary } from "./stage-runner-binary.mjs";
 import { RELEASE_RUNNER_TARGETS, releaseRunnerTargets, releaseDaemonManifest, verifyReleaseRunnerMetadata } from "./stage-release-runner-binaries.mjs";
-import { paperclipRunnerBinaryNeedsBuild, resolveNativeRunnerDevBinary } from "../../../scripts/dev-runner-native-binary.mjs";
+import { paperclipRunnerBinaryNeedsBuild, resolveNativeRunnerDevBinary } from "./dev-runner-native-binary.mjs";
 import { resolvePackagedRunnerBinary } from "../src/live/runner-binary.ts";
 
 const contract = { package: { name: "@paperclipai/paperclip-runner", version: "0.0.0" },

@@ -66,6 +66,7 @@ export const NATIVE_COMPLETION_FIXTURE_FILES = [
   "tests/runner-e2e/native-completion-checks.mjs",
   "tests/runner-e2e/native-completion-checks.test.mjs",
   "tests/runner-e2e/native-completion-git-source.mjs",
+  "packages/paperclip-runner/scripts/native-completion-git-source.mjs",
   "tests/runner-e2e/native-completion-git-source.test.mjs",
   "tests/runner-e2e/fixtures/native-completion/terminal-tool-carrier.json",
   "tests/runner-e2e/native-completion-source-contract.mjs",

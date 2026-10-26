@@ -489,7 +489,7 @@ test("the PR vitest lane wrapper runs the native-runner group exactly on the fin
 });
 
 const lineShardFile = path.join(repoRoot, "server/src/__tests__/chat-channels.integration.test.ts");
-const caseAt = (line, name) => ({ name, file: lineShardFile, projectName: "@paperclipai/server", location: { line, column: 3 } });
+const caseAt = (line, name) => ({ name, file: lineShardFile, projectName: "@bostan/server", location: { line, column: 3 } });
 
 test("test-line shards cover nested and parameterized cases exactly once without splitting a source line", () => {
   const cases = [caseAt(10, "suite > nested > first"), caseAt(10, "suite > nested > second"),
@@ -553,7 +553,7 @@ test("a failed chat child fails the job after its sibling finishes", { skip: pro
   const lines = readFileSync(file, "utf8").split("\n")
     .flatMap((line, index) => /^\s*it\(/.test(line) ? [index + 1] : []).slice(0, 6);
   assert.equal(lines.length, 6);
-  const tests = lines.map((line) => ({ file, projectName: "@paperclipai/server",
+  const tests = lines.map((line) => ({ file, projectName: "@bostan/server",
     name: `launcher fixture ${line}`, location: { line } }));
   const receipt = path.join(directory, "sibling-finished");
   const fakePnpm = path.join(directory, "pnpm");

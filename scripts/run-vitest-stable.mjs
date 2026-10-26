@@ -24,6 +24,7 @@ const serverScriptsDir = path.join(repoRoot, "server", "scripts");
 const nonServerProjects = [
   "@paperclipai/shared",
   "@bostan/skills-catalog",
+  "@bostan/teams-catalog",
   "@paperclipai/db",
   "@paperclipai/adapter-utils",
   "@paperclipai/adapter-claude-local",
@@ -41,7 +42,7 @@ const nonServerProjects = [
   "@bostan/plugin-sdk",
   "@bostan/create-bostan-plugin",
   "@bostan/ui",
-  "paperclipai",
+  "bostan",
 ];
 const routeTestPattern = /[^/]*(?:route|routes|authz)[^/]*\.test\.ts$/;
 const additionalSerializedServerTests = new Set([
@@ -120,7 +121,7 @@ function excludedServerSuites(groupName) {
 const generalWorkspacesAGroupName = "general-workspaces-a";
 const generalWorkspacesBGroupName = "general-workspaces-b";
 const generalWorkspacesCGroupName = "general-workspaces-c";
-const generalWorkspacesAProjects = ["@bostan/ui", "paperclipai"];
+const generalWorkspacesAProjects = ["@bostan/ui", "bostan"];
 // The db project runs in its own lane. Its vitest invocation took 168-250s
 // of a 436-513s workspaces-b job (PR runs 38084171761, 38083084276 and
 // 38083020834, 2026-10-10), which made workspaces-b the slowest check once

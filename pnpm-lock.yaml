@@ -546,7 +546,7 @@ importers:
     devDependencies:
       '@bostan/eval-kernel':
         specifier: workspace:*
-        version: link:../paperclip-eval-kernel
+        version: link:../bostan-eval-kernel
       '@playwright/test':
         specifier: ^1.61.1
         version: 1.62.1

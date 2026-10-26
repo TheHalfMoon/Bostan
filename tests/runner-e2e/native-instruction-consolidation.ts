@@ -167,6 +167,7 @@ export function nativeInstructionVariant(read = (file: string) => readFileSync(j
 export function nativeInstructionDefinitionDigest() {
   return hash(nativeCompletionDefinitionDigest() + hash(readFileSync(new URL(import.meta.url)))
     + hash(readFileSync(join(root, "tests/runner-e2e/native-completion-git-source.mjs")))
+    + hash(readFileSync(join(root, "packages/paperclip-runner/scripts/native-completion-git-source.mjs")))
     + hash(readFileSync(join(root, "packages/paperclip-runner/src/backends/native-instruction-measurement.test.ts"))));
 }
 

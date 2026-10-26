@@ -3,12 +3,23 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const evalKernelRoot = resolve(packageRoot, "../paperclip-eval-kernel");
+const evalKernelRoot = resolve(packageRoot, "../bostan-eval-kernel");
 const runnerManifest = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8"));
 const evalKernelManifest = JSON.parse(await readFile(resolve(evalKernelRoot, "package.json"), "utf8"));
+const lockfile = await readFile(resolve(packageRoot, "../../pnpm-lock.yaml"), "utf8");
+const runnerImporter = lockfile.split("\n  packages/paperclip-runner:\n")[1]?.split(/\n  [^ ]+:/)[0] ?? "";
 const runtimeIndex = await readFile(resolve(packageRoot, "src/index.ts"), "utf8");
 
 const violations = [];
+if (evalKernelManifest.name !== "@bostan/eval-kernel") {
+  violations.push("Runner eval package must have its native Bostan workspace identity");
+}
+if (runnerManifest.devDependencies?.["@bostan/eval-kernel"] !== "workspace:*") {
+  violations.push("Runner must declare the private Bostan eval kernel as a workspace development dependency");
+}
+if (!/\n      '@bostan\/eval-kernel':\n        specifier: workspace:\*\n        version: link:\.\.\/bostan-eval-kernel(?:\n|$)/.test(runnerImporter)) {
+  violations.push("Runner frozen lockfile must link the real Bostan eval kernel directory");
+}
 if (runnerManifest.exports?.["./testing"] === undefined) {
   violations.push("runner package must declare the ./testing export");
 }
