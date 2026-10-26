@@ -33,3 +33,11 @@ Correct stale Bostan branding expectations in the existing Apps Browse tests (th
 - This does NOT establish a comprehensive independent security audit, security of every chat endpoint, or successful real independent model-driven Case completion.
 
 Release NO-GO. Still open: official whole-server compile/build on resource-qualified hardware, installed Windows package/browser testing, real signed model-authored independent verifier report and complete governed Case approval, external-effect consent/readback qualification, independent comprehensive security review.
+
+## Final exact-branch integration and Windows QA
+
+- The real private source Bostan HTTP/PostgreSQL clean stop, restart, persisted-company readback and headless Chromium UI: PASS, page errors 0 and external blocked requests 0, clean stop.
+- Native Windows Abdulaziz source Bostan Node suite at B6-29 code head: 167 PASS, 0 FAIL, 7 Windows-platform SKIP (174 total). Windows installer/application E2E was NOT attempted on the host with insufficient free RAM and staging storage. Existing Windows untracked QA scripts and user applications were not touched.
+- The Mac source broad 165 PASS / 9 platform SKIP, source UI 188 PASS, UI TypeScript/build PASS, and 22 canonical signed Case/PostgreSQL test PASS all apply to this code head.
+
+Those source and browser passes must not be confused with the still-unqualified full Windows-installed-app or real native model-written independent Case signoff.
