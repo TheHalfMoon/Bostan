@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { requireBostanSourceSmokeAdmission } from "./bostan-local-live-persistence-e2e.mjs";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { requireBostanSourceSmokeAdmission, requireBostanOcrBrowserBundle } from "./bostan-local-live-persistence-e2e.mjs";
 
 test("real database smoke refuses non-opted-in execution before any process starts", () => {
   assert.throws(() => requireBostanSourceSmokeAdmission({}, "darwin"), /requires/);
@@ -119,4 +122,25 @@ test("private HTML/referrer leak QA requires separate disposable browser opt-in"
   assert.doesNotThrow(() => requireBostanSourceSmokeAdmission({
     ...env, BOSTAN_LIVE_LOCAL_BROWSER_E2E: "1",
   }, "darwin"));
+});
+
+test("OCR browser QA rejects an unbuilt or flag-disabled UI before starting PostgreSQL", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-ocr-build-guard-"));
+  try {
+    assert.throws(() => requireBostanOcrBrowserBundle(dir), /exactly one built IssueDetail/);
+    const chunk = path.join(dir, "IssueDetail-SYNTHETIC.js");
+    fs.writeFileSync(chunk, "ordinary production UI chunk without OCR controls");
+    assert.throws(() => requireBostanOcrBrowserBundle(dir),
+      /VITE_BOSTAN_LOCAL_OCR_PREVIEW_ENABLE=1/);
+    fs.writeFileSync(chunk, "Extract text from image; OCR language; source-only test fixture");
+    assert.doesNotThrow(() => requireBostanOcrBrowserBundle(dir));
+    fs.writeFileSync(path.join(dir, "IssueDetail-SECOND.js"), "Extract text from image OCR language");
+    assert.throws(() => requireBostanOcrBrowserBundle(dir), /exactly one built IssueDetail/);
+    fs.unlinkSync(path.join(dir, "IssueDetail-SECOND.js"));
+    fs.unlinkSync(chunk);
+    fs.symlinkSync(path.join(dir, "missing.js"), chunk);
+    assert.throws(() => requireBostanOcrBrowserBundle(dir), /cannot verify the private route bundle/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

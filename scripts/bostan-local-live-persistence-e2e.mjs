@@ -21,6 +21,42 @@ const MAX_LOG_BYTES = 8192;
 // incorrectly kill a healthy first-run during the internal health window.
 const WAIT_START_MS = 215_000;
 const WAIT_STOP_MS = 45_000;
+
+/**
+ * OCR is a Vite compile-time opt-in, NOT a runtime-only feature. Prevent
+ * expensive local PostgreSQL/Chromium setup from producing a misleading
+ * "Artifacts not found" timeout against an ordinary production UI bundle.
+ * This inspects ONLY our generated route-scoped JS artifact, never user files.
+ */
+export function requireBostanOcrBrowserBundle(assetsDir = path.join(REPO, "ui", "dist", "assets")) {
+  let chunks;
+  try {
+    chunks = fs.readdirSync(assetsDir).filter(file =>
+      /^IssueDetail-[A-Za-z0-9_-]+\.js$/.test(file));
+  } catch {
+    throw new Error("Bostan OCR browser QA needs an existing locally built IssueDetail chunk");
+  }
+  if (chunks.length !== 1) {
+    throw new Error("Bostan OCR browser QA requires exactly one built IssueDetail route chunk");
+  }
+  const file = path.join(assetsDir, chunks[0]);
+  let chunk;
+  try {
+    const stat = fs.lstatSync(file);
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 20 * 1024 * 1024) {
+      throw new Error("Invalid route bundle");
+    }
+    chunk = fs.readFileSync(file, "utf8");
+  } catch {
+    throw new Error("Bostan OCR browser QA cannot verify the private route bundle");
+  }
+  if (!chunk.includes("Extract text from image") || !chunk.includes("OCR language")) {
+    throw new Error(
+      "Bostan OCR browser QA requires a UI built with VITE_BOSTAN_LOCAL_OCR_PREVIEW_ENABLE=1; the server runtime flag alone cannot enable the compiled control",
+    );
+  }
+}
+
 const SLEEP_MS = 1000;
 
 export function requireBostanSourceSmokeAdmission(env = process.env, platform = process.platform) {
@@ -126,6 +162,9 @@ async function requestJson(origin, route, body) {
 export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
   // Refuse any non-free route before allocating temporary Bostan state.
   requireBostanSourceSmokeAdmission(env);
+  if (env.BOSTAN_LIVE_LOCAL_BROWSER_OCR_E2E === "1") {
+    requireBostanOcrBrowserBundle();
+  }
   const openRouterQa = env.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E === "1" &&
     isOpenRouterFreeQaModel(qualifyFreeQaModel(env.BOSTAN_E2E_FREE_MODEL))
     ? await admitOpenRouterZeroCostQa({
