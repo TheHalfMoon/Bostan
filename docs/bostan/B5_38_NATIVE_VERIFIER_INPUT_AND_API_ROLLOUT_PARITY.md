@@ -25,3 +25,11 @@ The private QA driver now fails closed during admission when tools are disabled 
 - Official full server build/typecheck, installed Windows app, and independent comprehensive security review remain open. Current release NO-GO.
 
 These are test and prompt hardening changes, not evidence that the project is now release-qualified.
+
+## Completed exact-head native and browser verification
+
+- Windows Abdulaziz native Bostan Node source suite at B5-38 code head: **166 PASS, 0 FAIL, 7 SKIP**, 173 total; no installer or Windows user configuration modified.
+- Mac native Bostan Node source suite: **164 PASS, 0 FAIL, 9 SKIP**, 173 total.
+- Five real disposable PostgreSQL Canonical Case/JWT/Native Runner source test files: **22 PASS, 0 FAIL**, including the new null-vs-absent native write_task_document bridge schema proof.
+- Source Bostan app, PostgreSQL clean stop/restart, company persistence and actual headless Chromium private UI: **PASS**; zero browser errors and zero blocked outbound requests.
+- These do not qualify a real free-model-led reviewer authoring report or native Windows installed application.
