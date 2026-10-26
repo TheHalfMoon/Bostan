@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { requireBostanSourceSmokeAdmission, requireBostanOcrBrowserBundle, assertBostanOcrBundleFileMetadata,
-  assertPrivateNodeQaEgressReceipt } from "./bostan-local-live-persistence-e2e.mjs";
+  assertPrivateNodeQaEgressReceipt, requireBostanLocalColdRestoreAdmission } from "./bostan-local-live-persistence-e2e.mjs";
 
 test("real database smoke refuses non-opted-in execution before any process starts", () => {
   assert.throws(() => requireBostanSourceSmokeAdmission({}, "darwin"), /requires/);
@@ -186,4 +186,24 @@ test("real private Node smoke cannot qualify an unarmed or egress-positive recei
     "armed\narmed\nfetch\n", "armed\narmed\nhttp2\n",
     null, "armed\narmed\nuser-external\n",
   ]) assert.throws(() => assertPrivateNodeQaEgressReceipt(invalid), /not fully guarded|missing or malformed/);
+});
+
+test("cold database backup+restore smoke requires separate real browser admission", () => {
+  const base = { BOSTAN_LIVE_LOCAL_QA_CONFIRM: "1",
+    BOSTAN_LIVE_LOCAL_COLD_RESTORE_E2E: "1" };
+  assert.equal(requireBostanLocalColdRestoreAdmission({}), false);
+  assert.throws(() => requireBostanSourceSmokeAdmission(base, "darwin"),
+    /requires Chromium after restoration/);
+  const eligible = { ...base, BOSTAN_LIVE_LOCAL_BROWSER_E2E: "1" };
+  assert.equal(requireBostanLocalColdRestoreAdmission(eligible), true);
+  assert.doesNotThrow(() => requireBostanSourceSmokeAdmission(eligible, "darwin"));
+  for (const flag of [
+    "BOSTAN_TEST_ONLY_NODE_EGRESS_PROFILE", "BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E",
+    "BOSTAN_LIVE_LOCAL_GOVERNED_CASE_E2E", "BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL",
+  ]) {
+    assert.throws(() => requireBostanSourceSmokeAdmission({ ...eligible, [flag]: "1" }, "darwin"),
+      /separate from network guard and external model runs/);
+  }
+  assert.throws(() => requireBostanSourceSmokeAdmission(eligible, "win32"),
+    /not qualified for Windows/);
 });

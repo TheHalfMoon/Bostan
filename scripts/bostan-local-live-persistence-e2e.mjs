@@ -84,7 +84,22 @@ export function assertPrivateNodeQaEgressReceipt(content) {
   return { armedNodeProcesses: armed, blockedExternalNodeRequests: 0 };
 }
 
+export function requireBostanLocalColdRestoreAdmission(env) {
+  if (env.BOSTAN_LIVE_LOCAL_COLD_RESTORE_E2E !== "1") return false;
+  if (env.BOSTAN_LIVE_LOCAL_BROWSER_E2E !== "1") {
+    throw new Error("Real cold restore QA requires Chromium after restoration");
+  }
+  if (env.BOSTAN_TEST_ONLY_NODE_EGRESS_PROFILE === "1" ||
+      env.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E === "1" ||
+      env.BOSTAN_LIVE_LOCAL_GOVERNED_CASE_E2E === "1" ||
+      env.BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL === "1") {
+    throw new Error("Real cold restore QA must be separate from network guard and external model runs");
+  }
+  return true;
+}
+
 export function requireBostanSourceSmokeAdmission(env = process.env, platform = process.platform) {
+  requireBostanLocalColdRestoreAdmission(env);
   if (env.BOSTAN_TEST_ONLY_NODE_EGRESS_PROFILE === "1" &&
     (env.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E === "1" ||
      env.BOSTAN_LIVE_LOCAL_GOVERNED_CASE_E2E === "1" ||
@@ -213,7 +228,7 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
     : null;
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-live-persistence-"));
   fs.chmodSync(root, 0o700);
-  const home = path.join(root, "home");
+  let home = path.join(root, "home");
   fs.mkdirSync(home, { mode: 0o700 });
   const childEnv = { ...env, HOME: home, DO_NOT_TRACK: "1", OTEL_SDK_DISABLED: "true",
     ...(openRouterQa ? {
@@ -241,7 +256,8 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
   let browserReport = null;
   const groupIsolated = ownedNativeQaGroupAdmission(env);
   let ownedQaGroup = null;
-  const app = path.join(home, ".bostan", "app");
+  let app = path.join(home, ".bostan", "app");
+  let coldRestoreEvidence = null;
 
   async function start() {
     recent = "";
@@ -293,6 +309,39 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
     const company = await requestJson(origin, "companies", { name: marker });
     if (!company?.id || typeof company.id !== "string") throw new Error("Bostan company insert returned no ID");
     await stop();
+    if (env.BOSTAN_LIVE_LOCAL_COLD_RESTORE_E2E === "1") {
+      // Real stopped PostgreSQL, verified snapshot and brand-new disposable HOME.
+      const { createColdSnapshot, verifyColdSnapshot, restoreColdSnapshot } =
+        await import("./bostan-cold-snapshot.mjs");
+      const { executable } = await import("./bostan-local-runtime.mjs");
+      const sourceApp = app;
+      const backup = createColdSnapshot({ home, pgCtl: executable("pg_ctl", childEnv) });
+      const validation = verifyColdSnapshot(backup.path);
+      const destination = path.join(root, "restored-home");
+      const restored = restoreColdSnapshot({ backup: backup.path, targetHome: destination });
+      const restoredApp = path.join(destination, ".bostan", "app");
+      const config = JSON.parse(fs.readFileSync(path.join(restoredApp,
+        "state", "instances", "local", "config.json"), "utf8"));
+      for (const value of [
+        config.database?.backup?.dir, config.logging?.logDir,
+        config.storage?.localDisk?.baseDir, config.secrets?.localEncrypted?.keyFilePath,
+      ]) {
+        if (value == null) continue;
+        if (typeof value !== "string" || !value.startsWith(restoredApp + path.sep) ||
+            value.startsWith(sourceApp + path.sep)) {
+          throw new Error("Bostan real cold restore retained an unsafe source HOME path");
+        }
+      }
+      if (!Number.isSafeInteger(validation.files) || validation.files < 1 ||
+          validation.files !== restored.files) {
+        throw new Error("Bostan real cold restore did not preserve manifest file counts");
+      }
+      // Keep the source and snapshot available until the whole E2E passes.
+      home = destination;
+      app = restoredApp;
+      childEnv.HOME = destination;
+      coldRestoreEvidence = { verifiedFiles: validation.files, restoredIntoNewHome: true };
+    }
     await start();
     const result = await requestJson(origin, "companies");
     const records = Array.isArray(result) ? result : result?.companies;
@@ -381,6 +430,7 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
     if (storedConfig?.bostanManagedLocalRuntime !== MARKER) throw new Error("Unexpected runtime identity");
     clean = true;
     return { qualified: true, platform: process.platform,
+      ...(coldRestoreEvidence ? { coldRestoreEvidence } : {}),
       ...(nodeEgressEvidence ? { nodeEgressEvidence } : {}),
       ...(browserReport ? {
         browserPageErrors: browserReport.pageErrorsSeen,
@@ -392,6 +442,7 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
           : env.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E === "1"
             ? ",real-free-agent-heartbeat-task-comment-done"
             : "") +
+        (coldRestoreEvidence ? ",real-postgres-cold-backup-verify-new-home-restore-restart" : "") +
         (env.BOSTAN_LIVE_LOCAL_BROWSER_E2E === "1" ? ",real-headless-chromium-private-ui" : "") +
         (browserReport?.onboarding ? ",real-browser-new-company-onboarding" : "") +
         (browserReport?.onboarding?.firstAgentDraft ? ",real-browser-first-agent-inactive-draft" : "") +
