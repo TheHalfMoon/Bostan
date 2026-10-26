@@ -1,0 +1,43 @@
+{
+  "name": "@bostan/create-bostan-plugin",
+  "version": "0.1.0",
+  "license": "MIT",
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
+  "bugs": {
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheHalfMoon/Bostan",
+    "directory": "packages/plugins/create-bostan-plugin"
+  },
+  "type": "module",
+  "bin": {
+    "create-bostan-plugin": "./dist/bin.js"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "test": "pnpm -w exec vitest run --root packages/plugins/create-bostan-plugin --config vitest.config.ts",
+    "typecheck": "tsc --noEmit",
+    "prepack": "node ../../../scripts/bostan-release-disabled.mjs",
+    "prepublishOnly": "node ../../../scripts/bostan-release-disabled.mjs"
+  },
+  "dependencies": {
+    "@bostan/plugin-sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=24.11.0"
+  },
+  "private": true
+}

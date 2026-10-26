@@ -120,8 +120,8 @@
     "publishFromCi": false
   },
   {
-    "dir": "packages/plugins/create-paperclip-plugin",
-    "name": "@paperclipai/create-paperclip-plugin",
+    "dir": "packages/plugins/create-bostan-plugin",
+    "name": "@bostan/create-bostan-plugin",
     "publishFromCi": false
   },
   {

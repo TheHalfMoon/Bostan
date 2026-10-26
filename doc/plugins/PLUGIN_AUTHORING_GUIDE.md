@@ -208,7 +208,7 @@ or `dangerouslySetInnerHTML` content for inline references.
 Use the CLI scaffold command:
 
 ```bash
-paperclipai plugin init @yourscope/plugin-name --output /absolute/path/to/plugin-repos
+bostan plugin init @yourscope/plugin-name --output /absolute/path/to/plugin-repos
 ```
 
 That creates `<output>/plugin-name/` with:
@@ -222,11 +222,11 @@ That creates `<output>/plugin-name/` with:
 
 Inside this monorepo, the scaffold uses `workspace:*` for `@bostan/plugin-sdk`.
 
-Outside this monorepo, the scaffold snapshots `@bostan/plugin-sdk` from the local Paperclip checkout into a `.paperclip-sdk/` tarball so you can build and test a plugin without publishing anything to npm first. Pass `--sdk-path /absolute/path/to/paperclip/packages/plugins/sdk` if you have more than one Paperclip checkout.
+Outside this monorepo, the scaffold uses a local `link:` dependency to the private `@bostan/plugin-sdk` source without running `pnpm pack` or publishing to npm. Build the local SDK first and pass `--sdk-path /absolute/path/to/Bostan/packages/plugins/sdk` if necessary.
 
 ## Local development workflow
 
-See the short [Local Plugin Development guide](./LOCAL_PLUGIN_DEVELOPMENT.md) for the full happy path (`pnpm dev` → `paperclipai plugin install <absolute-path>` → `paperclipai plugin list`) and reload semantics.
+See the short [Local Plugin Development guide](./LOCAL_PLUGIN_DEVELOPMENT.md) for the full happy path (`pnpm dev` → `bostan plugin install <absolute-path>` → `bostan plugin list`) and reload semantics.
 
 Minimum verification from the generated plugin folder:
 

@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -66,10 +65,6 @@ export function shellQuote(value: string): string {
   return `'${value.replace(/'/g, "'\"'\"'")}'`;
 }
 
-function formatFileDependency(absPath: string): string {
-  return `file:${toPosixPath(path.resolve(absPath))}`;
-}
-
 function getLocalSdkPackagePath(): string {
   return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "sdk");
 }
@@ -78,44 +73,25 @@ function getRepoRootFromSdkPath(sdkPath: string): string {
   return path.resolve(sdkPath, "..", "..", "..");
 }
 
-function getLocalSharedPackagePath(sdkPath: string): string {
-  return path.resolve(getRepoRootFromSdkPath(sdkPath), "packages", "shared");
-}
-
 function isInsideDir(targetPath: string, parentPath: string): boolean {
   const relative = path.relative(parentPath, targetPath);
   return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
-function packLocalPackage(packagePath: string, outputDir: string): string {
-  const packageJsonPath = path.join(packagePath, "package.json");
-  if (!fs.existsSync(packageJsonPath)) {
-    throw new Error(`Package package.json not found at ${packageJsonPath}`);
+/** Verify the *locally checked out* SDK before creating any output files. */
+function assertBostanSdk(sdkPath: string): void {
+  const manifest = path.join(sdkPath, "package.json");
+  if (!fs.existsSync(manifest)) {
+    throw new Error("Bostan private SDK not found: provide --sdk-path to a local Bostan checkout");
   }
-
-  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8")) as {
-    name?: string;
-    version?: string;
-  };
-  const packageName = packageJson.name ?? path.basename(packagePath);
-  const packageVersion = packageJson.version ?? "0.0.0";
-  const tarballFileName = `${packageName.replace(/^@/, "").replace("/", "-")}-${packageVersion}.tgz`;
-  const sdkBundleDir = path.join(outputDir, ".paperclip-sdk");
-
-  fs.mkdirSync(sdkBundleDir, { recursive: true });
-  execFileSync("pnpm", ["build"], { cwd: packagePath, stdio: "pipe" });
-  execFileSync("pnpm", ["pack", "--pack-destination", sdkBundleDir], { cwd: packagePath, stdio: "pipe" });
-
-  const tarballPath = path.join(sdkBundleDir, tarballFileName);
-  if (!fs.existsSync(tarballPath)) {
-    throw new Error(`Packed tarball was not created at ${tarballPath}`);
+  const pkg = JSON.parse(fs.readFileSync(manifest, "utf8")) as { name?: string; private?: boolean };
+  if (pkg.name !== "@bostan/plugin-sdk" || pkg.private !== true) {
+    throw new Error("Bostan scaffold requires a private @bostan/plugin-sdk checkout");
   }
-
-  return tarballPath;
 }
 
 /**
- * Generate a complete Paperclip plugin starter project.
+ * Generate a complete Bostan plugin starter project.
  *
  * Output includes manifest/worker/UI entries, SDK harness tests, bundler presets,
  * and a local dev server script for hot-reload workflow.
@@ -140,21 +116,22 @@ export function scaffoldPluginProject(options: ScaffoldPluginOptions): string {
   }
 
   const displayName = options.displayName ?? makeDisplayName(options.pluginName);
-  const description = options.description ?? "A Paperclip plugin";
+  const description = options.description ?? "A Bostan plugin";
   const author = options.author ?? "Plugin Author";
   const category = options.category ?? (template === "workspace" ? "workspace" : template === "environment" ? "environment" : "connector");
   const manifestId = packageToManifestId(options.pluginName);
   const localSdkPath = path.resolve(options.sdkPath ?? getLocalSdkPackagePath());
-  const localSharedPath = getLocalSharedPackagePath(localSdkPath);
+  assertBostanSdk(localSdkPath);
   const repoRoot = getRepoRootFromSdkPath(localSdkPath);
   const useWorkspaceSdk = isInsideDir(outputDir, repoRoot);
-
-  fs.mkdirSync(outputDir, { recursive: true });
-
-  const packedSharedTarball = useWorkspaceSdk ? null : packLocalPackage(localSharedPath, outputDir);
+  // A private SDK must never go through "pnpm pack": the release gate forbids
+  // it, and a scaffold should not change or publish its source dependencies.
+  // Use a local source link outside the monorepo instead of a tarball.
   const sdkDependency = useWorkspaceSdk
     ? "workspace:*"
-    : `file:${toPosixPath(path.relative(outputDir, packLocalPackage(localSdkPath, outputDir)))}`;
+    : `link:${toPosixPath(path.relative(outputDir, localSdkPath))}`;
+
+  fs.mkdirSync(outputDir, { recursive: true });
 
   const packageJson = {
     name: options.pluginName,
@@ -175,24 +152,10 @@ export function scaffoldPluginProject(options: ScaffoldPluginOptions): string {
       worker: "./dist/worker.js",
       ui: "./dist/ui/"
     },
-    keywords: ["paperclip", "plugin", category],
+    keywords: ["bostan", "plugin", category],
     author,
     license: "MIT",
-    ...(packedSharedTarball
-      ? {
-        pnpm: {
-          overrides: {
-            "@paperclipai/shared": `file:${toPosixPath(path.relative(outputDir, packedSharedTarball))}`,
-          },
-        },
-      }
-      : {}),
     devDependencies: {
-      ...(packedSharedTarball
-        ? {
-          "@paperclipai/shared": `file:${toPosixPath(path.relative(outputDir, packedSharedTarball))}`,
-        }
-        : {}),
       "@bostan/plugin-sdk": sdkDependency,
       "@rollup/plugin-node-resolve": "^16.0.1",
       "@rollup/plugin-typescript": "^12.1.2",
@@ -673,18 +636,16 @@ pnpm test
 \`\`\`
 
 \`pnpm dev\` rebuilds the worker, manifest, and UI bundles into \`dist/\`.
-When this package is installed from a local path, Paperclip watches that rebuilt
+When this package is installed from a local path, Bostan watches that rebuilt
 output and reloads the plugin worker. Local installs run trusted code from this
 folder on your machine.
 
-${sdkDependency.startsWith("file:")
-  ? `This scaffold snapshots \`@bostan/plugin-sdk\` and \`@paperclipai/shared\` from a local Paperclip checkout at:\n\n\`${toPosixPath(localSdkPath)}\`\n\nThe packed tarballs live in \`.paperclip-sdk/\` for local development. Before publishing this plugin, switch those dependencies to published package versions once they are available on npm.\n\n`
-  : ""}
+${sdkDependency.startsWith("link:") ? "This plugin uses a local, unpublished Bostan SDK source link at " + toPosixPath(localSdkPath) + ". Build the SDK locally first; no package release or tarball is created." : ""}
 
-## Install Into Paperclip
+## Install Into Bostan
 
 \`\`\`bash
-paperclipai plugin install ${shellQuote(toPosixPath(outputDir))}
+bostan plugin install ${shellQuote(toPosixPath(outputDir))}
 \`\`\`
 
 ## Build Options
@@ -694,7 +655,7 @@ paperclipai plugin install ${shellQuote(toPosixPath(outputDir))}
 `,
   );
 
-  writeFile(path.join(outputDir, ".gitignore"), "dist\nnode_modules\n.paperclip-sdk\n");
+  writeFile(path.join(outputDir, ".gitignore"), "dist\nnode_modules\n");
 
   return outputDir;
 }

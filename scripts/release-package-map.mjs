@@ -147,6 +147,7 @@ function buildReleasePackagePlan() {
         "packages/kv-demo-mcp-server": "@bostan/kv-demo-mcp-server",
         "packages/google-sheets-mcp-server": "@bostan/google-sheets-mcp-server",
         "packages/plugins/sdk": "@bostan/plugin-sdk",
+        "packages/plugins/create-bostan-plugin": "@bostan/create-bostan-plugin",
       };
       const expectedName = expectedPrivateNames[entry.dir];
       const entryPackagePath = join(repoRoot, entry.dir, "package.json");

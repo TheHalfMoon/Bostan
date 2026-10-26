@@ -39,7 +39,7 @@ const nonServerProjects = [
   "@paperclipai/adapter-pi-local",
   "@paperclipai/plugin-daytona",
   "@bostan/plugin-sdk",
-  "@paperclipai/create-paperclip-plugin",
+  "@bostan/create-bostan-plugin",
   "@bostan/ui",
   "paperclipai",
 ];

@@ -28,7 +28,7 @@ test("Bostan plugin SDK is a private source package with owned developer command
 test("active Bostan consumers reference native SDK, never the donor npm name", () => {
   for (const relative of [
     "server/package.json", "ui/package.json",
-    "packages/plugins/create-paperclip-plugin/package.json",
+    "packages/plugins/create-bostan-plugin/package.json",
     "packages/plugins/examples/plugin-file-browser-example/package.json",
     "packages/plugins/examples/plugin-kitchen-sink-example/package.json",
     "packages/plugins/plugin-workspace-diff/package.json",
