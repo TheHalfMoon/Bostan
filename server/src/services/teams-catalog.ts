@@ -164,7 +164,7 @@ async function statCatalogManifest() {
     }
   }
   throw new Error(
-    `Teams catalog manifest not found. Checked: ${catalogPackageRootCandidates.map((root) => path.join(root, "generated/catalog.json")).join(", ")}. Run pnpm --filter @paperclipai/teams-catalog build:manifest.`,
+    `Teams catalog manifest not found. Checked: ${catalogPackageRootCandidates.map((root) => path.join(root, "generated/catalog.json")).join(", ")}. Run pnpm --filter @bostan/teams-catalog build:manifest.`,
   );
 }
 

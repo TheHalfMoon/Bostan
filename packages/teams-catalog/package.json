@@ -1,14 +1,14 @@
 {
-  "name": "@paperclipai/teams-catalog",
+  "name": "@bostan/teams-catalog",
   "version": "0.1.0",
   "license": "MIT",
-  "homepage": "https://github.com/paperclipai/paperclip",
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
   "bugs": {
-    "url": "https://github.com/paperclipai/paperclip/issues"
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/paperclipai/paperclip",
+    "url": "https://github.com/TheHalfMoon/Bostan",
     "directory": "packages/teams-catalog"
   },
   "type": "module",
@@ -40,11 +40,11 @@
   ],
   "scripts": {
     "build": "pnpm run build:manifest && tsc -p tsconfig.json",
-    "build:manifest": "node ../../cli/node_modules/tsx/dist/cli.mjs scripts/build-catalog-manifest.ts",
+    "build:manifest": "node ../../server/node_modules/tsx/dist/cli.mjs scripts/build-catalog-manifest.ts",
     "clean": "rm -rf dist",
     "test": "pnpm -w exec vitest run --root packages/teams-catalog --config vitest.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "validate": "node ../../cli/node_modules/tsx/dist/cli.mjs scripts/validate-catalog.ts"
+    "validate": "node ../../server/node_modules/tsx/dist/cli.mjs scripts/validate-catalog.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0"

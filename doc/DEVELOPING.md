@@ -2351,18 +2351,18 @@ still resolve their operational and feedback skills.
 Validate the catalog without writing the manifest:
 
 ```sh
-pnpm --filter @paperclipai/skills-catalog validate
+pnpm --filter @bostan/skills-catalog validate
 ```
 
 Regenerate `generated/catalog.json` after editing any catalog `SKILL.md`,
 frontmatter, file inventory, category, or slug:
 
 ```sh
-pnpm --filter @paperclipai/skills-catalog build:manifest
+pnpm --filter @bostan/skills-catalog build:manifest
 ```
 
 The package's `build` script runs `build:manifest` and then `tsc`; tests live
-under `pnpm --filter @paperclipai/skills-catalog test`. Validation fails when:
+under `pnpm --filter @bostan/skills-catalog test`. Validation fails when:
 
 - a catalog entry is not under `catalog/bundled/<category>/<slug>` or
   `catalog/optional/<category>/<slug>`
@@ -2379,7 +2379,7 @@ only), `assets` (other non-script files), or `scripts_executables` (any
 executable script). The build contract is documented in
 `doc/plans/2026-05-26-skills-cli-catalog-contract.md`.
 
-CI runs `pnpm --filter @paperclipai/skills-catalog validate` and the package's
+CI runs `pnpm --filter @bostan/skills-catalog validate` and the package's
 vitest suite, so always regenerate the manifest in the same commit as the
 catalog change.
 
@@ -2460,13 +2460,13 @@ packages/teams-catalog/
 Validate without writing the manifest:
 
 ```sh
-pnpm --filter @paperclipai/teams-catalog validate
+pnpm --filter @bostan/teams-catalog validate
 ```
 
 Regenerate `generated/catalog.json` after editing catalog team files:
 
 ```sh
-pnpm --filter @paperclipai/teams-catalog build:manifest
+pnpm --filter @bostan/teams-catalog build:manifest
 ```
 
 Team install/preview APIs enforce source policy. External skill sources require

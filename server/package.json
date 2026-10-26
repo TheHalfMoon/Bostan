@@ -82,7 +82,7 @@
     "@paperclipai/hermes-paperclip-adapter": "workspace:*",
     "@paperclipai/plugin-sdk": "workspace:*",
     "@paperclipai/shared": "workspace:*",
-    "@paperclipai/skills-catalog": "workspace:*",
+    "@bostan/skills-catalog": "workspace:*",
     "@photon-ai/advanced-imessage": "2.1.0",
     "@vercel/connect": "2.3.3",
     "acorn": "8.18.0",

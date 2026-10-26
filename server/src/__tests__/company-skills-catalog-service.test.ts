@@ -57,7 +57,7 @@ const sampleCatalogSkill: CatalogSkill = {
 
 const mockCatalogService = vi.hoisted(() => ({
   getCatalogPackageMetadata: vi.fn(() => ({
-    packageName: "@paperclipai/skills-catalog",
+    packageName: "@bostan/skills-catalog",
     packageVersion: "0.3.1",
   })),
   getCatalogSkillOrThrow: vi.fn(),
@@ -168,7 +168,7 @@ describeEmbeddedPostgres("companySkillService.installFromCatalog", () => {
         catalogKey: sampleCatalogSkill.key,
         catalogKind: "bundled",
         catalogCategory: "software-development",
-        packageName: "@paperclipai/skills-catalog",
+        packageName: "@bostan/skills-catalog",
         originHash: sampleCatalogSkill.contentHash,
         installedHash: sampleCatalogSkill.contentHash,
         auditVerdict: "pass",
@@ -181,7 +181,7 @@ describeEmbeddedPostgres("companySkillService.installFromCatalog", () => {
     expect(listed.find((skill) => skill.id === result.skill.id)).toMatchObject({
       catalogKind: "bundled",
       originHash: sampleCatalogSkill.contentHash,
-      packageName: "@paperclipai/skills-catalog",
+      packageName: "@bostan/skills-catalog",
       packageVersion: "0.3.1",
     });
     const folder = await db
@@ -317,7 +317,7 @@ describeEmbeddedPostgres("companySkillService.installFromCatalog", () => {
         `      catalogKey: "${sampleCatalogSkill.key}"`,
         '      catalogKind: "bundled"',
         '      catalogPath: "catalog/bundled/software-development/review"',
-        '      packageName: "@paperclipai/skills-catalog"',
+        '      packageName: "@bostan/skills-catalog"',
         '      packageVersion: "0.3.1"',
         `      installedHash: "${sampleCatalogSkill.contentHash}"`,
         '      userModifiedAt: "2026-05-01T00:00:00.000Z"',
@@ -352,7 +352,7 @@ describeEmbeddedPostgres("companySkillService.installFromCatalog", () => {
         catalogKey: sampleCatalogSkill.key,
         catalogKind: "bundled",
         catalogPath: "catalog/bundled/software-development/review",
-        packageName: "@paperclipai/skills-catalog",
+        packageName: "@bostan/skills-catalog",
         packageVersion: "0.3.1",
         installedHash: sampleCatalogSkill.contentHash,
         userModifiedAt: "2026-05-01T00:00:00.000Z",

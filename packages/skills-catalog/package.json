@@ -1,14 +1,14 @@
 {
-  "name": "@paperclipai/skills-catalog",
+  "name": "@bostan/skills-catalog",
   "version": "0.3.1",
   "license": "MIT",
-  "homepage": "https://github.com/paperclipai/paperclip",
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
   "bugs": {
-    "url": "https://github.com/paperclipai/paperclip/issues"
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/paperclipai/paperclip",
+    "url": "https://github.com/TheHalfMoon/Bostan",
     "directory": "packages/skills-catalog"
   },
   "type": "module",
@@ -42,11 +42,11 @@
   ],
   "scripts": {
     "build": "pnpm run build:manifest && tsc -p tsconfig.json",
-    "build:manifest": "node ../../cli/node_modules/tsx/dist/cli.mjs scripts/build-catalog-manifest.ts",
+    "build:manifest": "node ../../server/node_modules/tsx/dist/cli.mjs scripts/build-catalog-manifest.ts",
     "clean": "rm -rf dist",
     "test": "pnpm -w exec vitest run --root packages/skills-catalog --config vitest.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "validate": "node ../../cli/node_modules/tsx/dist/cli.mjs scripts/validate-catalog.ts"
+    "validate": "node ../../server/node_modules/tsx/dist/cli.mjs scripts/validate-catalog.ts"
   },
   "dependencies": {
     "@paperclipai/shared": "workspace:*"

@@ -18,37 +18,21 @@ test("release package manifest covers all public packages with explicit CI enrol
   assert.ok(packages.every((pkg) => typeof pkg.publishFromCi === "boolean"));
 });
 
-test("release package list only contains CI-enrolled packages", () => {
-  const enabledPackages = getReleasePackages();
-  assert.ok(enabledPackages.length > 0);
-  assert.ok(enabledPackages.every((pkg) => pkg.publishFromCi === true));
+test("Bostan legacy release list refuses all publishing while the product is private", () => {
+  assert.throws(() => getReleasePackages(), /Bostan publishing disabled/);
 });
 
-test("release package list publishes the installable channel entrypoint last", () => {
-  const enabledPackages = getReleasePackages();
-
-  assert.equal(enabledPackages.at(-1)?.name, "paperclipai");
-  assert.ok(enabledPackages.slice(0, -1).some((pkg) => pkg.name === "@paperclipai/server"));
+test("Bostan CLI is private and the inherited release manifest enables no packages", () => {
+  const plan = buildReleasePackagePlan();
+  assert.ok(plan.length > 0);
+  assert.ok(plan.every((pkg) => pkg.publishFromCi === false));
 });
 
-test("release package list keeps runtime workspace dependencies ahead of consumers", () => {
-  const enabledPackages = getReleasePackages();
-  const publishIndexByName = new Map(enabledPackages.map((pkg, index) => [pkg.name, index]));
-
-  for (const pkg of enabledPackages) {
-    for (const section of ["dependencies", "optionalDependencies", "peerDependencies"]) {
-      for (const [dependencyName, spec] of Object.entries(pkg.pkg[section] ?? {})) {
-        if (typeof spec !== "string" || !spec.startsWith("workspace:")) continue;
-        const dependencyIndex = publishIndexByName.get(dependencyName);
-        if (dependencyIndex === undefined) continue;
-
-        assert.ok(
-          dependencyIndex < publishIndexByName.get(pkg.name),
-          `${dependencyName} must publish before ${pkg.name}`,
-        );
-      }
-    }
-  }
+test("all package manifest entries are explicitly disabled for inherited release", () => {
+  const plan = buildReleasePackagePlan();
+  assert.ok(plan.every((pkg) => !pkg.publishFromCi));
+  assert.ok(plan.some((pkg) => pkg.name === "@bostan/skills-catalog"));
+  assert.ok(plan.some((pkg) => pkg.name === "@bostan/teams-catalog"));
 });
 
 test("Hermes release surface publishes the unified built-in package and keeps gateway as a shim", () => {
@@ -57,7 +41,7 @@ test("Hermes release surface publishes the unified built-in package and keeps ga
   const gatewayShim = packages.find((pkg) => pkg.name === "@paperclipai/adapter-hermes-gateway");
 
   assert.equal(hermes?.dir, "packages/adapters/hermes");
-  assert.equal(hermes?.publishFromCi, true);
+  assert.equal(hermes?.publishFromCi, false);
   assert.equal(gatewayShim?.dir, "packages/adapters/hermes-gateway");
   assert.equal(gatewayShim?.publishFromCi, false);
 });
@@ -70,14 +54,14 @@ test("guard flags a publishFromCi:true package depending on a publishFromCi:fals
   const problems = findUnpublishableWorkspaceEdges([
     pkg("@paperclipai/server", {
       publishFromCi: true,
-      dependencies: { "@paperclipai/skills-catalog": "workspace:*" },
+      dependencies: { "@bostan/skills-catalog": "workspace:*" },
     }),
-    pkg("@paperclipai/skills-catalog", { publishFromCi: false }),
+    pkg("@bostan/skills-catalog", { publishFromCi: false }),
   ]);
 
   assert.equal(problems.length, 1);
   assert.match(problems[0], /@paperclipai\/server/);
-  assert.match(problems[0], /@paperclipai\/skills-catalog/);
+  assert.match(problems[0], /@bostan\/skills-catalog/);
 });
 
 test("guard inspects optional and peer dependency sections too", () => {

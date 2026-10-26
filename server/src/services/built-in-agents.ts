@@ -269,7 +269,7 @@ function readBuiltInText(relativePath: string, fallbackText: string) {
   );
 }
 
-const skillsCatalogRoot = resolvePackageRoot("@paperclipai/skills-catalog");
+const skillsCatalogRoot = resolvePackageRoot("@bostan/skills-catalog");
 const REFLECTION_COACH_INSTRUCTIONS = readBuiltInText("reflection-coach/AGENTS.md", FALLBACK_REFLECTION_COACH_INSTRUCTIONS);
 const REFLECTION_COACH_ROUTINE = readBuiltInText(
   "reflection-coach/routines/recent-agent-reflection.md",
