@@ -161,7 +161,7 @@ usage projection; the shared driver and sidecar consume those hooks.
 
 The package root has no mock or scenario exports. Generic credential-free
 matrix orchestration lives in the workspace-private
-`@paperclipai/paperclip-eval-kernel`; scenario content and provider-backed eval
+`@bostan/eval-kernel`; scenario content and provider-backed eval
 campaigns remain outside the runtime package.
 See [ADR 0001](docs/adr/0001-runner-testing-eval-package-boundaries.md).
 

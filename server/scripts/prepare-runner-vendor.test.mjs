@@ -58,7 +58,7 @@ function makeRepo() {
     "packages/paperclip-runner/dist/testing.js": "export {};\n",
     "packages/paperclip-runner/dist/cli/acpx-runtime-sidecar.cjs": "module.exports = {};\n",
     [`packages/paperclip-runner/dist/bin/${executable}`]: "binary\n",
-    "packages/paperclip-eval-kernel/src/index.ts": "export const kernel = 1;\n",
+    "packages/bostan-eval-kernel/src/index.ts": "export const kernel = 1;\n",
   });
   const packageRoot = path.join(repoRoot, "packages", "paperclip-runner");
   return { repoRoot, packageRoot };

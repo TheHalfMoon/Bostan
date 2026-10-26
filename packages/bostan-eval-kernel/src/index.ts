@@ -1,9 +1,12 @@
-export const PAPERCLIP_EVAL_KERNEL_COMPATIBILITY = Object.freeze({
+export const BOSTAN_EVAL_KERNEL_COMPATIBILITY = Object.freeze({
   schema: "paperclip.eval-kernel.compatibility.v1" as const,
-  packageName: "@paperclipai/paperclip-eval-kernel" as const,
+  packageName: "@bostan/eval-kernel" as const,
   packageVersion: "0.1.0" as const,
   apiVersion: 1 as const,
 });
+
+/** Preserved alias for existing versioned integrations. */
+export const PAPERCLIP_EVAL_KERNEL_COMPATIBILITY = BOSTAN_EVAL_KERNEL_COMPATIBILITY;
 
 export interface PaperclipEvalScenario<TInput = unknown> {
   readonly id: string;
@@ -24,6 +27,10 @@ export interface PaperclipEvalResult<TOutput = unknown, TScore = unknown> {
   readonly score: TScore;
 }
 
+export type BostanEvalScenario<T = unknown> = PaperclipEvalScenario<T>;
+export type BostanEvalCandidate<T = unknown> = PaperclipEvalCandidate<T>;
+export type BostanEvalResult<T = unknown, S = unknown> = PaperclipEvalResult<T, S>;
+
 export class PaperclipEvalKernelConfigurationError extends Error {
   readonly code = "paperclip_eval_kernel_configuration_invalid" as const;
 
@@ -32,6 +39,8 @@ export class PaperclipEvalKernelConfigurationError extends Error {
     this.name = "PaperclipEvalKernelConfigurationError";
   }
 }
+
+export { PaperclipEvalKernelConfigurationError as BostanEvalKernelConfigurationError };
 
 /**
  * Generic deterministic matrix orchestration. Scenario definitions, provider
@@ -77,6 +86,8 @@ export async function runPaperclipEvalMatrix<
   }
   return Object.freeze(results);
 }
+
+export const runBostanEvalMatrix = runPaperclipEvalMatrix;
 
 function assertUniqueNonEmptyIds(
   kind: "scenario" | "candidate",

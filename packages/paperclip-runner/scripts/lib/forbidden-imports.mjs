@@ -10,8 +10,9 @@ const RUST_IMPORT_PATTERNS = [
   /\b(?:include|include_str|include_bytes)!\s*\(\s*["']([^"']+)["']\s*\)/g,
   /#\[path\s*=\s*["']([^"']+)["']\]/g,
 ];
-const REVIEWED_EVAL_KERNEL = "@paperclipai/paperclip-eval-kernel";
+const REVIEWED_EVAL_KERNEL = "@bostan/eval-kernel";
 const REVIEWED_EVAL_HARNESS = "src/eval/workflow-harness.ts";
+const isOwnedWorkspacePackage = (specifier) => ["@paperclipai/", "@bostan/"].some((prefix) => specifier.startsWith(prefix));
 
 const libraryDirectory = dirname(fileURLToPath(import.meta.url));
 export const defaultPackageRoot = resolve(libraryDirectory, "../..");
@@ -176,7 +177,7 @@ function violationReason({ file, packageRoot, specifier, publicRunnerImports, re
     return "runner consumers may import only declared public subpaths";
   }
   if (
-    specifier.startsWith("@paperclipai/") &&
+    isOwnedWorkspacePackage(specifier) &&
     specifier !== "@paperclipai/paperclip-runner" &&
     !publicRunnerImports.has(specifier) &&
     !(specifier === REVIEWED_EVAL_KERNEL && reviewedEvalHarness && relativeFile === REVIEWED_EVAL_HARNESS)
@@ -230,11 +231,11 @@ async function manifestViolations(packageRoot) {
   const unreviewedDevelopmentDependencies = Object.keys(
     manifest.devDependencies ?? {},
   ).filter(
-    (name) => name.startsWith("@paperclipai/") && !(name === REVIEWED_EVAL_KERNEL && manifest.devDependencies[name] === "workspace:*"),
+    (name) => isOwnedWorkspacePackage(name) && !(name === REVIEWED_EVAL_KERNEL && manifest.devDependencies[name] === "workspace:*"),
   );
   return [...runtimeDependencies, ...unreviewedDevelopmentDependencies]
     .filter(
-      (name) => name.startsWith("@paperclipai/") && name !== "@paperclipai/paperclip-runner",
+      (name) => isOwnedWorkspacePackage(name) && name !== "@paperclipai/paperclip-runner",
     )
     .map((specifier) => ({
       file: manifestPath,

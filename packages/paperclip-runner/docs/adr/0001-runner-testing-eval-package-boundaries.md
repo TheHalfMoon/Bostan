@@ -51,7 +51,7 @@ after an independent release requirement exists; a directory preference is not
 sufficient.
 
 Generic credential-free matrix orchestration lives in the separately versioned,
-workspace-private `@paperclipai/paperclip-eval-kernel` package. It contains no
+workspace-private `@bostan/eval-kernel` package. It contains no
 runner imports, provider configuration, scenario corpus, scorer, or report
 renderer. The runner may use it only as a development dependency; runtime,
 optional, and peer dependency sets remain free of eval packages. Paid provider
@@ -68,7 +68,7 @@ Paperclip App production binding
             |
 Eval consumers ----> @paperclipai/paperclip-runner/evals
        |             @paperclipai/paperclip-runner/testing
-       +-----------> @paperclipai/paperclip-eval-kernel
+       +-----------> @bostan/eval-kernel
 ```
 
 No arrow points from App runtime to an external eval repository.

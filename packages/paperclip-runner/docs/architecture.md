@@ -31,7 +31,7 @@ recorded in [ADR 0001](adr/0001-runner-testing-eval-package-boundaries.md).
 - `./evals` exposes the stable native-attempt/build-metadata join and explicit
   digest-verified runnerd artifact resolution.
 - `./testing` contains deterministic mocks and conformance kits.
-- The workspace-private `@paperclipai/paperclip-eval-kernel` contains generic
+- The workspace-private `@bostan/eval-kernel` contains generic
   structural matrix orchestration and is a development-only dependency.
   Runner-specific cases, scorers, and reports remain package-local; paid
   campaigns remain external.

@@ -793,7 +793,7 @@ build. It used to run the Runner's full `build` every time. Now the Runner's
 first step, forgets the previous stamp and records a digest of the build's
 inputs (every file under `packages/paperclip-runner` except `dist`,
 `dist-browser`, `runner/target`, `node_modules` and dot-directories; every
-file under `packages/paperclip-eval-kernel` except `dist` and `node_modules`;
+file under `packages/bostan-eval-kernel` except `dist` and `node_modules`;
 every file under the root `patches` directory, which the acpx profile check
 hashes and the provider entrypoint bundler copies into `dist`; and the root
 `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` and

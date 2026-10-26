@@ -4,7 +4,7 @@ The Runner workflow eval system turns the `STRESS-001`–`STRESS-044` campaign
 into complementary deterministic, live, and chaos lanes. It is additive to the
 capability inventory, capability cases, and existing scoring/report readers.
 
-The workspace-private `@paperclipai/paperclip-eval-kernel` package owns only
+The workspace-private `@bostan/eval-kernel` package owns only
 structural scenario-by-candidate orchestration. Runner-specific cases,
 observations, scoring, and traceability remain package-local. The HTML matrix is
 rendered by the canonical `paperclip-evals` report program so live results use

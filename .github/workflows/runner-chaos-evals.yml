@@ -47,7 +47,7 @@ jobs:
 
       - name: Build eval and Runner contracts
         run: |
-          pnpm --filter @paperclipai/paperclip-eval-kernel build
+          pnpm --filter @bostan/eval-kernel build
           pnpm --filter @paperclipai/paperclip-runner report:runner-chaos-evals
 
       - name: Run Runner fault and replay suites

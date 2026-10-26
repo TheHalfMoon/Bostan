@@ -641,7 +641,7 @@ jobs:
           if [ "$NEEDS_RUNNER_TYPESCRIPT" = true ]; then
             pnpm --filter @paperclipai/paperclip-runner build:typescript
           else
-            pnpm --filter @paperclipai/paperclip-eval-kernel build
+            pnpm --filter @bostan/eval-kernel build
           fi
           if [ "$NEEDS_NATIVE_BINARIES" = true ]; then
             pnpm --filter @paperclipai/paperclip-runner build:runner-binaries
@@ -662,7 +662,7 @@ jobs:
             fake-acpx-sidecar
           )
           archive_paths=(
-            packages/paperclip-eval-kernel/dist
+            packages/bostan-eval-kernel/dist
           )
           if [ "$NEEDS_RUNNER_TYPESCRIPT" = true ]; then
             test -d packages/paperclip-runner/dist
@@ -789,7 +789,7 @@ jobs:
           tar --extract --gzip \
             --file runner-e2e-build/runner-e2e-build-bundle.tar.gz \
             --directory "$GITHUB_WORKSPACE"
-          test -d packages/paperclip-eval-kernel/dist
+          test -d packages/bostan-eval-kernel/dist
           test -d packages/paperclip-runner/dist
 
       - name: Assemble native remote provider pack
@@ -994,7 +994,7 @@ jobs:
           tar --extract --gzip \
             --file runner-e2e-build/runner-e2e-build-bundle.tar.gz \
             --directory "$GITHUB_WORKSPACE"
-          test -d packages/paperclip-eval-kernel/dist
+          test -d packages/bostan-eval-kernel/dist
           if [ "$NEEDS_RUNNER_TYPESCRIPT" = true ]; then
             test -d packages/paperclip-runner/dist
           fi

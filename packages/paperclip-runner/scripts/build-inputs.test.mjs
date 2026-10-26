@@ -87,8 +87,8 @@ async function makeRepo() {
     "packages/paperclip-runner/dist-browser/index.js": "browser\n",
     "packages/paperclip-runner/node_modules/dep/index.js": "dep\n",
     "packages/paperclip-runner/.vite/cache.json": "{}\n",
-    "packages/paperclip-eval-kernel/src/index.ts": "export const kernel = 1;\n",
-    "packages/paperclip-eval-kernel/dist/index.js": "export const kernel = 1;\n",
+    "packages/bostan-eval-kernel/src/index.ts": "export const kernel = 1;\n",
+    "packages/bostan-eval-kernel/dist/index.js": "export const kernel = 1;\n",
   });
   const packageRoot = path.join(repoRoot, "packages", "paperclip-runner");
   return { repoRoot, packageRoot };
@@ -117,7 +117,7 @@ test("the input set covers sources, the eval kernel, root patches and root confi
     const files = collectBuildInputFiles(repoRoot);
     assert.deepEqual(files, [
       "package.json",
-      "packages/paperclip-eval-kernel/src/index.ts",
+      "packages/bostan-eval-kernel/src/index.ts",
       "packages/paperclip-runner/package.json",
       "packages/paperclip-runner/runner/src/main.rs",
       "packages/paperclip-runner/src/index.ts",
@@ -160,7 +160,7 @@ test("the digest is stable, ignores outputs and caches, and tracks every kind of
       "packages/paperclip-runner/node_modules/dep/index.js": "changed\n",
       "packages/paperclip-runner/.vite/cache.json": '{"changed":true}\n',
       "packages/paperclip-runner/runner/target/release/paperclip-runnerd": "rebuilt\n",
-      "packages/paperclip-eval-kernel/dist/index.js": "changed\n",
+      "packages/bostan-eval-kernel/dist/index.js": "changed\n",
     });
     assert.equal(computeBuildInputsDigest(repoRoot).digest, before.digest, "an output changed the digest");
 
@@ -175,7 +175,7 @@ test("the digest is stable, ignores outputs and caches, and tracks every kind of
     };
     await expectChange("a Runner source", { "packages/paperclip-runner/src/index.ts": "export const one = 2;\n" });
     await expectChange("a Rust source", { "packages/paperclip-runner/runner/src/main.rs": "fn main() { }\n" });
-    await expectChange("an eval-kernel source", { "packages/paperclip-eval-kernel/src/index.ts": "export const kernel = 2;\n" });
+    await expectChange("an eval-kernel source", { "packages/bostan-eval-kernel/src/index.ts": "export const kernel = 2;\n" });
     await expectChange("the pi-acp patch the build copies into dist", { "patches/pi-acp@0.0.33.patch": "--- c\n+++ d\n+e\n" });
     await expectChange("the acpx patch the profile check hashes", { "patches/acpx@0.13.1.patch": "--- a\n+++ b\n+c\n" });
     await expectChange("a new patch", { "patches/brace-expansion@5.0.9.patch": "--- x\n+++ y\n" });

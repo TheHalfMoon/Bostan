@@ -1,6 +1,6 @@
 # Paperclip Eval Kernel
 
-`@paperclipai/paperclip-eval-kernel` is the workspace-private, provider-neutral
+`@bostan/eval-kernel` is the workspace-private, provider-neutral
 matrix orchestrator owned by Paperclip Evals. It contains no Paperclip scenario
 corpus, provider configuration, product fixture, scorer, or report template.
 
