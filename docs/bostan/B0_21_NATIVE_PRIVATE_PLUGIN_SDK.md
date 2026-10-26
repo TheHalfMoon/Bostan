@@ -42,3 +42,10 @@ This is **one foundational package migration**, not all-product completion. DB, 
 - SDK build PASS, SDK core 28 PASS, current scaffold entrypoints 2 PASS, workspace file-browser and kitchen-sink plugin builds PASS.
 - The old inherited-name Hello World package has **not** been qualified by a `@bostan/plugin-hello-world-example` filter; that filter returns no matching projects. This is remaining Bostan identity work.
 - Full native Mac production server TypeScript build still cannot be claimed; case and UI checks do not replace it.
+
+## Exact native Windows qualification and private PR
+
+- Windows `Abdulaziz` source Node and release guards on B0-21 code: **224 PASS, 0 FAIL, 8 platform/opt-in SKIP (232 total)**.
+- Mac source Node and release guards: **222 PASS, 0 FAIL, 10 platform/opt-in SKIP (232 total)**.
+- Windows full installed app, private browser, actual model-runner and official production server compile were **not** tested: this is source-only due Windows free RAM/disk restrictions. Three preexisting B023 untracked QA scripts were preserved; no device cleanup was performed.
+- Private Draft PR #170 is stacked after PR #169; no changes to main or release state.
