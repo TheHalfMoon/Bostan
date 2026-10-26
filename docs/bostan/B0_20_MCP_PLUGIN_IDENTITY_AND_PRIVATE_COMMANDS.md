@@ -49,3 +49,9 @@ This is six packages, not completion of all owned package identity (shared, DB, 
 - Synthetic source Bostan + PostgreSQL clean stop/restart + persisted company + real headless Chromium PASS. Browser page errors 0, blocked external requests 0.
 - Source Mac Bostan Node tests and release inventory: 217 PASS, 0 FAIL, 10 SKIP (227 total) prior to final package advertisement test addition.
 - Private package identity + runtime command + release guard: 9 PASS, 0 FAIL. Old `paperclip...` user-data/API tool identifiers remain documented compatibility keys and are not claimed to be migrated.
+
+## Native Windows exact-head source qualification (B0-20)
+
+- Windows `Abdulaziz`: **220 PASS, 0 FAIL, 8 platform/opt-in SKIP (228 total)** for Bostan source Node + guarded release manifest, including new six-package static identity and MCP command checks. Head = original B0-20 source commit `a56d3c5`.
+- Mac: **218 PASS, 0 FAIL, 10 platform/opt-in SKIP (228 total)** before this evidence-only doc amendment.
+- This Windows result is **source-only**. No Windows installer, authenticated Google Sheets connection, non-local model invocation, release, paid service or full app E2E was attempted; the machine does not have enough free RAM/disk for the full native packaging gate. Existing untracked B023 Windows QA helper files preserved.
