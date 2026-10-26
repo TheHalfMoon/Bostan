@@ -125,6 +125,38 @@ export async function assertBostanCurrentVerificationEvidence(tx: Db | DbTransac
         code: "bostan_verifier_source_stale",
       });
     }
+    // A current HMAC proves only version integrity. Without an independent
+    // authorship check, the verifier could write their own "source" document
+    // to the task, cite its perfectly valid digest, and approve their own
+    // evidence. Bind every citation to the CURRENT authenticated revision
+    // author: the active verifier cannot also author its source.
+    //
+    // A null agent author can represent board-supplied source material; do not
+    // pretend this proves its human origin or factual reliability. Any actual
+    // reviewer-authored current revision fails closed.
+    const [authoredSource] = await tx.select({
+      createdByAgentId: documentRevisions.createdByAgentId,
+    }).from(issueDocuments)
+      .innerJoin(documents, and(
+        eq(documents.id, issueDocuments.documentId),
+        eq(documents.companyId, issueDocuments.companyId),
+      ))
+      .innerJoin(documentRevisions, and(
+        eq(documentRevisions.id, documents.latestRevisionId),
+        eq(documentRevisions.documentId, documents.id),
+        eq(documentRevisions.companyId, documents.companyId),
+      ))
+      .where(and(
+        eq(issueDocuments.companyId, caseRow.companyId),
+        eq(issueDocuments.issueId, issue.id),
+        eq(issueDocuments.documentId, source.documentId),
+      ))
+      .limit(1).for("share");
+    if (!authoredSource || authoredSource.createdByAgentId === issue.assigneeAgentId) {
+      throw conflict("Independent review cannot cite its own authored source", {
+        code: "bostan_verifier_source_not_independent",
+      });
+    }
   }
   return {
     reportSummary: parsed.data.summary,

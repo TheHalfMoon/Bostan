@@ -234,6 +234,31 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
     await new Promise(resolve => setTimeout(resolve, 30));
     await db.update(heartbeatRuns).set({ status: "succeeded", finishedAt: new Date() })
       .where(eq(heartbeatRuns.id, resumedRunId));
+    // B5-34: a source can have a valid fresh snapshot HMAC but still be
+    // reviewer-authored. A reviewer cannot fabricate their own evidence and
+    // cite it to qualify the supposedly independent terminal decision.
+    // Mutating ONLY the current revision's authenticated author preserves
+    // the snapshot HMAC so this exercises the independent-source gate, not
+    // the existing stale-source guard.
+    const rewrittenSource = await documentService(db).getIssueDocumentByKey(
+      f.issueId, "bostan-source");
+    const latestSourceRevisionId = rewrittenSource!.latestRevisionId!;
+    await db.update(documentRevisions)
+      .set({ createdByAgentId: f.verifierId })
+      .where(eq(documentRevisions.id, latestSourceRevisionId));
+    const stillCurrentDigest = await readBostanIssueDocumentEvidence({
+      db, companyId: f.companyId, issueId: f.issueId,
+      documentId: sourceDocument.document.id, issueReadCondition: sql<boolean>`true`,
+    });
+    expect(stillCurrentDigest!.sourceSnapshotHmacSha256)
+      .toBe(refreshedSource.body.sourceSnapshotHmacSha256);
+    await expect(service.handoff(f.companyId, board, terminal(2, afterAssign.statusVersion)))
+      .rejects.toMatchObject({ status: 409, details: { code: "bostan_verifier_source_not_independent" } });
+    const [notClosedBySelfEvidence] = await db.select().from(cases).where(eq(cases.id, f.caseId));
+    expect(notClosedBySelfEvidence.status).not.toBe("done");
+    await db.update(documentRevisions)
+      .set({ createdByAgentId: f.specialistId })
+      .where(eq(documentRevisions.id, latestSourceRevisionId));
     const accepted = await service.handoff(f.companyId, board, terminal(2, afterAssign.statusVersion));
     expect(accepted).toMatchObject({ destinationKind: "done", state: "awaiting_completion" });
     // B5-09: source changes AFTER the case accepted terminal intent but
@@ -298,6 +323,25 @@ suite("Bostan B5-01 independent specialist-verifier routing", () => {
     expect(currentReview.body.reportSummary).toContain("Synthetic reviewer checked");
     expect(JSON.stringify(currentReview.body)).not.toContain("implementation source after");
     expect(JSON.stringify(currentReview.body)).not.toContain("sourceSnapshotHmacSha256");
+    // The read-only founder summary must revoke a previously current review
+    // if the cited CURRENT source is now attributed to the verifier, even
+    // without any change to the content/version/HMAC fingerprint.
+    const finalSource = await documentService(db).getIssueDocumentByKey(f.issueId, "bostan-source");
+    await db.update(documentRevisions).set({ createdByAgentId: f.verifierId })
+      .where(eq(documentRevisions.id, finalSource!.latestRevisionId!));
+    const selfAuthoredSummary = await request(founderApp).get(summaryPath);
+    expect(selfAuthoredSummary.status).toBe(200);
+    expect(selfAuthoredSummary.body).toMatchObject({
+      current: false, provenanceCurrent: false, reportSummary: null,
+      citedDocumentCount: 0, executionAuthorized: false,
+    });
+    await db.update(documentRevisions).set({ createdByAgentId: f.specialistId })
+      .where(eq(documentRevisions.id, finalSource!.latestRevisionId!));
+    const restoredSummary = await request(founderApp).get(summaryPath);
+    expect(restoredSummary.body).toMatchObject({
+      current: true, provenanceCurrent: true, citedDocumentCount: 1,
+      executionAuthorized: false,
+    });
     const agentApp = express(); agentApp.use(express.json());
     agentApp.use((req, _res, next) => { req.actor = { type: "agent", source: "agent_key",
       companyId: f.companyId, agentId: f.verifierId }; next(); });
