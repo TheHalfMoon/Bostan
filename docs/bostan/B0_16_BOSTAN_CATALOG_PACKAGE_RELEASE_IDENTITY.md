@@ -51,3 +51,7 @@ This is a safe, **non-release** private product identity migration. It does not 
 B0-09 remains open: after the two catalog packages, the majority of owned first-party packages still use inherited internal identities. Some of those references are pure internal imports but others represent user-visible names, stored schema IDs, package release paths or third-party URIs. They require inventory, bounded migration, workspace lock updates, explicit compatibility strategy and real tests. Do not claim branding complete until an audit across owned packages, UI/SEO, documentation, CLI/help, install artifacts and release targets is clean, with only documented compatibility and legal exceptions.
 
 Release NO-GO, repository PRIVATE, Actions OFF, main unchanged.
+
+## Windows portability defect found by real native source QA
+
+The initial Windows B0-16 source suite exposed another donor release-map defect: the public package discovery used platform-native `path.join()` for manifest *identifiers*. Windows therefore produced `packages\\skills-catalog`, while the checked-in cross-platform release map stores `packages/skills-catalog`, falsely declaring all public package entries missing. Fixed workspace relative manifest identifiers to always use forward slashes without altering absolute filesystem paths. Added a platform-portable regression test and verified the release-map suite passes 13/13 on Mac. Re-run native Windows source after this follow-up head. This remains a source release mapping test only, not permission to publish.

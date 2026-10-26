@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   buildReleasePackagePlan,
+  discoverPublicPackages,
   checkConfiguration,
   findUnpublishableWorkspaceEdges,
   getReleasePackages,
@@ -11,6 +12,18 @@ import {
 function pkg(name, { publishFromCi, ...deps } = {}) {
   return { name, dir: name, publishFromCi, pkg: { name, ...deps } };
 }
+
+test("Bostan release inventory uses portable slash-separated package identifiers", () => {
+  const packages = discoverPublicPackages();
+  assert.ok(packages.length >= 30);
+  for (const pkg of packages) {
+    assert.equal(pkg.dir.split(String.fromCharCode(92)).length, 1, "non-portable workspace package ID: " + pkg.dir);
+  }
+  assert.ok(packages.some(pkg => pkg.dir === "packages/skills-catalog" &&
+    pkg.name === "@bostan/skills-catalog"));
+  assert.ok(packages.some(pkg => pkg.dir === "packages/teams-catalog" &&
+    pkg.name === "@bostan/teams-catalog"));
+});
 
 test("release package manifest covers all public packages with explicit CI enrollment", () => {
   const packages = buildReleasePackagePlan();

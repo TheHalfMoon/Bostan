@@ -39,7 +39,10 @@ function discoverPublicPackages() {
     for (const entry of readdirSync(absDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
       if (entry.name === "node_modules" || entry.name === "dist" || entry.name === ".git") continue;
-      walk(join(relDir, entry.name));
+      // Manifest IDs are portable POSIX-style workspace-relative paths.
+      // path.join() would emit backslashes on Windows and falsely report
+      // every workspace package missing from the release inventory.
+      walk(relDir + "/" + entry.name);
     }
   }
 
