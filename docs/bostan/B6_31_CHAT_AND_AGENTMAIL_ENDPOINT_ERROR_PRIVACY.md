@@ -23,7 +23,7 @@ Extend B6-27's existing fixed safeCredentialUiError helper with chatHealth, chat
 - Mac source Node tests: 165 PASS, 0 FAIL, 9 platform SKIP, 174 total.
 - Original five canonical independent Case/JWT/native runner/real PostgreSQL suites: 22 PASS, 0 FAIL.
 - Real Mac isolated source Bostan HTTP/PostgreSQL company creation, clean stop/restart, persisted data and headless Chromium UI: PASS, 0 browser page errors, 0 blocked external requests, clean stop.
-- Windows native Node source suite must be recorded separately on the B6-31 code head.
+- Native Windows Abdulaziz Bostan Node source on B6-31 code head: 167 PASS, 0 FAIL, 7 platform SKIP (174 total), without Windows installer, user-process cleanup or customer file access.
 
 ## Release boundaries
 
