@@ -19,7 +19,9 @@ test("Bostan eval kernel has a private and release-blocked workspace identity",(
    assert.equal(resolve(root,"packages/bostan-eval-kernel",command[1]),
      resolve(root,"scripts/bostan-release-disabled.mjs"));
  }
- assert.ok(!existsSync(resolve(root,"packages/paperclip-eval-kernel")));
+ // Ignored dist/node_modules may survive a Git path rename on Windows;
+ // the former source package manifest must not survive as an owned package.
+ assert.ok(!existsSync(resolve(root,"packages/paperclip-eval-kernel/package.json")));
 });
 
 test("Bostan runner imports reviewed eval kernel only as a private workspace dependency",()=>{
