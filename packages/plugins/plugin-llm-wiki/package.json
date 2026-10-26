@@ -1,5 +1,5 @@
 {
-  "name": "@paperclipai/plugin-llm-wiki",
+  "name": "@bostan/plugin-llm-wiki",
   "version": "0.1.0",
   "type": "module",
   "private": true,
@@ -19,7 +19,9 @@
     "dev": "node ./esbuild.config.mjs --watch",
     "dev:ui": "bostan-plugin-dev-server --root . --ui-dir dist/ui --port 4177",
     "test": "vitest run --config ./vitest.config.ts",
-    "typecheck": "pnpm --filter @bostan/plugin-sdk ensure-build-deps && tsc --noEmit"
+    "typecheck": "pnpm --filter @bostan/plugin-sdk ensure-build-deps && tsc --noEmit",
+    "prepack": "node ../../../scripts/bostan-release-disabled.mjs",
+    "prepublishOnly": "node ../../../scripts/bostan-release-disabled.mjs"
   },
   "paperclipPlugin": {
     "manifest": "./dist/manifest.js",
@@ -27,7 +29,7 @@
     "ui": "./dist/ui/"
   },
   "keywords": [
-    "paperclip",
+    "bostan",
     "plugin",
     "automation",
     "wiki",
@@ -47,12 +49,22 @@
     "rollup": "^4.63.1",
     "tslib": "^2.8.1",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.3",
+    "react": "^19.2.8"
   },
   "peerDependencies": {
     "react": ">=18"
   },
   "engines": {
     "node": ">=24.11.0"
+  },
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
+  "bugs": {
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheHalfMoon/Bostan",
+    "directory": "packages/plugins/plugin-llm-wiki"
   }
 }

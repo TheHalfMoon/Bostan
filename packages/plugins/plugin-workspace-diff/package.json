@@ -1,31 +1,20 @@
 {
-  "name": "@paperclipai/plugin-workspace-diff",
+  "name": "@bostan/plugin-workspace-diff",
   "version": "0.1.0",
   "description": "First-party execution workspace Changes tab powered by plugin-local workspace metadata",
   "license": "MIT",
-  "homepage": "https://github.com/paperclipai/paperclip",
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
   "bugs": {
-    "url": "https://github.com/paperclipai/paperclip/issues"
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/paperclipai/paperclip",
+    "url": "https://github.com/TheHalfMoon/Bostan",
     "directory": "packages/plugins/plugin-workspace-diff"
   },
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
-  },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js"
-      }
-    },
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts"
   },
   "files": [
     "dist"
@@ -36,7 +25,7 @@
     "ui": "./dist/ui/"
   },
   "keywords": [
-    "paperclip",
+    "bostan",
     "plugin",
     "workspace",
     "diff"
@@ -47,8 +36,8 @@
     "clean": "rm -rf dist",
     "typecheck": "pnpm --filter @bostan/plugin-sdk ensure-build-deps && tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run",
-    "prepack": "rm -f package.dev.json && cp package.json package.dev.json && node ../../../scripts/generate-plugin-package-json.mjs",
-    "postpack": "if [ -f package.dev.json ]; then mv package.dev.json package.json; fi"
+    "prepack": "node ../../../scripts/bostan-release-disabled.mjs",
+    "prepublishOnly": "node ../../../scripts/bostan-release-disabled.mjs"
   },
   "dependencies": {
     "@bostan/plugin-sdk": "workspace:*",
@@ -70,5 +59,6 @@
   },
   "engines": {
     "node": ">=24.11.0"
-  }
+  },
+  "private": true
 }

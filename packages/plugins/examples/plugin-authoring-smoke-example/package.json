@@ -1,9 +1,9 @@
 {
-  "name": "@paperclipai/plugin-authoring-smoke-example",
+  "name": "@bostan/plugin-authoring-smoke-example",
   "version": "0.1.0",
   "type": "module",
   "private": true,
-  "description": "A Paperclip plugin",
+  "description": "A Bostan plugin",
   "scripts": {
     "prebuild": "pnpm --filter @bostan/plugin-sdk ensure-build-deps",
     "build": "node ./esbuild.config.mjs",
@@ -11,7 +11,9 @@
     "dev": "node ./esbuild.config.mjs --watch",
     "dev:ui": "bostan-plugin-dev-server --root . --ui-dir dist/ui --port 4177",
     "test": "vitest run --config ./vitest.config.ts",
-    "typecheck": "pnpm --filter @bostan/plugin-sdk ensure-build-deps && tsc --noEmit"
+    "typecheck": "pnpm --filter @bostan/plugin-sdk ensure-build-deps && tsc --noEmit",
+    "prepack": "node ../../../../scripts/bostan-release-disabled.mjs",
+    "prepublishOnly": "node ../../../../scripts/bostan-release-disabled.mjs"
   },
   "paperclipPlugin": {
     "manifest": "./dist/manifest.js",
@@ -19,7 +21,7 @@
     "ui": "./dist/ui/"
   },
   "keywords": [
-    "paperclip",
+    "bostan",
     "plugin",
     "connector"
   ],
@@ -44,5 +46,14 @@
   },
   "engines": {
     "node": ">=24.11.0"
+  },
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
+  "bugs": {
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheHalfMoon/Bostan",
+    "directory": "packages/plugins/examples/plugin-authoring-smoke-example"
   }
 }

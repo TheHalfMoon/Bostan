@@ -255,7 +255,7 @@ describeEmbeddedPostgres("environmentRuntimeService", () => {
     return db.insert(plugins).values({
       id: pluginId,
       pluginKey,
-      packageName: input.packageName ?? "@paperclipai/plugin-fake-sandbox",
+      packageName: input.packageName ?? "@bostan/plugin-fake-sandbox",
       version: "1.0.0",
       apiVersion: 1,
       categories: ["automation"],

@@ -186,7 +186,7 @@ describe("PluginSettings", () => {
     const declaration = wikiFolderDeclaration();
     mockPluginsApi.get.mockResolvedValue(basePlugin({
       pluginKey: "paperclipai.plugin-llm-wiki",
-      packageName: "@paperclipai/plugin-llm-wiki",
+      packageName: "@bostan/plugin-llm-wiki",
       status: "ready",
       manifestJson: {
         displayName: "LLM Wiki",
@@ -222,7 +222,7 @@ describe("PluginSettings", () => {
     const declaration = wikiFolderDeclaration();
     mockPluginsApi.get.mockResolvedValue(basePlugin({
       pluginKey: "paperclipai.plugin-llm-wiki",
-      packageName: "@paperclipai/plugin-llm-wiki",
+      packageName: "@bostan/plugin-llm-wiki",
       status: "ready",
       manifestJson: {
         displayName: "LLM Wiki",

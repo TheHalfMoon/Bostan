@@ -37,7 +37,7 @@ test("parseArgs rejects unknown options", () => {
 
 test("validatePackageName accepts @paperclipai scoped names", () => {
   validatePackageName("@paperclipai/adapter-kimi-local");
-  validatePackageName("@paperclipai/plugin-workspace-diff");
+  validatePackageName("@bostan/plugin-workspace-diff");
 });
 
 test("validatePackageName rejects names outside the @paperclipai scope", () => {

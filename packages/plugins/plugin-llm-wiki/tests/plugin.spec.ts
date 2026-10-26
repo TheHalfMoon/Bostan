@@ -771,7 +771,9 @@ describe("LLM Wiki plugin scaffold", () => {
       routePath: "wiki",
     });
     expect(packageJson.dependencies).toBeUndefined();
-    expect(packageJson.devDependencies?.react).toBeUndefined();
+    // Bostan Wiki tests render React directly. Keep it dev-only while the
+    // runtime uses the host React peer and the SDK bundles React as external.
+    expect(packageJson.devDependencies?.react).toBe("^19.2.8");
     expect(packageJson.devDependencies?.["react-dom"]).toBeDefined();
     expect(packageJson.devDependencies?.["@types/react-dom"]).toBeDefined();
     expect(packageJson.peerDependencies?.react).toBe(">=18");

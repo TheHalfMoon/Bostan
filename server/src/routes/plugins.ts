@@ -184,9 +184,9 @@ const PLUGIN_SCOPED_API_RESPONSE_HEADER_ALLOWLIST = new Set([
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const EXPERIMENTAL_BUNDLED_PLUGIN_PACKAGE_NAMES = new Set([
-  "@paperclipai/plugin-llm-wiki",
+  "@bostan/plugin-llm-wiki",
   "@paperclipai/plugin-modal",
-  "@paperclipai/plugin-workspace-diff",
+  "@bostan/plugin-workspace-diff",
 ]);
 /**
  * Cached bundled-plugin discovery. Static metadata (name, key, display, paths)

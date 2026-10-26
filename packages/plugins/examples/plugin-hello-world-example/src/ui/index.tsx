@@ -9,7 +9,7 @@ export function HelloWorldDashboardWidget({ context }: PluginWidgetProps) {
   return (
     <section aria-label={WIDGET_LABEL}>
       <strong>Hello world</strong>
-      <div>This widget was added by @paperclipai/plugin-hello-world-example.</div>
+      <div>This widget was added by @bostan/plugin-hello-world-example.</div>
       {/* Include host context so authors can see where scoped IDs come from. */}
       <div>Company context: {context.companyId}</div>
     </section>
