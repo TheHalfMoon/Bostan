@@ -27,3 +27,10 @@ This is a QA evidence gap, NOT evidence that the production server has an extern
 ## What this does NOT prove
 
 The backend Node service, plugins, remote agents, MCP, native model runtimes, CLI update hooks, third-party OAuth flows and user-authorized connections remain network-capable unless independently qualified. Playwright cannot prove whole-host outbound isolation, while the synthetic browser's external probes are deliberately blocked and do not contact a real host. Complete egress inventory, server/agent deny-by-default sandbox and independently reviewed report are still open under B0-05. Entire-server official compiler/build, Windows installed-app E2E and real model-led original governed Case closure remain NO-GO. No deployment.
+
+## Exact-head cross-platform suite
+
+- Mac Node source: 175 PASS, 0 FAIL, 10 SKIP (185 total; the new real Chromium negative scenario is opt-in only in the default all-tests pass).
+- Windows Abdulaziz Node source: 177 PASS, 0 FAIL, 8 SKIP (185 total), with the real Chromium negative scenario intentionally skipped unless explicitly activated on a properly provisioned browser host.
+- macOS real Chromium negative run with the explicit opt-in: all 11 focused tests PASS, including the actual three blocked external attempts and required rejection of attempted egress evidence.
+- Windows installer/application qualification was NOT attempted: current host memory/disk capacity remains below previously frozen installed-app QA gates. Pre-existing untracked QA source scripts remain untouched.
