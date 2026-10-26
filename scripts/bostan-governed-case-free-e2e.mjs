@@ -64,6 +64,23 @@ export function requireNativeCaseQaHost() {
   return result;
 }
 
+/**
+ * The real native reviewer needs search_api and call_api to read current HMACs.
+ * This disposable scenario creates a random company ID, so a preconfigured
+ * company allowlist cannot include it. Refuse disabled/disallowed API tools
+ * before spinning up Bostan or a provider and don't change rollout policy.
+ */
+export function requireNativeCaseApiToolAdmission(env = process.env) {
+  if (env.PAPERCLIP_RUNNER_API_TOOLS_ENABLED !== undefined
+    && env.PAPERCLIP_RUNNER_API_TOOLS_ENABLED !== "true") {
+    throw new Error("Native Case QA requires server-enabled signed API tools; rollout is disabled");
+  }
+  if (env.PAPERCLIP_RUNNER_API_TOOLS_COMPANY_IDS !== undefined) {
+    throw new Error("Native Case QA random disposable company cannot satisfy a fixed API company allowlist");
+  }
+  return true;
+}
+
 export function qualifyGovernedCaseQa(env = process.env) {
   if (env.BOSTAN_LIVE_LOCAL_GOVERNED_CASE_E2E !== "1"
     || env.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E !== "1"
@@ -71,6 +88,7 @@ export function qualifyGovernedCaseQa(env = process.env) {
     || env.BOSTAN_E2E_REVIEW_FIRST_AGENT === "1") {
     throw new Error("Governed Case QA requires its independent opt-in, not overlapping worker scenarios");
   }
+  requireNativeCaseApiToolAdmission(env);
   const { base, home } = qualifyDisposableFirstAgentScope({
     url: env.BOSTAN_E2E_URL, home: env.BOSTAN_E2E_DISPOSABLE_HOME,
     confirmed: env.BOSTAN_E2E_CONFIRM_TEMP_DATA,
@@ -119,7 +137,9 @@ export function buildNativeVerifierCaseInstructions({ companyId, issueId, docume
   }
   return [
     "You are the independent reviewer of this synthetic Bostan Case work task " + issueId + ".",
-    "Use get_task, list_task_documents, and read_task_document with key bostan-source.",
+    "Use get_task with taskId=" + issueId +
+      ", list_task_documents with taskId=" + issueId +
+      ", and read_task_document with taskId=" + issueId + " and key=bostan-source.",
     "Use search_api to discover the exact first-party GET snapshot API operation",
     "/api/companies/{companyId}/issues/{issueId}/bostan-verification/sources/{documentId}/snapshot.",
     "The persisted path IDs are companyId=" + companyId + ", issueId=" + issueId + ", documentId=" + documentId + ".",
@@ -127,12 +147,14 @@ export function buildNativeVerifierCaseInstructions({ companyId, issueId, docume
     "Inspect the authenticated response's sourceSnapshotHmacSha256 field; never invent or estimate it.",
     "Verify this independent source truly supports the synthetic audit statement. Do not write a pass report if it does not.",
     "If and only if valid, call the EXACT native tool write_task_document with taskId=" + issueId +
-      ", key=bostan-verification, title=Verifier assessment and format=json.",
+      ", key=bostan-verification, title=Verifier assessment, format=json, and baseRevisionId=null.",
+    "IMPORTANT: baseRevisionId is REQUIRED by write_task_document even for a new report; pass explicit JSON null, do not omit the field.",
     "The tool body MUST be a JSON STRING containing only schema=bostan.verification.report.v1,",
     "verdict=pass, summary of 40-3000 characters, and sources as an array of objects.",
     "Each sources object must have documentId=" + documentId +
       " and expectedSnapshotHmacSha256 copied from the actual authenticated snapshot.",
-    "Use read_task_document with key bostan-verification to confirm the resulting JSON document was persisted.",
+    "Use read_task_document with taskId=" + issueId +
+      " and key=bostan-verification to confirm the resulting JSON document was persisted.",
     "DO NOT mark task Done. Do not use shell, curl, external services, or invented tool results.",
     "If any named tool is unavailable, report that blocker; final prose is not a signed saved report.",
   ].join(" ");

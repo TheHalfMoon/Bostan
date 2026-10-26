@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { qualifyGovernedCaseQa, verifyGovernedCaseReceipt, requireLiveSourceHandoffOwner, nativeGovernedCaseAgentConfig, evaluateNativeCaseQaHost,
-  buildNativeSourceCaseInstructions, buildNativeVerifierCaseInstructions } from "./bostan-governed-case-free-e2e.mjs";
+  buildNativeSourceCaseInstructions, buildNativeVerifierCaseInstructions,
+  requireNativeCaseApiToolAdmission } from "./bostan-governed-case-free-e2e.mjs";
 
 test("governed Case E2E refuses missing real-free-model or overlapping scenario opt-in", () => {
   for (const env of [
@@ -132,7 +133,8 @@ test("native reviewer discovers signed source snapshot and writes only authentic
   const prompt = buildNativeVerifierCaseInstructions(ids);
   for (const name of ["get_task", "read_task_document", "search_api", "call_api",
     "write_task_document", "bostan-verification", "sourceSnapshotHmacSha256",
-    "expectedSnapshotHmacSha256", "format=json", "JSON STRING",
+    "expectedSnapshotHmacSha256", "format=json", "baseRevisionId=null",
+    "baseRevisionId is REQUIRED", "JSON STRING",
     "bostan.verification.report.v1"]) {
     assert.ok(prompt.includes(name), "Missing verified Bostan native tool/contract: " + name);
   }
@@ -145,4 +147,22 @@ test("native reviewer discovers signed source snapshot and writes only authentic
     { ...ids, documentId: "" },
     { ...ids, issueId: "fake;exec;curl" },
   ]) assert.throws(() => buildNativeVerifierCaseInstructions(malformed), /real company/);
+});
+
+test("native reviewer refuses disabled or company-scoped API tools before source app/model setup", () => {
+  assert.equal(requireNativeCaseApiToolAdmission({}), true);
+  assert.equal(requireNativeCaseApiToolAdmission({
+    PAPERCLIP_RUNNER_API_TOOLS_ENABLED: "true",
+  }), true);
+  for (const value of ["false", "", "1", "TRUE"]) {
+    assert.throws(() => requireNativeCaseApiToolAdmission({
+      PAPERCLIP_RUNNER_API_TOOLS_ENABLED: value,
+    }), /rollout is disabled/);
+  }
+  assert.throws(() => requireNativeCaseApiToolAdmission({
+    PAPERCLIP_RUNNER_API_TOOLS_COMPANY_IDS: "11111111-1111-4111-8111-111111111111",
+  }), /random disposable company/);
+  assert.throws(() => requireNativeCaseApiToolAdmission({
+    PAPERCLIP_RUNNER_API_TOOLS_COMPANY_IDS: "",
+  }), /random disposable company/);
 });

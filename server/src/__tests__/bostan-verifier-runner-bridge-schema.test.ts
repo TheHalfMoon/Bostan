@@ -21,6 +21,23 @@ describe("Bostan B5-12 native agent authoring tool contract", () => {
     expect(runnerTaskDocumentFormatAllowed({ key: "notes", format: "json" })).toBe(false);
     expect(runnerTaskDocumentFormatAllowed({ key: "bostan-verification", format: "markdown" })).toBe(true);
   });
+  it("requires explicit null baseRevisionId for a newly created native JSON verifier report", () => {
+    const write = {
+      taskId, key: "bostan-verification", title: "Independent report",
+      body: JSON.stringify({
+        schema: "bostan.verification.report.v1", verdict: "pass",
+        summary: "A synthetic, independently reviewed source has a current snapshot digest.",
+        sources: [{ documentId: currentRevision, expectedSnapshotHmacSha256: "a".repeat(64) }],
+      }),
+      format: "json", baseRevisionId: null,
+    };
+    expect(schema.safeParse(write).success).toBe(true);
+    const { baseRevisionId: _omitted, ...withoutRevisionField } = write;
+    expect(schema.safeParse(withoutRevisionField).success).toBe(false);
+    expect(schema.safeParse({ ...write, baseRevisionId: "undefined" }).success).toBe(false);
+    expect(schema.safeParse({ ...write, baseRevisionId: "" }).success).toBe(false);
+    expect(schema.safeParse({ ...write, baseRevisionId: currentRevision }).success).toBe(true);
+  });
   it("publishes the corrected JSON capability only to authorized standard agent API tools", () => {
     const available = runnerBridgeDefinitions({ workspace: false, skills: false, api: true, mode: "standard" });
     const write = available.find(item => item.name === "write_task_document");
