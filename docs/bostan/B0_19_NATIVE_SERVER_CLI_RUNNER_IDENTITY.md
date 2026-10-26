@@ -29,3 +29,13 @@ The workspace pnpm importer formerly referenced `@paperclipai/server`. Its singl
 Full official server TypeScript/build on a resource-qualified host remains unqualified (current Mac memory is insufficient for its prior attempted full server compile), native independently model-authored signed governed Case closure unqualified, full Windows installed-app E2E unqualified, the inherited 2/110 runner security test failures remain unresolved, whole-host egress/agent security audit remains open. Also the shared, DB, adapter, plugins, protocol, assets and historical material have not all been migrated into Bostan-first package identities. B0-09 remains OPEN.
 
 No publication, deployment, release artifact or main merge.
+
+## Exact branch completion, native Windows and Mac
+
+- Native Windows Abdulaziz source Node plus Bostan private release map: **211 PASS, 0 FAIL, 8 SKIP** (219 total). This is source-only; no native Windows app installer or model host was run.
+- Native Mac source Node plus release map: **209 PASS, 0 FAIL, 10 SKIP** (219 total).
+- Real Mac Bostan CLI TypeScript project: **PASS**, plus CLI install/run/runtime Vitest 27 PASS.
+- Actual source app with renamed server package + PostgreSQL persisted company across stop/restart and headless Chromium private UI: **PASS**, 0 browser page errors and 0 browser blocked external requests.
+- Canonical independent Case/JWT/real PostgreSQL integration 22 PASS.
+- Standalone runner setup Node 9 PASS. Runner security targeted set still 102 PASS, **2 FAIL**, 6 SKIP; both failures duplicated on parent commit 47943cb and must remain NO-GO blockers.
+- Windows pre-existing untracked B023 local QA scripts preserved. No Windows installer, model inference or cleanup performed. GitHub main unchanged and Actions disabled.
