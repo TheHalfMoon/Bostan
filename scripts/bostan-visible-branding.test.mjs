@@ -42,14 +42,14 @@ test("Bostan customer-facing copy does not advertise donor as the active product
   }
 });
 
-test("portable company export names the actual Bostan CLI and requires a safe preview", () => {
+test("company export truthfully advertises the functional offline preview CLI only", () => {
   const exportPage = source("ui/src/pages/CompanyExport.tsx");
-  const commandRegistration = source("cli/src/commands/client/company.ts");
+  const preview = source("cli/src/bostan-preview.mjs");
   const cliManifest = JSON.parse(source("cli/package.json"));
-  assert.match(exportPage, /bostan company import this-github-url-or-folder --dry-run/);
-  assert.doesNotMatch(exportPage, /npx paperclipai company import/);
-  assert.match(commandRegistration, /\.command\("import"\)/);
-  assert.match(commandRegistration, /\.option\("--dry-run"/);
+  assert.match(exportPage, /bostan company inspect <local-export.zip>/);
+  assert.match(exportPage, /Importing a company into an instance is not yet supported/);
+  assert.doesNotMatch(exportPage, /bostan company import this-github-url-or-folder|npx paperclipai company import/);
+  assert.match(preview, /inspectLocalBostanCompanyExport/);
   assert.equal(cliManifest.name, "bostan");
   assert.equal(cliManifest.bin.bostan, "./dist/bostan.js");
 });

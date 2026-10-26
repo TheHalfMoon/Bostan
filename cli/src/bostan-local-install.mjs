@@ -85,6 +85,7 @@ function sourcePayload() {
   const files = new Map([
     ["dist/bostan.js", fs.readFileSync(preview)],
     ["dist/bostan-local-install.mjs", fs.readFileSync(new URL("./bostan-local-install.mjs", import.meta.url))],
+    ["dist/bostan-company-export-inspect.mjs", fs.readFileSync(new URL("./bostan-company-export-inspect.mjs", import.meta.url))],
     ["package.json", Buffer.from(JSON.stringify({
       name: "bostan",
       version: packageVersion(),
@@ -112,7 +113,8 @@ function managedManifest(paths) {
     throw new Error("Bostan installed payload is missing");
   }
   const contents = [];
-  for (const file of ["dist/bostan.js", "dist/bostan-local-install.mjs", "package.json"]) {
+  for (const file of ["dist/bostan.js", "dist/bostan-local-install.mjs",
+    "dist/bostan-company-export-inspect.mjs", "package.json"]) {
     const item = path.join(value.directory, file);
     if (!inspect(item, "file")) throw new Error("Bostan installed file missing");
     contents.push(fs.readFileSync(item));

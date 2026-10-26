@@ -486,9 +486,13 @@ function generateReadmeFromSelection(
 
   lines.push("## Getting Started");
   lines.push("");
+  lines.push("The private Bostan CLI preview can inspect this downloaded local ZIP offline:");
+  lines.push("");
   lines.push("```bash");
-  lines.push("bostan company import this-github-url-or-folder --dry-run");
+  lines.push("bostan company inspect <local-export.zip>");
   lines.push("```");
+  lines.push("");
+  lines.push("Inspection validates archive integrity only. Importing a company into an instance is not yet supported by the private Bostan CLI preview.");
   lines.push("");
   lines.push("See [Bostan](https://github.com/TheHalfMoon/Bostan) for more information.");
   lines.push("");

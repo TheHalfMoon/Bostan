@@ -12,6 +12,7 @@ const args = process.argv.slice(2);
 const HELP = `Bostan ${version} — development preview
 
 Usage: bostan [--help | --version | status | install --local]
+       bostan company inspect <local-export.zip>
        bostan app doctor
        bostan app run --local [--port 3100]
        bostan app stop --local
@@ -24,6 +25,7 @@ Usage: bostan [--help | --version | status | install --local]
   --version, -V    Show Bostan preview CLI version
   status           Check isolated Bostan CLI installation (read-only)
   install --local  Install only this Bostan CLI preview into your user home
+  company inspect Validate a local Bostan company export ZIP, read-only
   app doctor       Read-only runtime prerequisites check (source checkout)
   app run --local  Run built UI, server and isolated PostgreSQL in foreground
   app stop --local     Request verified shutdown (Windows TEMP QA only)
@@ -68,6 +70,14 @@ async function main() {
     const status = installLocal();
     process.stdout.write(`Installed Bostan CLI preview ${status.version} at ${status.command}\n`);
     process.stdout.write("Server and agent operation remain disabled.\n");
+    return;
+  }
+  if (args[0] === "company" && args[1] === "inspect") {
+    if (args.length !== 3) {
+      throw new Error("Use: bostan company inspect <local-export.zip>");
+    }
+    const { inspectLocalBostanCompanyExport } = await import("./bostan-company-export-inspect.mjs");
+    process.stdout.write(JSON.stringify(inspectLocalBostanCompanyExport(args[2]), null, 2) + "\n");
     return;
   }
   if (args.length >= 2 && args[0] === "app"

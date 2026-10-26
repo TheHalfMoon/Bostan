@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync,
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
+import { createZipArchive } from "../../../ui/src/lib/zip.ts";
 
 const source = new URL("../bostan-preview.mjs", import.meta.url).pathname;
 const cli = new URL("../../dist/bostan.js", import.meta.url).pathname;
@@ -76,6 +77,29 @@ nativeTest("compiled distro CLI can install the local preview without contacting
   try {
     assert.equal(invoke(f.home, ["install", "--local"], cli).status, 0);
     assert.equal(invoke(f.home, ["status"], "shim").status, 0);
+  } finally { f.clean(); }
+});
+
+nativeTest("installed Bostan CLI inspects real ZIP and verifies integrity of inspector module", () => {
+  const f = fixture();
+  try {
+    const archive = join(f.home, "sample.zip");
+    writeFileSync(archive, createZipArchive({
+      "README.md": "# Synthetic private export",
+      "agents/a/AGENT.md": "Synthetic data",
+    }, "bostan-synthetic"));
+    assert.equal(invoke(f.home, ["install", "--local"]).status, 0);
+    const inspected = invoke(f.home, ["company", "inspect", archive], "shim");
+    assert.equal(inspected.status, 0, inspected.stderr);
+    assert.equal(JSON.parse(inspected.stdout).files, 2);
+    assert.equal(JSON.parse(inspected.stdout).supportedForImport, false);
+    assert.equal(invoke(f.home, ["status"], "shim").status, 0);
+
+    const manifest = JSON.parse(readFileSync(join(f.home, ".bostan", "cli", "install.json"), "utf8"));
+    const inspector = join(manifest.directory, "dist", "bostan-company-export-inspect.mjs");
+    assert.ok(existsSync(inspector));
+    writeFileSync(inspector, "tampered test code");
+    mustRefuse(invoke(f.home, ["status"], "shim"));
   } finally { f.clean(); }
 });
 
@@ -157,6 +181,7 @@ nativeTest("the installed CLI survives deletion of its temporary staging directo
     mkdirSync(join(staging, "dist"), { recursive: true });
     copyFileSync(source, join(staging, "dist", "bostan.js"));
     copyFileSync(new URL("../bostan-local-install.mjs", import.meta.url), join(staging, "dist", "bostan-local-install.mjs"));
+    copyFileSync(new URL("../bostan-company-export-inspect.mjs", import.meta.url), join(staging, "dist", "bostan-company-export-inspect.mjs"));
     copyFileSync(new URL("../../package.json", import.meta.url), join(staging, "package.json"));
     assert.equal(invoke(f.home, ["install", "--local"], join(staging, "dist", "bostan.js")).status, 0);
     rmSync(staging, { recursive: true, force: true });
