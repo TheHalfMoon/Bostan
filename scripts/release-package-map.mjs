@@ -139,14 +139,19 @@ function buildReleasePackagePlan() {
     const pkg = packageByDir.get(entry.dir);
 
     if (!pkg) {
-      // The new Bostan CLI is intentionally PRIVATE and must be explicitly
-      // listed as nonpublishable. Do not silently admit private release jobs.
+      // Explicit, narrow inventory: owned Bostan packages stay private and
+      // cannot be implicitly turned into inherited public CI release jobs.
+      const expectedPrivateNames = {
+        cli: "bostan", ui: "@bostan/ui", server: "@bostan/server",
+        "packages/mcp-server": "@bostan/mcp-server",
+        "packages/kv-demo-mcp-server": "@bostan/kv-demo-mcp-server",
+        "packages/google-sheets-mcp-server": "@bostan/google-sheets-mcp-server",
+      };
+      const expectedName = expectedPrivateNames[entry.dir];
       const entryPackagePath = join(repoRoot, entry.dir, "package.json");
-      if (["cli", "ui", "server"].includes(entry.dir) &&
-          entry.publishFromCi === false && existsSync(entryPackagePath)) {
+      if (expectedName && entry.publishFromCi === false && existsSync(entryPackagePath)) {
         const privateEntry = readJson(entryPackagePath);
-        const expectedName = { cli: "bostan", ui: "@bostan/ui", server: "@bostan/server" }[entry.dir];
-        if (privateEntry.private === true && privateEntry.name === expectedName) continue;
+        if (privateEntry.private === true && privateEntry.name === expectedName && entry.name === expectedName) continue;
       }
       problems.push(`${entry.dir} is listed in ${manifestPath} but is not a public package in this repo`);
       continue;

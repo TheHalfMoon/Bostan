@@ -1,5 +1,5 @@
 {
-  "name": "@paperclipai/plugin-kitchen-sink-example",
+  "name": "@bostan/plugin-kitchen-sink-example",
   "version": "0.1.0",
   "description": "Reference plugin that demonstrates the full Paperclip plugin surface area in one package",
   "type": "module",
@@ -16,7 +16,9 @@
     "prebuild": "pnpm --filter @paperclipai/plugin-sdk ensure-build-deps",
     "build": "tsc && node ./scripts/build-ui.mjs",
     "clean": "rm -rf dist",
-    "typecheck": "pnpm --filter @paperclipai/plugin-sdk ensure-build-deps && tsc --noEmit"
+    "typecheck": "pnpm --filter @paperclipai/plugin-sdk ensure-build-deps && tsc --noEmit",
+    "prepack": "node ../../../../scripts/bostan-release-disabled.mjs",
+    "prepublishOnly": "node ../../../../scripts/bostan-release-disabled.mjs"
   },
   "dependencies": {
     "@paperclipai/plugin-sdk": "workspace:*",
@@ -36,5 +38,6 @@
   },
   "engines": {
     "node": ">=24.11.0"
-  }
+  },
+  "homepage": "https://github.com/TheHalfMoon/Bostan"
 }

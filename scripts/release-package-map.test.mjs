@@ -15,7 +15,7 @@ function pkg(name, { publishFromCi, ...deps } = {}) {
 
 test("Bostan release inventory uses portable slash-separated package identifiers", () => {
   const packages = discoverPublicPackages();
-  assert.ok(packages.length >= 30);
+  assert.ok(packages.length >= 25);
   for (const pkg of packages) {
     assert.equal(pkg.dir.split(String.fromCharCode(92)).length, 1, "non-portable workspace package ID: " + pkg.dir);
   }

@@ -6,7 +6,7 @@ import { createToolDefinitions } from "./tools.js";
 
 export function createPaperclipMcpServer(config: PaperclipMcpConfig = readConfigFromEnv()) {
   const server = new McpServer({
-    name: "paperclip",
+    name: "bostan",
     version: "0.1.0",
   });
 

@@ -1,5 +1,5 @@
 {
-  "name": "@paperclipai/plugin-orchestration-smoke-example",
+  "name": "@bostan/plugin-orchestration-smoke-example",
   "version": "0.1.0",
   "type": "module",
   "private": true,
@@ -11,7 +11,9 @@
     "dev": "node ./esbuild.config.mjs --watch",
     "dev:ui": "paperclip-plugin-dev-server --root . --ui-dir dist/ui --port 4177",
     "test": "vitest run --config ./vitest.config.ts",
-    "typecheck": "pnpm --filter @paperclipai/plugin-sdk ensure-build-deps && tsc --noEmit"
+    "typecheck": "pnpm --filter @paperclipai/plugin-sdk ensure-build-deps && tsc --noEmit",
+    "prepack": "node ../../../../scripts/bostan-release-disabled.mjs",
+    "prepublishOnly": "node ../../../../scripts/bostan-release-disabled.mjs"
   },
   "paperclipPlugin": {
     "manifest": "./dist/manifest.js",
@@ -45,5 +47,6 @@
   },
   "engines": {
     "node": ">=24.11.0"
-  }
+  },
+  "homepage": "https://github.com/TheHalfMoon/Bostan"
 }

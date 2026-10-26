@@ -106,17 +106,17 @@
   },
   {
     "dir": "packages/mcp-server",
-    "name": "@paperclipai/mcp-server",
+    "name": "@bostan/mcp-server",
     "publishFromCi": false
   },
   {
     "dir": "packages/google-sheets-mcp-server",
-    "name": "@paperclipai/google-sheets-mcp-server",
+    "name": "@bostan/google-sheets-mcp-server",
     "publishFromCi": false
   },
   {
     "dir": "packages/kv-demo-mcp-server",
-    "name": "@paperclipai/kv-demo-mcp-server",
+    "name": "@bostan/kv-demo-mcp-server",
     "publishFromCi": false
   },
   {

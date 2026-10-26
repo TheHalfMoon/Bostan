@@ -25,7 +25,7 @@ function mockJsonResponse(body: unknown, status = 200) {
   });
 }
 
-describe("paperclip MCP tools", () => {
+describe("Bostan MCP tools", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
@@ -127,6 +127,10 @@ describe("paperclip MCP tools", () => {
       priority: "medium",
       assigneeAgentId: "22222222-2222-2222-2222-222222222222",
       requestDepth: 0,
+      // Bostan's governed Case/issue API explicitly requires these defaults.
+      // Do not omit them or merely snapshot a partial request.
+      visibility: "open",
+      allowDuplicate: false,
     });
   });
 
