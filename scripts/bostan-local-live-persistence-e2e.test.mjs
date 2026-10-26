@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { requireBostanSourceSmokeAdmission, requireBostanOcrBrowserBundle, assertBostanOcrBundleFileMetadata } from "./bostan-local-live-persistence-e2e.mjs";
+import { requireBostanSourceSmokeAdmission, requireBostanOcrBrowserBundle, assertBostanOcrBundleFileMetadata,
+  assertPrivateNodeQaEgressReceipt } from "./bostan-local-live-persistence-e2e.mjs";
 
 test("real database smoke refuses non-opted-in execution before any process starts", () => {
   assert.throws(() => requireBostanSourceSmokeAdmission({}, "darwin"), /requires/);
@@ -161,4 +162,28 @@ test("OCR browser QA rejects an unbuilt or flag-disabled UI before starting Post
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("test-only Node no-egress profile requires no external model runs", () => {
+  const allowed = { BOSTAN_LIVE_LOCAL_QA_CONFIRM: "1",
+    BOSTAN_TEST_ONLY_NODE_EGRESS_PROFILE: "1" };
+  assert.doesNotThrow(() => requireBostanSourceSmokeAdmission(allowed, "darwin"));
+  for (const key of [
+    "BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E",
+    "BOSTAN_LIVE_LOCAL_GOVERNED_CASE_E2E",
+    "BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL",
+  ]) {
+    assert.throws(() => requireBostanSourceSmokeAdmission({ ...allowed, [key]: "1" }, "darwin"),
+      /cannot activate any external model/);
+  }
+});
+
+test("real private Node smoke cannot qualify an unarmed or egress-positive receipt", () => {
+  assert.deepEqual(assertPrivateNodeQaEgressReceipt("armed\narmed\n"),
+    { armedNodeProcesses: 2, blockedExternalNodeRequests: 0 });
+  for (const invalid of [
+    "", "armed\n", "armed\nhttp\narmed\n",
+    "armed\narmed\nfetch\n", "armed\narmed\nhttp2\n",
+    null, "armed\narmed\nuser-external\n",
+  ]) assert.throws(() => assertPrivateNodeQaEgressReceipt(invalid), /not fully guarded|missing or malformed/);
 });

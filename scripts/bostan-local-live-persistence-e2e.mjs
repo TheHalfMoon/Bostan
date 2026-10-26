@@ -72,7 +72,25 @@ export function requireBostanOcrBrowserBundle(assetsDir = path.join(REPO, "ui", 
 
 const SLEEP_MS = 1000;
 
+export function assertPrivateNodeQaEgressReceipt(content) {
+  if (typeof content !== "string") {
+    throw new Error("Bostan Node egress QA receipt is missing or malformed");
+  }
+  const categories = content.split("\n").filter(Boolean);
+  const armed = categories.filter(item => item === "armed").length;
+  if (armed < 2 || categories.some(item => item !== "armed")) {
+    throw new Error("Bostan private Node smoke was not fully guarded or attempted external egress");
+  }
+  return { armedNodeProcesses: armed, blockedExternalNodeRequests: 0 };
+}
+
 export function requireBostanSourceSmokeAdmission(env = process.env, platform = process.platform) {
+  if (env.BOSTAN_TEST_ONLY_NODE_EGRESS_PROFILE === "1" &&
+    (env.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E === "1" ||
+     env.BOSTAN_LIVE_LOCAL_GOVERNED_CASE_E2E === "1" ||
+     env.BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL === "1")) {
+    throw new Error("Disposable no-egress Node QA cannot activate any external model/provider scenario");
+  }
   if (env.BOSTAN_LIVE_LOCAL_QA_CONFIRM !== "1") {
     throw new Error("Bostan live local QA requires BOSTAN_LIVE_LOCAL_QA_CONFIRM=1");
   }
@@ -206,6 +224,14 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
       BOSTAN_E2E_OPENROUTER_ZERO_PRICE_VERIFIED: "1",
     } : {}),
   };
+  const nodeEgressQa = env.BOSTAN_TEST_ONLY_NODE_EGRESS_PROFILE === "1";
+  const nodeEgressReceipt = path.join(home, "bostan-node-egress-attempts.log");
+  if (nodeEgressQa) {
+    fs.writeFileSync(nodeEgressReceipt, "", { flag: "wx", mode: 0o600 });
+    const preload = new URL("./bostan-disposable-node-egress-preload.mjs", import.meta.url).href;
+    childEnv.BOSTAN_TEST_ONLY_NODE_EGRESS_GUARD = "1";
+    childEnv.NODE_OPTIONS = ((env.NODE_OPTIONS ?? "") + " --import=" + preload).trim();
+  }
   const port = await freePort();
   const origin = `http://127.0.0.1:${port}`;
   let proc = null;
@@ -348,10 +374,14 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
       });
     }
     await stop();
+    const nodeEgressEvidence = nodeEgressQa
+      ? assertPrivateNodeQaEgressReceipt(fs.readFileSync(nodeEgressReceipt, "utf8"))
+      : null;
     const storedConfig = JSON.parse(fs.readFileSync(path.join(app, "state", "instances", "local", "config.json"), "utf8"));
     if (storedConfig?.bostanManagedLocalRuntime !== MARKER) throw new Error("Unexpected runtime identity");
     clean = true;
     return { qualified: true, platform: process.platform,
+      ...(nodeEgressEvidence ? { nodeEgressEvidence } : {}),
       ...(browserReport ? {
         browserPageErrors: browserReport.pageErrorsSeen,
         browserExternalRequestsBlocked: browserReport.blockedExternalRequests,
