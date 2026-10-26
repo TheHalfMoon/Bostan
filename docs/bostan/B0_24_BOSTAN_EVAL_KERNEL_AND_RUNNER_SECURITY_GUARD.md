@@ -32,3 +32,11 @@ The standalone Runner's forbidden-import guard recognized only `@paperclipai/*`.
 - Existing `PAPERCLIP_EVAL_KERNEL_COMPATIBILITY`, `runPaperclipEvalMatrix`, `PaperclipEval* types`, and original configuration error remain available as identical aliases so old callers and exact `instanceof` semantics survive. The wire schema is still `paperclip.eval-kernel.compatibility.v1`, **not silently invented as v2**.
 - Bostan Runner's workflow harness now imports and invokes the new Bostan-first API. Real TypeScript kernel build **PASS** and all 3 native kernel tests PASS, including equality of old/new public aliases and unchanged wire schema.
 - Verified the three out-of-boundary source-relative imports reported by the standalone Runner check exist **verbatim in parent B0-23 source commit**, not added by this migration. The standalone import-boundary result remains **13 PASS, 1 FAIL**, not a complete security pass.
+
+## Exact-head cross-platform qualification — B0-24
+
+- Mac source Node + guarded release suite: **239 PASS, 0 FAIL, 10 SKIP** (249 total).
+- Windows `Abdulaziz` source Node + guarded release suite: **241 PASS, 0 FAIL, 8 SKIP** (249 total). On the first Windows run, the new source test assumed the *entire* old eval-kernel directory would disappear after `git switch`. Only ignored old build `dist` and `node_modules` remained, with no old tracked source or package.json. The test was narrowed to the required invariant: the original `packages/paperclip-eval-kernel/package.json` no longer exists. Re-ran source suite on Mac and Windows after patch, both green. We **did not delete** the Windows ignored directories or three pre-existing B023 untracked QA scripts.
+- Mac actual local Bostan HTTP app + PostgreSQL synthetic company create, clean stop/restart, persisted readback and real headless Chromium private page: **PASS**, browser page errors 0 and blocked external browser requests 0, own test processes cleanly stopped.
+- Reviewed Eval Kernel TypeScript build and test 3 PASS, Runner build input tests 11 PASS. Standalone Runner import-policy suite remains **13 PASS / 1 FAIL**, parent-known out-of-root imports, with no exception introduced.
+- Windows remains a SOURCE QA result only, not a full installed Windows application, GUI, native model inference or release artifact gate. No paid provider or release action.
