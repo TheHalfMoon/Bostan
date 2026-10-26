@@ -16,6 +16,8 @@ test("governed Case E2E refuses missing real-free-model or overlapping scenario 
 });
 const SOURCE = randomUUID(), REVIEW = randomUUID(), SRC_RUN = randomUUID(), REV_RUN = randomUUID();
 function good() {
+  const caseId = randomUUID();
+  const reportDocumentId = randomUUID();
   return {
     implementationAgentId: SOURCE, reviewerAgentId: REVIEW,
     sourceRun: { id: SRC_RUN, agentId: SOURCE, status: "succeeded", exitCode: 0,
@@ -23,10 +25,13 @@ function good() {
     reviewRun: { id: REV_RUN, agentId: REVIEW, status: "succeeded", exitCode: 0,
       errorCode: null, usageJson: { costUsd: 0 } },
     sourceDocument: { id: randomUUID() },
-    reportDocument: { id: randomUUID(), format: "json" },
-    caseState: { status: "done" },
-    summary: { current: true, provenanceCurrent: true, reviewerAgentId: REVIEW,
-      citedDocumentCount: 1, executionAuthorized: false },
+    reportDocument: { id: reportDocumentId, format: "json" },
+    caseState: { id: caseId, status: "done" },
+    summary: { schema: "bostan.verification.board-summary.v1", caseId,
+      caseStatus: "done", current: true, provenanceCurrent: true,
+      reviewerAgentId: REVIEW, reviewRunId: REV_RUN, reportDocumentId,
+      citedDocumentCount: 1, factualRelevanceVerified: false,
+      sourceContentIsUntrusted: true, executionAuthorized: false },
   };
 }
 test("governed Case accepts only actual distinct green models, current board summary, and $0 reported cost", () => {
@@ -46,6 +51,17 @@ test("governed Case accepts only actual distinct green models, current board sum
     a => { a.summary.current = false; },
     a => { a.summary.provenanceCurrent = false; },
     a => { a.summary.reviewerAgentId = SOURCE; },
+    a => { a.summary.reviewRunId = SRC_RUN; },
+    a => { a.summary.reviewRunId = randomUUID(); },
+    a => { a.summary.reportDocumentId = randomUUID(); },
+    a => { delete a.summary.reportDocumentId; },
+    a => { delete a.summary.reviewRunId; },
+    a => { a.summary.caseId = randomUUID(); },
+    a => { a.summary.caseStatus = "in_progress"; },
+    a => { a.caseState.id = randomUUID(); },
+    a => { a.summary.schema = "test.fake.review"; },
+    a => { a.summary.factualRelevanceVerified = true; },
+    a => { a.summary.sourceContentIsUntrusted = false; },
     a => { a.summary.executionAuthorized = true; },
     a => { a.summary.citedDocumentCount = 0; },
     a => { a.reportDocument.format = "markdown"; },
@@ -112,10 +128,19 @@ test("native governed Case host preflight refuses low-memory Macs and sparse TEM
     ["supportedNativePlatform"]);
   assert.equal(evaluateNativeCaseQaHost({ ...good, freeMemoryBytes: null }).qualified, false);
 });
-test("unreported model costs remain unknown rather than being mislabeled zero", () => {
-  const a = good();
-  a.reviewRun.usageJson = null;
-  assert.equal(verifyGovernedCaseReceipt(a).reportedCostUsd, null);
+test("unreported, unknown or incorrect cost rejects the actual governed Case PASS receipt", () => {
+  for (const update of [
+    a => { a.reviewRun.usageJson = null; },
+    a => { a.sourceRun.usageJson = {}; },
+    a => { a.reviewRun.usageJson.costUsd = undefined; },
+    a => { a.sourceRun.usageJson.costUsd = "0"; },
+    a => { a.reviewRun.usageJson.costUsd = 0.001; },
+    a => { a.sourceRun.usageJson.costUsd = -1; },
+  ]) {
+    const value = good();
+    update(value);
+    assert.throws(() => verifyGovernedCaseReceipt(value), /explicitly measured zero cost/);
+  }
 });
 
 test("native specialist instructions require named persisted Bostan tools, not host-shell writes", () => {

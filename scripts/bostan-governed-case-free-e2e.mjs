@@ -184,22 +184,34 @@ export function verifyGovernedCaseReceipt({
     || reportDocument?.format !== "json") {
     throw new Error("Governed Case needs a separate persisted JSON reviewer document");
   }
-  if (caseState?.status !== "done" || summary?.current !== true
-    || summary?.provenanceCurrent !== true
+  // A valid report from some earlier verifier run is NOT evidence that the
+  // exact live model run we just observed created that report. Bind all IDs to
+  // the original board-owned current-verification response; the board route
+  // itself enforces HMAC, authorship, JWT/PG provenance and terminal status.
+  if (!UUID.test(caseState?.id ?? "") || caseState.status !== "done"
+    || summary?.schema !== "bostan.verification.board-summary.v1"
+    || summary?.caseId !== caseState.id || summary?.caseStatus !== "done"
+    || summary?.current !== true || summary?.provenanceCurrent !== true
     || summary?.reviewerAgentId !== reviewerAgentId
+    || summary?.reviewRunId !== reviewRun.id
+    || summary?.reportDocumentId !== reportDocument.id
     || summary?.citedDocumentCount !== 1
+    || summary?.factualRelevanceVerified !== false
+    || summary?.sourceContentIsUntrusted !== true
     || summary?.executionAuthorized !== false) {
-    throw new Error("Governed Case original completion and current signed review were not both verified");
+    throw new Error("Governed Case requires exact-run, exact-report current board provenance and original completion");
   }
+  // A free-tier *name* is not a financial receipt. Missing/unknown telemetry
+  // must not produce a success banner claiming no model costs to the founder.
   for (const run of [sourceRun, reviewRun]) {
-    const cost = run.usageJson?.costUsd;
-    if (cost != null && cost !== 0) throw new Error("Governed Case refuses nonzero reported model cost");
+    if (run.usageJson?.costUsd !== 0) {
+      throw new Error("Governed Case $0 claim requires explicitly measured zero cost on BOTH runs");
+    }
   }
-  const measuredZeroCost = [sourceRun, reviewRun].every(run => run.usageJson?.costUsd === 0);
   return {
     caseDone: true, twoDistinctRealAgentRuns: true,
     verifierAuthoredStructuredReport: true, independentCurrentSourceCitation: true,
-    boardSummaryCurrent: true, reportedCostUsd: measuredZeroCost ? 0 : null,
+    boardSummaryCurrent: true, reportedCostUsd: 0,
   };
 }
 
