@@ -66,6 +66,7 @@ import { useBreadcrumbs } from "@/context/BreadcrumbContext";
 import { useToast } from "@/context/ToastContext";
 import { formatDateTime } from "@/lib/utils";
 import { queryKeys } from "@/lib/queryKeys";
+import { safeCredentialUiError } from "@/lib/credential-ui-error-privacy";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { Link, Navigate, useLocation, useNavigate, useParams } from "@/lib/router";
 
@@ -228,14 +229,16 @@ export function connectionHealthPresentation(
     paused: "Connection is paused. Resume it to receive new messages.",
     attention: "Connection needs attention.",
     revoked: "Connection access is revoked. Reconnect to verify access.",
-    archived: "Connection has been removed from Paperclip.",
+    archived: "Connection has been removed from Bostan.",
   };
   const lifecycleMessage =
     endpoint.status === "active" ? null : lifecycleMessages[endpoint.status];
   return {
-    message: lifecycleMessage ?? endpoint.healthMessage ?? null,
-    previousHealth: lifecycleMessage ? (endpoint.healthMessage ?? null) : null,
-    error: endpoint.lastError ?? null,
+    message: lifecycleMessage ?? (endpoint.healthMessage
+      ? safeCredentialUiError(endpoint.healthMessage, "chatHealth") : null),
+    previousHealth: lifecycleMessage && endpoint.healthMessage
+      ? safeCredentialUiError(endpoint.healthMessage, "chatHealth") : null,
+    error: endpoint.lastError ? safeCredentialUiError(endpoint.lastError, "chatError") : null,
     errorLabel: ["active", "attention", "revoked"].includes(endpoint.status)
       ? "Reason"
       : "Last reported error",

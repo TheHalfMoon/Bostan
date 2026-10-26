@@ -45,6 +45,7 @@ import {
   lowTrustBoundaryHasScope,
 } from "@/lib/trust-policy-ui";
 import { queryKeys } from "@/lib/queryKeys";
+import { safeCredentialUiError } from "@/lib/credential-ui-error-privacy";
 import type {
   AgentPermissions,
   EmailEndpointSummary,
@@ -327,7 +328,7 @@ function EmailEndpointSetupForm({ companyId }: { companyId: string }) {
       <h1 className="text-xl font-bold">{step === 2 ? "Your agent’s email is ready" : "Give an agent an email address"}</h1>
     </header>
     {step < 2 && inboxes.isError && <div role="alert" className="space-y-2 text-sm">
-      <p className="text-destructive">Could not load email setup progress. {inboxes.error.message}</p>
+      <p className="text-destructive">Could not load email setup progress. {safeCredentialUiError(inboxes.error, "emailLoad")}</p>
       <Button type="button" variant="outline" size="sm" disabled={busy || inboxes.isFetching} onClick={() => { void inboxes.refetch(); }}>
         {inboxes.isFetching ? "Loading…" : "Retry loading inboxes"}
       </Button>
@@ -560,15 +561,16 @@ export function EmailConnectionInboxes({
             {i.address}
           </Link>
           <span className="text-xs text-muted-foreground">
-            {i.lastError ??
-              (i.status === "active" ? "Receiving email" : i.status)}
+            {i.lastError
+              ? safeCredentialUiError(i.lastError, "emailHealth")
+              : i.status === "active" ? "Receiving email" : i.status}
           </span>
         </div>
       ))}
       {!!inboxes.length && <EmailSafetyNotice />}
       {query.error && (
         <p role="alert" className="text-sm text-destructive">
-          {query.error.message}
+          {safeCredentialUiError(query.error, "emailLoad")}
         </p>
       )}
     </section>
@@ -697,9 +699,9 @@ export function EmailEndpointSettings({
             <dd className="font-mono text-xs">{inbox.lastSyncAt ? formatDateTime(inbox.lastSyncAt) : "Not checked yet"}</dd>
           </div>
         </dl>
-        {inbox.lastError && <p role="alert" className="text-sm text-destructive">{inbox.lastError}</p>}
+        {inbox.lastError && <p role="alert" className="text-sm text-destructive">{safeCredentialUiError(inbox.lastError, "emailHealth")}</p>}
         {control.error && control.variables !== "remove" && (
-          <p role="alert" className="text-sm text-destructive">{control.error.message}</p>
+          <p role="alert" className="text-sm text-destructive">{safeCredentialUiError(control.error, "emailAction")}</p>
         )}
       </section>
 
@@ -719,7 +721,7 @@ export function EmailEndpointSettings({
               <option value="webhook">Webhook</option>
             </select>
           </div>
-          {reconnect.error && <p role="alert" className="text-sm text-destructive">{reconnect.error.message}</p>}
+          {reconnect.error && <p role="alert" className="text-sm text-destructive">{safeCredentialUiError(reconnect.error, "emailAction")}</p>}
           {reconnect.isSuccess && <p role="status" className="text-sm">Inbox reconnected.</p>}
           <div className="flex justify-end">
             <Button variant="outline" disabled={!replacementKey || reconnect.isPending} onClick={() => reconnect.mutate()}>
@@ -733,7 +735,7 @@ export function EmailEndpointSettings({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1">
             <h2 id="email-disconnect-heading" className="text-sm font-semibold">Disconnect inbox</h2>
-            <p className="text-sm text-muted-foreground">Stop receiving email in Paperclip. The inbox stays in AgentMail.</p>
+            <p className="text-sm text-muted-foreground">Stop receiving email in Bostan. The inbox stays in AgentMail.</p>
           </div>
           <Button variant="outline" size="sm" disabled={control.isPending}
             onClick={() => control.mutate("remove")}>
@@ -741,7 +743,7 @@ export function EmailEndpointSettings({
           </Button>
         </div>
         {control.error && control.variables === "remove" && (
-          <p role="alert" className="text-sm text-destructive">{control.error.message}</p>
+          <p role="alert" className="text-sm text-destructive">{safeCredentialUiError(control.error, "emailAction")}</p>
         )}
       </section>
     </div>

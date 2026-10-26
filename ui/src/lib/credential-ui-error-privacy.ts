@@ -23,6 +23,11 @@ const CREDENTIAL_ERROR_COPY = {
   appCredential: "Credential check failed. Review the key and retry.",
   githubHealth: "GitHub connection needs attention. Reconnect to verify access.",
   githubCredential: "Could not verify this GitHub App. Review its saved credentials and retry.",
+  chatHealth: "Provider connection status is available. Check connection settings if needed.",
+  chatError: "Chat provider reported an error. Check its connection settings and retry.",
+  emailHealth: "Email inbox needs attention. Check its credentials or reconnect.",
+  emailAction: "Could not update the email inbox. Check its credentials and try again.",
+  emailLoad: "Could not load the email inboxes. Retry loading them.",
 
   oauthStart: "Bostan couldn’t start secure sign-in. Try again.",
 } as const;
