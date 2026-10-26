@@ -29,3 +29,7 @@ Open B0-09 branding task is not fully closed by this bounded UI copy pass. Offic
 - Five real canonical native Case/JWT/HTTP/real disposable PostgreSQL suites: 22 PASS, 0 FAIL.
 - Real local Bostan source HTTP/PostgreSQL persisted company, clean stop/restart and headless Chromium private UI: PASS, 0 page errors and 0 blocked external requests, clean stop.
 - Windows native source test results are appended after verification on this same code branch.
+
+## Real Windows cross-platform verification
+
+Native Windows Abdulaziz on the exact B0-10 source head: 175 PASS, 0 FAIL, 7 platform SKIP (182 total). The three pre-existing untracked Windows QA scripts remain untouched. No native Windows installer was run or declared qualified; do not conflate source and installed-package tests.
