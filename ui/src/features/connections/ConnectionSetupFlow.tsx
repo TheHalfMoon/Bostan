@@ -82,6 +82,10 @@ import { useCopyAction } from "@/lib/use-copy-action";
 import { resolveAuthorizationTarget } from "@/lib/authorizationUrl";
 import { navigateTopLevel } from "@/lib/browserNavigation";
 import { prepareOAuthNavigation, savePendingCloudHandoff } from "@/lib/oauthHandoff";
+import {
+  safeBostanConnectionOAuthStartError,
+  safeBostanConnectorEnrollmentError,
+} from "@/lib/bostan-connection-errors";
 import { redactUrlSecrets } from "@/lib/redact-url-secrets";
 import { askFirstCatalogEntryIdsFor } from "./connection-defaults";
 import { AppLogo } from "@/pages/apps/AppLogo";
@@ -825,7 +829,7 @@ function StandardConnectionSetupFlow({
     const popup = oauthPopupRef.current;
     if (!popup || popup.closed) {
       setOAuthPhase("error");
-      setOAuthError("Paperclip couldn’t open the sign-in window. Open sign-in in a new tab to continue.");
+      setOAuthError("Bostan couldn't open the sign-in window. Open sign-in in a new tab to continue.");
       onPhaseChange?.("needs_retry");
       return;
     }
@@ -865,7 +869,7 @@ function StandardConnectionSetupFlow({
       if (target.kind === "reauthentication") {
         const destination = host === "dialog" ? oauthPopupRef.current : window;
         if (!destination || destination.closed || !start.handoff) {
-          throw new Error("Paperclip couldn’t preserve this sign-in while refreshing your account.");
+          throw new Error("Bostan couldn't preserve this sign-in while refreshing your account.");
         }
         savePendingCloudHandoff(start.handoff.session, destination.sessionStorage);
         setOAuthPhase("starting");
@@ -877,7 +881,7 @@ function StandardConnectionSetupFlow({
     } catch (error) {
       if (controller.signal.aborted) return;
       setOAuthPhase("error");
-      setOAuthError(error instanceof Error ? error.message : "Paperclip couldn’t start secure sign-in. Try again.");
+      setOAuthError(safeBostanConnectionOAuthStartError(error));
       onPhaseChange?.("needs_retry");
     } finally {
       if (oauthHandoffAbortRef.current === controller) oauthHandoffAbortRef.current = null;
@@ -1130,7 +1134,7 @@ function StandardConnectionSetupFlow({
     const target = resolveAuthorizationTarget(verificationUrl);
     if (!target.ok) {
       closeEnrollmentPopup();
-      setConnectorEnrollmentError(target.message);
+      setConnectorEnrollmentError(safeBostanConnectorEnrollmentError(target.message));
       return;
     }
     if (host === "dialog") {
@@ -1169,16 +1173,14 @@ function StandardConnectionSetupFlow({
     onSuccess: (status) => {
       if (!status.verificationUrl) {
         closeEnrollmentPopup();
-        setConnectorEnrollmentError("Paperclip Cloud did not return an enrollment link. Try again.");
+        setConnectorEnrollmentError("The connector service did not return an enrollment link. Try again.");
         return;
       }
       openConnectorEnrollment(status.verificationUrl);
     },
     onError: (error) => {
       closeEnrollmentPopup();
-      setConnectorEnrollmentError(
-        error instanceof Error ? error.message : "Paperclip couldn’t reach Paperclip Cloud. Try again.",
-      );
+      setConnectorEnrollmentError(safeBostanConnectorEnrollmentError(error));
     },
   });
   const applicationsQuery = useQuery({
@@ -1363,13 +1365,7 @@ function StandardConnectionSetupFlow({
       setOAuthPhase("error");
       workspaceSelectionRef.current = null;
       onPhaseChange?.("needs_retry");
-      setOAuthError(
-        details?.code === "invalid_grant"
-          ? "Your authorization expired or was revoked. Reconnect to continue."
-          : error instanceof Error
-            ? error.message
-            : "Paperclip couldn’t start secure sign-in. Try again.",
-      );
+      setOAuthError(safeBostanConnectionOAuthStartError(error, details?.code));
     },
   });
   const mutateOAuthStart = oauthStartMutation.mutate;
@@ -1551,13 +1547,7 @@ function StandardConnectionSetupFlow({
       if (automaticOAuthEntry) {
         setOAuthPhase("error");
         onPhaseChange?.("needs_retry");
-        setOAuthError(
-          details?.code === "invalid_grant"
-            ? "Your authorization expired or was revoked. Reconnect to continue."
-            : error instanceof Error
-              ? error.message
-              : "Paperclip couldn’t start secure sign-in. Try again.",
-        );
+        setOAuthError(safeBostanConnectionOAuthStartError(error, details?.code));
         return;
       }
       // The generic URL path explains the specific corrective action inline,

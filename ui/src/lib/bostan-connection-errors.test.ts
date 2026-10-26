@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   safeBostanOAuthError,
   safeBostanGrokConnectionError,
+  safeBostanConnectionOAuthStartError,
+  safeBostanConnectorEnrollmentError,
 } from "./bostan-connection-errors";
 
 describe("safe public connection errors", () => {
@@ -35,5 +37,28 @@ describe("safe public connection errors", () => {
     const message = safeBostanGrokConnectionError(cause);
     expect(message).toContain("Grok Bot connection");
     expect(message).not.toMatch(/secret|hook\?|HTTP 403|sk-or-/);
+  });
+});
+
+describe("connection setup provider exception privacy", () => {
+  it.each([
+    new Error("https://idp.example/callback?code=secret-code&state=secret-csrf"),
+    "Authorization: Bearer secret-token",
+    { message: "sk-or-test-secret" },
+    null,
+  ])("hides provider exception bodies in both OAuth and cloud enrollment", (cause) => {
+    const oauth = safeBostanConnectionOAuthStartError(cause);
+    const enrollment = safeBostanConnectorEnrollmentError(cause);
+    expect(oauth).toBe("Bostan couldn't start secure sign-in. Try again.");
+    expect(enrollment).toContain("Bostan couldn't complete connector enrollment");
+    expect(oauth + enrollment).not.toMatch(/secret-code|secret-csrf|secret-token|sk-or-/);
+  });
+
+  it("preserves only a trusted invalid_grant decision as actionable copy", () => {
+    const raw = new Error("provider raw user secret");
+    expect(safeBostanConnectionOAuthStartError(raw, "invalid_grant"))
+      .toBe("Your authorization expired or was revoked. Reconnect to continue.");
+    expect(safeBostanConnectionOAuthStartError(raw, "invalid_grant with secret"))
+      .toBe("Bostan couldn't start secure sign-in. Try again.");
   });
 });

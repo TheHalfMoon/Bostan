@@ -20,3 +20,15 @@ export function safeBostanOAuthError(value: unknown): string {
 export function safeBostanGrokConnectionError(_value: unknown): string {
   return "Bostan couldn't complete the Grok Bot connection operation. Check the connection and try again.";
 }
+
+// Provider API failures can carry authorization state, signed URLs or user
+// credentials. Only a server-validated error *code* may select a known message.
+export function safeBostanConnectionOAuthStartError(_cause: unknown, code?: unknown): string {
+  return code === "invalid_grant"
+    ? "Your authorization expired or was revoked. Reconnect to continue."
+    : "Bostan couldn't start secure sign-in. Try again.";
+}
+
+export function safeBostanConnectorEnrollmentError(_cause: unknown): string {
+  return "Bostan couldn't complete connector enrollment. Check the connection and try again.";
+}
