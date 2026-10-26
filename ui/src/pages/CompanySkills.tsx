@@ -284,9 +284,9 @@ function sourceMeta(sourceBadge: CompanySkillSourceBadge, sourceLabel: string | 
     case "local":
       return { icon: Folder, label: sourceLabel ?? "Folder", managedLabel: "Folder managed" };
     case "paperclip":
-      return { icon: Paperclip, label: sourceLabel ?? "Paperclip", managedLabel: "Paperclip managed" };
+      return { icon: Paperclip, label: !sourceLabel || sourceLabel === "Paperclip" || sourceLabel === "Paperclip catalog" ? "Bostan" : sourceLabel, managedLabel: "Bostan managed" };
     default:
-      return { icon: Boxes, label: sourceLabel ?? "Catalog", managedLabel: "Catalog managed" };
+      return { icon: Boxes, label: sourceLabel === "Paperclip catalog" ? "Bostan catalog" : sourceLabel === "Paperclip" ? "Bostan" : sourceLabel ?? "Catalog", managedLabel: "Catalog managed" };
   }
 }
 
@@ -723,7 +723,7 @@ export function buildDiscoveryCards(
       catalogRef: entry.id,
       name: entry.name,
       slug: entry.slug,
-      author: entry.packageName ?? "Paperclip",
+      author: entry.packageName ?? "Bostan",
       version: discoveryVersionLabel({ packageVersion: entry.packageVersion ?? null, sourceRef: null }, required),
       tagline: null,
       description: entry.description,

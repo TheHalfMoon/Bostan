@@ -117,7 +117,8 @@ test("operational workspace and agent tool screens show Bostan without renaming 
   assert.match(skills, /Bostan cannot manage skills for this adapter yet/);
   // These are technical legacy compatibility identifiers, not product copy.
   assert.match(skills, /agent\.adapterType === "paperclip_runner"/);
-  assert.match(skills, /legacy Paperclip operational skill/);
+  assert.match(skills, /legacy bundled operational skill/);
+  assert.doesNotMatch(skills, /legacy Paperclip operational skill/);
 });
 
 
