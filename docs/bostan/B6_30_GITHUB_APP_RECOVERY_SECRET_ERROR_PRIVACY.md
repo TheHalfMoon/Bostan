@@ -23,3 +23,9 @@ Add two actions, githubHealth and githubCredential, to the existing centralized 
 - Private Chromium persistence and native Windows source tests are recorded separately after exact-head qualification.
 
 This is targeted protection of one credential-bearing recovery interface, not an independent security review, not installed Windows qualification, and not evidence of an actual model-authored signed Case. Official entire-server build/typecheck, resource-gated real free native Case with an independently authored JSON report, Windows installed app E2E and comprehensive security audit remain NO-GO.
+
+## Exact-head browser and Windows qualification
+
+- Actual disposable source Bostan/HTTP/PostgreSQL clean stop, restart, company persistence and private headless Chromium UI: PASS, browser page errors 0, external blocked requests 0.
+- Native Windows Abdulaziz Bostan Node source suite at the exact B6-30 code head: 167 PASS, 0 FAIL, 7 platform SKIP (174 total). The Windows full installed app/installer was NOT run; its host free-RAM/staging requirements are still unmet and no user apps or persistent files were deleted.
+- Mac focused Github recovery 23 PASS, official UI TypeScript/build PASS, Mac source 165 PASS and 9 platform SKIP, real PG Case/JWT five files 22 PASS, all on current code head.
