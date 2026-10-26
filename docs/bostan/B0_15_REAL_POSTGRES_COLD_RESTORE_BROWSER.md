@@ -25,3 +25,10 @@ The original source HOME and backed-up data are preserved during the test; on fa
 ## Not yet qualified
 
 This is cold backup/restore within disposable source checkout, **not** an installed-app upgrade or disaster recovery following hard power loss. It does not exercise Windows packaging, all database migration versions, backups taken while PostgreSQL is running, user secrets from a real account, failed PG shutdowns or stale locks, nor the official full server compiler/build. Native free-model-generated independently reviewed canonical Case and independent comprehensive security signoff remain open. **Release NO-GO**, private and no paid inference.
+
+## Final branch regression results
+
+- Native Windows Abdulaziz Bostan Node source: **184 PASS, 0 FAIL, 8 platform/opt-in SKIP** (192 total); the new admission test passes. No Windows installer or live restore was claimed.
+- Canonical independent Case/JWT/native runner/real disposable PostgreSQL: **22 PASS, 0 FAIL** (five integration files).
+- Default source path (without cold restore flag) was rerun on Mac under both explicitly opted-in test-only network guards: PASS, two server processes armed, 0 recorded external Node API calls, 0 browser errors and 0 blocked browser requests. Thus the optional restore path did not regress ordinary restart/persistence/Chromium smoke.
+- Full official server compiler/build, Windows installed app and hard-power-loss recovery remain unqualified.
