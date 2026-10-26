@@ -471,7 +471,7 @@ function EmailEndpointSetupForm({ companyId }: { companyId: string }) {
             candidatesLoading={projects.isPending || boundaryIssues.isPending}
           />
           <p className="text-xs text-muted-foreground">
-            Low trust limits Paperclip access; it does not sandbox the runtime.
+            Low trust limits Bostan access; it does not sandbox the runtime.
             Review filesystem, tool, and secret access separately.
           </p>
           {(trust.error || projects.error || boundaryIssues.error) && (
