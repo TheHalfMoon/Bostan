@@ -9,7 +9,7 @@ import type {
 import { queryKeys } from "@/lib/queryKeys";
 import { toolsApi, type CreateToolConnectionInput } from "@/api/tools";
 import { secretsApi } from "@/api/secrets";
-import { ApiError } from "@/api/client";
+import { safeCredentialUiError } from "@/lib/credential-ui-error-privacy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,7 +82,7 @@ export function CatalogDialog({ connection, onClose }: { connection: ToolConnect
         {catalog.isLoading ? (
           <LoadingState />
         ) : catalog.error ? (
-          <ErrorState error={catalog.error} onRetry={() => catalog.refetch()} />
+          <ErrorState error={new Error(safeCredentialUiError(catalog.error, "connectionCatalog"))} onRetry={() => catalog.refetch()} />
         ) : (catalog.data?.catalog ?? []).length === 0 ? (
           <p className="py-6 text-sm text-muted-foreground">
             No tools discovered yet. Use “Refresh catalog” to discover tools from this connection.
@@ -227,7 +227,7 @@ export function AddConnectionDialog({
     onError: (err) =>
       pushToast({
         title: "Could not create connection",
-        body: err instanceof ApiError ? err.message : String(err),
+        body: safeCredentialUiError(err, "connectionCreate"),
         tone: "error",
       }),
   });
@@ -241,7 +241,7 @@ export function AddConnectionDialog({
     onError: (err) =>
       pushToast({
         title: "Probe failed",
-        body: err instanceof ApiError ? err.message : String(err),
+        body: safeCredentialUiError(err, "connectionProbe"),
         tone: "error",
       }),
   });
@@ -257,7 +257,7 @@ export function AddConnectionDialog({
     onError: (err) =>
       pushToast({
         title: "Activation failed",
-        body: err instanceof ApiError ? err.message : String(err),
+        body: safeCredentialUiError(err, "connectionActivate"),
         tone: "error",
       }),
   });
@@ -490,7 +490,7 @@ export function AddConnectionDialog({
                 <LoadingState label="Probing connection…" />
               </div>
             ) : probe.isError ? (
-              <ErrorState error={probe.error} onRetry={() => draft && probe.mutate(draft.id)} />
+              <ErrorState error={new Error(safeCredentialUiError(probe.error, "connectionProbe"))} onRetry={() => draft && probe.mutate(draft.id)} />
             ) : probeResult ? (
               <div className="rounded-md border border-border bg-muted/40 p-3">
                 <div className="flex items-center gap-2 text-sm">
@@ -518,10 +518,10 @@ export function AddConnectionDialog({
                   </div>
                 </div>
                 {probeResult.connection.healthMessage ? (
-                  <p className="mt-2 text-xs text-muted-foreground">{probeResult.connection.healthMessage}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">{safeCredentialUiError(probeResult.connection.healthMessage, "connectionHealth")}</p>
                 ) : null}
                 {probeResult.connection.lastError ? (
-                  <p className="mt-1 text-xs text-destructive">{probeResult.connection.lastError}</p>
+                  <p className="mt-1 text-xs text-destructive">{safeCredentialUiError(probeResult.connection.lastError, "connectionHealth")}</p>
                 ) : null}
                 <p className="mt-2 text-(length:--text-micro) text-muted-foreground">
                   Probe latency is a single round-trip sample. Aggregate p95 latency across traffic is tracked on

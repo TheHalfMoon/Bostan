@@ -12,6 +12,11 @@ const CREDENTIAL_ERROR_COPY = {
   configImport: "Could not check the imported configuration. Review its format and try again.",
   configConnect: "Could not connect this imported app. Check its credentials and retry.",
   configFinish: "Could not activate this app. Review its permissions and try again.",
+  connectionCatalog: "Could not load the tool catalog. Try again.",
+  connectionCreate: "Could not create this connection. Check the endpoint and credential references.",
+  connectionProbe: "Connection probe failed. Check the endpoint and credential configuration.",
+  connectionActivate: "Could not activate this connection. Review its settings and retry.",
+  connectionHealth: "The connection reported a problem. Check its settings before activation.",
   oauthStart: "Bostan couldn’t start secure sign-in. Try again.",
 } as const;
 
