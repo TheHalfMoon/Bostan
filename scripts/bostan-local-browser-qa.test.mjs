@@ -4,7 +4,9 @@ import { requirePrivateBrowserQaTarget, isAllowedPrivateBrowserRequest,
   requireBostanBrowserOnboardingConsent,
   requireBostanBrowserAgentDraftConsent,
   requireBostanBrowserAdapterSelectionConsent,
-  isPersistedPausedCodexSetup, runPrivateBostanBrowserQa } from "./bostan-local-browser-qa.mjs";
+  isPersistedPausedCodexSetup, runPrivateBostanBrowserQa,
+  isAllowedPrivateBrowserWebSocket, installPrivateBrowserNetworkCapture,
+  assertPrivateBrowserEgressEvidence } from "./bostan-local-browser-qa.mjs";
 
 const admitted = { BOSTAN_LIVE_LOCAL_QA_CONFIRM: "1", BOSTAN_LIVE_LOCAL_BROWSER_E2E: "1" };
 test("browser QA accepts only an explicitly confirmed exact local origin", () => {
@@ -120,5 +122,104 @@ test("actual paused native Bostan runner for OpenAI is qualified by provider cod
   ]) {
     assert.equal(isPersistedPausedCodexSetup({ ...agent, ...forged }), false,
       JSON.stringify(Object.keys(forged)));
+  }
+});
+
+test("isolated browser WebSockets admit only this private HTTP server's exact ws port", () => {
+  const origin = "http://127.0.0.1:31881";
+  for (const allowed of [
+    "ws://127.0.0.1:31881/", "ws://127.0.0.1:31881/live?session=synthetic",
+  ]) assert.equal(isAllowedPrivateBrowserWebSocket(allowed, origin), true);
+  for (const denied of [
+    "wss://127.0.0.1:31881/live", "ws://127.0.0.1:31882/live",
+    "ws://127.0.0.1:31881.evil.invalid/live",
+    "ws://localhost:31881/live", "wss://evil.invalid/a",
+    "ws://user:pass@127.0.0.1:31881/", "http://127.0.0.1:31881/",
+    "file:///private/data", "garbage",
+  ]) assert.equal(isAllowedPrivateBrowserWebSocket(denied, origin), false);
+});
+
+test("context-wide HTTP, popup and WebSocket capture refuses attempted egress even if aborted", async () => {
+  const handlers = {};
+  const context = {
+    on(event, callback) { handlers[event] = callback; },
+    async route(pattern, callback) { assert.equal(pattern, "**/*"); handlers.http = callback; },
+    async routeWebSocket(pattern, callback) { assert.equal(pattern, "**/*"); handlers.ws = callback; },
+  };
+  const evidence = await installPrivateBrowserNetworkCapture(context, "http://127.0.0.1:31881");
+  let pageErrorListener;
+  handlers.page({ on(event, callback) {
+    assert.equal(event, "pageerror"); pageErrorListener = callback;
+  } });
+  const continued = [];
+  const aborted = [];
+  const route = url => ({
+    request() { return { url: () => url }; },
+    async continue() { continued.push(url); },
+    async abort(reason) { aborted.push({ url, reason }); },
+  });
+  await handlers.http(route("http://127.0.0.1:31881/api/health"));
+  await handlers.http(route("https://example.invalid/?token=SYNTHETIC"));
+  assert.equal(continued.length, 1);
+  assert.equal(aborted.length, 1);
+  assert.equal(aborted[0].reason, "blockedbyclient");
+  const connected = [];
+  const closed = [];
+  const socket = url => ({
+    url: () => url,
+    connectToServer() { connected.push(url); },
+    async close(options) { closed.push({url, options}); },
+  });
+  await handlers.ws(socket("ws://127.0.0.1:31881/events"));
+  await handlers.ws(socket("wss://evil.invalid?access_token=SYNTHETIC"));
+  assert.equal(connected.length, 1);
+  assert.equal(closed.length, 1);
+  assert.equal(closed[0].options.code, 1008);
+  assert.deepEqual(evidence, { blockedHttp: 1, blockedWebSockets: 1, pageErrors: 0 });
+  assert.throws(() => assertPrivateBrowserEgressEvidence(evidence), /attempted external network egress/);
+  pageErrorListener(Error("synthetic page error"));
+  assert.equal(evidence.pageErrors, 1);
+  assert.equal(assertPrivateBrowserEgressEvidence({
+    blockedHttp: 0, blockedWebSockets: 0, pageErrors: 0,
+  }), true);
+  for (const invalid of [{ blockedHttp: -1, blockedWebSockets: 0, pageErrors: 0 },
+    { blockedHttp: undefined, blockedWebSockets: 0, pageErrors: 0 }, null]) {
+    assert.throws(() => assertPrivateBrowserEgressEvidence(invalid));
+  }
+});
+
+test("REAL Chromium context refuses HTTP, popup navigation and external WebSockets without making network calls", {
+  skip: process.env.BOSTAN_REAL_BROWSER_EGRESS_NEGATIVE_PROBE !== "1",
+  timeout: 25_000,
+}, async () => {
+  const { chromium } = await import("@playwright/test");
+  const browser = await chromium.launch({ headless: true, timeout: 15_000 });
+  try {
+    const context = await browser.newContext({ serviceWorkers: "block" });
+    const evidence = await installPrivateBrowserNetworkCapture(context, "http://127.0.0.1:31881");
+    const page = await context.newPage();
+    await page.goto("about:blank");
+    await page.evaluate(async () => {
+      await fetch("https://synthetic.invalid/private-http-probe").catch(() => null);
+      const socket = new WebSocket("wss://synthetic.invalid/private-websocket-probe");
+      await new Promise(resolve => {
+        socket.onerror = resolve;
+        socket.onclose = resolve;
+        setTimeout(resolve, 1500);
+      });
+      // A popup is a distinct page; a context route must block it, too.
+      window.open("https://synthetic.invalid/private-popup-probe", "_blank");
+    });
+    for (let i = 0; i < 20 &&
+      (evidence.blockedHttp < 2 || evidence.blockedWebSockets < 1); i++) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.equal(evidence.blockedHttp, 2);
+    assert.equal(evidence.blockedWebSockets, 1);
+    assert.equal(evidence.pageErrors, 0);
+    assert.throws(() => assertPrivateBrowserEgressEvidence(evidence),
+      /attempted external network egress/);
+  } finally {
+    await browser.close();
   }
 });

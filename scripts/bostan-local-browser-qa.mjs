@@ -25,6 +25,53 @@ export function isAllowedPrivateBrowserRequest(url, privateOrigin) {
     url.startsWith("data:") || url.startsWith("blob:");
 }
 
+// Test-only context capture: HTTP requests from all pages/popups and WebSockets.
+export function isAllowedPrivateBrowserWebSocket(url, privateOrigin) {
+  try {
+    const base = new URL(privateOrigin);
+    const socket = new URL(url);
+    return base.protocol === "http:" && socket.protocol === "ws:" &&
+      socket.hostname === base.hostname && socket.port === base.port &&
+      !socket.username && !socket.password;
+  } catch { return false; }
+}
+
+export async function installPrivateBrowserNetworkCapture(context, privateOrigin) {
+  const evidence = { blockedHttp: 0, blockedWebSockets: 0, pageErrors: 0 };
+  context.on("page", page => {
+    page.on("pageerror", () => { evidence.pageErrors += 1; });
+  });
+  await context.route("**/*", async route => {
+    if (isAllowedPrivateBrowserRequest(route.request().url(), privateOrigin)) {
+      await route.continue();
+    } else {
+      evidence.blockedHttp += 1;
+      await route.abort("blockedbyclient");
+    }
+  });
+  await context.routeWebSocket("**/*", async socket => {
+    if (isAllowedPrivateBrowserWebSocket(socket.url(), privateOrigin)) {
+      socket.connectToServer();
+    } else {
+      evidence.blockedWebSockets += 1;
+      await socket.close({ code: 1008, reason: "Isolated QA denies external WebSocket" });
+    }
+  });
+  return evidence;
+}
+
+export function assertPrivateBrowserEgressEvidence(evidence) {
+  if (!evidence ||
+      !Number.isSafeInteger(evidence.blockedHttp) ||
+      !Number.isSafeInteger(evidence.blockedWebSockets) ||
+      !Number.isSafeInteger(evidence.pageErrors) ||
+      evidence.blockedHttp !== 0 || evidence.blockedWebSockets !== 0 ||
+      evidence.pageErrors !== 0) {
+    throw new Error("Private Bostan browser QA observed errors or attempted external network egress");
+  }
+  return true;
+}
+
 export function requireBostanBrowserOnboardingConsent(env) {
   if (env.BOSTAN_LIVE_LOCAL_BROWSER_ONBOARDING_E2E !== "1" ||
       env.BOSTAN_LIVE_LOCAL_BROWSER_E2E !== "1" ||
@@ -344,29 +391,18 @@ export async function runPrivateBostanBrowserQa({
   const { chromium } = await import("@playwright/test");
   const browser = await chromium.launch({ headless: true, timeout: 25_000 });
   try {
-    const page = await browser.newPage({
+    const context = await browser.newContext({
       serviceWorkers: "block",
       viewport: { width: 1280, height: 800 },
       acceptDownloads: false,
     });
-    let browserPageErrors = 0;
-    let blockedExternalRequests = 0;
+    const egress = await installPrivateBrowserNetworkCapture(context, privateOrigin);
+    // Context-level routing also protects any popup created by the app.
+    const page = await context.newPage();
     let issueBundleRequests = 0;
     page.on("request", request => {
       if (/\/assets\/(?:IssueDetail|issue-detail)-[^/]+\.js(?:\?|$)/.test(request.url())) {
         issueBundleRequests += 1;
-      }
-    });
-    page.on("pageerror", () => { browserPageErrors += 1; });
-    // Even vendor scripts/fonts are blocked. Nothing outside localhost may
-    // receive synthetic company IDs or connect to an external provider.
-    await page.route("**/*", async (route) => {
-      const url = route.request().url();
-      if (isAllowedPrivateBrowserRequest(url, privateOrigin)) {
-        await route.continue();
-      } else {
-        blockedExternalRequests += 1;
-        await route.abort("blockedbyclient");
       }
     });
     // The root route can legitimately restore a remembered Inbox/Issues
@@ -430,7 +466,7 @@ export async function runPrivateBostanBrowserQa({
           localMode: snapshot.healthMode === "local_trusted",
           privateExposure: snapshot.healthExposure === "private",
           persistedSyntheticCompany: snapshot.companyIds.includes(expectedCompanyId),
-          pageErrorsSeen: browserPageErrors,
+          pageErrorsSeen: egress.pageErrors,
         }));
     }
     let lazyIssueReport = null;
@@ -505,6 +541,8 @@ export async function runPrivateBostanBrowserQa({
     const insights = env.BOSTAN_LIVE_LOCAL_BROWSER_INSIGHTS_E2E === "1"
       ? await runPrivateBostanTaskInsightsUi(page, privateOrigin, insightCompanyId)
       : null;
+    // An intercepted request still proves the app ATTEMPTED outside egress.
+    assertPrivateBrowserEgressEvidence(egress);
     return { qualified: true, browser: "chromium-headless", mounted: true,
       privateApi: true, persistedCompany: true,
       ...(onboarding ? { onboarding } : {}),
@@ -512,7 +550,9 @@ export async function runPrivateBostanBrowserQa({
       ...(insights ? { insights } : {}),
       ...(htmlPrivacyReport ? { htmlPrivacy: htmlPrivacyReport } : {}),
       ...(lazyIssueReport ? { lazyIssue: lazyIssueReport } : {}),
-      pageErrorsSeen: browserPageErrors, blockedExternalRequests };
+      pageErrorsSeen: egress.pageErrors,
+      blockedExternalRequests: egress.blockedHttp + egress.blockedWebSockets,
+      blockedExternalWebSockets: egress.blockedWebSockets };
   } finally {
     await browser.close();
   }
