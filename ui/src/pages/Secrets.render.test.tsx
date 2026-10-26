@@ -525,12 +525,12 @@ describe("Secrets page layout", () => {
     await flushReact();
 
     expect(document.body.textContent).toContain("Remove provider vault");
-    expect(document.body.textContent).toContain("from Paperclip only");
+    expect(document.body.textContent).toContain("from Bostan only");
     expect(document.body.textContent).toContain("does not delete");
     expect(document.body.textContent).toContain("AWS Secrets Manager");
 
     const confirmButton = [...document.querySelectorAll("button")].find(
-      (button) => button.textContent?.includes("Remove from Paperclip"),
+      (button) => button.textContent?.includes("Remove from Bostan"),
     ) as HTMLButtonElement | undefined;
     await act(async () => {
       confirmButton?.click();
@@ -791,6 +791,49 @@ describe("Secrets page layout", () => {
     await act(async () => {
       root.unmount();
     });
+  });
+
+  it("does not expose upstream failure payloads on secret and vault loading errors", async () => {
+    const syntheticSecret = "sk-proj-BOSTAN-TEST-NEVER-DISPLAY-oauth_state=private";
+    mockSecretsApi.list.mockRejectedValueOnce(new Error(syntheticSecret));
+    mockSecretsApi.providerConfigs.mockRejectedValueOnce(new ApiError(syntheticSecret, 503, null));
+    const root = await renderSecrets(container);
+    expect(document.body.textContent).toContain("Failed to load secrets:");
+    expect(document.body.textContent).not.toContain(syntheticSecret);
+
+    const vaultTabButton = [...document.querySelectorAll("button")].find(
+      (button) => button.textContent?.includes("Provider vaults"),
+    ) as HTMLButtonElement | undefined;
+    await act(async () => {
+      vaultTabButton?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      vaultTabButton?.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter" }));
+      vaultTabButton?.click();
+    });
+    await flushReact();
+    expect(document.body.textContent).toContain("Failed to load provider vaults.");
+    expect(document.body.textContent).not.toContain(syntheticSecret);
+    await act(async () => { root.unmount(); });
+  });
+
+  it("does not show secret-like upstream errors when a provider vault save fails", async () => {
+    const syntheticSecret = "https://provider.invalid/callback?code=BOSTAN-TEST-SECRET&state=private";
+    mockSecretsApi.createProviderConfig.mockRejectedValueOnce(new Error(syntheticSecret));
+    const root = await renderSecrets(container);
+    await openAwsVaultDialog();
+    await act(async () => {
+      setInputValue(document.getElementById("vault-name") as HTMLInputElement, "Test vault");
+      setInputValue(document.getElementById("provider-vault-aws-region") as HTMLInputElement, "us-east-1");
+    });
+    await flushReact();
+    const createButton = [...document.querySelectorAll("button")].find(
+      (button) => button.textContent?.trim() === "Create vault",
+    );
+    await act(async () => { createButton?.click(); });
+    await waitForReact(() => mockSecretsApi.createProviderConfig.mock.calls.length > 0);
+    await flushReact();
+    expect(document.body.textContent).toContain("Could not save the provider vault.");
+    expect(document.body.textContent).not.toContain(syntheticSecret);
+    await act(async () => { root.unmount(); });
   });
 
   it("opens the New secret dialog when provider queries fail", async () => {

@@ -195,6 +195,11 @@ type SafeProviderErrorDetails = {
   safeAlternative?: string;
 };
 
+// Provider errors may contain signed URLs, secret values or authorization payloads.
+// Never display exception.message in secret-operation toasts.
+const SAFE_SECRET_OPERATION_ERROR =
+  "The secret operation could not be completed. Retry or contact the instance operator.";
+
 const EMPTY_SECRETS: CompanySecret[] = [];
 const EMPTY_USER_SECRET_DEFINITIONS: UserSecretDefinition[] = [];
 const EMPTY_MY_USER_SECRETS: MyUserSecretEntry[] = [];
@@ -1174,8 +1179,8 @@ export function Secrets() {
       setRotateError(null);
       invalidateAll([updated.id]);
     },
-    onError: (error) => {
-      setRotateError(error instanceof Error ? error.message : "Rotate failed");
+    onError: () => {
+      setRotateError("Could not rotate the secret. Retry or contact the instance operator.");
     },
   });
 
@@ -1196,10 +1201,10 @@ export function Secrets() {
       pushToast({ title: `Secret ${updated.status}`, body: updated.name, tone: "info" });
       invalidateAll([updated.id]);
     },
-    onError: (error) => {
+    onError: () => {
       pushToast({
         title: "Status update failed",
-        body: error instanceof Error ? error.message : "Try again",
+        body: SAFE_SECRET_OPERATION_ERROR,
         tone: "error",
       });
     },
@@ -1212,10 +1217,10 @@ export function Secrets() {
       pushToast({ title: `User-provided secret ${updated.status}`, body: updated.name, tone: "info" });
       invalidateAll([updated.id]);
     },
-    onError: (error) => {
+    onError: () => {
       pushToast({
         title: "Status update failed",
-        body: error instanceof Error ? error.message : "Try again",
+        body: SAFE_SECRET_OPERATION_ERROR,
         tone: "error",
       });
     },
@@ -1229,10 +1234,10 @@ export function Secrets() {
       if (selectedSecretId === id) setDetailSelection(null);
       invalidateAll([id]);
     },
-    onError: (error) => {
+    onError: () => {
       pushToast({
         title: "Delete failed",
-        body: error instanceof Error ? error.message : "Try again",
+        body: SAFE_SECRET_OPERATION_ERROR,
         tone: "error",
       });
     },
@@ -1247,10 +1252,10 @@ export function Secrets() {
       if (selectedDefinitionId === definition.id) setDetailSelection(null);
       invalidateAll([definition.id]);
     },
-    onError: (error) => {
+    onError: () => {
       pushToast({
         title: "Delete failed",
-        body: error instanceof Error ? error.message : "Try again",
+        body: SAFE_SECRET_OPERATION_ERROR,
         tone: "error",
       });
     },
@@ -1280,8 +1285,8 @@ export function Secrets() {
       setVaultError(null);
       invalidateAll();
     },
-    onError: (error) => {
-      setVaultError(error instanceof ApiError ? error.message : (error as Error).message);
+    onError: () => {
+      setVaultError("Could not save the provider vault. Retry or contact the instance operator.");
     },
   });
 
@@ -1309,10 +1314,10 @@ export function Secrets() {
       pushToast({ title: "Provider vault disabled", body: updated.displayName, tone: "info" });
       invalidateAll();
     },
-    onError: (error) => {
+    onError: () => {
       pushToast({
         title: "Disable failed",
-        body: error instanceof Error ? error.message : "Try again",
+        body: SAFE_SECRET_OPERATION_ERROR,
         tone: "error",
       });
     },
@@ -1329,10 +1334,10 @@ export function Secrets() {
       setRemoveVaultConfirm(null);
       invalidateAll();
     },
-    onError: (error) => {
+    onError: () => {
       pushToast({
         title: "Remove failed",
-        body: error instanceof Error ? error.message : "Try again",
+        body: SAFE_SECRET_OPERATION_ERROR,
         tone: "error",
       });
     },
@@ -1344,10 +1349,10 @@ export function Secrets() {
       pushToast({ title: "Default vault set", body: updated.displayName, tone: "success" });
       invalidateAll();
     },
-    onError: (error) => {
+    onError: () => {
       pushToast({
         title: "Default update failed",
-        body: error instanceof Error ? error.message : "Try again",
+        body: SAFE_SECRET_OPERATION_ERROR,
         tone: "error",
       });
     },
@@ -1359,10 +1364,10 @@ export function Secrets() {
       pushToast({ title: "Health checked", body: health.message, tone: health.status === "error" ? "error" : "info" });
       invalidateAll();
     },
-    onError: (error) => {
+    onError: () => {
       pushToast({
         title: "Health check failed",
-        body: error instanceof Error ? error.message : "Try again",
+        body: SAFE_SECRET_OPERATION_ERROR,
         tone: "error",
       });
     },
@@ -1493,10 +1498,10 @@ export function Secrets() {
   function copyDetailLink() {
     void copyTextToClipboard(window.location.href)
       .then(() => pushToast({ title: "Link copied", body: "Deep link to this secret", tone: "success" }))
-      .catch((error) =>
+      .catch(() =>
         pushToast({
           title: "Copy failed",
-          body: error instanceof Error ? error.message : "Unable to copy link",
+          body: "Unable to copy the link. Check clipboard permissions and retry.",
           tone: "error",
         }),
       );
@@ -1505,10 +1510,10 @@ export function Secrets() {
   function copySecretKey(key: string) {
     void copyTextToClipboard(key)
       .then(() => pushToast({ title: "Secret key copied", body: key, tone: "success" }))
-      .catch((error) =>
+      .catch(() =>
         pushToast({
           title: "Copy failed",
-          body: error instanceof Error ? error.message : "Unable to copy secret key",
+          body: "Unable to copy the key. Check clipboard permissions and retry.",
           tone: "error",
         }),
       );
@@ -1956,7 +1961,7 @@ export function Secrets() {
             {secretsQuery.isError || userDefinitionsQuery.isError ? (
               <div className="text-sm text-destructive flex items-center gap-2 py-4">
                 <AlertCircle className="h-4 w-4" /> Failed to load secrets:{" "}
-                {((secretsQuery.error ?? userDefinitionsQuery.error) as Error).message}
+                {"Retry or contact the instance operator."}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -3558,7 +3563,7 @@ export function ProviderVaultsTab({
   if (error) {
     return (
       <div className="py-4 text-sm text-destructive flex items-center gap-2">
-        <AlertCircle className="h-4 w-4" /> Failed to load provider vaults: {(error as Error).message}
+        <AlertCircle className="h-4 w-4" /> Failed to load provider vaults. Retry or contact the instance operator.
         <Button variant="ghost" size="sm" onClick={onRetry}>
           Retry
         </Button>
