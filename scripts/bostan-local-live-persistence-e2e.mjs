@@ -11,6 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { qualifyFreeQaModel, isOpenRouterFreeQaModel } from "./bostan-free-model-policy.mjs";
+import { requireNativeCaseQaHost } from "./bostan-governed-case-free-e2e.mjs";
 import { admitOpenRouterZeroCostQa } from "./bostan-openrouter-free-preflight.mjs";
 
 const REPO = fileURLToPath(new URL("../", import.meta.url));
@@ -102,6 +103,15 @@ export function requireBostanSourceSmokeAdmission(env = process.env, platform = 
   if (env.BOSTAN_LIVE_LOCAL_BROWSER_ONBOARDING_E2E === "1" &&
       env.BOSTAN_LIVE_LOCAL_BROWSER_E2E !== "1") {
     throw new Error("Browser onboarding QA requires a separate headless browser opt-in");
+  }
+  if (env.BOSTAN_LIVE_LOCAL_GOVERNED_CASE_E2E === "1" && (
+      env.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E !== "1" ||
+      env.BOSTAN_E2E_TWO_AGENT_TEAM === "1" ||
+      env.BOSTAN_E2E_REVIEW_FIRST_AGENT === "1")) {
+    throw new Error("Governed Case QA requires its own isolated real free-agent scenario");
+  }
+  if (env.BOSTAN_LIVE_LOCAL_GOVERNED_CASE_E2E === "1") {
+    requireNativeCaseQaHost();
   }
   if (env.BOSTAN_E2E_REVIEW_FIRST_AGENT === "1" && env.BOSTAN_E2E_TWO_AGENT_TEAM !== "1") {
     throw new Error("Evidence-read review requires the separately admitted second free agent");
@@ -288,7 +298,8 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
     // An explicit separate opt-in extends the existing private app lifecycle
     // smoke with the existing real-agent API harness. This runs only on the
     // disposable restarted PostgreSQL instance; no installed profile is used.
-    if (env.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E === "1") {
+    if (env.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E === "1" &&
+      env.BOSTAN_LIVE_LOCAL_GOVERNED_CASE_E2E !== "1") {
       const { runFirstAgentFreeE2e } = await import("./bostan-first-agent-free-e2e.mjs");
       await runFirstAgentFreeE2e({
         ...childEnv,
@@ -301,6 +312,16 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
         BOSTAN_E2E_REVIEW_FIRST_AGENT: env.BOSTAN_E2E_REVIEW_FIRST_AGENT === "1" ? "1" : "0",
       });
     }
+    if (env.BOSTAN_LIVE_LOCAL_GOVERNED_CASE_E2E === "1") {
+      const { runGovernedCaseFreeE2e } = await import("./bostan-governed-case-free-e2e.mjs");
+      await runGovernedCaseFreeE2e({
+        ...childEnv, BOSTAN_E2E_URL: origin + "/",
+        BOSTAN_E2E_DISPOSABLE_HOME: home, BOSTAN_E2E_CONFIRM_TEMP_DATA: "1",
+        BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL: "1",
+        BOSTAN_E2E_FREE_MODEL: qualifyFreeQaModel(env.BOSTAN_E2E_FREE_MODEL),
+        BOSTAN_LIVE_LOCAL_GOVERNED_CASE_E2E: "1",
+      });
+    }
     await stop();
     const storedConfig = JSON.parse(fs.readFileSync(path.join(app, "state", "instances", "local", "config.json"), "utf8"));
     if (storedConfig?.bostanManagedLocalRuntime !== MARKER) throw new Error("Unexpected runtime identity");
@@ -311,7 +332,11 @@ export async function runBostanLocalLivePersistenceSmoke(env = process.env) {
         browserExternalRequestsBlocked: browserReport.blockedExternalRequests,
       } : {}),
       verified: "private-health,company-create,clean-stop,restart,persistence" +
-        (env.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E === "1" ? ",real-free-agent-heartbeat-task-comment-done" : "") +
+        (env.BOSTAN_LIVE_LOCAL_GOVERNED_CASE_E2E === "1"
+          ? ",real-free-model-independent-governed-case-and-report"
+          : env.BOSTAN_LIVE_LOCAL_FREE_AGENT_E2E === "1"
+            ? ",real-free-agent-heartbeat-task-comment-done"
+            : "") +
         (env.BOSTAN_LIVE_LOCAL_BROWSER_E2E === "1" ? ",real-headless-chromium-private-ui" : "") +
         (browserReport?.onboarding ? ",real-browser-new-company-onboarding" : "") +
         (browserReport?.onboarding?.firstAgentDraft ? ",real-browser-first-agent-inactive-draft" : "") +
