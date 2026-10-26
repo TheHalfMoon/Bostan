@@ -145,7 +145,22 @@ export function activateDisposableNodeEgressGuard(env = process.env) {
           "Bostan disposable Node QA blocked an override of its private network destination",
         ));
       }
-      return Reflect.apply(originalFetch, this, [input, ...rest]);
+      // Node fetch follows redirects inside Undici, outside wrapped Node sockets.
+      // Force one-hop requests in disposable QA and reject any returned redirect.
+      const init = rest[0] ?? {};
+      if (typeof init !== "object" || Array.isArray(init)) {
+        record("fetch");
+        return Promise.reject(new Error("Bostan disposable Node QA refused malformed fetch options"));
+      }
+      return Promise.resolve(Reflect.apply(originalFetch, this,
+        [input, { ...init, redirect: "manual" }])).then(response => {
+        if (response.status >= 300 && response.status < 400 &&
+            response.headers.has("location")) {
+          record("fetch-redirect");
+          throw new Error("Bostan disposable Node QA blocked a redirect");
+        }
+        return response;
+      });
     };
   }
   const OriginalWebSocket = globalThis.WebSocket;

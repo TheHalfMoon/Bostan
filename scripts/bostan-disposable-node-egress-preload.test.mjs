@@ -90,6 +90,19 @@ test("real Node preload refuses known external APIs and writes secret-free audit
       'results.push(deniedFetch);',
       'const deniedDispatcher = await fetch("http://127.0.0.1:8888/", {dispatcher:{dispatch() {}}}).then(() => false, e => e.message.includes("blocked an override"));',
       'results.push(deniedDispatcher);',
+      // Both endpoints are loopback, so this is a safe, real redirect-chain
+      // probe on Windows and Mac. Automatic follow would hit the sink.
+      'let sinkHits=0;',
+      'const sink = http.createServer((req,res)=>{sinkHits++;res.end("forbidden redirect sink");});',
+      'await new Promise(ok=>sink.listen(0,"127.0.0.1",ok));',
+      'const source = http.createServer((req,res)=>{if(req.url==="/safe"){res.end("safe-local-response");return;}res.writeHead(302,{Location:"http://127.0.0.1:"+sink.address().port+"/redirected"});res.end();});',
+      'await new Promise(ok=>source.listen(0,"127.0.0.1",ok));',
+      'const blockedRedirect = await fetch("http://127.0.0.1:"+source.address().port+"/start").then(()=>false,e=>e.message.includes("blocked a redirect"));',
+      'results.push(blockedRedirect);',
+      'const allowedLocal = await fetch("http://127.0.0.1:"+source.address().port+"/safe").then(async r=>r.status===200 && await r.text()==="safe-local-response",()=>false);',
+      'results.push(allowedLocal);',
+      'source.close(); sink.close();',
+      'if (sinkHits !== 0) throw Error("Redirect reached forbidden sink");',
       'if (results.some(v => v !== true)) throw Error("Unblocked remote primitive");',
       'const r = http.request("http://127.0.0.1:12345/api/health"); r.on("error", () => {}); r.destroy();',
       'process.stdout.write("QA_NODE_EGRESS_DENIED\\n");',
@@ -105,6 +118,7 @@ test("real Node preload refuses known external APIs and writes secret-free audit
     const events = readFileSync(audit, "utf8").trim().split("\n");
     assert.equal(events.length >= 12, true);
     assert.ok(events.includes("fetch"));
+    assert.ok(events.includes("fetch-redirect"));
     assert.ok(events.includes("tcp"));
     assert.ok(events.includes("armed"));
     assert.equal(events.some(event => event.includes("synthetic.invalid") || event.includes("/secret")), false);
