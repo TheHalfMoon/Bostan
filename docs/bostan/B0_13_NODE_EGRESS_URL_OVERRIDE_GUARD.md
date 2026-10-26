@@ -30,3 +30,13 @@ Every refused attempt adds only a fixed network CATEGORY to the private test rec
 ## Qualification limits
 
 This is not an OS egress firewall. Native executables, uninstrumented transport code, alternate DNS systems, custom binaries, external model tools, direct syscalls, worker processes that do not inherit the preload and other network mechanisms remain outside this proof. The complete B0-05 network inventory and system/agent egress qualification remain open. The official full server build, free-model-led native signed governed Case and terminal closure, installed Windows app and independent full security review are NOT release-qualified. Release remains NO-GO.
+
+## Exact-branch completed verification
+
+- Mac native Node source suite: 181 PASS, 0 FAIL, 10 platform/opt-in SKIP (191 total).
+- Windows Abdulaziz native Node source suite: 183 PASS, 0 FAIL, 8 platform/opt-in SKIP (191 total).
+- Five original signed independent Case/JWT/native runner/real disposable PostgreSQL integration suites: 22 PASS, 0 FAIL.
+- Real disposable Bostan source HTTP/PostgreSQL restart/persistence and headless Chromium under both network guards: PASS. Node guard armed twice; 0 blocked external recognized Node API calls; 0 browser page errors / 0 blocked browser HTTP or WebSocket attempts.
+- All local tests, no paid inference, no installed Windows application, no user files removed.
+
+No claim of full server compiler/build, whole-host isolation, independently model-written Case, or final release qualification.
