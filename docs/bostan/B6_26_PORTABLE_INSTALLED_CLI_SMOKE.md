@@ -19,3 +19,7 @@ A built Bostan preview CLI (version 0.3.1) was installed and invoked in a dispos
 ## Qualification boundary
 
 The Windows source read-only status can be verified on native Windows after this branch is fetched. It must not be advertised as an installed Windows application. Official server compiler/build, real free-model signed governed Case, installed Windows source+browser/package, and independent comprehensive security remain open. Release NO-GO.
+
+## Exact-branch Windows verification
+
+Fetched actual B6-26 branch on authorized native Windows Abdulaziz, with three preexisting untracked server QA scripts preserved and no system/user files changed. Retried the same CLI-source test after portable-path repair: **1 PASS, 0 FAIL, 12 POSIX-only SKIP** (13 total). The read-only status test asserts an empty disposable HOME stays empty; no Windows installation was attempted. The 12 SKIPs are expected and must never be presented as installed Windows qualification.
