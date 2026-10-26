@@ -12,7 +12,7 @@
  * state and must never run in CI:
  *
  *   - `PAPERCLIP_LIVE_BROKER_EXERCISE=1`
- *   - the broker socket exists (`PAPERCLIP_TAILSCALE_BROKER_SOCKET` or the default)
+ *   - the broker socket exists (`BOSTAN_TAILSCALE_BROKER_SOCKET`, legacy fallback, or the default)
  *
  * Run it on a broker-provisioned host with:
  *
@@ -48,8 +48,8 @@ import {
   type RealizedExecutionWorkspace,
 } from "../services/workspace-runtime.ts";
 
-const DEFAULT_BROKER_SOCKET = "/run/paperclip-tailscale-broker/broker.sock";
-const brokerSocketPath = process.env.PAPERCLIP_TAILSCALE_BROKER_SOCKET ?? DEFAULT_BROKER_SOCKET;
+const DEFAULT_BROKER_SOCKET = "/run/bostan-tailscale-broker/broker.sock";
+const brokerSocketPath = process.env.BOSTAN_TAILSCALE_BROKER_SOCKET ?? process.env.PAPERCLIP_TAILSCALE_BROKER_SOCKET ?? DEFAULT_BROKER_SOCKET;
 
 async function brokerSocketPresent() {
   try {
