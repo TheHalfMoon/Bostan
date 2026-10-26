@@ -26,3 +26,11 @@ Only then may the harness emit BOSTAN_REAL_FREE_GOVERNED_CASE_PASS.
 - Broad Mac and Windows source tests and canonical PG integration are recorded separately upon exact-head verification.
 - Zero in Bostan persisted cost telemetry does not establish an independently verified provider invoice; payment reconciliation would be an additional gate for live external use.
 - No actual model-led reviewer report qualified on current 8GiB Mac, where B5-35 host preflight still blocks full native Case QA. Official entire-server typecheck/build, installed Windows app and external security review remain unqualified. Release NO-GO.
+
+## Verified on B5-39 head
+
+- Native Mac source Bostan Node suite: 164 PASS, 0 FAIL, 9 platform-specific SKIP (173 total).
+- Native Windows Abdulaziz source Bostan Node suite: 166 PASS, 0 FAIL, 7 platform-specific SKIP (173 total).
+- Five canonical independent Case/JWT/HTTP/native verifier/PostgreSQL integration files: 22 PASS, 0 FAIL.
+- Disposable macOS source Bostan HTTP/Postgres persistence with clean stop/restart and real headless Chromium private UI: PASS, browser page errors 0, external requests blocked 0, clean stop.
+- No new free-model native inference was attempted on the under-resourced Mac; it correctly remains blocked by the QA-only B5-35 resource gate.
