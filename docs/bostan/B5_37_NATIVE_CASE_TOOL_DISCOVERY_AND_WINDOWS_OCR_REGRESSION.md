@@ -17,3 +17,15 @@ Private Bostan development, 26 October 2026, stacked on B5-36/PR #149. Do not me
 ## Remaining release gates
 
 Real model-generated authenticated JSON verifier report and governed Case Done on adequate free host; official full server typecheck/build; installed Windows product test; independent security audit; release NO-GO.
+
+## Verified on the amended B5-37 commit
+
+- Real Windows Abdulaziz Bostan native source Node suite, running the actual updated branch: **165 PASS, 0 FAIL, 7 Windows-specific SKIP** (172 tests total). This resolves the actual EPERM test failure observed on the previous branch. No installer, service, user data or shell security configuration was touched.
+- Real macOS native source Node suite: **163 PASS, 0 FAIL, 9 Windows-specific SKIP** (172 tests total).
+- Real private macOS source Bostan app/HTTP/PostgreSQL clean stop, restart, persisted company and headless Chromium E2E: **PASS**; page errors 0, blocked external requests 0, clean stop.
+- Five official Case/JWT/Native Runner source/PostgreSQL integration suites: **21 PASS, 0 FAIL**, on the amended branch.
+- The new native specialist/reviewer tool-name and source digest discovery unit probes pass, but there was NO real model reviewer inference or signed model-authored JSON from this Mac: the unchanged native capacity gate still prevents it. All releases remain NO-GO.
+
+## Safe continuation
+
+To qualify model-led Case on a host that actually meets B5-35 native QA memory/disk limits, keep the source private, use the allowlisted zero-cost model and the native first-party signed bridge (never the legacy host-shell adapter). Never invent source HMAC, schema author or paid-model budget. Require a real independently authored report and original board summary. On Windows, use the separate installed-app QA once the host staging and free-memory gates pass; the successful source tests above are NOT installer qualification.
