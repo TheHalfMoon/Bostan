@@ -635,7 +635,7 @@ function uiBundleIsFresh(): boolean {
 async function buildUiBundleForManagedRuntime(): Promise<boolean> {
   console.log("[paperclip] managed runtime: building the UI bundle for static serving...");
   const result = await runPnpm(
-    ["--filter", "@paperclipai/ui", "build"],
+    ["--filter", "@bostan/ui", "build"],
     { stdio: "inherit" },
   );
   if (result.signal) {

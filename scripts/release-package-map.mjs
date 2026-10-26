@@ -142,10 +142,11 @@ function buildReleasePackagePlan() {
       // The new Bostan CLI is intentionally PRIVATE and must be explicitly
       // listed as nonpublishable. Do not silently admit private release jobs.
       const entryPackagePath = join(repoRoot, entry.dir, "package.json");
-      if (entry.dir === "cli" && entry.publishFromCi === false &&
-          existsSync(entryPackagePath)) {
-        const privateCli = readJson(entryPackagePath);
-        if (privateCli.private === true && privateCli.name === "bostan") continue;
+      if (["cli", "ui"].includes(entry.dir) &&
+          entry.publishFromCi === false && existsSync(entryPackagePath)) {
+        const privateEntry = readJson(entryPackagePath);
+        const expectedName = entry.dir === "cli" ? "bostan" : "@bostan/ui";
+        if (privateEntry.private === true && privateEntry.name === expectedName) continue;
       }
       problems.push(`${entry.dir} is listed in ${manifestPath} but is not a public package in this repo`);
       continue;

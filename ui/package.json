@@ -1,15 +1,15 @@
 {
-  "name": "@paperclipai/ui",
+  "name": "@bostan/ui",
   "version": "0.3.1",
-  "description": "Prebuilt Paperclip board UI assets.",
+  "description": "Bostan owned local board UI assets.",
   "license": "MIT",
-  "homepage": "https://github.com/paperclipai/paperclip",
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
   "bugs": {
-    "url": "https://github.com/paperclipai/paperclip/issues"
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/paperclipai/paperclip",
+    "url": "https://github.com/TheHalfMoon/Bostan",
     "directory": "ui"
   },
   "type": "module",
@@ -22,11 +22,8 @@
     "preview": "vite preview",
     "typecheck": "node ../scripts/storybook-catalog.mjs && tsc -b",
     "clean": "rm -rf dist dist-preview storybook-static tsconfig.tsbuildinfo",
-    "prepack": "rm -f package.dev.json && cp package.json package.dev.json && node ../scripts/generate-ui-package-json.mjs",
-    "postpack": "if [ -f package.dev.json ]; then mv package.dev.json package.json; fi"
-  },
-  "publishConfig": {
-    "access": "public"
+    "prepack": "node ../scripts/bostan-release-disabled.mjs",
+    "prepublishOnly": "node ../scripts/bostan-release-disabled.mjs"
   },
   "dependencies": {
     "@assistant-ui/react": "0.15.22",
@@ -93,5 +90,6 @@
   },
   "engines": {
     "node": ">=24.11.0"
-  }
+  },
+  "private": true
 }

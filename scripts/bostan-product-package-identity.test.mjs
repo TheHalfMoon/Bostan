@@ -32,6 +32,18 @@ test("Bostan catalog packages and generated metadata use the owned identity", ()
   }
 });
 
+test("Bostan board UI package is private and cannot be packed or published", () => {
+  const ui = json("ui/package.json");
+  assert.equal(ui.name, "@bostan/ui");
+  assert.equal(ui.private, true);
+  assert.equal(ui.repository.url, "https://github.com/TheHalfMoon/Bostan");
+  assert.equal(ui.publishConfig, undefined);
+  assert.match(ui.scripts.prepack, /bostan-release-disabled/);
+  assert.match(ui.scripts.prepublishOnly, /bostan-release-disabled/);
+  assert.equal(ui.scripts.postpack, undefined);
+  assert.equal(read("scripts/generate-ui-package-json.mjs").includes("bostan-release-disabled.mjs"), true);
+});
+
 test("all inherited CI release packages are disabled and cannot be published", () => {
   const manifest = json("scripts/release-package-manifest.json");
   assert.ok(manifest.length >= 30);

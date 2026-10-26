@@ -18,10 +18,10 @@ case "${PAPERCLIP_RELEASE_REUSE_UI_DIST:-}" in
 esac
 
 if [ "$should_reuse_existing_ui_dist" = true ] && [ -f "$UI_DIST/index.html" ]; then
-  echo "  -> Reusing existing @paperclipai/ui dist output"
+  echo "  -> Reusing existing @bostan/ui dist output"
 else
-  echo "  -> Building @paperclipai/ui..."
-  pnpm --dir "$REPO_ROOT" --filter @paperclipai/ui build
+  echo "  -> Building @bostan/ui..."
+  pnpm --dir "$REPO_ROOT" --filter @bostan/ui build
 fi
 
 if [ ! -f "$UI_DIST/index.html" ]; then

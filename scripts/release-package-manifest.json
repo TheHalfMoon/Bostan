@@ -166,7 +166,7 @@
   },
   {
     "dir": "ui",
-    "name": "@paperclipai/ui",
+    "name": "@bostan/ui",
     "publishFromCi": false
   }
 ]
