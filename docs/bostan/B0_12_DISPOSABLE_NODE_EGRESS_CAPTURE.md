@@ -22,3 +22,7 @@ The hook is NOT loaded by production code. It runs ONLY if synthetic smoke flag 
 NOT an OS firewall or syscall-level audit: non-Node native executables, DNS-level requests, worker processes not inheriting the preload, custom native bindings, unsupported network stacks, child environment overrides and opted-in agents are not proven isolated. This protects and observes only recognized APIs and the explicitly disposable source-server scenario. User-authorized integrations in normal product runtime are NOT modified.
 
 B0-05 exhaustive egress inventory and host network namespace sandbox qualification remain open. Official complete server TS/build, actual independently model-written signed governed Case report, installed Windows application E2E and comprehensive independent security review remain release NO-GO.
+
+## Native Windows regression found and repaired
+
+The first B0-12 source suite on authorized Windows showed a fixture-only ERR_UNSUPPORTED_ESM_URL_SCHEME: the test invoked the opt-in ESM preload via a plain absolute C: filesystem path, which native Windows Node refuses. The test now uses standard pathToFileURL for the subprocess --import argument. The real server smoke on Mac already used the canonical file URL. No Windows installer or real HOME access was needed. Windows re-verification follows on the corrected commit.

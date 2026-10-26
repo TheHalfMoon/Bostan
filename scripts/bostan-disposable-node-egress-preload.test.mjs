@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   isPrivateNodeQaDestination, assertPrivateNodeQaDestination,
   activateDisposableNodeEgressGuard,
@@ -61,7 +61,7 @@ test("real Node preload refuses known external APIs and writes secret-free audit
       'const r = http.request("http://127.0.0.1:12345/api/health"); r.on("error", () => {}); r.destroy();',
       'process.stdout.write("QA_NODE_EGRESS_DENIED\\n");',
     ].join("\n");
-    const run = spawnSync(process.execPath, ["--import", preload, "--input-type=module", "-e", code], {
+    const run = spawnSync(process.execPath, ["--import", pathToFileURL(preload).href, "--input-type=module", "-e", code], {
       env: { ...process.env, HOME: home, BOSTAN_TEST_ONLY_NODE_EGRESS_GUARD: "1" },
       encoding: "utf8", timeout: 12_000,
     });
