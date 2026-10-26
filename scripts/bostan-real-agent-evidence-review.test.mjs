@@ -33,6 +33,23 @@ test("only an actual persisted source-comment ID with expected markers qualifies
   }), { sourceCommentId, reviewCommentId: verifiedComment.id });
 });
 
+test("reviewer may cite ANY authentic comment from the exact source run, not an arbitrary first row", () => {
+  const anotherCommentId = "a08cdd9e-762b-4dcb-9562-a39c094de8cf";
+  const differentRunId = "324ae1bd-c0d2-4766-83c5-1a2df9ef3fd2";
+  const actual = { ...verifiedComment, body: "BOSTAN_SECOND_AGENT_PASS BOSTAN_REVIEW_SOURCE_COMMENT_ID:" + anotherCommentId };
+  const multiple = [sourceComments[0],
+    { ...sourceComments[0], id: anotherCommentId },
+    { ...sourceComments[0], id: "4e9216bf-06bb-4d9d-a89f-f3589ef4ae46", createdByRunId: differentRunId }];
+  assert.deepEqual(requirePersistedReviewCitation({
+    ...identities, sourceComments: multiple, reviewerComments: [actual],
+  }), { sourceCommentId: anotherCommentId, reviewCommentId: actual.id });
+  assert.throws(() => requirePersistedReviewCitation({
+    ...identities, sourceComments: multiple,
+    reviewerComments: [{ ...actual,
+      body: "BOSTAN_SECOND_AGENT_PASS BOSTAN_REVIEW_SOURCE_COMMENT_ID:4e9216bf-06bb-4d9d-a89f-f3589ef4ae46" }],
+  }), /did not cite/);
+});
+
 test("refuses any reviewer evidence without an actual first worker output", () => {
   assert.throws(() => requirePersistedReviewCitation({
     sourceComments: [{ id: sourceCommentId, authorAgentId: sourceAgentId, createdByRunId: sourceRunId, body: "no result" }],

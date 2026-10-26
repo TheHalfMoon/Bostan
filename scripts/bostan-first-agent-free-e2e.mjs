@@ -24,6 +24,25 @@ const TERMINAL_HEARTBEAT_STATUSES = new Set([
   "succeeded", "failed", "timed_out", "cancelled", "interrupted",
 ]);
 
+/**
+ * Assigning an issue already schedules its heartbeat. Calling heartbeat/invoke
+ * again races a second run against the assignment run and makes evidence
+ * attribution ambiguous. Admit exactly the auto-assignment run instead.
+ */
+export function selectSingleAssignmentRun(runs, { agentId, issueId }) {
+  if (!Array.isArray(runs) || !UUID_PATTERN.test(agentId) ||
+    !UUID_PATTERN.test(issueId)) {
+    throw new Error("Invalid Bostan automatic assignment run query");
+  }
+  const candidates = runs.filter(run => run?.agentId === agentId &&
+    run.invocationSource === "assignment" &&
+    (run.issueId == null || run.issueId === issueId));
+  if (candidates.length > 1 || candidates.some(run => !UUID_PATTERN.test(run.id))) {
+    throw new Error("Ambiguous Bostan assignment run; never accept mixed-run evidence");
+  }
+  return candidates[0] ?? null;
+}
+
 export function observeHeartbeatQaStatus(run) {
   if (!run || typeof run !== "object") throw new Error("Invalid heartbeat result");
   const status = run.status;
@@ -150,15 +169,19 @@ function hasStandaloneEvidenceMarker(body, marker) {
   return re.test(String(body ?? ""));
 }
 
-export function requirePersistedRunComment({ comments, agentId, runId, marker }) {
+function persistedRunComments({ comments, agentId, runId, marker }) {
   if (!Array.isArray(comments) || !UUID_PATTERN.test(agentId) ||
       !UUID_PATTERN.test(runId) || ![MARKER, SECOND_MARKER].includes(marker)) {
     throw new Error("Synthetic Bostan QA requires a valid agent/run and allowlisted marker");
   }
-  const comment = comments.find(entry =>
+  return comments.filter(entry =>
     UUID_PATTERN.test(entry?.id ?? "") && entry.authorAgentId === agentId &&
     entry.createdByRunId === runId &&
     hasStandaloneEvidenceMarker(entry.body ?? entry.content, marker));
+}
+
+export function requirePersistedRunComment(input) {
+  const comment = persistedRunComments(input)[0];
   if (!comment) {
     throw new Error("No persisted comment from the exact expected agent and heartbeat run");
   }
@@ -180,24 +203,29 @@ export function requirePersistedReviewCitation({
       sourceAgentId === reviewerAgentId || sourceRunId === reviewerRunId) {
     throw new Error("Review requires distinct authenticated agents and completed run IDs");
   }
-  const originalId = (() => {
-    try {
-      return requirePersistedRunComment({
-        comments: sourceComments, agentId: sourceAgentId, runId: sourceRunId,
-        marker: firstMarker,
-      }).commentId;
-    } catch {
-      throw new Error("Review cannot qualify without an actual persisted first-agent source comment");
-    }
-  })();
-  const tag = REVIEW_EVIDENCE_LABEL + originalId;
+  let sources;
+  try {
+    sources = persistedRunComments({
+      comments: sourceComments, agentId: sourceAgentId, runId: sourceRunId,
+      marker: firstMarker,
+    });
+  } catch {
+    sources = [];
+  }
+  if (!sources.length) {
+    throw new Error("Review cannot qualify without an actual persisted first-agent source comment");
+  }
+  // An agent may save several correct comments in the SAME authenticated run.
+  // The reviewer may cite any of those, never a comment from another run.
   const review = reviewerComments.find(c => UUID_PATTERN.test(c?.id ?? "") &&
     c.authorAgentId === reviewerAgentId && c.createdByRunId === reviewerRunId &&
-    c.id !== originalId &&
     hasStandaloneEvidenceMarker(c.body ?? c.content, secondMarker) &&
-    String(c.body ?? c.content ?? "").includes(tag));
+    sources.some(source => c.id !== source.id &&
+      String(c.body ?? c.content ?? "").includes(REVIEW_EVIDENCE_LABEL + source.id)));
   if (!review) throw new Error("Second agent did not cite the actual persisted source comment ID");
-  return { sourceCommentId: originalId, reviewCommentId: review.id ?? null };
+  const source = sources.find(item =>
+    String(review.body ?? review.content ?? "").includes(REVIEW_EVIDENCE_LABEL + item.id));
+  return { sourceCommentId: source.id, reviewCommentId: review.id ?? null };
 }
 
 export function buildEvidenceReviewTask({ sourceIssueId }) {
@@ -290,6 +318,16 @@ async function waitFor(check, { timeoutMs, intervalMs = 3_000, label, diagnostic
   throw new Error("Bostan QA timed out waiting for " + label +
     (diagnostic ? ": " + JSON.stringify(diagnostic()) : ""));
 }
+async function waitForAssignedAgentRun(base, companyId, agentId, issueId) {
+  return await waitFor(async () => {
+    const runs = await requestJson(base,
+      "companies/" + companyId + "/heartbeat-runs?agentId=" + agentId + "&limit=50");
+    const selected = selectSingleAssignmentRun(runs, { agentId, issueId });
+    return selected ? { done: true, result: selected } : { done: false };
+  }, { timeoutMs: 60_000, intervalMs: 1_000,
+    label: "automatically scheduled assignment heartbeat" });
+}
+
 export async function runFirstAgentFreeE2e(env = process.env) {
   const { base, home } = qualifyDisposableFirstAgentScope({
     url: env.BOSTAN_E2E_URL,
@@ -350,7 +388,7 @@ export async function runFirstAgentFreeE2e(env = process.env) {
     description: buildFirstWorkerTask(),
     status: "todo", assigneeAgentId: agent.id,
   });
-  const started = await requestJson(base, "agents/" + agent.id + "/heartbeat/invoke", {});
+  const started = await waitForAssignedAgentRun(base, company.id, agent.id, issue.id);
   const run = await waitFor(async () => {
     const current = await requestJson(base, "heartbeat-runs/" + started.id);
     return observeHeartbeatQaStatus(current);
@@ -435,7 +473,7 @@ export async function runFirstAgentFreeE2e(env = process.env) {
     if (!secondIssue?.id || secondIssue.id === issue.id) {
       throw new Error("Bostan second QA issue must be independent of the first task");
     }
-    const invoked = await requestJson(base, "agents/" + secondAgent.id + "/heartbeat/invoke", {});
+    const invoked = await waitForAssignedAgentRun(base, company.id, secondAgent.id, secondIssue.id);
     const secondRun = await waitFor(async () => {
       const current = await requestJson(base, "heartbeat-runs/" + invoked.id);
       return observeHeartbeatQaStatus(current);

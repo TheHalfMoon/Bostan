@@ -5,7 +5,7 @@ import os from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel, syntheticFreeAgentAdapterConfig, observeHeartbeatQaStatus, assertHeartbeatQaSucceeded, firstAgentLifecycleReadinessTimeoutMs, safeAgentLifecycleDiagnostic, safeFreeProviderFailureSignal } from "./bostan-first-agent-free-e2e.mjs";
+import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel, syntheticFreeAgentAdapterConfig, observeHeartbeatQaStatus, assertHeartbeatQaSucceeded, firstAgentLifecycleReadinessTimeoutMs, safeAgentLifecycleDiagnostic, safeFreeProviderFailureSignal, selectSingleAssignmentRun } from "./bostan-first-agent-free-e2e.mjs";
 
 function fixture() {
   const home = mkdtempSync(path.join(os.tmpdir(), "bostan-free-agent-guard-"));
@@ -22,6 +22,25 @@ function fixture() {
     home, confirmed: "1", onlineModelApproved: "1" };
   return { home, opts, clean: () => rmSync(home, { recursive: true, force: true }) };
 }
+test("automatic task assignment selects one exact run instead of launching a duplicate", () => {
+  const agentId = "d5f790a6-8dbc-48ea-bba3-50b320cf6475";
+  const issueId = "6aebaa4c-ceb5-43df-afbd-769cf8511f09";
+  const first = { id: "15e49da0-11bc-442c-a6ba-64d3193ad55e",
+    agentId, invocationSource: "assignment", issueId, status: "running" };
+  const manual = { ...first, id: "8171f7c3-749a-4518-a77c-9d9c45d100eb", invocationSource: "on_demand" };
+  assert.equal(selectSingleAssignmentRun([manual, first], { agentId, issueId }), first);
+  assert.equal(selectSingleAssignmentRun([manual], { agentId, issueId }), null);
+  assert.equal(selectSingleAssignmentRun([{ ...first, issueId: "e00dccd4-a42b-4d18-b9b6-ad5ac508b1dc" }],
+    { agentId, issueId }), null);
+  assert.throws(() => selectSingleAssignmentRun([first, { ...first,
+    id: "3142f2b8-5cf1-4745-84a4-df6256dc25da" }], { agentId, issueId }), /Ambiguous/);
+  assert.throws(() => selectSingleAssignmentRun([{ ...first, id: "malformed" }],
+    { agentId, issueId }), /Ambiguous/);
+  assert.throws(() => selectSingleAssignmentRun([], { agentId: "not-uuid", issueId }), /Invalid/);
+  assert.doesNotMatch(JSON.stringify(selectSingleAssignmentRun([manual, first], {
+    agentId, issueId })), /secret|credential/);
+});
+
 test("scope accepts explicitly opted-in isolated localhost runtime", () => {
   const f = fixture();
   try { assert.equal(qualifyDisposableFirstAgentScope(f.opts).home, realpathSync(f.home)); }
