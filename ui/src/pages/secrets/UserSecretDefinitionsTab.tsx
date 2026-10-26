@@ -23,8 +23,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "../../components/EmptyState";
 import { secretsApi } from "../../api/secrets";
-import { ApiError } from "../../api/client";
 import { queryKeys } from "../../lib/queryKeys";
+import { safeSecretUiError } from "./secret-error-messages";
 import { cn } from "../../lib/utils";
 import { useToastActions } from "../../context/ToastContext";
 import {
@@ -130,7 +130,7 @@ export function UserSecretDefinitionsTab({ companyId }: { companyId: string }) {
       setDialogOpen(false);
     },
     onError: (err) =>
-      setError(err instanceof ApiError || err instanceof Error ? err.message : "Failed to save"),
+      setError(safeSecretUiError(err)),
   });
 
   const remove = useMutation({
@@ -144,7 +144,7 @@ export function UserSecretDefinitionsTab({ companyId }: { companyId: string }) {
     onError: (err) =>
       pushToast({
         title: "Could not remove definition",
-        body: err instanceof Error ? err.message : undefined,
+        body: safeSecretUiError(err),
         tone: "error",
       }),
   });

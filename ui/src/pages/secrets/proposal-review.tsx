@@ -24,8 +24,8 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToastActions } from "../../context/ToastContext";
 import { secretsApi } from "../../api/secrets";
-import { ApiError } from "../../api/client";
 import { queryKeys } from "../../lib/queryKeys";
+import { safeSecretUiError } from "./secret-error-messages";
 import {
   aliasFromConfigPath,
   deliveryModeForConfigPath,
@@ -186,9 +186,7 @@ export function bindingSecretLabel(proposal: SecretProposalView): {
 }
 
 function readableError(error: unknown): string {
-  if (error instanceof ApiError) return error.message || `Request failed: ${error.status}`;
-  if (error instanceof Error) return error.message;
-  return "Something went wrong. Try again.";
+  return safeSecretUiError(error);
 }
 
 /* -------------------------------------------------------------------------- */
