@@ -59,6 +59,47 @@ export function assertPrivateNodeQaDestination(args, category, record = () => {}
   return true;
 }
 
+/**
+ * A local URL is NOT a sufficient network boundary when Node allows the
+ * second options argument to override hostname, DNS lookup or the Agent.
+ * Also forbid user-supplied connect hooks that could route a local hostname
+ * through an arbitrary remote socket. Fail closed in the QA preload only.
+ */
+export function assertPrivateNodeQaConnectionOptions(args, category, record = () => {}) {
+  const [input, second] = args;
+  const isUrl = input instanceof URL ||
+    typeof input === "string" && /^[a-z][a-z0-9+.-]*:\/\//i.test(input);
+  const options = isUrl
+    ? (second && typeof second === "object" ? second : null)
+    : input && typeof input === "object" && !(input instanceof URL) ? input : null;
+  if (!options) return true;
+  let unsafe = false;
+  if (typeof options.lookup === "function" ||
+      typeof options.createConnection === "function" ||
+      typeof options.createSocket === "function") unsafe = true;
+  if (["http", "http2"].includes(category)) {
+    // A custom HTTP agent or HTTP/2 connect hook can bypass this file's
+    // guarded built-ins. Don't infer safety from the URL alone.
+    if (options.agent && options.agent !== http.globalAgent &&
+        options.agent !== https.globalAgent) unsafe = true;
+  }
+  if (isUrl) {
+    // The full URL has already passed the primary destination check.
+    // Options can silently replace its authority; qualify each override.
+    for (const name of ["hostname", "host"]) {
+      if (options[name] != null &&
+          !isPrivateNodeQaDestination(options[name])) unsafe = true;
+    }
+    if (options.socketPath && !(typeof options.socketPath === "string" &&
+        options.socketPath.startsWith("/"))) unsafe = true;
+  }
+  if (unsafe) {
+    record(category);
+    throw new Error("Bostan disposable Node QA blocked an override of its private network destination");
+  }
+  return true;
+}
+
 export function activateDisposableNodeEgressGuard(env = process.env) {
   if (env.BOSTAN_TEST_ONLY_NODE_EGRESS_GUARD !== "1") return false;
   const home = env.HOME;
@@ -74,6 +115,7 @@ export function activateDisposableNodeEgressGuard(env = process.env) {
   record("armed");
   const wrap = (original, label) => function (...args) {
     assertPrivateNodeQaDestination(args, label, record);
+    assertPrivateNodeQaConnectionOptions(args, label, record);
     return Reflect.apply(original, this, args);
   };
   for (const mod of [http, https]) {
@@ -94,6 +136,14 @@ export function activateDisposableNodeEgressGuard(env = process.env) {
           ? input : input?.url], "fetch", record);
       } catch (error) {
         return Promise.reject(error);
+      }
+      // Undici dispatchers are opaque transports: an allowed URL can be
+      // forwarded by a custom dispatcher to another host.
+      if (rest[0]?.dispatcher || rest[0]?.agent) {
+        record("fetch");
+        return Promise.reject(new Error(
+          "Bostan disposable Node QA blocked an override of its private network destination",
+        ));
       }
       return Reflect.apply(originalFetch, this, [input, ...rest]);
     };
