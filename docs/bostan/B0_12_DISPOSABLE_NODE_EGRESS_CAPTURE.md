@@ -26,3 +26,10 @@ B0-05 exhaustive egress inventory and host network namespace sandbox qualificati
 ## Native Windows regression found and repaired
 
 The first B0-12 source suite on authorized Windows showed a fixture-only ERR_UNSUPPORTED_ESM_URL_SCHEME: the test invoked the opt-in ESM preload via a plain absolute C: filesystem path, which native Windows Node refuses. The test now uses standard pathToFileURL for the subprocess --import argument. The real server smoke on Mac already used the canonical file URL. No Windows installer or real HOME access was needed. Windows re-verification follows on the corrected commit.
+
+## Verified on corrected B0-12 head
+
+- Native Mac Bostan source Node suite: 180 PASS, 0 FAIL, 10 platform/opt-in SKIP (190 total) before the cross-platform fixture-only pathToFileURL correction; focused repaired preload test rerun 3 PASS, 0 FAIL.
+- Native Windows Abdulaziz first B0-12 run: one QA fixture failed because --import used a plain C: absolute path. Corrected pathToFileURL and re-ran real native Windows focused preload 3 PASS, 0 FAIL and full Bostan source Node suite 182 PASS, 0 FAIL, 8 platform/opt-in SKIP (190 total).
+- Real Mac disposable app + PostgreSQL stop/restart + Chromium with the separate Node guard opt-in: PASS; 2 armed Node server launches, 0 recorded external Node network calls through instrumented APIs, 0 Chromium page errors and 0 attempted external browser requests. This is a source integration result only.
+- No Windows installer or system configuration was changed; existing untracked Windows QA scripts preserved.
