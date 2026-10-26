@@ -33,6 +33,16 @@ const WAIT_STOP_MS = 45_000;
  * "Artifacts not found" timeout against an ordinary production UI bundle.
  * This inspects ONLY our generated route-scoped JS artifact, never user files.
  */
+export function assertBostanOcrBundleFileMetadata(stat) {
+  if (!stat || typeof stat.isFile !== "function" || typeof stat.isSymbolicLink !== "function"
+    || !stat.isFile() || stat.isSymbolicLink()
+    || !Number.isSafeInteger(stat.size) || stat.size < 1 || stat.size > 20 * 1024 * 1024
+    || stat.nlink !== 1) {
+    throw new Error("Bostan OCR browser route chunk must be a private regular single-link file");
+  }
+  return true;
+}
+
 export function requireBostanOcrBrowserBundle(assetsDir = path.join(REPO, "ui", "dist", "assets")) {
   let chunks;
   try {
@@ -48,9 +58,7 @@ export function requireBostanOcrBrowserBundle(assetsDir = path.join(REPO, "ui", 
   let chunk;
   try {
     const stat = fs.lstatSync(file);
-    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 20 * 1024 * 1024) {
-      throw new Error("Invalid route bundle");
-    }
+    assertBostanOcrBundleFileMetadata(stat);
     chunk = fs.readFileSync(file, "utf8");
   } catch {
     throw new Error("Bostan OCR browser QA cannot verify the private route bundle");

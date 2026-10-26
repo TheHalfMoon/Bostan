@@ -95,6 +95,49 @@ export function nativeGovernedCaseAgentConfig({ model, workspace }) {
   };
 }
 
+/**
+ * These are first-party tool names advertised by the native signed bridge.
+ * The model must discover the source-snapshot operationId, not invent a REST
+ * result or obtain untrusted content through the host shell.
+ */
+export function buildNativeSourceCaseInstructions() {
+  return [
+    "For this CURRENT assigned synthetic Bostan task, use first-party get_task to read the task.",
+    "Use list_task_documents and read_task_document with key bostan-source to inspect real persisted source.",
+    "Check the synthetic source token A7 before recording your work.",
+    "Use comment_on_task to persist the exact standalone marker " + SOURCE_MARKER + " on this task.",
+    "Use get_task and read_task_document to read the actual persisted issue and source back.",
+    "DO NOT mark this Case or task Done; a separate verifier and the board must finish it.",
+    "DO NOT call shell/curl, external providers, or access unrelated files, data or tasks.",
+    "If any required named tool is absent, report the blocker instead of inventing a task receipt.",
+  ].join(" ");
+}
+
+export function buildNativeVerifierCaseInstructions({ companyId, issueId, documentId }) {
+  if (![companyId, issueId, documentId].every(id => UUID.test(id))) {
+    throw new Error("Native reviewer needs real company, task and source document UUIDs");
+  }
+  return [
+    "You are the independent reviewer of this synthetic Bostan Case work task " + issueId + ".",
+    "Use get_task, list_task_documents, and read_task_document with key bostan-source.",
+    "Use search_api to discover the exact first-party GET snapshot API operation",
+    "/api/companies/{companyId}/issues/{issueId}/bostan-verification/sources/{documentId}/snapshot.",
+    "The persisted path IDs are companyId=" + companyId + ", issueId=" + issueId + ", documentId=" + documentId + ".",
+    "Use call_api with the operationId actually RETURNED BY search_api and those pathParams.",
+    "Inspect the authenticated response's sourceSnapshotHmacSha256 field; never invent or estimate it.",
+    "Verify this independent source truly supports the synthetic audit statement. Do not write a pass report if it does not.",
+    "If and only if valid, call the EXACT native tool write_task_document with taskId=" + issueId +
+      ", key=bostan-verification, title=Verifier assessment and format=json.",
+    "The tool body MUST be a JSON STRING containing only schema=bostan.verification.report.v1,",
+    "verdict=pass, summary of 40-3000 characters, and sources as an array of objects.",
+    "Each sources object must have documentId=" + documentId +
+      " and expectedSnapshotHmacSha256 copied from the actual authenticated snapshot.",
+    "Use read_task_document with key bostan-verification to confirm the resulting JSON document was persisted.",
+    "DO NOT mark task Done. Do not use shell, curl, external services, or invented tool results.",
+    "If any named tool is unavailable, report that blocker; final prose is not a signed saved report.",
+  ].join(" ");
+}
+
 export function verifyGovernedCaseReceipt({
   caseState, sourceRun, reviewRun, implementationAgentId, reviewerAgentId,
   sourceDocument, reportDocument, summary,
@@ -253,18 +296,16 @@ export async function runGovernedCaseFreeE2e(env = process.env) {
       caseType: "verification", title: "Bostan free independent review synthetic Case",
       summary: [
         "Synthetic Bostan governed Case source-worker QA. In this assigned task,",
-        "inspect the Bostan source document and post a persisted comment",
-        "containing BOSTAN_CLEAN_RUN_PASS. DO NOT mark the task Done:",
-        "the original Case requires a different reviewer and terminal handoff.",
-        "After writing the marker, read back the comments and task with",
-        "authenticated Bostan tools to confirm persistence, then read",
-        "the source document once again before your final answer.",
-        "Only touch this synthetic task, make no external service calls.",
+        "Read the original bostan-source document using get_task and read_task_document;",
+        "its synthetic evidence token is A7. Use comment_on_task to persist exactly",
+        "BOSTAN_CLEAN_RUN_PASS, then read the task and source back.",
+        "DO NOT mark the Case or issue Done; independent verification must follow.",
+        "Do not call shell/curl, remote providers or access unrelated files/data.",
       ].join(" "),
       fields: { bostanIndependentVerificationRequired: true },
     } },
     toAgentId: specialist.id, phase: "implementation",
-    instructions: "Read synthetic source and leave persisted BOSTAN_CLEAN_RUN_PASS comment, but do not close this governed task.",
+    instructions: buildNativeSourceCaseInstructions(),
     workflow_document_text: "implementation: assigned specialist reads synthetic evidence; " +
       "verification: a different agent reads source snapshot, produces a JSON report, " +
       "then terminal review must be accepted by the local board before task Done.",
@@ -301,20 +342,9 @@ export async function runGovernedCaseFreeE2e(env = process.env) {
     case: { id: caseId }, expectedHandoffVersion: created.handoffVersion,
     expectedIssueStatusVersion: originalIssue.statusVersion,
     toAgentId: verifier.id, phase: "verification",
-    instructions: [
-      "You are the independent reviewer of this synthetic Bostan Case.",
-      "Use AUTHENTICATED Bostan API tools, not final chat text, to read the actual task document",
-      "and call GET /api/companies/{companyId}/issues/{issueId}/bostan-verification/sources/{documentId}/snapshot.",
-      "Company " + company.id + ", issue " + issueId + ", source document " + originalSource.id + ".",
-      "Read the response sourceSnapshotHmacSha256 (64 hex characters), never invent the digest.",
-      "Write a persisted JSON task document with key bostan-verification, title Verifier assessment",
-      "via PUT /api/issues/{issueId}/documents/bostan-verification.",
-      "Its JSON body must have schema bostan.verification.report.v1, verdict pass,",
-      "summary (at least 40 characters), and sources containing this exact source documentId",
-      "and expectedSnapshotHmacSha256 from the actual GET response.",
-      "Do not mark task Done. If tools are missing, do not invent a successful report.",
-      "Do not call external providers or access unrelated tasks.",
-    ].join(" "),
+    instructions: buildNativeVerifierCaseInstructions({
+      companyId: company.id, issueId, documentId: originalSource.id,
+    }),
   });
   if (handoff.caseId !== caseId || handoff.destinationKind !== "agent") {
     throw new Error("Independent Case handoff was not persisted");

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { requireBostanSourceSmokeAdmission, requireBostanOcrBrowserBundle } from "./bostan-local-live-persistence-e2e.mjs";
+import { requireBostanSourceSmokeAdmission, requireBostanOcrBrowserBundle, assertBostanOcrBundleFileMetadata } from "./bostan-local-live-persistence-e2e.mjs";
 
 test("real database smoke refuses non-opted-in execution before any process starts", () => {
   assert.throws(() => requireBostanSourceSmokeAdmission({}, "darwin"), /requires/);
@@ -138,8 +138,26 @@ test("OCR browser QA rejects an unbuilt or flag-disabled UI before starting Post
     assert.throws(() => requireBostanOcrBrowserBundle(dir), /exactly one built IssueDetail/);
     fs.unlinkSync(path.join(dir, "IssueDetail-SECOND.js"));
     fs.unlinkSync(chunk);
-    fs.symlinkSync(path.join(dir, "missing.js"), chunk);
-    assert.throws(() => requireBostanOcrBrowserBundle(dir), /cannot verify the private route bundle/);
+    // Windows source QA must not need Developer Mode or symlink privilege:
+    // validate the security decision with synthetic lstat-like metadata too.
+    const valid = { isFile: () => true, isSymbolicLink: () => false, size: 1024, nlink: 1 };
+    assert.equal(assertBostanOcrBundleFileMetadata(valid), true);
+    for (const modified of [
+      { ...valid, isSymbolicLink: () => true },
+      { ...valid, isFile: () => false },
+      { ...valid, nlink: 2 },
+      { ...valid, size: 0 },
+      { ...valid, size: 21 * 1024 * 1024 },
+    ]) {
+      assert.throws(() => assertBostanOcrBundleFileMetadata(modified), /private regular single-link/);
+    }
+    try {
+      fs.symlinkSync(path.join(dir, "missing.js"), chunk);
+      assert.throws(() => requireBostanOcrBrowserBundle(dir), /cannot verify the private route bundle/);
+    } catch (error) {
+      if (error?.code !== "EPERM" && error?.code !== "EACCES" && error?.code !== "ENOTSUP") throw error;
+      // Synthetic metadata above covers the symlink rejection branch.
+    }
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

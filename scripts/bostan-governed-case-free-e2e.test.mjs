@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { qualifyGovernedCaseQa, verifyGovernedCaseReceipt, requireLiveSourceHandoffOwner, nativeGovernedCaseAgentConfig, evaluateNativeCaseQaHost } from "./bostan-governed-case-free-e2e.mjs";
+import { qualifyGovernedCaseQa, verifyGovernedCaseReceipt, requireLiveSourceHandoffOwner, nativeGovernedCaseAgentConfig, evaluateNativeCaseQaHost,
+  buildNativeSourceCaseInstructions, buildNativeVerifierCaseInstructions } from "./bostan-governed-case-free-e2e.mjs";
 
 test("governed Case E2E refuses missing real-free-model or overlapping scenario opt-in", () => {
   for (const env of [
@@ -114,4 +115,34 @@ test("unreported model costs remain unknown rather than being mislabeled zero", 
   const a = good();
   a.reviewRun.usageJson = null;
   assert.equal(verifyGovernedCaseReceipt(a).reportedCostUsd, null);
+});
+
+test("native specialist instructions require named persisted Bostan tools, not host-shell writes", () => {
+  const prompt = buildNativeSourceCaseInstructions();
+  for (const name of ["get_task", "list_task_documents", "read_task_document", "comment_on_task",
+    "bostan-source", "BOSTAN_CLEAN_RUN_PASS"]) {
+    assert.ok(prompt.includes(name), "Expected real native tool or source marker: " + name);
+  }
+  assert.match(prompt, /DO NOT mark this Case or task Done/);
+  assert.match(prompt, /DO NOT call shell/);
+});
+
+test("native reviewer discovers signed source snapshot and writes only authenticated JSON with readback", () => {
+  const ids = {companyId: randomUUID(), issueId: randomUUID(), documentId: randomUUID()};
+  const prompt = buildNativeVerifierCaseInstructions(ids);
+  for (const name of ["get_task", "read_task_document", "search_api", "call_api",
+    "write_task_document", "bostan-verification", "sourceSnapshotHmacSha256",
+    "expectedSnapshotHmacSha256", "format=json", "JSON STRING",
+    "bostan.verification.report.v1"]) {
+    assert.ok(prompt.includes(name), "Missing verified Bostan native tool/contract: " + name);
+  }
+  for (const id of Object.values(ids)) assert.ok(prompt.includes(id));
+  assert.match(prompt, /operationId actually RETURNED BY search_api/);
+  assert.match(prompt, /If any named tool is unavailable/);
+  assert.match(prompt, /DO NOT mark task Done/);
+  for (const malformed of [
+    { ...ids, companyId: "https://evil.invalid/credential?token=secret" },
+    { ...ids, documentId: "" },
+    { ...ids, issueId: "fake;exec;curl" },
+  ]) assert.throws(() => buildNativeVerifierCaseInstructions(malformed), /real company/);
 });
