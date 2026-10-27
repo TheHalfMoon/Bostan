@@ -34,6 +34,7 @@ test('removing original MIT attribution or bundled font notices fails the audit'
     ['LICENSE','Copyright (c) 2025 Paperclip AI'],
     ['packages/shared/src/cliplab/LICENSE','Jérémy Perret'],
     ['ui/public/fonts/NOTICE.md','Bostan bundles Inter'],
+    ['ui/public/fonts/Inter-OFL.txt','Copyright (c) 2016 The Inter Project Authors'],
     ['packages/paperclip-runner/devtools/issue-thread/src/fonts/NOTICE.md','Bitstream Vera Fonts license'],
   ]){
     assert.throws(()=>verifyBundledFontNotices({
@@ -75,7 +76,7 @@ function stagedUiFixture(){
   const ui=join(parent,'ui-dist');
   mkdirSync(join(ui,'fonts'),{recursive:true});
   for(const name of readdirSync(resolve(root,'ui/public/fonts'))){
-    if(name.endsWith('.woff2')||['NOTICE.md','PaperMono-OFL.txt'].includes(name))
+    if(name.endsWith('.woff2')||['NOTICE.md','PaperMono-OFL.txt','Inter-OFL.txt'].includes(name))
       copyFileSync(resolve(root,'ui/public/fonts',name),join(ui,'fonts',name));
   }
   return {ui,clean:()=>rmSync(parent,{recursive:true,force:true})};
@@ -87,7 +88,7 @@ test('actual staged UI font and license copies are byte-identical to inventoried
     const receipt=verifyStagedBoardFonts(fixture.ui);
     assert.equal(receipt.passed,true);
     assert.equal(receipt.stagedBoardFonts,3);
-    assert.equal(receipt.stagedLegalFiles,2);
+    assert.equal(receipt.stagedLegalFiles,3);
     assert.equal(receipt.fullDependencyLicenseAuditComplete,false);
     const cli=invoke('--verify-stage',fixture.ui);
     assert.equal(cli.status,0,cli.stderr);
@@ -96,7 +97,7 @@ test('actual staged UI font and license copies are byte-identical to inventoried
 });
 
 test('staged Bostan UI cannot silently modify or drop its font license',()=>{
-  for(const name of ['NOTICE.md','PaperMono-OFL.txt']){
+  for(const name of ['NOTICE.md','PaperMono-OFL.txt','Inter-OFL.txt']){
     const fixture=stagedUiFixture();
     try{
       writeFileSync(join(fixture.ui,'fonts',name),'synthetic damaged license');

@@ -38,11 +38,20 @@ export function verifyBundledFontNotices({
   ],'ClipLab source provenance');
   requireText(ui,[
     'Bostan bundles Inter','SIL Open Font License 1.1','## Paper Mono',
-    'PaperMono-OFL.txt','https://github.com/rsms/inter',
+    'PaperMono-OFL.txt','Inter-OFL.txt','https://github.com/rsms/inter',
   ],'Bostan board fonts');
   requireText(readText('ui/public/fonts/PaperMono-OFL.txt'),[
     'SIL OPEN FONT LICENSE','Version 1.1',
   ],'Paper Mono redistribution license');
+  const interLicense=readText('ui/public/fonts/Inter-OFL.txt');
+  requireText(interLicense,[
+    'Copyright (c) 2016 The Inter Project Authors',
+    'SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007',
+    'PERMISSION AND CONDITIONS',
+    'TERMINATION',
+  ],'Inter redistribution license');
+  if(createHash('sha256').update(interLicense).digest('hex')!=='262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a')
+    throw Error('Inter bundled OFL source license bytes changed without review');
   requireText(cap,[
     '## Inter','## DejaVu Sans Mono','## Noto Sans Symbols 2',
     'Bitstream Vera Fonts license','Copyright (c) 2003 by Bitstream',
@@ -118,7 +127,7 @@ export function verifyStagedBoardFonts(uiDist,{rootDir=root}={}){
     if(createHash('sha256').update(readFileSync(stagePath)).digest('hex')!==item.sha256)
       throw Error('Staged Bostan font does not match pinned source asset');
   }
-  for(const legal of ['NOTICE.md','PaperMono-OFL.txt']){
+  for(const legal of ['NOTICE.md','PaperMono-OFL.txt','Inter-OFL.txt']){
     const packaged=join(fontDir,legal);
     const stat=lstatSync(packaged);
     if(!stat.isFile()||stat.isSymbolicLink()||stat.nlink!==1)
@@ -129,7 +138,7 @@ export function verifyStagedBoardFonts(uiDist,{rootDir=root}={}){
   }
   return {schema:'bostan.private-staged-ui-font-license.v1',passed:true,
     releaseQualified:false,stagedBoardFonts:sourceFonts.length,
-    stagedLegalFiles:2,byteIdenticalAssets:true,sourceCopyrightPreserved:true,
+    stagedLegalFiles:3,byteIdenticalAssets:true,sourceCopyrightPreserved:true,
     fullDependencyLicenseAuditComplete:false,paidProvidersUsed:false};
 }
 const entry=process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url);
