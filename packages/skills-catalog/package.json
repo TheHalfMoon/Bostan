@@ -13,9 +13,9 @@
   },
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
+    ".": { "bostan-compiled": "./dist/src/index.js", "default": "./src/index.ts" },
     "./package.json": "./package.json",
-    "./types": "./src/types.ts",
+    "./types": { "bostan-compiled": "./dist/src/types.js", "default": "./src/types.ts" },
     "./catalog.json": "./generated/catalog.json"
   },
   "publishConfig": {

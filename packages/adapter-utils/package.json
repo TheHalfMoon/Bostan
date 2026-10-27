@@ -13,8 +13,8 @@
   },
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./*": "./src/*.ts"
+    ".": { "bostan-compiled": "./dist/index.js", "default": "./src/index.ts" },
+    "./*": { "bostan-compiled": "./dist/*.js", "default": "./src/*.ts" }
   },
   "files": [
     "dist"

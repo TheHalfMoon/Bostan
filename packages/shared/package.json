@@ -14,9 +14,9 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts",
-    "./telemetry": "./src/telemetry/index.ts",
-    "./*": "./src/*.ts"
+    ".": { "bostan-compiled": "./dist/index.js", "default": "./src/index.ts" },
+    "./telemetry": { "bostan-compiled": "./dist/telemetry/index.js", "default": "./src/telemetry/index.ts" },
+    "./*": { "bostan-compiled": "./dist/*.js", "default": "./src/*.ts" }
   },
   "files": [
     "dist"

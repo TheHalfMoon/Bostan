@@ -2,18 +2,29 @@
 set -euo pipefail
 if [ "${1:-}" = "--help" ] && [ "$#" -eq 1 ]; then
   echo "Bostan isolated localhost HTTP + PostgreSQL startup smoke (no Rust)."
-  echo "Run only with: bash scripts/bostan-local-http-postgres-smoke.sh --run"
+  echo "Run with: bash scripts/bostan-local-http-postgres-smoke.sh --run"
+  echo "Or private compiled JavaScript: bash scripts/bostan-local-http-postgres-smoke.sh --run-dist"
   echo "Prerequisites: installed pnpm server/database workspace dependencies,"
   echo "prebuilt @bostan/shared, @bostan/plugin-sdk and @bostan/runner TypeScript."
   echo "Requires local PostgreSQL CLI tools; no paid models or remote services."
   exit 0
 fi
-if [ "$#" -ne 1 ] || [ "$1" != "--run" ]; then
-  echo "Usage: bash scripts/bostan-local-http-postgres-smoke.sh [--help|--run]" >&2
+if [ "$#" -ne 1 ] || { [ "$1" != "--run" ] && [ "$1" != "--run-dist" ]; }; then
+  echo "Usage: bash scripts/bostan-local-http-postgres-smoke.sh [--help|--run|--run-dist]" >&2
   exit 2
 fi
 umask 077
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+# A built artifact must already exist; never fall back to TypeScript in dist mode.
+MODE="$1"
+if [ "$MODE" = "--run-dist" ]; then
+  for file in "$REPO/server/dist/index.js" "$REPO/server/dist/build-info.json" "$REPO/server/dist/vendor/paperclip-runner/index.js"; do
+    if [ ! -f "$file" ]; then
+      echo "Bostan compiled-dist smoke: prepared server build missing ($file)" >&2
+      exit 2
+    fi
+  done
+fi
 TMP=$(mktemp -d /private/tmp/bostan-live-http.XXXXXX)
 PGDATA="$TMP/cluster"
 PGPORT=$(python3 - <<'PY'
@@ -50,7 +61,11 @@ cd "$REPO"
 pnpm --filter @bostan/db migrate >"$TMP/migrate.log" 2>&1
 printf 'MIGRATED\n'
 cd "$REPO/server"
-node --import tsx src/index.ts > "$TMP/server.log" 2>&1 & SPID=$!
+if [ "$MODE" = "--run-dist" ]; then
+  node --conditions=bostan-compiled dist/index.js > "$TMP/server.log" 2>&1 & SPID=$!
+else
+  node --import tsx src/index.ts > "$TMP/server.log" 2>&1 & SPID=$!
+fi
 status=0
 for i in $(seq 1 90);do
   if ! kill -0 "$SPID" 2>/dev/null; then status=1;break;fi
@@ -79,3 +94,5 @@ fi
 if ! grep -Fq 'bostan' "$TMP/server.log"; then echo 'BOSTAN_BANNER_MISSING'; exit 1; fi
 if grep -Fq 'npx paperclipai onboard' "$TMP/server.log"; then echo 'UNSUPPORTED_LEGACY_ONBOARD_COMMAND'; exit 1; fi
 echo 'BOSTAN_BOOT_BANNER_QUALIFIED'
+
+if [ "$MODE" = "--run-dist" ]; then echo BOSTAN_BUILT_SERVER_LOCAL_HTTP_QUALIFIED; fi
