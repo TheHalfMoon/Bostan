@@ -15,7 +15,7 @@ describeEmbeddedPostgres("claimFirstInstanceAdmin", () => {
   let tempDb: Awaited<ReturnType<typeof startEmbeddedPostgresTestDatabase>> | null = null;
 
   beforeAll(async () => {
-    tempDb = await startEmbeddedPostgresTestDatabase("paperclip-first-admin-claim-");
+    tempDb = await startEmbeddedPostgresTestDatabase("bostan-first-admin-claim-");
     db = createDb(tempDb.connectionString);
   }, 20_000);
 
@@ -39,6 +39,67 @@ describeEmbeddedPostgres("claimFirstInstanceAdmin", () => {
     const roles = await db.select().from(instanceUserRoles);
     expect(roles).toHaveLength(1);
     expect(roles[0]).toMatchObject({ userId: firstUserId, role: "instance_admin" });
+  });
+
+  it("serializes simultaneous first-admin claims into exactly one winner", async () => {
+    const contenders = Array.from({ length: 8 }, () => `user-${randomUUID()}`);
+    let callbacksRun = 0;
+
+    // Eight real database transactions start at the same time. The winner
+    // deliberately holds the table lock while the other callers are queued.
+    const results = await Promise.all(contenders.map((userId) =>
+      claimFirstInstanceAdmin(db, {
+        userId,
+        onClaim: async () => {
+          callbacksRun += 1;
+          await new Promise<void>((resolve) => setTimeout(resolve, 25));
+          return "single-committed-winner";
+        },
+      }),
+    ));
+
+    const winners = results.filter((result) => result.status === "claimed");
+    const losers = results.filter((result) => result.status === "already_claimed");
+    expect(winners).toHaveLength(1);
+    expect(losers).toHaveLength(contenders.length - 1);
+    expect(callbacksRun).toBe(1);
+    const [winner] = winners;
+    expect(winner).toMatchObject({ value: "single-committed-winner" });
+    if (!winner) throw new Error("No first-admin winner");
+
+    for (const loser of losers) {
+      expect(loser).toMatchObject({
+        status: "already_claimed",
+        existingUserId: winner.userId,
+        value: null,
+      });
+    }
+    const roles = await db.select().from(instanceUserRoles);
+    expect(roles).toHaveLength(1);
+    expect(roles[0]).toMatchObject({ userId: winner.userId, role: "instance_admin" });
+  }, 20_000);
+
+  it("rolls back the first-admin role if its onClaim callback fails", async () => {
+    const failedUserId = `user-${randomUUID()}`;
+    await expect(claimFirstInstanceAdmin(db, {
+      userId: failedUserId,
+      onClaim: async () => {
+        const inFlightRoles = await db.select().from(instanceUserRoles);
+        // A live transaction is in progress; throw before commit.
+        expect(Array.isArray(inFlightRoles)).toBe(true);
+        throw new Error("synthetic-private-onclaim-rollback");
+      },
+    })).rejects.toThrow("synthetic-private-onclaim-rollback");
+
+    expect(await db.select().from(instanceUserRoles)).toHaveLength(0);
+    const nextUserId = `user-${randomUUID()}`;
+    expect(await claimFirstInstanceAdmin(db, { userId: nextUserId })).toMatchObject({
+      status: "claimed",
+      userId: nextUserId,
+    });
+    const roles = await db.select().from(instanceUserRoles);
+    expect(roles).toHaveLength(1);
+    expect(roles[0]).toMatchObject({ userId: nextUserId, role: "instance_admin" });
   });
 
   it("runs onClaim inside the winning transaction", async () => {
