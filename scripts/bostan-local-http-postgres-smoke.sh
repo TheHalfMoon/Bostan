@@ -75,3 +75,7 @@ NODE
 else
   echo "HEALTH_FAILED status=$status";tail -40 "$TMP/server.log";exit 1
 fi
+# Verify the actual terminal-facing identity on the booted server, not just TS source.
+if ! grep -Fq 'bostan' "$TMP/server.log"; then echo 'BOSTAN_BANNER_MISSING'; exit 1; fi
+if grep -Fq 'npx paperclipai onboard' "$TMP/server.log"; then echo 'UNSUPPORTED_LEGACY_ONBOARD_COMMAND'; exit 1; fi
+echo 'BOSTAN_BOOT_BANNER_QUALIFIED'

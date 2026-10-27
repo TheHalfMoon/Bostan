@@ -835,11 +835,11 @@ describe("paperclipai CLI invocation safety", () => {
     expect(readme).not.toContain("pnpm exec paperclipai company import");
   });
 
-  it("emits the safe form in the company-export preview builder", () => {
+  it("shows only the supported private Bostan company-inspect command in export preview", () => {
     const source = read("ui/src/pages/CompanyExport.tsx");
-    expect(source).not.toContain("pnpm paperclipai company import");
-    expect(source).not.toContain("pnpm exec paperclipai company import");
-    expect(source).toContain("npx paperclipai company import");
+    expect(source).toContain("bostan company inspect <local-export.zip>");
+    expect(source).not.toContain("npx paperclipai company import");
+    expect(source).not.toContain("npx bostan company import");
   });
 
   // ── Runtime surfaces and their fixed literal lifecycle hints ─────────────
@@ -853,11 +853,12 @@ describe("paperclipai CLI invocation safety", () => {
   // env-lab cleanup hint runs from a source checkout and must work from any
   // subdirectory, so it uses the module-resolved direct-exec form (see below).
 
-  it("emits the onboard hint from the server startup banner", () => {
+  it("does not advertise an unsupported onboarding CLI in the Bostan startup banner", () => {
     const source = read("server/src/startup-banner.ts");
-    expect(source).toContain("npx paperclipai onboard");
-    expect(source).not.toContain("pnpm paperclipai onboard");
-    expect(source).not.toContain("pnpm exec paperclipai onboard");
+    expect(source).toContain("configure Bostan agent JWT for this instance");
+    expect(source).toContain('color("bostan", "cyan")');
+    expect(source).not.toContain("npx paperclipai onboard");
+    expect(source).not.toContain("bostan onboard");
   });
 
   it("emits the safe run form from the client connection-error hint", () => {
@@ -888,11 +889,12 @@ describe("paperclipai CLI invocation safety", () => {
     );
   });
 
-  it("emits the bootstrap fallback command from the UI", () => {
+  it("keeps Bostan bootstrap instructions aligned with the private CLI's unsupported commands", () => {
     const source = read("ui/src/bootstrapSetup.ts");
-    expect(source).toContain("npx paperclipai auth bootstrap-ceo");
-    expect(source).not.toContain("pnpm paperclipai auth bootstrap-ceo");
-    expect(source).not.toContain("pnpm exec paperclipai auth bootstrap-ceo");
+    expect(source).toContain("BOSTAN_BOOTSTRAP_PREVIEW_NOTICE");
+    expect(source).toContain("does not provide a first-admin bootstrap command");
+    expect(source).not.toContain("npx paperclipai auth bootstrap-ceo");
+    expect(source).not.toContain("npx bostan auth bootstrap-ceo");
   });
 
   it("emits the setup form from the board skill", () => {
