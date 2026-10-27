@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 
 // This helper only protects *disposable* Windows Bostan source-QA paths.
@@ -46,7 +47,8 @@ if ($seen.Count -ne 3) { throw 'Missing mandatory Bostan private ACL principal' 
 Write-Output 'BOSTAN_PRIVATE_WINDOWS_DACL_VERIFIED'
 `;
 
-export function windowsPrivateAclTarget(home) {
+export function windowsPrivateAclTarget(home, section = "product") {
+  if (!["product", "local"].includes(section)) throw new Error("Invalid Bostan private ACL section");
   if (process.platform !== "win32") throw new Error("Windows-only Bostan ACL operation");
   if (!home || !path.isAbsolute(home) || path.normalize(home) !== home) {
     throw new Error("Invalid disposable Windows HOME");
@@ -57,7 +59,7 @@ export function windowsPrivateAclTarget(home) {
     || fs.lstatSync(home).isSymbolicLink()) {
     throw new Error("Refusing NTFS ACL changes outside a disposable TEMP HOME");
   }
-  const appRoot = path.join(home, ".bostan");
+  const appRoot = path.join(home, section === "product" ? ".bostan" : ".local");
   const stat = fs.lstatSync(appRoot);
   if (!stat.isDirectory() || stat.isSymbolicLink()) {
     throw new Error("Unsafe Bostan private directory");
@@ -65,8 +67,8 @@ export function windowsPrivateAclTarget(home) {
   return appRoot;
 }
 
-export function enforceWindowsQaPrivateAcl(home, { fresh = false } = {}) {
-  const root = windowsPrivateAclTarget(home);
+export function enforceWindowsQaPrivateAcl(home, { fresh = false, section = "product" } = {}) {
+  const root = windowsPrivateAclTarget(home, section);
   const sysRoot = process.env.SystemRoot || process.env.WINDIR;
   if (!sysRoot || !path.isAbsolute(sysRoot)) {
     throw new Error("Windows system PowerShell path unavailable");
@@ -96,4 +98,26 @@ export function enforceWindowsQaPrivateAcl(home, { fresh = false } = {}) {
     throw new Error("Bostan Windows TEMP-QA private ACL check failed; refusing local runtime");
   }
   return root;
+}
+
+
+// Called solely by the opt-in, disposable Windows CLI source-QA installer.
+// The target validator refuses all non-TEMP paths before any ACL mutation.
+if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {
+  const [mode, home] = process.argv.slice(2);
+  if (process.platform !== "win32" || process.env.BOSTAN_WINDOWS_TEMP_QA !== "1" ||
+    !["apply-product", "apply-local", "verify-product", "verify-local"].includes(mode) ||
+    typeof home !== "string" || process.argv.length !== 4) {
+    console.error("Bostan disposable Windows CLI ACL QA refused");
+    process.exitCode = 2;
+  } else {
+    try {
+      const section = mode.endsWith("local") ? "local" : "product";
+      enforceWindowsQaPrivateAcl(home, { section, fresh: mode.startsWith("apply") });
+      console.log("BOSTAN_PRIVATE_WINDOWS_DACL_VERIFIED");
+    } catch {
+      console.error("Bostan disposable Windows CLI ACL verification failed");
+      process.exitCode = 2;
+    }
+  }
 }

@@ -10,7 +10,9 @@ import { createZipArchive } from "../../../ui/src/lib/zip.ts";
 const source = fileURLToPath(new URL("../bostan-preview.mjs", import.meta.url));
 const cli = fileURLToPath(new URL("../../dist/bostan.js", import.meta.url));
 const nodeDir = dirname(process.execPath);
-const nativeTest = process.platform === "darwin" || process.platform === "linux" ? test : test.skip;
+// Windows is qualified only inside disposable, protected QA homes.
+const nativeTest = ["darwin", "linux", "win32"].includes(process.platform) ? test : test.skip;
+const commandName = process.platform === "win32" ? "bostan.cmd" : "bostan";
 
 function fixture() {
   const dir = mkdtempSync(join(tmpdir(), "bostan-native-install-test-"));
@@ -19,11 +21,27 @@ function fixture() {
   return { dir, home, clean: () => rmSync(dir, { recursive: true, force: true }) };
 }
 function invoke(home, args, executable = source) {
-  const result = spawnSync(executable === "shim" ? join(home, ".local", "bin", "bostan") : process.execPath,
-    executable === "shim" ? args : [executable, ...args], {
-      env: { HOME: home, PATH: nodeDir + delimiter + (process.env.PATH ?? ""), NODE_ENV: "test" },
-      timeout: 4000, encoding: "utf8",
-    });
+  const env = { ...process.env, HOME: home,
+    PATH: nodeDir + delimiter + (process.env.PATH ?? ""),
+    BOSTAN_WINDOWS_TEMP_QA: "1", NODE_ENV: "test" };
+  let command = process.execPath;
+  let commandArgs = [executable, ...args];
+  if (executable === "shim") {
+    const shim = join(home, ".local", "bin", commandName);
+    if (process.platform === "win32") {
+      // Test an actual NTFS .cmd entrypoint; never enable the interactive shell
+      // for source/installer subprocesses, nor interpolate arbitrary inputs.
+      command = join(process.env.SystemRoot || "C:\\Windows", "System32", "cmd.exe");
+      commandArgs = ["/d", "/s", "/c",
+        '\"' + '\"' + shim + '\"' + (args.length ? " " + args.map(x=> '\"' + x + '\"').join(" ") : "") + '\"'];
+    } else {
+      command = shim;
+      commandArgs = args;
+    }
+  }
+  const result = spawnSync(command, commandArgs, {
+    env, timeout: 12000, encoding: "utf8", windowsHide: true,
+  });
   assert.equal(result.error, undefined);
   return result;
 }
@@ -53,7 +71,7 @@ nativeTest("local installation is isolated and the installed executable works wi
     assert.equal(readFileSync(join(inherited, "marker"), "utf8"), "must survive");
     const paths = [
       join(f.home, ".bostan", "cli", "install.json"),
-      join(f.home, ".local", "bin", "bostan"),
+      join(f.home, ".local", "bin", commandName),
     ];
     for (const p of paths) assert.ok(existsSync(p), p);
     assert.equal(invoke(f.home, ["--version"], "shim").stdout.trim(), "0.3.1");
@@ -108,7 +126,7 @@ nativeTest("installer refuses to replace another command with the same name", ()
   const f = fixture();
   try {
     mkdirSync(join(f.home, ".local", "bin"), { recursive: true });
-    const bin = join(f.home, ".local", "bin", "bostan");
+    const bin = join(f.home, ".local", "bin", commandName);
     writeFileSync(bin, "#!/bin/sh\necho OTHER\n");
     mustRefuse(invoke(f.home, ["install", "--local"]));
     assert.match(readFileSync(bin, "utf8"), /OTHER/);
@@ -116,26 +134,28 @@ nativeTest("installer refuses to replace another command with the same name", ()
   } finally { f.clean(); }
 });
 
-nativeTest("refuses an inherited-home symlink without touching its target", () => {
+nativeTest("refuses an inherited-home symlink without touching its target", (t) => {
   const f = fixture();
   try {
     const inherited = join(f.home, ".paperclip");
     mkdirSync(inherited);
     writeFileSync(join(inherited, "do-not-touch"), "protected");
-    symlinkSync(inherited, join(f.home, ".bostan"), "dir");
+    try { symlinkSync(inherited, join(f.home, ".bostan"), "dir"); }
+    catch(error) { if(process.platform==="win32" && ["EPERM","EACCES"].includes(error?.code)) {t.skip("Windows symlink privilege unavailable");return;} throw error; }
     mustRefuse(invoke(f.home, ["install", "--local"]));
     assert.deepEqual(readdirSync(inherited), ["do-not-touch"]);
     assert.equal(existsSync(join(f.home, ".local")), false);
   } finally { f.clean(); }
 });
 
-nativeTest("refuses a symlinked local-bin directory or shim", () => {
+nativeTest("refuses a symlinked local-bin directory or shim", (t) => {
   const f = fixture();
   try {
     const other = join(f.dir, "other");
     mkdirSync(other);
     mkdirSync(join(f.home, ".local"));
-    symlinkSync(other, join(f.home, ".local", "bin"), "dir");
+    try { symlinkSync(other, join(f.home, ".local", "bin"), "dir"); }
+    catch(error) { if(process.platform==="win32" && ["EPERM","EACCES"].includes(error?.code)) {t.skip("Windows symlink privilege unavailable");return;} throw error; }
     mustRefuse(invoke(f.home, ["install", "--local"]));
     assert.deepEqual(readdirSync(other), []);
   } finally { f.clean(); }
@@ -202,13 +222,14 @@ nativeTest("quotes apostrophes and spaces in the installed command path safely",
   } finally { f.clean(); }
 });
 
-nativeTest("refuses a symlinked command path without touching the target", () => {
+nativeTest("refuses a symlinked command path without touching the target", (t) => {
   const f = fixture();
   try {
     mkdirSync(join(f.home, ".local", "bin"), { recursive: true });
     const target = join(f.dir, "protected");
     writeFileSync(target, "protected");
-    symlinkSync(target, join(f.home, ".local", "bin", "bostan"));
+    try { symlinkSync(target, join(f.home, ".local", "bin", commandName)); }
+    catch(error) { if(process.platform==="win32" && ["EPERM","EACCES"].includes(error?.code)) {t.skip("Windows symlink privilege unavailable");return;} throw error; }
     mustRefuse(invoke(f.home, ["install", "--local"]));
     assert.equal(readFileSync(target, "utf8"), "protected");
   } finally { f.clean(); }

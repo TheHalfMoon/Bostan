@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -57,7 +58,7 @@ export function localPaths(home = process.env.HOME || os.homedir()) {
     lock: path.join(root, ".bostan", "cli", ".install.lock"),
     local: path.join(root, ".local"),
     bin: path.join(root, ".local", "bin"),
-    shim: path.join(root, ".local", "bin", "bostan"),
+    shim: path.join(root, ".local", "bin", process.platform === "win32" ? "bostan.cmd" : "bostan"),
   };
 }
 
@@ -70,9 +71,53 @@ function existingPathSafety(paths) {
 }
 
 function shimText(entry) {
+  if (process.platform === "win32") {
+    const node = process.execPath;
+    // The shell wrapper is only permitted in disposable NTFS QA homes.
+    // Refuse CMD variable expansion, escape and newline characters in paths.
+    for (const value of [node, entry]) {
+      if (!/^[A-Za-z]:\\/.test(value) || /[%!"^<>|\r\n]/.test(value)) {
+        throw new Error("Unsafe Windows CLI QA command path");
+      }
+    }
+    return '@echo off\r\nsetlocal DisableDelayedExpansion\r\n"' +
+      node + '" "' + entry + '" %*\r\nexit /b %errorlevel%\r\n';
+  }
   // Quoting is POSIX shell safe for arbitrary absolute home-directory paths.
   const escaped = entry.replaceAll("'", "'\\''");
   return "#!/bin/sh\nexec node '" + escaped + "' \"$@\"\n";
+}
+
+function requireWindowsTempQa(home) {
+  if (process.env.BOSTAN_WINDOWS_TEMP_QA !== "1") {
+    throw new Error("Windows local CLI installation requires explicit disposable TEMP QA");
+  }
+  const temp = fs.realpathSync(os.tmpdir()).toLowerCase();
+  const actual = fs.realpathSync(home).toLowerCase();
+  if (!actual.startsWith(temp + path.sep) ||
+      !/(?:^|[\\/])bostan-native-install-test-[^\\/]+[\\/]home$/.test(actual) ||
+      fs.lstatSync(home).isSymbolicLink()) {
+    throw new Error("Windows local CLI QA refuses any non-disposable HOME");
+  }
+  return true;
+}
+
+function protectWindowsTempQa(home) {
+  const checker = fileURLToPath(new URL("../../scripts/bostan-windows-acl.mjs", import.meta.url));
+  if (!fs.existsSync(checker)) {
+    throw new Error("Windows local CLI QA requires the original source checkout");
+  }
+  for (const mode of ["apply-product", "apply-local"]) {
+    try {
+      execFileSync(process.execPath, [checker, mode, home], {
+        env: { ...process.env, BOSTAN_WINDOWS_TEMP_QA: "1" },
+        windowsHide: true, encoding: "utf8", timeout: 30000,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch {
+      throw new Error("Windows local CLI QA private NTFS ACL admission failed");
+    }
+  }
 }
 
 function sha256(value) {
@@ -147,10 +192,11 @@ function exclusiveFile(filename, content, mode) {
 }
 
 export function installLocal(home) {
-  if (process.platform !== "darwin" && process.platform !== "linux") {
+  if (!["darwin", "linux", "win32"].includes(process.platform)) {
     throw new Error("Native local installation is not yet qualified on this operating system");
   }
   const paths = localPaths(home);
+  if (process.platform === "win32") requireWindowsTempQa(paths.home);
   existingPathSafety(paths);
   if (inspect(paths.manifest, "file") || inspect(paths.shim, "file")) {
     throw new Error("A Bostan installation or command already exists; refusing to overwrite");
@@ -167,6 +213,7 @@ export function installLocal(home) {
     if (!inspect(parent, "directory")) throw new Error("Unsafe parent directory " + parent);
     safeDirectory(dir, true);
   }
+  if (process.platform === "win32") protectWindowsTempQa(paths.home);
   exclusiveFile(paths.lock, String(process.pid) + "\n", FILE_MODE);
   let installedShim = false;
   let createdPayload = false;

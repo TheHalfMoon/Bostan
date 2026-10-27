@@ -60,7 +60,7 @@ test("inherited high-risk commands are uniformly refused with no side effects", 
   "unqualified Windows native CLI installation fails closed without writing HOME", () => {
     const result = isolatedRun(["install", "--local"]);
     assert.equal(result.status, 2, result.stderr);
-    assert.match(result.stderr, /Native local installation is not yet qualified/);
+    assert.match(result.stderr, /explicit disposable TEMP QA/);
     assert.equal(result.stdout, "");
   },
 );
