@@ -6,7 +6,7 @@ test("recognizes the public server's vendored setup entrypoint", () => {
   assert.equal(cursorProvisionerPackageRoot("file:///consumer/node_modules/@bostan/server/dist/vendor/paperclip-runner/cli/provision-cursor.cjs"), "/consumer/node_modules/@bostan/server/dist/vendor/paperclip-runner");
 });
 test("recognizes the standalone runner's setup entrypoint", () => {
-  assert.equal(cursorProvisionerPackageRoot("file:///consumer/node_modules/@paperclipai/paperclip-runner/dist/cli/provision-cursor.cjs"), "/consumer/node_modules/@paperclipai/paperclip-runner");
+  assert.equal(cursorProvisionerPackageRoot("file:///consumer/node_modules/@bostan/runner/dist/cli/provision-cursor.cjs"), "/consumer/node_modules/@bostan/runner");
 });
 test("unbundled and foreign layouts cannot provision outside an owned package", () => {
   for (const url of ["file:///repo/packages/paperclip-runner/scripts/provision-cursor.mjs", "file:///tmp/provision-cursor.cjs", "https://example.com/dist/cli/provision-cursor.js", "file:///consumer/dist/cli/provision-cursor.js?redirect=1"]) assert.throws(() => cursorProvisionerPackageRoot(url), /published provisioner/);

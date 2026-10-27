@@ -172,7 +172,7 @@ jobs:
           PAPERCLIP_EVAL_CASE: ${{ inputs.case }}
           PAPERCLIP_EVAL_LIMIT: ${{ inputs.limit }}
           PAPERCLIP_EVALBOOK_PROGRAM: ${{ github.workspace }}/.paperclip-evals/evals/paperclip-runner/tools/eval_program.py
-        run: pnpm --filter @paperclipai/paperclip-runner report:runner-live-evals
+        run: pnpm --filter @bostan/runner report:runner-live-evals
 
       - name: Publish job summary
         if: always()

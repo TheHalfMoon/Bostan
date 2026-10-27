@@ -104,7 +104,7 @@ export function findSpecifiers(source, file = "source.ts") {
 function declaredPublicImports(manifest) {
   return new Set(Object.entries(manifest.exports ?? {})
     .filter(([key, target]) => key.startsWith("./") && !key.includes("*") && target !== null)
-    .map(([key]) => `@paperclipai/paperclip-runner/${key.slice(2)}`));
+    .map(([key]) => `@bostan/runner/${key.slice(2)}`));
 }
 
 function publicSourceGraph(packageRoot, manifest, specifiers) {
@@ -132,8 +132,8 @@ function publicSourceGraph(packageRoot, manifest, specifiers) {
     reachable.add(file);
     for (const { specifier } of specifiers.get(file) ?? []) {
       if (specifier.startsWith(".")) queue.push(...sourceCandidates(resolve(dirname(file), specifier)));
-      else if (specifier.startsWith("@paperclipai/paperclip-runner/")) {
-        queue.push(...exportSources(manifest.exports?.[`./${specifier.slice("@paperclipai/paperclip-runner/".length)}`]));
+      else if (specifier.startsWith("@bostan/runner/")) {
+        queue.push(...exportSources(manifest.exports?.[`./${specifier.slice("@bostan/runner/".length)}`]));
       }
     }
   }
@@ -168,17 +168,17 @@ function violationReason({ file, packageRoot, specifier, publicRunnerImports, re
   const relativeFile = relative(packageRoot, file).split(/[\\/]/).join("/");
   const isExampleConsumer = relativeFile.startsWith("examples/");
   if (
-    specifier.startsWith("@paperclipai/paperclip-runner/") &&
+    specifier.startsWith("@bostan/runner/") &&
     !publicRunnerImports.has(specifier)
   ) {
     return "runner consumers may import only declared public subpaths";
   }
-  if (isExampleConsumer && specifier === "@paperclipai/paperclip-runner") {
+  if (isExampleConsumer && specifier === "@bostan/runner") {
     return "runner consumers may import only declared public subpaths";
   }
   if (
     isOwnedWorkspacePackage(specifier) &&
-    specifier !== "@paperclipai/paperclip-runner" &&
+    specifier !== "@bostan/runner" &&
     !publicRunnerImports.has(specifier) &&
     !(specifier === REVIEWED_EVAL_KERNEL && reviewedEvalHarness && relativeFile === REVIEWED_EVAL_HARNESS)
   ) {
@@ -235,7 +235,7 @@ async function manifestViolations(packageRoot) {
   );
   return [...runtimeDependencies, ...unreviewedDevelopmentDependencies]
     .filter(
-      (name) => isOwnedWorkspacePackage(name) && name !== "@paperclipai/paperclip-runner",
+      (name) => isOwnedWorkspacePackage(name) && name !== "@bostan/runner",
     )
     .map((specifier) => ({
       file: manifestPath,

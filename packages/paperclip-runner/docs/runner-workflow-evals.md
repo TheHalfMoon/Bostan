@@ -12,18 +12,18 @@ the same grid and drill-down pages as the direct Runner eval suite.
 
 ## Lanes
 
-- `pnpm --filter @paperclipai/paperclip-runner test:runner-workflow-evals`
+- `pnpm --filter @bostan/runner test:runner-workflow-evals`
   runs the credential-free PR gate over sanitized Codex, OpenCode, and ACPX
   normalization fixtures.
-- `pnpm --filter @paperclipai/paperclip-runner report:runner-workflow-evals`
+- `pnpm --filter @bostan/runner report:runner-workflow-evals`
   validates the deterministic fail-closed fixture matrix and writes JSON,
   Markdown, JUnit, and GitHub-safe artifacts under
   `.paperclip-local/evals/workflows/`. It makes no network requests.
-- `pnpm --filter @paperclipai/paperclip-runner report:runner-live-evals` runs
+- `pnpm --filter @bostan/runner report:runner-live-evals` runs
   the balanced forty-execution schedule against real provider sessions. Live
   candidate failures are trend-only; missing credentials, qualification
   failures, and provider outages remain unscored.
-- `pnpm --filter @paperclipai/paperclip-runner report:runner-chaos-evals`
+- `pnpm --filter @bostan/runner report:runner-chaos-evals`
   writes the eight-scenario fault schedule consumed by weekly and pre-release
   restart, replay, trace, finalization, interaction, and wake-race suites.
 

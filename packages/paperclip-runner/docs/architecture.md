@@ -114,9 +114,9 @@ must fail the checker.
 ## Enforcement
 
 ```sh
-pnpm --filter @paperclipai/paperclip-runner check:forbidden-imports
-pnpm --filter @paperclipai/paperclip-runner test
-pnpm --filter @paperclipai/paperclip-runner check:replay-parity
+pnpm --filter @bostan/runner check:forbidden-imports
+pnpm --filter @bostan/runner test
+pnpm --filter @bostan/runner check:replay-parity
 ```
 
 The first command scans the package source, scripts, and manifest. The test

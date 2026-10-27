@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { parsePaperclipQuestionResponse } from "@paperclipai/paperclip-runner";
+import { parsePaperclipQuestionResponse } from "@bostan/runner";
 import { buildMuseSetupInstruction, museReceiverAssets } from "../services/muse-setup.js";
 import { fileURLToPath } from "node:url";
 import { describe, it, expect, vi } from "vitest";

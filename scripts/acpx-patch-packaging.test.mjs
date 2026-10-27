@@ -473,7 +473,7 @@ test("bundled package staging installs only dependencies included in the tarball
       "embedded-postgres": "^18.1.0-beta.16",
     },
     devDependencies: {
-      "@paperclipai/paperclip-runner": "2026.723.0-canary.8",
+      "@bostan/runner": "2026.723.0-canary.8",
     },
     bundleDependencies: ["embedded-postgres"],
   };
@@ -484,7 +484,7 @@ test("bundled package staging installs only dependencies included in the tarball
   });
   assert.equal(installManifest.devDependencies, undefined);
   assert.deepEqual(publishManifest.devDependencies, {
-    "@paperclipai/paperclip-runner": "2026.723.0-canary.8",
+    "@bostan/runner": "2026.723.0-canary.8",
   });
   assert.deepEqual(installManifest.bundleDependencies, ["embedded-postgres"]);
 });

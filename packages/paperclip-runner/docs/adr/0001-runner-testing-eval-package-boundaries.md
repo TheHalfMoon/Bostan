@@ -34,9 +34,9 @@ Public runner exports are:
 
 | Export | Stability and purpose |
 |---|---|
-| `@paperclipai/paperclip-runner` | Runtime contracts, runner clients/backends, PRP validation/replay, canonical catalog/dispatcher, and compatibility preflight |
-| `@paperclipai/paperclip-runner/evals` | Versioned native-attempt/build metadata, compatibility negotiation, and explicit runnerd artifact resolution |
-| `@paperclipai/paperclip-runner/testing` | Deterministic mocks, PRP port conformance, and provider-neutral semantic conformance kit |
+| `@bostan/runner` | Runtime contracts, runner clients/backends, PRP validation/replay, canonical catalog/dispatcher, and compatibility preflight |
+| `@bostan/runner/evals` | Versioned native-attempt/build metadata, compatibility negotiation, and explicit runnerd artifact resolution |
+| `@bostan/runner/testing` | Deterministic mocks, PRP port conformance, and provider-neutral semantic conformance kit |
 | `./browser`, `./react`, `./standalone`, `./styles.css` | Existing explicitly named UI/standalone consumers |
 
 Mock adapters and conformance constants are no longer package-root exports.
@@ -63,11 +63,11 @@ The dependency graph is acyclic:
 Paperclip App production binding
             |
             v
-@paperclipai/paperclip-runner (runtime contracts)
+@bostan/runner (runtime contracts)
             ^
             |
-Eval consumers ----> @paperclipai/paperclip-runner/evals
-       |             @paperclipai/paperclip-runner/testing
+Eval consumers ----> @bostan/runner/evals
+       |             @bostan/runner/testing
        +-----------> @bostan/eval-kernel
 ```
 
@@ -102,8 +102,8 @@ errors must not stand in for this preflight.
 Run:
 
 ```sh
-pnpm --filter @paperclipai/paperclip-runner check:package-boundaries
-pnpm --filter @paperclipai/paperclip-runner check:clean-consumers
+pnpm --filter @bostan/runner check:package-boundaries
+pnpm --filter @bostan/runner check:clean-consumers
 ```
 
 The second command builds and packs the runner, installs its tarball into a
@@ -131,7 +131,7 @@ This regression also runs in the Runner's `test:typescript:prep` gate.
 ## Consequences
 
 - Existing tests importing mock/conformance values from the package root must
-  migrate to `@paperclipai/paperclip-runner/testing`.
+  migrate to `@bostan/runner/testing`.
 - `ajv` is a runtime dependency because the public dispatcher imports it.
 - The semantic conformance kit defines normalized comparison; real App service
   adapters and risk-weighted vectors may evolve behind its testkit version.

@@ -639,12 +639,12 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$NEEDS_RUNNER_TYPESCRIPT" = true ]; then
-            pnpm --filter @paperclipai/paperclip-runner build:typescript
+            pnpm --filter @bostan/runner build:typescript
           else
             pnpm --filter @bostan/eval-kernel build
           fi
           if [ "$NEEDS_NATIVE_BINARIES" = true ]; then
-            pnpm --filter @paperclipai/paperclip-runner build:runner-binaries
+            pnpm --filter @bostan/runner build:runner-binaries
           fi
 
       - name: Package immutable campaign outputs

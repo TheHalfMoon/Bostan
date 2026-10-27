@@ -563,7 +563,7 @@ async function getNativeRunnerRequired(): Promise<boolean> {
 async function buildPaperclipRunner() {
   console.log("[paperclip] building paperclip runner...");
   const typescriptResult = await runPnpm(
-    ["--filter", "@paperclipai/paperclip-runner", "build:typescript"],
+    ["--filter", "@bostan/runner", "build:typescript"],
     { stdio: "inherit" },
   );
   if (typescriptResult.signal) {
@@ -585,7 +585,7 @@ async function buildPaperclipRunner() {
   ) {
     console.log("[paperclip] building paperclip runner native binary...");
     const binaryResult = await runPnpm(
-      ["--filter", "@paperclipai/paperclip-runner", "build:binary"],
+      ["--filter", "@bostan/runner", "build:binary"],
       { stdio: "inherit" },
     );
     if (binaryResult.signal) {

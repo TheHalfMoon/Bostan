@@ -555,7 +555,7 @@ runner binaries:
 ```bash
 pnpm install
 pnpm exec playwright install chromium
-pnpm --filter @paperclipai/paperclip-runner build:runner-binaries
+pnpm --filter @bostan/runner build:runner-binaries
 ```
 
 List cells without loading credentials or starting Paperclip:

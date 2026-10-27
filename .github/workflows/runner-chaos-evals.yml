@@ -48,11 +48,11 @@ jobs:
       - name: Build eval and Runner contracts
         run: |
           pnpm --filter @bostan/eval-kernel build
-          pnpm --filter @paperclipai/paperclip-runner report:runner-chaos-evals
+          pnpm --filter @bostan/runner report:runner-chaos-evals
 
       - name: Run Runner fault and replay suites
         run: |
-          pnpm --filter @paperclipai/paperclip-runner exec vitest run \
+          pnpm --filter @bostan/runner exec vitest run \
             src/eval/workflow-evals.test.ts \
             src/native-session-runtime.test.ts \
             src/live/live-session.test.ts \

@@ -6,7 +6,7 @@ import { COPILOT_DISTRIBUTIONS, materializePinnedCopilotBinary } from "./materia
 
 const packageRoot = await realpath(fileURLToPath(new URL("../", import.meta.url)));
 const owner = JSON.parse(await readFile(join(packageRoot, "package.json"), "utf8"));
-if (!["@paperclipai/paperclip-runner", "@bostan/server"].includes(owner.name)) {
+if (!["@bostan/runner", "@bostan/server"].includes(owner.name)) {
   throw new Error("Copilot installer must belong to a runner package owner");
 }
 const vendored = owner.name === "@bostan/server";

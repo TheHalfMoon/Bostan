@@ -11,4 +11,4 @@ catalog, protocol, runner-client, control-plane-adapter, testkit, corpus, and
 provider-operation incompatibilities explicit.
 
 Paperclip App may consume this package only as a development dependency for CI
-or parity tests. `@paperclipai/paperclip-runner` has no runtime dependency on it.
+or parity tests. `@bostan/runner` has no runtime dependency on it.

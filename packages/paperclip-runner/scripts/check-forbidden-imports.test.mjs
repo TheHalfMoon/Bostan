@@ -132,13 +132,13 @@ test("only exact declared public subpaths are admitted", async (t) => {
   const violations = await fixtureBoundary(t, {
     manifest: reviewedManifest,
     files: { "src/consumer.ts": [
-      'import "@paperclipai/paperclip-runner/evals";',
-      'import "@paperclipai/paperclip-runner/evals/private";',
-      'import "@paperclipai/paperclip-runner/undeclared";',
+      'import "@bostan/runner/evals";',
+      'import "@bostan/runner/evals/private";',
+      'import "@bostan/runner/undeclared";',
     ].join("\n") },
   });
   assert.deepEqual(violations.map(({ specifier }) => specifier), [
-    "@paperclipai/paperclip-runner/evals/private", "@paperclipai/paperclip-runner/undeclared",
+    "@bostan/runner/evals/private", "@bostan/runner/undeclared",
   ]);
 });
 

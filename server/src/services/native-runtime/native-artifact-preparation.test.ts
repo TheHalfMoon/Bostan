@@ -12,7 +12,7 @@ const roots: string[] = [];
 const metadata = {
   schema: "paperclip-runner/runnerd-build-metadata/v1",
   binaryName: "paperclip-runnerd",
-  packageName: "@paperclipai/paperclip-runner",
+  packageName: "@bostan/runner",
   binaryContractVersion: 2,
   durableSessionCapabilities: ["unlimited_runtime", "connection_lease_renewal"],
   prpTransportModes: ["dial_ws_loopback", "dial_wss", "listen_ws"],

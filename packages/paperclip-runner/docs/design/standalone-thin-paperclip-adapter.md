@@ -32,7 +32,7 @@ The dependency direction is one way:
 ```text
 server heartbeat orchestration
   -> PaperclipNativeRuntimeAdapter (core seam)
-      -> @paperclipai/paperclip-runner public contracts
+      -> @bostan/runner public contracts
           -> NativeSessionBackend -> package-owned driver/runner logic
           -> ControlPlanePort      -> server-bound Paperclip implementation
 ```
@@ -1033,11 +1033,11 @@ Deterministic package/mock proof:
 ```sh
 pnpm check:runner-sdk-spec
 
-pnpm --filter @paperclipai/paperclip-runner exec vitest run \
+pnpm --filter @bostan/runner exec vitest run \
   src/conformance/control-plane-port.test.ts \
   src/backends/harness-driver-backend.test.ts
 
-pnpm --filter @paperclipai/paperclip-runner trace:standalone -- \
+pnpm --filter @bostan/runner trace:standalone -- \
   --target mock --scenario happy-path
 ```
 
@@ -1045,7 +1045,7 @@ First real Paperclip tracer and inspection (against an isolated local dev
 instance with the five `PAPERCLIP_*` identifiers/auth variables already set):
 
 ```sh
-pnpm --filter @paperclipai/paperclip-runner trace:standalone -- \
+pnpm --filter @bostan/runner trace:standalone -- \
   --target paperclip --scenario happy-path
 
 PAPERCLIP_API_BASE="${PAPERCLIP_API_URL%/}"
@@ -1084,7 +1084,7 @@ pnpm --filter @paperclipai/server exec vitest run \
 Legacy fallback proof after disabling the flag:
 
 ```sh
-pnpm --filter @paperclipai/paperclip-runner trace:standalone -- \
+pnpm --filter @bostan/runner trace:standalone -- \
   --target paperclip --scenario legacy-fallback
 
 pnpm --filter @paperclipai/server exec vitest run \

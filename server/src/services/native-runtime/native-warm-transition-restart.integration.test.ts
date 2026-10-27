@@ -19,7 +19,7 @@ import {
   issues,
   nativeRunFinalizations,
 } from "@bostan/db";
-import type { NativeExecutionInputV1 } from "@paperclipai/paperclip-runner";
+import type { NativeExecutionInputV1 } from "@bostan/runner";
 import { describe, expect, it, vi } from "vitest";
 import { nativeSha256 } from "./canonical.js";
 import {

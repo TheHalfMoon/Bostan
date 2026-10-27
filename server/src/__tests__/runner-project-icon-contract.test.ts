@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   capabilitySemanticToolDescriptor,
   paperclipSemanticAction,
-} from "@paperclipai/paperclip-runner";
+} from "@bostan/runner";
 import { PROJECT_ICON_NAMES } from "@bostan/shared";
 
 // Cross-package parity belongs at the App boundary: the standalone runner

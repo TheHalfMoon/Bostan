@@ -84,11 +84,11 @@ test("the patched Codex ACP executable digest stays aligned across launch bounda
 
 test("the package exposes only the reviewed runner CLI binaries", () => {
   assert.deepEqual(runnerPackage.bin, {
-    "paperclip-runner-eval-session": "./dist/cli/eval-session.js",
-    "paperclip-runner-codex-proxy": "./dist/cli/codex-app-server-unix-proxy.js",
-    "paperclip-runner-acpx-sidecar": "./dist/cli/acpx-runtime-sidecar.js",
-    "paperclip-runner-copilot-metadata-probe": "./dist/cli/copilot-metadata-probe.js",
-    "paperclip-runner-opencode-proxy":
+    "bostan-runner-eval-session": "./dist/cli/eval-session.js",
+    "bostan-runner-codex-proxy": "./dist/cli/codex-app-server-unix-proxy.js",
+    "bostan-runner-acpx-sidecar": "./dist/cli/acpx-runtime-sidecar.js",
+    "bostan-runner-copilot-metadata-probe": "./dist/cli/copilot-metadata-probe.js",
+    "bostan-runner-opencode-proxy":
       "./dist/cli/opencode-app-server-proxy.js",
   });
 });

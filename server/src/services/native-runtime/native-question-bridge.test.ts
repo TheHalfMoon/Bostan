@@ -22,7 +22,7 @@ import {
   issues,
   nativeRunFinalizations,
 } from "@bostan/db";
-import type { PrpEvent } from "@paperclipai/paperclip-runner";
+import type { PrpEvent } from "@bostan/runner";
 import { respondIssueThreadInteractionSchema } from "@bostan/shared";
 
 import {

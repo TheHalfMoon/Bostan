@@ -847,7 +847,7 @@ jobs:
         # so the vitest lanes' --shard lands on `vitest run`. Do not add a
         # `--` separator: pnpm forwards it literally and vitest would then
         # read the shard flag as a test filter.
-        run: pnpm --filter @paperclipai/paperclip-runner ${{ matrix.command }}
+        run: pnpm --filter @bostan/runner ${{ matrix.command }}
 
       - name: Upload CI profile timings
         continue-on-error: true
@@ -1060,7 +1060,7 @@ jobs:
         run: node scripts/runner-release-crate-cache.mjs mark-current
 
       - name: Build Runner Evalbook viewer
-        run: pnpm --filter @paperclipai/paperclip-runner build:issue-thread
+        run: pnpm --filter @bostan/runner build:issue-thread
 
       - name: Build
         run: pnpm build
