@@ -1,4 +1,10 @@
 #!/usr/bin/env node
+// Private Bostan must never rewrite cli/package.json to the old public npm
+// publishable manifest. This tool was for an inherited public distribution.
+// Keep its historical implementation below for source/provenance inspection.
+process.stderr.write('Bostan: inherited npm manifest generator disabled; the private CLI package must remain private.\n');
+process.exit(2);
+
 /**
  * generate-npm-package-json.mjs
  *
