@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const entry = new URL("../bostan-preview.mjs", import.meta.url);
@@ -12,7 +13,7 @@ const version = JSON.parse(readFileSync(new URL("../../package.json", import.met
 function isolatedRun(args, path = entry) {
   const home = mkdtempSync(join(tmpdir(), "bostan-cli-isolation-"));
   try {
-    const result = spawnSync(process.execPath, [path.pathname, ...args], {
+    const result = spawnSync(process.execPath, [fileURLToPath(path), ...args], {
       encoding: "utf8",
       env: { HOME: home, PATH: "/usr/bin:/bin", NODE_ENV: "test" },
       timeout: 3000,
@@ -54,6 +55,15 @@ test("inherited high-risk commands are uniformly refused with no side effects", 
     assert.equal(result.stdout, "");
   }
 });
+
+(process.platform === "win32" ? test : test.skip)(
+  "unqualified Windows native CLI installation fails closed without writing HOME", () => {
+    const result = isolatedRun(["install", "--local"]);
+    assert.equal(result.status, 2, result.stderr);
+    assert.match(result.stderr, /Native local installation is not yet qualified/);
+    assert.equal(result.stdout, "");
+  },
+);
 
 test("publishing scripts reject any requested release action", () => {
   const result = isolatedRun([], releaseGuard);

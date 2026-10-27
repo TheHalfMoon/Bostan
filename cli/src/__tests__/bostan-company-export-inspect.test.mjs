@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { mkdtempSync, rmSync, writeFileSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -44,8 +45,28 @@ test("reads only local ZIP, never downloads or alters archive", () => {
     assert.throws(() => inspectLocalBostanCompanyExport("https://example.org/private.zip"), /network URLs are unsupported/);
     assert.throws(() => inspectLocalBostanCompanyExport("file:///tmp/private.zip"), /network URLs are unsupported/);
     assert.throws(() => inspectLocalBostanCompanyExport(join(root, "missing.zip")), /unavailable or unsafe/);
-    symlinkSync(archive, join(root, "alias.zip"));
-    assert.throws(() => inspectLocalBostanCompanyExport(join(root, "alias.zip")), /unavailable or unsafe/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("rejects symlinked export ZIPs where the host permits test symlink creation", (t) => {
+  const root = temporary();
+  try {
+    const archive = join(root, "export.zip");
+    const alias = join(root, "alias.zip");
+    writeFileSync(archive, makeZip());
+    try {
+      symlinkSync(archive, alias);
+    } catch (error) {
+      // Native Windows without Developer Mode may deny symlink creation.
+      // That prevents constructing this fixture; it is not evidence that
+      // the actual ZIP inspector accepts symlinks.
+      if (process.platform === "win32" && ["EPERM", "EACCES"].includes(error?.code)) {
+        t.skip("Native Windows symlink privilege unavailable; inspector behavior not qualified by this case");
+        return;
+      }
+      throw error;
+    }
+    assert.throws(() => inspectLocalBostanCompanyExport(alias), /unavailable or unsafe/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -104,7 +125,7 @@ test("actual isolated Bostan CLI inspects valid local ZIP but cannot import it",
     const archive=join(root,"company.zip");
     writeFileSync(archive,makeZip());
     const entry = new URL("../bostan-preview.mjs",import.meta.url);
-    const run = (...args) => spawnSync(process.execPath,[entry.pathname,...args],{
+    const run = (...args) => spawnSync(process.execPath,[fileURLToPath(entry),...args],{
       encoding:"utf8",env:{HOME:root,PATH:"/usr/bin:/bin"},timeout:3000,
     });
     const report=run("company","inspect",archive);
