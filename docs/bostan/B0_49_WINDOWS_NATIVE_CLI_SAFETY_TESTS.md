@@ -1,4 +1,4 @@
-﻿# B0-49 — Real native Windows private CLI safety regressions
+# B0-49 — Real native Windows private CLI safety regressions
 
 **2026-10-27.** Private stacked Draft above B0-48 (#197, commit `72245d6`). Keep Bostan **PRIVATE**, GitHub Actions **DISABLED**, `main` unchanged, and Release **NO-GO**. No public publishing, deployment, paid models or customer-data mutation.
 
