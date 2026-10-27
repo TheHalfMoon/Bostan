@@ -3509,7 +3509,8 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     await passAccessStep();
     await submitCuratedOAuthSetup();
 
-    expect(container.textContent).toContain("Provider unavailable");
+    expect(container.textContent).toContain("Bostan couldn't start secure sign-in. Try again.");
+    expect(container.textContent).not.toContain("Provider unavailable");
     await act(async () => {
       buttonByText("Try again")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -3557,7 +3558,8 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     await passAccessStep();
     await submitCuratedOAuthSetup();
 
-    expect(container.textContent).toContain("Response lost");
+    expect(container.textContent).toContain("Bostan couldn't start secure sign-in. Try again.");
+    expect(container.textContent).not.toContain("Response lost");
     await act(async () => {
       buttonByText("Try again")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -4466,9 +4468,10 @@ describe("AppsConnect — guided generic MCP flow (PAP-17087)", () => {
 
       expect(navigateTopLevelMock).not.toHaveBeenCalled();
       expect(container.textContent).toContain("couldn’t connect");
-      // The refusal is explained without echoing the hostile address on screen.
+      // The refusal is explained with an audited, credential-safe generic
+      // message rather than an unsanitized provider-specific exception.
       expect(container.textContent).not.toContain(startUrl);
-      expect(container.textContent).toMatch(/sign-in address/);
+      expect(container.textContent).toContain("Bostan couldn't start secure sign-in. Try again.");
     });
 
     it.each(UNSAFE)("never opens a %s authorization url from start sign-in", async (_label, authorizationUrl) => {
