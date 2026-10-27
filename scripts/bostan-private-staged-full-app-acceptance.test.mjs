@@ -26,8 +26,9 @@ test('real full-app private QA isolates provider credentials, offline deploy, te
     'BOSTAN_STAGE_BROWSER_E2E=1','--run-deployed "$STAGE"',
     'BOSTAN_PRIVATE_STAGED_FULL_APP_ACCEPTANCE_PASS',
   ])assert.ok(source.includes(required),required);
-  assert.match(source,/mktemp -d \/private\/tmp\/bostan-staged-server-/);
+  assert.match(source,/mktemp -d \"\$STAGE_ROOT\/bostan-staged-server-/);
   assert.match(source,/rm -rf -- "\$STAGE"/);
   assert.match(source,/4194304/);
+  assert.ok(source.includes('for disk in "$ROOT" "$STAGE_ROOT"; do'));
   assert.doesNotMatch(source,/npm publish|gh release create|cargo build --release/);
 });

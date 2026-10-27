@@ -20,11 +20,20 @@ cd "$ROOT"
 for prerequisite in node pnpm initdb pg_ctl createdb curl; do
   command -v "$prerequisite" >/dev/null 2>&1 || { echo "Missing local Bostan QA tool: $prerequisite" >&2; exit 2; }
 done
-free_kib="$(df -Pk "$ROOT" | awk 'NR==2 {print $4}')"
-if ! [[ "$free_kib" =~ ^[0-9]+$ ]] || [ "$free_kib" -lt 4194304 ]; then
-  echo 'Bostan staged full-app QA refused: requires at least 4 GiB scratch disk headroom' >&2
+# Verify both the source/build disk and the actual staging disk; Linux
+# /tmp may be a separate mount with much less available free space.
+STAGE_ROOT="$(node scripts/bostan-private-staged-server-check.mjs --stage-root)"
+if [ ! -d "$STAGE_ROOT" ] || [ -L "$STAGE_ROOT" ]; then
+  echo 'Bostan staged full-app QA refused: unexpected system temporary root' >&2
   exit 2
 fi
+for disk in "$ROOT" "$STAGE_ROOT"; do
+  free_kib="$(df -Pk "$disk" | awk 'NR==2 {print $4}')"
+  if ! [[ "$free_kib" =~ ^[0-9]+$ ]] || [ "$free_kib" -lt 4194304 ]; then
+    echo "Bostan staged full-app QA refused: less than 4 GiB free in $disk" >&2
+    exit 2
+  fi
+done
 export npm_config_offline=true DO_NOT_TRACK=1 OTEL_SDK_DISABLED=true
 unset OPENAI_API_KEY ANTHROPIC_API_KEY OPENROUTER_API_KEY GEMINI_API_KEY GOOGLE_API_KEY XAI_API_KEY AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY SENTRY_DSN OTEL_EXPORTER_OTLP_ENDPOINT 2>/dev/null || true
 # No separate npm registry/online lifecycle hooks. All workspace builds run
@@ -39,7 +48,7 @@ cleanup(){
   result=$?
   trap - EXIT INT TERM
   if [ -n "$STAGE" ] && [ -d "$STAGE" ] && [ ! -L "$STAGE" ]; then
-    case "$STAGE" in /private/tmp/bostan-staged-server-*|/tmp/bostan-staged-server-*)
+    case "$STAGE" in "$STAGE_ROOT"/bostan-staged-server-????????)
       rm -rf -- "$STAGE" || echo 'BOSTAN_OWNED_STAGE_CLEANUP_FAILED' >&2;;
       *) echo 'BOSTAN_UNEXPECTED_STAGE_PATH_NOT_DELETED' >&2;;
     esac
@@ -47,7 +56,7 @@ cleanup(){
   exit "$result"
 }
 # Mark temporary path as invocation-owned, never accept a caller supplied path.
-STAGE="$(mktemp -d /private/tmp/bostan-staged-server-XXXXXXXX)"
+STAGE="$(mktemp -d "$STAGE_ROOT/bostan-staged-server-XXXXXXXX")"
 trap cleanup EXIT INT TERM
 pnpm --filter @bostan/server deploy --prod --offline --ignore-scripts "$STAGE"
 node scripts/bostan-private-staged-server-check.mjs --repair-owned-self-link "$STAGE" --source-checkout "$ROOT"

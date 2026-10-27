@@ -2,9 +2,21 @@
 /** Inspect isolated Bostan production deployment. No network or user installation. */
 import {existsSync,lstatSync,readFileSync,readdirSync,realpathSync,renameSync,symlinkSync,unlinkSync} from 'node:fs';
 import {dirname,join,relative,resolve,sep,isAbsolute,basename} from 'node:path';
-import {tmpdir} from 'node:os';
 import {fileURLToPath} from 'node:url';
 const fromFile=fileURLToPath(import.meta.url);
+// Never trust TMPDIR for destructive staging cleanup: it may refer to HOME,
+// a shared workspace or a mounted volume. Only system temporary roots qualify.
+export function portableStagingRoot(platform=process.platform){
+  if(platform==='darwin')return '/private/tmp';
+  if(platform==='linux')return '/tmp';
+  throw Error('Bostan private staging supports macOS/Linux only');
+}
+export function verifiedStagingRoot(platform=process.platform){
+  const standard=portableStagingRoot(platform);
+  const stat=lstatSync(standard);
+  if(!stat.isDirectory())throw Error('System staging root is not a directory');
+  return realpathSync(standard);
+}
 const relInside=(root,path)=>{const rel=relative(root,path);return rel==='' || (rel!=='..' && !rel.startsWith('..'+sep) && !isAbsolute(rel));};
 const required=[
   'dist/index.js', 'dist/build-info.json', 'dist/vendor/paperclip-runner/index.js',
@@ -62,7 +74,7 @@ export function verifyStage(stage){
 }
 export function repairOwnedSelfLink(stage,source){
   const root=ownedStage(stage);
-  const allowedRoots=[realpathSync(tmpdir()),...(existsSync('/private/tmp')?[realpathSync('/private/tmp')]:[])];
+  const allowedRoots=[verifiedStagingRoot()];
   if(!basename(root).startsWith('bostan-staged-server-') || !allowedRoots.some(allowed=>relInside(allowed,root)&&root!==allowed))throw Error('Refusing link repair outside an owned disposable Bostan stage');
   if(!source||!isAbsolute(source))throw Error('Source checkout must be explicit and absolute');
   const checkout=realpathSync(source);
@@ -89,10 +101,12 @@ const direct=process.argv[1]&&resolve(process.argv[1])===fromFile;
 if(direct){
   const args=process.argv.slice(2);
   if(args.length===0 || (args.length===1 && args[0]==='--plan')){
-    console.log('Read-only Bostan stage validation: --verify <absolute-stage>; explicit owned self-link repair: --repair-owned-self-link <absolute-stage> --source-checkout <absolute-source>. No publish/install.');
+    console.log('Read-only Bostan stage validation: --verify <absolute-stage>; --stage-root displays the fixed OS system temp root; explicit owned self-link repair: --repair-owned-self-link <absolute-stage> --source-checkout <absolute-source>. No publish/install.');
+  }else if(args.length===1 && args[0]==='--stage-root'){
+    try{console.log(verifiedStagingRoot());}catch(error){console.error(`Bostan stage root refused: ${error.message}`);process.exitCode=2;}
   }else if(args.length===2&&args[0]==='--verify'){
     try{console.log(JSON.stringify(verifyStage(args[1]),null,2));}catch(error){console.error(`Bostan stage verification failed: ${error.message}`);process.exitCode=1;}
   }else if(args.length===4&&args[0]==='--repair-owned-self-link'&&args[2]==='--source-checkout'){
     try{console.log(JSON.stringify(repairOwnedSelfLink(args[1],args[3])));}catch(error){console.error(`Bostan stage repair refused: ${error.message}`);process.exitCode=1;}
-  }else{console.error('Usage: --plan | --verify <absolute-stage> | --repair-owned-self-link <absolute-stage> --source-checkout <absolute-source>');process.exitCode=2;}
+  }else{console.error('Usage: --plan | --stage-root | --verify <absolute-stage> | --repair-owned-self-link <absolute-stage> --source-checkout <absolute-source>');process.exitCode=2;}
 }

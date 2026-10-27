@@ -2,14 +2,13 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {spawnSync} from 'node:child_process';
 import {existsSync,mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,symlinkSync,writeFileSync} from 'node:fs';
-import {tmpdir} from 'node:os';
 import {dirname,join,relative,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {inspectLinks,repairOwnedSelfLink,verifyStage} from './bostan-private-staged-server-check.mjs';
+import {inspectLinks,repairOwnedSelfLink,verifyStage,portableStagingRoot,verifiedStagingRoot} from './bostan-private-staged-server-check.mjs';
 const script=fileURLToPath(new URL('./bostan-private-staged-server-check.mjs',import.meta.url));
 const smoke=fileURLToPath(new URL('./bostan-local-http-postgres-smoke.sh',import.meta.url));
 function fixture(){
-  const parent=mkdtempSync(join(tmpdir(),'bostan-staged-qa-tests-'));
+  const parent=mkdtempSync(join(verifiedStagingRoot(),'bostan-staged-qa-tests-'));
   const stage=join(parent,'bostan-staged-server-fixture');
   const source=join(parent,'bostan-source-fixture');
   mkdirSync(stage,{recursive:true});mkdirSync(join(source,'server'),{recursive:true});
@@ -30,6 +29,20 @@ function fillValidStage(f){
   ])f.file(path);
   for(let i=0;i<375;i++)f.file(`node_modules/@bostan/db/dist/migrations/${i}.sql`);
 }
+test('Linux and macOS use fixed safe system staging roots regardless of TMPDIR',()=>{
+  assert.equal(portableStagingRoot('linux'),'/tmp');
+  assert.equal(portableStagingRoot('darwin'),'/private/tmp');
+  assert.throws(()=>portableStagingRoot('win32'),/macOS\/Linux only/);
+  const allowed=verifiedStagingRoot();
+  const changed=process.env.TMPDIR;
+  try {
+    process.env.TMPDIR='/tmp/nonexistent-untrusted-home-location';
+    assert.equal(verifiedStagingRoot(),allowed);
+    const result=spawnSync(process.execPath,[script,'--stage-root'],{encoding:'utf8',timeout:5000,env:{...process.env,TMPDIR:'/tmp/bostan-untrusted'}});
+    assert.equal(result.status,0,result.stderr);
+    assert.equal(result.stdout.trim(),allowed);
+  }finally{if(changed===undefined)delete process.env.TMPDIR;else process.env.TMPDIR=changed;}
+});
 test('stage inspection is read-only and confirms package, migrations and internal links',()=>{
   const f=fixture();try{
     fillValidStage(f);
