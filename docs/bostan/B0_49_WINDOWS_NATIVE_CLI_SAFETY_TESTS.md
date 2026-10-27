@@ -24,6 +24,12 @@ node --test cli\src\__tests__\bostan-preview.test.mjs cli\src\__tests__\bostan-l
 
 **Native Windows: 13 PASS, 0 FAIL, 13 SKIP** (12 intentionally unqualified native installation/shell scenarios + 1 symlink-negative fixture that Windows denies creating). The tests cover isolated status/no HOME writes, reject donor install/update/service operations and registry release, verify local ZIP parsing and deny remote ZIPs, and verify that Windows native CLI install remains **blocked** without managed state writes. No runtime model or paid provider; only disposable test fixtures under Windows TEMP.
 
+## Cross-platform regression qualification on authorized macOS arm64
+
+Fetched the **exact PR #198 head** (`96a9ec82103b567ec9c97a047c6f890b83a81779`), then locally built only the no-network CLI preview via `node cli/scripts/build-bostan-preview.mjs`. Executed the **same three original CLI suites**. Result: **25 PASS, 0 FAIL, 1 SKIP** (the new Windows-only fail-closed installer test). On macOS the real installed CLI tests ran rather than being skipped, including installing the preview into disposable HOME, running the shim after removing staging, verifying ZIP inspection and tamper detection, refusing unsafe symlinks and protected old artifacts, and rejecting unsupported updates. No user HOME was touched and no model providers or paid services were invoked.
+
+The Linux platform has **not** run these updated tests. Native Windows installation remains denied, rather than falsely qualifying a consumer installer.
+
 ## Remaining gates
 
 Windows **installed application** remains unqualified: native desktop packaging, PostgreSQL/runner and installer ACL lifecycle need a separate governed full E2E. The Windows machine currently shows approximately **4.3 GiB free RAM and 8.8 GiB free D storage**, and has no `initdb`/`pg_ctl` in PATH, below the existing Windows installed-qualification requirements. There is no claim of Windows native installer success. Full Linux UI + Rust integration, real free-model agent cases, missing peer-dependency qualification, independent security review and release sign-off remain open.
