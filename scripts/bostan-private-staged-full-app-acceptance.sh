@@ -43,13 +43,10 @@ MIN_STAGE_FREE_KIB=4194304
 if [ "$(uname -s)" = Linux ] && [ "$STAGE_ROOT" = /tmp ] && [ "${BOSTAN_LINUX_PRIVATE_TMPFS_QA:-0}" = 1 ]; then
   node scripts/bostan-private-linux-tmpfs-admission.mjs --check
   MIN_STAGE_FREE_KIB=3670016
-  # QA-only: the full runner includes optional non-host-native binaries
-  # (e.g. musl on glibc). On WSL's drvfs pnpm store, attempting to link these
-  # unneeded executables can fail even when the required server dependency
-  # closure is valid. The stage must still pass all actual runtime checks.
-  export npm_config_optional=false
+  # Do not disable optional dependencies: TypeScript 7 and Vite's Rolldown
+  # require platform-native packages that pnpm classifies as optional.
+  # The complete real dependency closure must still install and build.
   echo BOSTAN_LINUX_TMPFS_EXPLICIT_RESOURCE_ADMISSION_PASS
-  echo BOSTAN_LINUX_REQUIRED_DEPENDENCIES_ONLY_QA
 fi
 for disk in "$ROOT" "$STAGE_ROOT"; do
   free_kib="$(df -Pk "$disk" | awk 'NR==2 {print $4}')"
