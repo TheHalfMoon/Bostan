@@ -35,6 +35,6 @@ test('CLI cannot qualify a source checkout if the all-package registry quarantin
   assert.throws(()=>verifyPrivateSource(undefined,{releaseGate:()=>({passed:true,registryPublicationDisabled:false,trackedManifestCount:48})}),/full private workspace registry quarantine/);
   assert.throws(()=>verifyPrivateSource(undefined,{releaseGate:()=>({passed:true,registryPublicationDisabled:true,trackedManifestCount:2})}),/full private workspace registry quarantine/);
   let consulted=0;
-  assert.equal(verifyPrivateSource(undefined,{releaseGate:({root})=>{consulted++;assert.match(root,/bostan-b067/);return{passed:true,registryPublicationDisabled:true,trackedManifestCount:48}}}),true);
+  assert.equal(verifyPrivateSource(undefined,{releaseGate:({root})=>{consulted++;assert.equal(root,fileURLToPath(new URL('../',import.meta.url)));return{passed:true,registryPublicationDisabled:true,trackedManifestCount:48}}}),true);
   assert.equal(consulted,1);
 });
