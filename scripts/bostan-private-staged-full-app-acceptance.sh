@@ -62,6 +62,12 @@ unset OPENAI_API_KEY ANTHROPIC_API_KEY OPENROUTER_API_KEY GEMINI_API_KEY GOOGLE_
 # No separate npm registry/online lifecycle hooks. All workspace builds run
 # against the frozen current private checkout; no Rust --release build.
 pnpm install --offline --frozen-lockfile --ignore-scripts --filter '@bostan/server...' --filter '@bostan/ui...' --filter '@bostan/skills-catalog...' --reporter=append-only
+if [ "$(uname -s)" = Linux ] && [ "${BOSTAN_LINUX_PRIVATE_TMPFS_QA:-0}" = 1 ]; then
+  # A completed pnpm download is not proof that optional *native* compiler
+  # binaries were linked; TypeScript 7 and Vite/Rolldown require them.
+  node scripts/bostan-private-linux-native-build-closure.mjs --check
+  echo BOSTAN_LINUX_NATIVE_BUILD_BINDINGS_VERIFIED
+fi
 bash scripts/bostan-private-compiled-server-http-qualification.sh --run
 pnpm --filter @bostan/ui build
 PAPERCLIP_RELEASE_REUSE_UI_DIST=1 bash scripts/prepare-server-ui-dist.sh

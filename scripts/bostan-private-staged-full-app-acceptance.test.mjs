@@ -55,6 +55,8 @@ test('real full-app private QA isolates provider credentials, offline deploy, te
   assert.match(source,/BOSTAN_LINUX_PRIVATE_TMPFS_QA/);
   assert.match(source,/bostan-private-linux-tmpfs-admission.mjs --check/);
   assert.match(source,/BOSTAN_LINUX_TMPFS_EXPLICIT_RESOURCE_ADMISSION_PASS/);
+  assert.match(source,/bostan-private-linux-native-build-closure.mjs --check/);
+  assert.match(source,/BOSTAN_LINUX_NATIVE_BUILD_BINDINGS_VERIFIED/);
   assert.match(source,/MIN_STAGE_FREE_KIB=3670016/);
   assert.doesNotMatch(source,/export npm_config_optional=false/,
     'native TypeScript and Vite bindings require selected optional dependencies');
