@@ -44,10 +44,10 @@ import type {
   PaperclipPluginManifestV1,
   PluginBridgeErrorCode,
   PluginLauncherRenderContextSnapshot,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   PLUGIN_STATUSES,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { pluginRegistryService } from "../services/plugin-registry.js";
 import { pluginLifecycleManager } from "../services/plugin-lifecycle.js";
 import {

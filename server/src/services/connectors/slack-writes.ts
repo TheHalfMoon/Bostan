@@ -12,7 +12,7 @@ import {
   toolInvocations,
   type Db,
 } from "@paperclipai/db";
-import { SLACK_TOOLS } from "@paperclipai/shared";
+import { SLACK_TOOLS } from "@bostan/shared";
 import { conflict, forbidden, HttpError, unprocessable } from "../../errors.js";
 import { getStorageService } from "../../storage/index.js";
 import {

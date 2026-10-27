@@ -4,7 +4,7 @@ import { agents, costEvents, financeEvents, goals, heartbeatRuns, issues, projec
 import { notFound, unprocessable, conflict } from "../errors.js";
 
 import { resolveCostDateRange, type CostDateRange as FinanceDateRange } from "./cost-date-range.js";
-import { createFinanceEventSchema, normalizeCents, subtractCents, type MoneyInput } from "@paperclipai/shared";
+import { createFinanceEventSchema, normalizeCents, subtractCents, type MoneyInput } from "@bostan/shared";
 import { receiptFingerprint } from "./receipt-fingerprint.js";
 import { withAccountingTransaction } from "./accounting-transaction.js";
 import { logActivity, type LogActivityInput, type ActivityPublication } from "./activity-log.js";

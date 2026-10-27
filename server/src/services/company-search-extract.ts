@@ -8,7 +8,7 @@ import {
   type CompanySearchExtractQuery,
   type CompanySearchExtractResponse,
   type CompanySearchExtractSourceRef,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { visibleIssueCondition } from "./issue-visibility.js";
 
 const EXCERPT_MAX_CHARS = 180;

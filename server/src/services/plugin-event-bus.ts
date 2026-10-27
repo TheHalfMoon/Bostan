@@ -20,7 +20,7 @@
  * @see PLUGIN_SPEC.md §16.2 — Plugin-to-Plugin Events
  */
 
-import type { PluginEventType } from "@paperclipai/shared";
+import type { PluginEventType } from "@bostan/shared";
 import type { PluginEvent, EventFilter } from "@bostan/plugin-sdk";
 
 // ---------------------------------------------------------------------------

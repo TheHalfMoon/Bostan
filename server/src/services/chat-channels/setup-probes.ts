@@ -35,7 +35,7 @@ import {
 import type {
   ChatEndpoint,
   ChatEndpointSetupState,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   conflict,

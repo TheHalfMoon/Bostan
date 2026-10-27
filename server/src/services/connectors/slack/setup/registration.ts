@@ -3,7 +3,7 @@ import { createAgentAvatarPool } from "../../../agent-avatar-pool.js";
 import type { AgentAvatarRequest } from "../../../agent-avatars.js";
 import { and, eq } from "drizzle-orm";
 import { agents, chatEndpoints, chatSlackRegistrations, toolConnections, type Db } from "@paperclipai/db";
-import { slackRegistrationErrorMessage, type SlackRegistrationState, type SlackAvatarState, type SlackAccountState, isProvisionedSlackSetup } from "@paperclipai/shared";
+import { slackRegistrationErrorMessage, type SlackRegistrationState, type SlackAvatarState, type SlackAccountState, isProvisionedSlackSetup } from "@bostan/shared";
 import { badRequest, conflict, forbidden, notFound, unprocessable } from "../../../../errors.js";
 import { accessService } from "../../../access.js";
 import { logActivity } from "../../../activity-log.js";

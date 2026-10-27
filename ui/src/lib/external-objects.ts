@@ -22,7 +22,7 @@ import type {
   ExternalObjectStatusTone,
   ExternalObjectSummary,
   ExternalObjectSummaryItem,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 /**
  * Lucide icon for each status category. The mapping is host-owned per the

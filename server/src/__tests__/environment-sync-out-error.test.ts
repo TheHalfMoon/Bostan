@@ -8,7 +8,7 @@ import {
 } from "@bostan/plugin-sdk";
 import {
   getWorkspaceRestoreDiagnostic, withWorkspaceRestoreDiagnostics, withWorkspaceRestoreStep,
-} from "@paperclipai/adapter-utils/workspace-restore-diagnostics";
+} from "@bostan/adapter-utils/workspace-restore-diagnostics";
 import { preserveEnvironmentSyncOutErrorDiagnostic } from "../services/environment-sync-out-error.js";
 
 async function roundTrip(method: string, error: unknown): Promise<{ error: JsonRpcCallError; wire: string }> {

@@ -7,7 +7,7 @@ import { createGitHubAppSetup } from "./github/app-setup.js";
 
 import type { VerifiedProviderIdentity } from "./runtime-types.js";
 
-import { isProvisionedSlackSetup } from "@paperclipai/shared";
+import { isProvisionedSlackSetup } from "@bostan/shared";
 
 import { slackCallbackMatchesPublicUrl } from "./slack/callback-verification.js";
 
@@ -52,7 +52,7 @@ import type {
   ChatEndpointSetupState,
   ChatProvider,
   ConfigureChatEndpointInput,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   MAX_ATTACHMENT_BYTES,

@@ -107,9 +107,9 @@ test("guard allows true->true workspace edges", () => {
   const problems = findUnpublishableWorkspaceEdges([
     pkg("@bostan/server", {
       publishFromCi: true,
-      dependencies: { "@paperclipai/shared": "workspace:*" },
+      dependencies: { "@bostan/shared": "workspace:*" },
     }),
-    pkg("@paperclipai/shared", { publishFromCi: true }),
+    pkg("@bostan/shared", { publishFromCi: true }),
   ]);
 
   assert.deepEqual(problems, []);

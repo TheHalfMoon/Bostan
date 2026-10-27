@@ -7,7 +7,7 @@ import {
   type EnvironmentCustomImageTemplate,
   type EnvironmentCustomImageTemplateKind,
   type SandboxEnvironmentConfig,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { readConfigValueAtPath, writeConfigValueAtPath } from "./json-schema-secret-refs.js";
 
 type TemplateRow = typeof environmentCustomImageTemplates.$inferSelect;

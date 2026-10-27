@@ -1,5 +1,5 @@
-import type { ProviderQuotaResult } from "@paperclipai/shared";
-import { redactDiagnosticText } from "@paperclipai/adapter-utils";
+import type { ProviderQuotaResult } from "@bostan/shared";
+import { redactDiagnosticText } from "@bostan/adapter-utils";
 import { listServerAdapters } from "../adapters/registry.js";
 import { logger } from "../middleware/logger.js";
 import { createHash } from "node:crypto";

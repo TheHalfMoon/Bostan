@@ -3,13 +3,13 @@ import { lstat, mkdir, mkdtemp, open, realpath, rm, stat, writeFile } from "node
 import { tmpdir } from "node:os";
 import { join, posix } from "node:path";
 import { copyBackCodexAuth } from "@bostan/adapter-codex-local/server";
-import type { AdapterEnvironmentTestContext, AdapterEnvironmentTestResult } from "@paperclipai/adapter-utils";
-import { ADAPTER_AUTH_MISSING_CHECK_CODE } from "@paperclipai/shared";
+import type { AdapterEnvironmentTestContext, AdapterEnvironmentTestResult } from "@bostan/adapter-utils";
+import { ADAPTER_AUTH_MISSING_CHECK_CODE } from "@bostan/shared";
 import { probeNativeRunnerEnvironment, resolveSourceCodexHome } from "../../vendor/paperclip-runner/index.js";
 import { resolvePaperclipRunnerBinary, resolveRemotePaperclipRunnerBinary } from "./native-codex-runner.js";
 import { readLocalAiCredentialFile } from "../local-ai-credential-file.js";
 import { createNativeSshCommandRunner } from "./native-ssh-command-runner.js";
-import { resolvePaperclipRunnerTransport } from "@paperclipai/adapter-utils/runner-connectivity";
+import { resolvePaperclipRunnerTransport } from "@bostan/adapter-utils/runner-connectivity";
 import { createNativeRunnerExecutionDriver } from "./native-runner-execution-driver.js";
 
 

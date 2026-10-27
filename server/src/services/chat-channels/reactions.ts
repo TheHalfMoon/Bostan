@@ -41,7 +41,7 @@ import {
 import type {
   ChatEventKind,
   ChatProvider,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import { logger } from "../../middleware/logger.js";
 

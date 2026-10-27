@@ -1,11 +1,11 @@
 import { nativeProviderCatalogFor } from "../../native-provider-catalogs.js";
 import { restConnectorFor } from "../../connectors/rest-registry.js";
-import { googleWorkspaceToolTarget } from "@paperclipai/shared";
-import { BROWSER_USE_TOOLS } from "@paperclipai/shared";
-import { isMemoryConnectorId } from "@paperclipai/shared";
+import { googleWorkspaceToolTarget } from "@bostan/shared";
+import { BROWSER_USE_TOOLS } from "@bostan/shared";
+import { isMemoryConnectorId } from "@bostan/shared";
 import { toolConnections } from "@paperclipai/db";
-import type { ToolRiskLevel } from "@paperclipai/shared";
-import { GOOGLE_WORKSPACE_CONNECTOR_PROFILES, type GoogleWorkspaceConnectorProfileId } from "@paperclipai/shared";
+import type { ToolRiskLevel } from "@bostan/shared";
+import { GOOGLE_WORKSPACE_CONNECTOR_PROFILES, type GoogleWorkspaceConnectorProfileId } from "@bostan/shared";
 import { connectorToolPolicy } from "../../connectors/tool-policy.js";
 
 function asRecord(value: unknown): Record<string, unknown> {

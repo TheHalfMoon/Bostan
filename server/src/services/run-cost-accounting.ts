@@ -1,4 +1,4 @@
-import { usdToUnits, unitsToCents } from "@paperclipai/shared";
+import { usdToUnits, unitsToCents } from "@bostan/shared";
 import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import { accountingRuntimeBaselines, budgetReservations, agentRuntimeState, agents, costEvents, heartbeatRuns, nativeRunFinalizations, issues, projects, decisionInvocations, promptInjectionInvocations, type Db } from "@paperclipai/db";
 import { withAccountingTransaction } from "./accounting-transaction.js";

@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { and, eq, gt, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { agents, companies, companyMemberships, authUsers, mcpOauthGrants, mcpOauthTokens, museAgentBindings as bindings, museCredentials as credentials, museRunnerAssignments as assignments, museMailboxItems as mailbox, externalAgentHolds as holds, type Db } from "@paperclipai/db";
-import { MUSE_ACCESS_TTL_MS, MUSE_REFRESH_INACTIVITY_MS, MUSE_RESOURCE_PATH, MUSE_CLEANUP_TTL_MS, type AgentConnectionSubject, type MuseCredentials } from "@paperclipai/shared";
+import { MUSE_ACCESS_TTL_MS, MUSE_REFRESH_INACTIVITY_MS, MUSE_RESOURCE_PATH, MUSE_CLEANUP_TTL_MS, type AgentConnectionSubject, type MuseCredentials } from "@bostan/shared";
 import { instanceSettingsService } from "./instance-settings.js";
 import { musePublicOrigin } from "./muse-setup.js";
 import { unauthorized, forbidden } from "../errors.js";

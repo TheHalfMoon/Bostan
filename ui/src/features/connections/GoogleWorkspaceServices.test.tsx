@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { ToolConnection } from "@paperclipai/shared";
+import type { ToolConnection } from "@bostan/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GoogleWorkspaceServicesDialog } from "./GoogleWorkspaceServices";
 

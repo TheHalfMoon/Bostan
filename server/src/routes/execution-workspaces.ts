@@ -15,13 +15,13 @@ import {
   updateExecutionWorkspaceSchema,
   workspaceOverviewQuerySchema,
   workspaceRuntimeControlTargetSchema,
-} from "@paperclipai/shared";
-import type { WorkspaceRuntimeDesiredState, WorkspaceRuntimeServiceStateMap } from "@paperclipai/shared";
+} from "@bostan/shared";
+import type { WorkspaceRuntimeDesiredState, WorkspaceRuntimeServiceStateMap } from "@bostan/shared";
 import {
   baseWorkspaceDeclaresInstanceConfig,
   resolveCanonicalWorktreeSeedSource,
   type CanonicalWorktreeSeedSource,
-} from "@paperclipai/shared/worktree-seed-source";
+} from "@bostan/shared/worktree-seed-source";
 import { resolvePaperclipConfigPath } from "../paths.js";
 import { validate } from "../middleware/validate.js";
 import {

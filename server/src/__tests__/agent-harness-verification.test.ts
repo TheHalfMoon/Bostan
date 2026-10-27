@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { AdapterEnvironmentTestResult } from "@paperclipai/adapter-utils";
-import { ADAPTER_AUTH_MISSING_CHECK_CODE } from "@paperclipai/shared";
+import type { AdapterEnvironmentTestResult } from "@bostan/adapter-utils";
+import { ADAPTER_AUTH_MISSING_CHECK_CODE } from "@bostan/shared";
 import { assertHarnessTestPassed } from "../services/agent-harness-verification.js";
 
 describe("saved harness verification", () => {

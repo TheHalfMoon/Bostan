@@ -6,7 +6,7 @@ import {
   type IssueCommentMetadata,
   type IssueCommentPresentation,
   type RunLivenessState,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { withRecoveryContext } from "./status-only-context.js";
 import {
   agentLinkRow,

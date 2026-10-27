@@ -15,7 +15,7 @@ import {
   projects,
   projectWorkspaces,
 } from "@paperclipai/db";
-import { parseFrontmatterMarkdown } from "@paperclipai/shared";
+import { parseFrontmatterMarkdown } from "@bostan/shared";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

@@ -16,7 +16,7 @@ const lockPollMs = 100;
 
 const buildTargets = [
   {
-    name: "@paperclipai/shared",
+    name: "@bostan/shared",
     output: path.join(rootDir, "packages/shared/dist/index.js"),
     completion: path.join(rootDir, "packages/shared/dist/.paperclip-build-complete"),
     sourceDir: path.join(rootDir, "packages/shared/src"),

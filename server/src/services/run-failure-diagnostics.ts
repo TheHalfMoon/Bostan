@@ -3,10 +3,10 @@ import { getEnvironmentAcquisitionDiagnostic } from "./environment-acquisition-d
 import type { heartbeatRuns } from "@paperclipai/db";
 import { readControllerLeaseLoss, readControllerLeaseLossCause, readRunCancellation } from "./run-cancellation.js";
 import { readProcessLossDiagnostic } from "./process-loss-diagnostics.js";
-import { WORKSPACE_RESTORE_FAILURE_CODES } from "@paperclipai/shared";
-import { redactDiagnosticText } from "@paperclipai/adapter-utils/command-redaction";
-import { sanitizeWorkspaceRestoreDiagnostic } from "@paperclipai/adapter-utils/workspace-restore-diagnostics";
-import { ACP_TOOL_KINDS } from "@paperclipai/adapter-utils/acpx-engine/constants";
+import { WORKSPACE_RESTORE_FAILURE_CODES } from "@bostan/shared";
+import { redactDiagnosticText } from "@bostan/adapter-utils/command-redaction";
+import { sanitizeWorkspaceRestoreDiagnostic } from "@bostan/adapter-utils/workspace-restore-diagnostics";
+import { ACP_TOOL_KINDS } from "@bostan/adapter-utils/acpx-engine/constants";
 import { redactCurrentUserText } from "../log-redaction.js";
 import { redactSensitiveText, REDACTED_EVENT_VALUE } from "../redaction.js";
 import { readNativeModelRejectionDiagnostic, readNativeTurnFailureDiagnostic } from "./native-runtime/native-provider-failure.js";

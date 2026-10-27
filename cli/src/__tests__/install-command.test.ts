@@ -122,8 +122,8 @@ describe("managed install commands", () => {
       if (file === "tar") {
         const checkout = args[args.indexOf("-C") + 1];
         const packages = [
-          { dir: "packages/shared", name: "@paperclipai/shared", packageJson: { name: "@paperclipai/shared", version: "0.3.1" } },
-          { dir: "packages/db", name: "@paperclipai/db", packageJson: { name: "@paperclipai/db", version: "0.3.1", dependencies: { "@paperclipai/shared": "workspace:*" }, bundleDependencies: ["embedded-postgres"] } },
+          { dir: "packages/shared", name: "@bostan/shared", packageJson: { name: "@bostan/shared", version: "0.3.1" } },
+          { dir: "packages/db", name: "@paperclipai/db", packageJson: { name: "@paperclipai/db", version: "0.3.1", dependencies: { "@bostan/shared": "workspace:*" }, bundleDependencies: ["embedded-postgres"] } },
           { dir: "server", name: "@bostan/server", packageJson: { name: "@bostan/server", version: "0.3.1", dependencies: { "@paperclipai/db": "workspace:*" } } },
         ];
         fs.mkdirSync(path.join(checkout, "cli"), { recursive: true });
@@ -201,8 +201,8 @@ describe("managed install commands", () => {
   it("resolves the complete server workspace dependency closure in dependency order", () => {
     const checkout = path.join(root, "checkout");
     const packages = [
-      { dir: "packages/shared", name: "@paperclipai/shared", dependencies: {} },
-      { dir: "packages/db", name: "@paperclipai/db", dependencies: { "@paperclipai/shared": "workspace:*" } },
+      { dir: "packages/shared", name: "@bostan/shared", dependencies: {} },
+      { dir: "packages/db", name: "@paperclipai/db", dependencies: { "@bostan/shared": "workspace:*" } },
       { dir: "server", name: "@bostan/server", dependencies: { "@paperclipai/db": "workspace:*" } },
     ];
     fs.mkdirSync(path.join(checkout, "scripts"), { recursive: true });
@@ -213,7 +213,7 @@ describe("managed install commands", () => {
     }
 
     expect(resolveGitInstallWorkspacePackages(checkout).map(({ name }) => name)).toEqual([
-      "@paperclipai/shared",
+      "@bostan/shared",
       "@paperclipai/db",
       "@bostan/server",
     ]);

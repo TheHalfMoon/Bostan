@@ -22,7 +22,7 @@ import {
   type ToolResult,
   type ToolRunContext,
 } from "@bostan/plugin-sdk";
-import type { Goal, Issue } from "@paperclipai/shared";
+import type { Goal, Issue } from "@bostan/shared";
 import {
   DEFAULT_CONFIG,
   JOB_KEYS,

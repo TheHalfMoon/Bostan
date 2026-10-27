@@ -7,7 +7,7 @@ import { currentConversationCommentCondition } from "../../../services/agent-con
 import { getExecutionBlocker, hasPendingRunCleanup } from "../../../services/execution-blocker.js";
 import { and, asc, eq, inArray, isNull, notInArray, or, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
-import { extractIssueReferenceIdentifiers, isUuidLike } from "@paperclipai/shared";
+import { extractIssueReferenceIdentifiers, isUuidLike } from "@bostan/shared";
 import {
   activityLog,
   agentWakeupRequests,

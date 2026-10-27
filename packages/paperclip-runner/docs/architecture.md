@@ -102,7 +102,7 @@ The following imports and package dependencies are rejected:
 
 - `server/`, `ui/`, and `cli/` implementation paths;
 - `@paperclipai/db` and production database schema or client modules;
-- `@paperclipai/shared`, adapter utilities, and other Paperclip workspace
+- `@bostan/shared`, adapter utilities, and other Paperclip workspace
   internals unless a boundary review explicitly allows a public contract;
 - relative or absolute imports that escape `packages/paperclip-runner/`.
 

@@ -23,7 +23,7 @@ import {
 } from "@paperclipai/db";
 import type {
   ToolCredentialSecretRef,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   TELEGRAM_DRAFT_ACTION_KIND,

@@ -3,15 +3,15 @@ import { HttpError } from "../errors.js";
 import type { AdapterRuntimeCommandSpec, ServerAdapterModule } from "./types.js";
 import { parseAdapterModelsEnv } from "../services/adapter-models-env.js";
 import { validateAiApiKey } from "../services/ai-api-key-test.js";
-import type { AdapterEnvironmentTestResult } from "@paperclipai/shared";
+import type { AdapterEnvironmentTestResult } from "@bostan/shared";
 import { stampClaudeAgentIdHeader } from "./claude-agent-id-header.js";
 import {
   buildSandboxNpmInstallCommand,
   getAdapterSessionManagement,
   PAPERCLIP_RUNNER_PERMISSION_CAPABILITIES,
-} from "@paperclipai/adapter-utils";
-import type { AdapterLoginCapability } from "@paperclipai/adapter-utils";
-import { runAdapterExecutionTargetShellCommand } from "@paperclipai/adapter-utils/execution-target";
+} from "@bostan/adapter-utils";
+import type { AdapterLoginCapability } from "@bostan/adapter-utils";
+import { runAdapterExecutionTargetShellCommand } from "@bostan/adapter-utils/execution-target";
 import {
   execute as claudeExecute,
   listClaudeSkills,

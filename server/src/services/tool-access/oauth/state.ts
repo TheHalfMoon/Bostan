@@ -2,7 +2,7 @@ import type { ActorInfo } from "../types.js";
 import { and, eq } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { issueThreadInteractions, toolOauthStates } from "@paperclipai/db";
-import { connectionIntentPayloadSchema } from "@paperclipai/shared";
+import { connectionIntentPayloadSchema } from "@bostan/shared";
 import { badRequest, forbidden } from "../../../errors.js";
 
 import { actorBinding } from "../actor.js";

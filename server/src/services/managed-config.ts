@@ -36,7 +36,7 @@ import {
   INSTANCE_FEATURE_CATALOG,
   instanceExperimentalSettingsSchema,
   type ManagedExperimentalFeatureKey,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 export type ManagedConfigEnv = Record<string, string | undefined>;
 

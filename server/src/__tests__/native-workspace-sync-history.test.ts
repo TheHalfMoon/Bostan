@@ -1,17 +1,17 @@
 import { execFile } from "node:child_process";
-import { summarizeStartupReuse } from "@paperclipai/adapter-utils/startup-reuse";
+import { summarizeStartupReuse } from "@bostan/adapter-utils/startup-reuse";
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { heartbeatRuns, type Db } from "@paperclipai/db";
-import type { EnvironmentLease } from "@paperclipai/shared";
-import type { AdapterSandboxExecutionTarget } from "@paperclipai/adapter-utils/execution-target";
-import type { CommandManagedRuntimeRunner } from "@paperclipai/adapter-utils/command-managed-runtime";
-import * as restoreMerge from "@paperclipai/adapter-utils/workspace-restore-merge";
-import * as workspaceSeedCache from "@paperclipai/adapter-utils/workspace-seed-cache";
-import * as gitWorkspaceSync from "@paperclipai/adapter-utils/git-workspace-sync";
-import { runLocalGit } from "@paperclipai/adapter-utils/git-workspace-sync";
+import type { EnvironmentLease } from "@bostan/shared";
+import type { AdapterSandboxExecutionTarget } from "@bostan/adapter-utils/execution-target";
+import type { CommandManagedRuntimeRunner } from "@bostan/adapter-utils/command-managed-runtime";
+import * as restoreMerge from "@bostan/adapter-utils/workspace-restore-merge";
+import * as workspaceSeedCache from "@bostan/adapter-utils/workspace-seed-cache";
+import * as gitWorkspaceSync from "@bostan/adapter-utils/git-workspace-sync";
+import { runLocalGit } from "@bostan/adapter-utils/git-workspace-sync";
 import { prepareNativeWorkspaceSync, nativeWorkspaceSyncInternals } from "../services/native-runtime/native-workspace-sync.js";
 
 const runner: CommandManagedRuntimeRunner = {
@@ -159,7 +159,7 @@ describe("native warm workspace Git history", () => {
           return result;
         },
       };
-      const reuseEvents: import("@paperclipai/adapter-utils").AdapterRuntimeEvent[] = [];
+      const reuseEvents: import("@bostan/adapter-utils").AdapterRuntimeEvent[] = [];
       const second = (await prepareNativeWorkspaceSync({ ...input, runId: "second", onEvent: async event => { reuseEvents.push(event); }, target: {
         ...target, runner: secondRunner, sandboxLeaseAcquisition: { outcome: "resumed", providerLeaseId: "sandbox" },
       } }))!;

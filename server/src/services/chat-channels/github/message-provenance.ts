@@ -1,5 +1,5 @@
 import type { ChatEndpointRuntime } from "../../voice/voice-runtime.js";
-import type { GitHubReviewEventContext, GitHubIssueEventContext, GitHubReviewPolicy } from "@paperclipai/shared";
+import type { GitHubReviewEventContext, GitHubIssueEventContext, GitHubReviewPolicy } from "@bostan/shared";
 
 import {
   chatDeliveries,

@@ -22,11 +22,11 @@ const serverSrcDir = path.join(repoRoot, "server", "src");
 const serverTestsDir = path.join(repoRoot, "server", "src", "__tests__");
 const serverScriptsDir = path.join(repoRoot, "server", "scripts");
 const nonServerProjects = [
-  "@paperclipai/shared",
+  "@bostan/shared",
   "@bostan/skills-catalog",
   "@bostan/teams-catalog",
   "@paperclipai/db",
-  "@paperclipai/adapter-utils",
+  "@bostan/adapter-utils",
   "@bostan/adapter-claude-local",
   "@bostan/adapter-codex-local",
   "@bostan/adapter-cursor-cloud",

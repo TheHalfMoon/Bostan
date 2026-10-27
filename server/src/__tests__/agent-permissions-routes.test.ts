@@ -2,7 +2,7 @@ import express from "express";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_OPENCODE_LOCAL_MODEL } from "@bostan/adapter-opencode-local";
-import { LOW_TRUST_REVIEW_PRESET } from "@paperclipai/shared";
+import { LOW_TRUST_REVIEW_PRESET } from "@bostan/shared";
 import { hoistModuleGraph } from "./helpers/hoist-module-graph.js";
 
 vi.mock("acpx/runtime", () => ({
@@ -133,8 +133,8 @@ function registerModuleMocks() {
     localAgentRunnerTarget: () => ({ driver: "local", platform: "linux", architecture: "x64", libc: "glibc", glibcVersion: "2.39" }),
     localPaperclipRunnerSupported: () => true,
   }));
-  vi.doMock("@paperclipai/adapter-utils/ssh", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@paperclipai/adapter-utils/ssh")>()),
+  vi.doMock("@bostan/adapter-utils/ssh", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@bostan/adapter-utils/ssh")>()),
     runSshCommand: mockRunSshCommand,
   }));
   vi.doMock("@bostan/adapter-opencode-local/server", async () => {
@@ -145,7 +145,7 @@ function registerModuleMocks() {
     };
   });
 
-  vi.doMock("@paperclipai/shared/telemetry", () => ({
+  vi.doMock("@bostan/shared/telemetry", () => ({
     trackAgentCreated: mockTrackAgentCreated,
     trackErrorHandlerCrash: vi.fn(),
   }));

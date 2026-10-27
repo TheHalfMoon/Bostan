@@ -7,7 +7,7 @@ import {
   browserUseSettingsSchema,
   browserUseViewportSchema,
   browserUseViewerSchema,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   assertBoard,
   assertCompanyAccess,

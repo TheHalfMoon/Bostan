@@ -4,7 +4,7 @@ import {
   SLACK_TOOLS,
   SLACK_BOT_TOOL_SCOPES,
   type SlackToolCapabilities,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { notFound } from "../../errors.js";
 import { secretService } from "../secrets.js";
 import { slackClient } from "./slack-client.js";

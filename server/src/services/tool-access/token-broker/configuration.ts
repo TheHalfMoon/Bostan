@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { toolApplications, toolConnections } from "@paperclipai/db";
-import type { ConnectionTokenIssuancePath, ConnectionTokenRequest } from "@paperclipai/shared";
+import type { ConnectionTokenIssuancePath, ConnectionTokenRequest } from "@bostan/shared";
 import { forbidden, unprocessable } from "../../../errors.js";
 
 function asRecord(value: unknown): Record<string, unknown> {

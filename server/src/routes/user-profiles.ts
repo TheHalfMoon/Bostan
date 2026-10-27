@@ -15,7 +15,7 @@ import type {
   UserProfileIdentity,
   UserProfileResponse,
   UserProfileWindowStats,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { notFound } from "../errors.js";
 import { visibleIssueCondition } from "../services/issue-visibility.js";
 import { assertCompanyAccess } from "./authz.js";

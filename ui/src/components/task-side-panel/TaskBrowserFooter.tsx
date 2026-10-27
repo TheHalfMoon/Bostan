@@ -13,7 +13,7 @@ import {
   type BrowserUseViewportPreset,
   type BrowserUseControl,
   type TaskBrowser,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

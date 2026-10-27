@@ -9,7 +9,7 @@ import type {
   CatalogSkillFileDetail,
   CatalogSkillListQuery,
   CatalogSkillSource,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { HttpError, conflict, notFound, unprocessable } from "../errors.js";
 import { logger } from "../middleware/logger.js";
 import { ghFetch, resolveRawGitHubUrl } from "./github-fetch.js";

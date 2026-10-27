@@ -8,7 +8,7 @@ import { createDb, companies, agents, companyMemberships, companyPromptInjection
   connectionGrants, connectionGrantMembers, toolConnectionInstalls, toolConnections, budgetPolicies, budgetReservations,
   issues, projects, secretAccessEvents, companySecrets } from "@paperclipai/db";
 import { startEmbeddedPostgresTestDatabase } from "@paperclipai/db/test-embedded-postgres";
-import { PROMPT_INJECTION_DEFAULT_MODEL, updatePromptInjectionPreventionSchema } from "@paperclipai/shared";
+import { PROMPT_INJECTION_DEFAULT_MODEL, updatePromptInjectionPreventionSchema } from "@bostan/shared";
 import { aiConnectionService } from "../services/ai-connections.js";
 import { promptInjectionPreventionService, type PromptInjectionContext } from "../services/prompt-injection-prevention.js";
 import { type PromptInjectionProviderOutcome } from "../services/prompt-injection-provider.js";

@@ -9,7 +9,7 @@ import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,
 } from "./helpers/embedded-postgres.js";
-import type { CatalogSkill, CatalogSkillFile } from "@paperclipai/shared";
+import type { CatalogSkill, CatalogSkillFile } from "@bostan/shared";
 
 function sha256(value: string | Buffer) {
   return createHash("sha256").update(value).digest("hex");

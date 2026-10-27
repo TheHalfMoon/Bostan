@@ -5,7 +5,7 @@ import type { Db } from "@paperclipai/db";
 import {
   PAPERCLIP_OPERATIONAL_SKILL_KEY,
   type PaperclipSkillEntry,
-} from "@paperclipai/adapter-utils/server-utils";
+} from "@bostan/adapter-utils/server-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const serviceMocks = vi.hoisted(() => ({

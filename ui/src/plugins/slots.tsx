@@ -36,7 +36,7 @@ import type {
   PluginUiSlotDeclaration,
   PluginUiSlotEntityType,
   PluginUiSlotType,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { pluginsApi, type PluginUiContribution } from "@/api/plugins";
 import { authApi } from "@/api/auth";
 import { queryKeys } from "@/lib/queryKeys";

@@ -4,10 +4,10 @@ import { skillAccessRequestContext, skillAccessService } from "../services/skill
 import { skillSourceService, type SkillSourceContext } from "../services/skill-sources.js";
 import { skillSourceGitHubReader } from "../services/skill-source-github-access.js";
 import { toolAccessService } from "../services/tool-access.js";
-import { skillSourceCreateSchema, skillSourceDiscoverySchema, skillSourcePreviewSchema, skillSourceSelectionSchema, skillSourceSettingsSchema, skillSourceBranchesQuerySchema, projectSkillSourceAdoptSchema, skillSourceDisconnectSchema } from "@paperclipai/shared";
+import { skillSourceCreateSchema, skillSourceDiscoverySchema, skillSourcePreviewSchema, skillSourceSelectionSchema, skillSourceSettingsSchema, skillSourceBranchesQuerySchema, projectSkillSourceAdoptSchema, skillSourceDisconnectSchema } from "@bostan/shared";
 import type { ActivityPublication } from "../services/activity-log.js";
 import { once } from "node:events";
-import type { SkillSourceDiscoveryEvent } from "@paperclipai/shared";
+import type { SkillSourceDiscoveryEvent } from "@bostan/shared";
 import { createHash } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { activityLog, companySkills } from "@paperclipai/db";
@@ -39,8 +39,8 @@ import {
   companySkillTestRunListQuerySchema,
   companySkillUpdateSchema,
   companySkillVersionCreateSchema,
-} from "@paperclipai/shared";
-import { trackSkillImported } from "@paperclipai/shared/telemetry";
+} from "@bostan/shared";
+import { trackSkillImported } from "@bostan/shared/telemetry";
 import { validate } from "../middleware/validate.js";
 import {
   accessService,
@@ -69,7 +69,7 @@ import {
   type SkillPolicyAction,
   type SkillPolicyDecision,
   type SkillPolicyEvaluationResource,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 type SkillTelemetryInput = {
   key: string;

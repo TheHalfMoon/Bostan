@@ -1,5 +1,5 @@
 import { Fragment, useState, type ReactNode } from "react";
-import type { Issue } from "@paperclipai/shared";
+import type { Issue } from "@bostan/shared";
 import { ChevronDown, ChevronRight, GitBranch } from "lucide-react";
 import { buildIssueTree } from "../lib/issue-tree";
 import { issueFilterLabel } from "../lib/issue-filters";

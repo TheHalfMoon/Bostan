@@ -22,7 +22,7 @@ import {
   toolApplications,
   toolConnections,
 } from "@paperclipai/db";
-import type { ChatFileTransferPhase } from "@paperclipai/shared";
+import type { ChatFileTransferPhase } from "@bostan/shared";
 import type { TeamsFileTransferSummary } from "./chat-teams-file-transfers.js";
 import { projectTeamsFilePublication } from "./chat-teams-file-publication.js";
 

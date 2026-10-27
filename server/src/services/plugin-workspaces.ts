@@ -15,7 +15,7 @@ import {
 import {
   readWorkspaceProviderBinding,
   type WorkspaceProviderBinding,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   parseWorkspaceProviderResult,
   workspaceProviderOperationSchema,

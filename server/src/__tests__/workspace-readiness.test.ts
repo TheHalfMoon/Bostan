@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@paperclipai/db";
-import type { WorkspaceReadinessProbeResult } from "@paperclipai/shared";
+import type { WorkspaceReadinessProbeResult } from "@bostan/shared";
 import {
   isManagedWorkspaceInstance,
   resetManagedWorkspaceInstanceCacheForTests,

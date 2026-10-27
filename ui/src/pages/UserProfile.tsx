@@ -5,7 +5,7 @@ import {
   hidesInstancePage,
   type UserProfileDailyPoint,
   type UserProfileWindowStats,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { Link, useParams } from "@/lib/router";
 import { authApi } from "../api/auth";
 import { userProfilesApi } from "../api/userProfiles";

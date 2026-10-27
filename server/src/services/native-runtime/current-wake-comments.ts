@@ -9,7 +9,7 @@ import {
   issueComments,
   issues,
 } from "@paperclipai/db";
-import type { SourceTrustMetadata } from "@paperclipai/shared";
+import type { SourceTrustMetadata } from "@bostan/shared";
 
 import { createRunSecretRedactionRegistry } from "../run-secret-redaction.js";
 import { sanitizeQuarantinedCommentForHigherTrust } from "../source-trust.js";

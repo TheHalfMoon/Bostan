@@ -4,7 +4,7 @@ import express from "express";
 import request from "supertest";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { agentCommentary, agents, authUsers, companies, companyMemberships, createDb, heartbeatRuns, issueAccessGrants, issues, principalPermissionGrants } from "@paperclipai/db";
-import { agentCommentaryQuerySchema } from "@paperclipai/shared";
+import { agentCommentaryQuerySchema } from "@bostan/shared";
 import { startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 import { agentCommentaryReader } from "../services/agent-commentary-reader.js";
 import { agentCommentaryRoutes } from "../routes/agent-commentary.js";

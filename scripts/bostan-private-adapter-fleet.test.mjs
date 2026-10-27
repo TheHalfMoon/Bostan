@@ -35,7 +35,7 @@ for(const [dir,name] of adapters){
     assert.ok(!publicInventory.some(item=>item.dir===`packages/adapters/${dir}`));
     for(const section of ['dependencies','devDependencies','optionalDependencies','peerDependencies']){
       for(const dep of Object.keys(m[section]??{})){
-        assert.ok((!dep.startsWith('@paperclipai/adapter-') || dep==='@paperclipai/adapter-utils') && dep!=='@paperclipai/hermes-paperclip-adapter',`${m.name} depends on obsolete adapter ${dep}`);
+        assert.ok((!dep.startsWith('@paperclipai/adapter-') || dep==='@bostan/adapter-utils') && dep!=='@paperclipai/hermes-paperclip-adapter',`${m.name} depends on obsolete adapter ${dep}`);
       }
     }
     if(dir==='hermes' || dir==='hermes-gateway'){

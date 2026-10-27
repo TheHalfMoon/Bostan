@@ -27,8 +27,8 @@ import type {
   DecisionTrainingNotesHistoryEntry,
   DecisionTrainingSnapshotV1,
   DecisionTrainingSourceKind,
-} from "@paperclipai/shared";
-import { DECISION_TRAINING_RETENTION_POLICY } from "@paperclipai/shared";
+} from "@bostan/shared";
+import { DECISION_TRAINING_RETENTION_POLICY } from "@bostan/shared";
 import { conflict, notFound } from "../errors.js";
 
 type CaptureInput = {

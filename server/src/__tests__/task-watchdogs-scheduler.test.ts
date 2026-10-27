@@ -21,7 +21,7 @@ import {
 import {
   normalizePaperclipWakePayload,
   renderPaperclipWakePrompt,
-} from "@paperclipai/adapter-utils/server-utils";
+} from "@bostan/adapter-utils/server-utils";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

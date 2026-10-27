@@ -1,4 +1,4 @@
-import type { ActivityEvent } from "@paperclipai/shared";
+import type { ActivityEvent } from "@bostan/shared";
 import { describe, expect, it } from "vitest";
 import {
   assigneeValueFromSelection,

@@ -7,7 +7,7 @@ import { agentInstructionsService } from "./agent-instructions.js";
 import { pluginAgentConnectionAssignments } from "./plugin-agent-connections.js";
 import { companySkillService } from "./company-skills.js";
 import { withSkillActor } from "./skill-access.js";
-import { readPaperclipSkillSyncPreference } from "@paperclipai/adapter-utils/server-utils";
+import { readPaperclipSkillSyncPreference } from "@bostan/adapter-utils/server-utils";
 import { skillVersionSelectionMap } from "./runtime-skill-selections.js";
 import { instanceSettingsService } from "./instance-settings.js";
 import { agentInstanceSecretService } from "./agent-instance-secrets.js";

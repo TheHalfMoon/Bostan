@@ -3,7 +3,7 @@ import { remoteEndpoint } from "./connection-methods.js";
 import { and, eq } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { connectionGrants, toolConnections } from "@paperclipai/db";
-import type { VercelConnectCredentialReference, VercelConnectGrantReference } from "@paperclipai/shared";
+import type { VercelConnectCredentialReference, VercelConnectGrantReference } from "@bostan/shared";
 import { conflict, HttpError, unprocessable } from "../../errors.js";
 import { deriveVercelConnectSubject, vercelGrantReference, vercelTokenRequest, VercelConnectClientError, type VercelConnectClient } from "../vercel-connect.js";
 

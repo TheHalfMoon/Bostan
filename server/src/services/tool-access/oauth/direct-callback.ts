@@ -6,13 +6,13 @@ import { createOAuthClientProtocol, storedOAuthTokenEndpointAuthMethod } from ".
 import { normalizeOAuthProviderError, oauthProviderErrorMessage } from "./provider-errors.js";
 import { oauthConfig, normalizeOauthScopes, resolveGrantedOauthScopes } from "./metadata.js";
 import { connectionMethodForConnection } from "../connection-methods.js";
-import { googleWorkspaceEffectiveScopes, isGoogleWorkspaceScopeGrant } from "@paperclipai/shared";
+import { googleWorkspaceEffectiveScopes, isGoogleWorkspaceScopeGrant } from "@bostan/shared";
 import { emitConnectionUpdated } from "../../connector-telemetry.js";
 import { and, eq, ne } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { connectionGrants, companyMemberships, principalPermissionGrants, issueThreadInteractions, toolApplications, toolConnections } from "@paperclipai/db";
-import type { ConnectToolAppResult } from "@paperclipai/shared";
-import { getConnectableAppDefinition, recommendedDefaultsForApp } from "@paperclipai/shared";
+import type { ConnectToolAppResult } from "@bostan/shared";
+import { getConnectableAppDefinition, recommendedDefaultsForApp } from "@bostan/shared";
 import { badRequest, forbidden, HttpError, unprocessable } from "../../../errors.js";
 import { secretService } from "../../secrets.js";
 

@@ -3,7 +3,7 @@ import { captureRunIdentity } from "../../run-identity.js";
 import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { connectionTokenIssuances, companyMemberships, heartbeatRuns, toolConnections, toolProfileBindings, toolProfileEntries, toolProfiles } from "@paperclipai/db";
-import type { ConnectionTokenIssuancePath } from "@paperclipai/shared";
+import type { ConnectionTokenIssuancePath } from "@bostan/shared";
 import { forbidden, HttpError } from "../../../errors.js";
 import { narrowestScopeBindings, profileIdsInBindingOrder } from "../../tool-profile-binding-precedence.js";
 

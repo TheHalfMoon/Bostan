@@ -26,7 +26,7 @@ import {
 import type {
   ChatEndpointSetupState,
   ToolCredentialSecretRef,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   telegramStopSubscriptionPlan,

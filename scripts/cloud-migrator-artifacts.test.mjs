@@ -28,11 +28,11 @@ function fixture(t) {
   const manifest = buildBundle(dir, sha, { exec: (cmd, args, options) => {
     assert.equal(cmd, "npm"); assert.ok(args.includes("--ignore-scripts"));
     const localRoot = JSON.parse(readFileSync(path.join(options.cwd, "package.json")));
-    assert.deepEqual(localRoot.dependencies, { "@paperclipai/db": "file:db.tgz", "@paperclipai/shared": "file:shared.tgz" });
+    assert.deepEqual(localRoot.dependencies, { "@paperclipai/db": "file:db.tgz", "@bostan/shared": "file:shared.tgz" });
     const packages = { "": localRoot };
     for (const name of ["db", "shared"]) packages[`node_modules/@paperclipai/${name}`] = {
       version: versionFor(sha), integrity: descriptor(readFileSync(path.join(dir, `${name}.tgz`)), "tgz").integrity,
-      resolved: `file:${name}.tgz`, ...(name === "db" ? { dependencies: { "@paperclipai/shared": versionFor(sha) } } : {}),
+      resolved: `file:${name}.tgz`, ...(name === "db" ? { dependencies: { "@bostan/shared": versionFor(sha) } } : {}),
     };
     writeFileSync(path.join(options.cwd, "package-lock.json"), JSON.stringify({ lockfileVersion: 3, packages }));
   } });
@@ -74,12 +74,12 @@ test("lockfile rejects mutable, foreign, linked, and mismatched dependencies", (
   const lock = JSON.parse(readFileSync(path.join(dir, "package-lock.json")));
   for (const mutate of [
     (l) => { l.packages[""].dependencies["@paperclipai/db"] = "latest"; },
-    (l) => { l.packages["node_modules/@paperclipai/shared"].version = "0.0.0"; },
+    (l) => { l.packages["node_modules/@bostan/shared"].version = "0.0.0"; },
     (l) => { l.packages["node_modules/@paperclipai/db"].link = true; },
     (l) => { l.packages["node_modules/evil"] = { inBundle: true }; },
     (l) => { l.packages["node_modules/evil"] = { integrity: manifest.packages.db.integrity, resolved: "https://evil.invalid/pkg.tgz" }; },
     (l) => { l.packages["node_modules/evil"] = { integrity: "sha1-weak", resolved: "https://registry.npmjs.org/pkg.tgz" }; },
-    (l) => { l.packages["node_modules/a/node_modules/@paperclipai/shared"] = l.packages["node_modules/@paperclipai/shared"]; },
+    (l) => { l.packages["node_modules/a/node_modules/@bostan/shared"] = l.packages["node_modules/@bostan/shared"]; },
   ]) {
     const bad = structuredClone(lock); mutate(bad); assert.throws(() => assertLockfile(bad, manifest));
   }

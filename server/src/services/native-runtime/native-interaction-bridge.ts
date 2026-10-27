@@ -13,7 +13,7 @@ import {
   statusDecisions,
   workAssessments,
 } from "@paperclipai/db";
-import { getAgentWorkEligibility } from "@paperclipai/shared";
+import { getAgentWorkEligibility } from "@bostan/shared";
 import { issueThreadInteractionService } from "../issue-thread-interactions.js";
 import { commitNativeStatusDecision } from "./status-decision-committer.js";
 import { nativeSha256 } from "./canonical.js";

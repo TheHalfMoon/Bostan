@@ -1,4 +1,4 @@
-import { addCents, compareCents, normalizeCents } from "@paperclipai/shared";
+import { addCents, compareCents, normalizeCents } from "@bostan/shared";
 import { and, desc, eq, inArray, sql, or, isNull } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 
@@ -25,7 +25,7 @@ import type {
   BudgetScopeType,
   BudgetThresholdType,
   BudgetWindowKind,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { HttpError, notFound, unprocessable } from "../errors.js";
 import { logger } from "../middleware/logger.js";
 import { withAccountingTransaction } from "./accounting-transaction.js";

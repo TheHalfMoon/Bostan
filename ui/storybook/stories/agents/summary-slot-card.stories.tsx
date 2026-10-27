@@ -12,7 +12,7 @@ import type {
   SummarySlotDocument,
   SummarySlotIssueRef,
   SummarySlotRevision,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import { SummarySlotCard } from "@/components/SummarySlotCard";
 import type { BuiltInAgentState } from "@/api/builtInAgents";

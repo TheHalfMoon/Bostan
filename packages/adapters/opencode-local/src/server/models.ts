@@ -1,12 +1,12 @@
 import { createHash } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
-import type { AdapterModel } from "@paperclipai/adapter-utils";
+import type { AdapterModel } from "@bostan/adapter-utils";
 import {
   asString,
   ensurePathInEnv,
   runChildProcess,
-} from "@paperclipai/adapter-utils/server-utils";
+} from "@bostan/adapter-utils/server-utils";
 import { isValidOpenCodeModelId } from "../index.js";
 
 const MODELS_CACHE_TTL_MS = 60_000;

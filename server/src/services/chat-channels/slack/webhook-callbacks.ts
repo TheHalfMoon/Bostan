@@ -1,4 +1,4 @@
-import { isProvisionedSlackSetup } from "@paperclipai/shared";
+import { isProvisionedSlackSetup } from "@bostan/shared";
 import { slackRequestSignatureIsValid, slackRequestWorkspaceId, slackCallbackMatchesPublicUrl, inspectSlackCallback } from "./callback-verification.js";
 import type { InternalSetupState } from "../runtime-types.js";
 import { notifyChatVerificationWork } from "../../chat-work-notifications.js";

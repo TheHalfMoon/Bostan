@@ -1,9 +1,9 @@
 import fs from "node:fs/promises";
 import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
-import * as gitWorkspaceSync from "@paperclipai/adapter-utils/git-workspace-sync";
+import * as gitWorkspaceSync from "@bostan/adapter-utils/git-workspace-sync";
 import { DatabaseSync } from "node:sqlite";
-import { captureDirectorySnapshot } from "@paperclipai/adapter-utils/workspace-restore-merge";
+import { captureDirectorySnapshot } from "@bostan/adapter-utils/workspace-restore-merge";
 const execFile = promisify(execFileCallback);
 import os from "node:os";
 import path from "node:path";

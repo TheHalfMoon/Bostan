@@ -1,6 +1,6 @@
-import { requiresExecutionReconciliation } from "@paperclipai/shared";
+import { requiresExecutionReconciliation } from "@bostan/shared";
 import { useState, type CSSProperties, type ReactNode } from "react";
-import type { ExternalObjectSummary, Issue, IssueRecoveryAction } from "@paperclipai/shared";
+import type { ExternalObjectSummary, Issue, IssueRecoveryAction } from "@bostan/shared";
 import { Link } from "@/lib/router";
 import { Archive, Flag } from "lucide-react";
 import {

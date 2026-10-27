@@ -1,15 +1,5 @@
 [
   {
-    "dir": "packages/adapter-utils",
-    "name": "@paperclipai/adapter-utils",
-    "publishFromCi": false
-  },
-  {
-    "dir": "packages/shared",
-    "name": "@paperclipai/shared",
-    "publishFromCi": false
-  },
-  {
     "dir": "packages/skills-catalog",
     "name": "@bostan/skills-catalog",
     "publishFromCi": false

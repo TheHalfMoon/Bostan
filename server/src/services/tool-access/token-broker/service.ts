@@ -4,7 +4,7 @@ import { isBrowserUseConnection } from "../../browser-use-client.js";
 import { and, eq, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { connectionGrantMembers, connectionGrantDelegations, connectionGrants, companyMemberships, toolApplications, toolConnectionInstalls, toolConnections } from "@paperclipai/db";
-import type { ConnectionTokenIssuanceOutcome, ConnectionTokenRequest, ConnectionTokenResponse } from "@paperclipai/shared";
+import type { ConnectionTokenIssuanceOutcome, ConnectionTokenRequest, ConnectionTokenResponse } from "@bostan/shared";
 import { forbidden, HttpError, unprocessable } from "../../../errors.js";
 import { secretService } from "../../secrets.js";
 import { toolAccessPolicyService } from "../../tool-access-policy.js";

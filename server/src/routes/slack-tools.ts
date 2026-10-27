@@ -7,7 +7,7 @@ import { Router } from "express";
 import { companies, type Db } from "@paperclipai/db";
 import { eq } from "drizzle-orm";
 import { instanceSettingsService } from "../services/instance-settings.js";
-import { slackToolCallSchema, isUuidLike } from "@paperclipai/shared";
+import { slackToolCallSchema, isUuidLike } from "@bostan/shared";
 import { badRequest, forbidden } from "../errors.js";
 import { assertCompanyAccess } from "./authz.js";
 import { executeConnectorTool } from "../services/connector-runtime.js";

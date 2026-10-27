@@ -23,7 +23,7 @@ import {
 } from "./workspaces.js";
 import { recordLegacyWorkspaceRestoreFailure } from "../legacy-execution-recovery.js";
 import { configuredEnvironmentProjection } from "../../vendor/paperclip-runner/index.js";
-import { buildAgentIdentityEnv } from "@paperclipai/adapter-utils/server-utils";
+import { buildAgentIdentityEnv } from "@bostan/adapter-utils/server-utils";
 import { externalObjectService } from "../external-objects.js";
 import { isAgentDirectoryCopy } from "../agent-directory-working-copies.js";
 import { restoreNativeWorkspaceBestEffort } from "../native-runtime/native-workspace-best-effort.js";
@@ -34,13 +34,13 @@ import {
   type NativeWorkspaceFinalizationOwnership,
 } from "../native-runtime/native-workspace-finalization-ownership.js";
 import { createRunUsageRecorder } from "../usage-receipts.js";
-import { applyWorkspaceRestoreFailure } from "@paperclipai/adapter-utils/workspace-restore-result";
-import { hasWorkspaceRestoreFailure } from "@paperclipai/shared";
+import { applyWorkspaceRestoreFailure } from "@bostan/adapter-utils/workspace-restore-result";
+import { hasWorkspaceRestoreFailure } from "@bostan/shared";
 import { isConversation } from "../agent-conversations.js";
-import { withAdapterExecutionPhase } from "@paperclipai/adapter-utils/execution-phase";
+import { withAdapterExecutionPhase } from "@bostan/adapter-utils/execution-phase";
 import { remoteExecutionHasStopped } from "../remote-execution-termination.js";
 import { registerAdapterExecutionControl } from "../adapter-execution-control.js";
-import { resolveManagedOpenAiBilling } from "@paperclipai/adapter-utils";
+import { resolveManagedOpenAiBilling } from "@bostan/adapter-utils";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { heartbeatRuns, nativeRunFinalizations, workspaceOperations } from "@paperclipai/db";
 import { conflict } from "../../errors.js";

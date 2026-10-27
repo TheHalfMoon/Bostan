@@ -3,7 +3,7 @@ import { documents, heartbeatRunEvents, heartbeatRuns, issueComments, issueDocum
 import { createRunSecretRedactionRegistry } from "../run-secret-redaction.js";
 import { buildLowTrustSourceTrust, redactQuarantinedBodyForHigherTrust, sanitizeQuarantinedCommentForHigherTrust } from "../source-trust.js";
 import { resolveCoreTrustPreset } from "../trust-preset-resolver.js";
-import { fastResponseHistoryBody } from "@paperclipai/shared";
+import { fastResponseHistoryBody } from "@bostan/shared";
 
 export const NATIVE_HANDOFF_MAX_BYTES = 24_000;
 const ENTRY_MAX_CHARS = 4_000;

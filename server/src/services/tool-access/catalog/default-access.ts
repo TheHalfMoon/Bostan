@@ -3,7 +3,7 @@ import type { ActorInfo, ToolAccessMutationDb } from "../types.js";
 import { and, eq, inArray } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { toolCatalogEntries, toolConnections, toolPolicies, toolProfileBindings, toolProfileEntries, toolProfiles } from "@paperclipai/db";
-import type { ToolPolicy } from "@paperclipai/shared";
+import type { ToolPolicy } from "@bostan/shared";
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value))

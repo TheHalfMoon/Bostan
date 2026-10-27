@@ -18,7 +18,7 @@ import {
   type SetupTokenSessionScope,
   type SetupTokenSessionState,
 } from "./setup-token-session.js";
-import type { LoginPtySessionOpener } from "@paperclipai/adapter-utils/login-pty-transport";
+import type { LoginPtySessionOpener } from "@bostan/adapter-utils/login-pty-transport";
 import {
   CLAUDE_SETUP_TOKEN_COMMAND,
   SETUP_TOKEN_AFTER_ANCHOR,

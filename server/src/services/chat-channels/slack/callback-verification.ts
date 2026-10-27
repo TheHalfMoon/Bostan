@@ -1,4 +1,4 @@
-import { isProvisionedSlackSetup } from "@paperclipai/shared";
+import { isProvisionedSlackSetup } from "@bostan/shared";
 import type { EndpointRow, DbOrTransaction, SlackCallbackSurface, InternalSetupState } from "../runtime-types.js";
 
 import { notifyChatVerificationWork } from "../../chat-work-notifications.js";
@@ -26,7 +26,7 @@ import {
 } from "@paperclipai/db";
 import type {
   ToolCredentialSecretRef,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   logActivity,

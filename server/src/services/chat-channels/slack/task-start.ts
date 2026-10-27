@@ -40,7 +40,7 @@ import {
 import type {
   ChatEndpointSetupState,
   ToolCredentialSecretRef,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import { logger } from "../../../middleware/logger.js";
 import { redactSensitiveText } from "../../../redaction.js";

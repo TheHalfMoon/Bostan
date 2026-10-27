@@ -1,6 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
-import { agentApiKeyScopeSchema } from "@paperclipai/shared";
+import { agentApiKeyScopeSchema } from "@bostan/shared";
 import { agentApiKeys, agents, authSessions, boardApiKeys, dotAgentBindings, heartbeatRuns, mcpOauthGrants, museAgentBindings, type caseHandoffs, type issues, type Db } from "@paperclipai/db";
 import { forbidden } from "../errors.js";
 import { resolveDeploymentMode } from "../config-file.js";

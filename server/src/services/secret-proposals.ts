@@ -1,5 +1,5 @@
 import { updateAgentConfigurationInTransaction } from "./agent-configuration-transaction.js";
-import { withAgentAppearance } from "@paperclipai/shared";
+import { withAgentAppearance } from "@bostan/shared";
 import { and, count, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import {
@@ -13,7 +13,7 @@ import {
   userSecretDeclarations,
   userSecretDefinitions,
 } from "@paperclipai/db";
-import type { SecretProvider } from "@paperclipai/shared";
+import type { SecretProvider } from "@bostan/shared";
 import { badRequest, conflict, forbidden, HttpError, notFound, unprocessable } from "../errors.js";
 import { getSecretProvider } from "../secrets/provider-registry.js";
 import { agentService } from "./agents.js";

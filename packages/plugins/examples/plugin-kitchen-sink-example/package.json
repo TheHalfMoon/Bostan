@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@bostan/plugin-sdk": "workspace:*",
-    "@paperclipai/shared": "workspace:*"
+    "@bostan/shared": "workspace:*"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

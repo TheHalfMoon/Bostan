@@ -15,7 +15,7 @@ import {
   issueWatchdogs,
   issueWorkProducts,
 } from "@paperclipai/db";
-import type { IssueWatchdog, IssueWatchdogSummary } from "@paperclipai/shared";
+import type { IssueWatchdog, IssueWatchdogSummary } from "@bostan/shared";
 import { conflict, notFound } from "../errors.js";
 import { parseObject } from "../adapters/utils.js";
 import { logActivity } from "./activity-log.js";

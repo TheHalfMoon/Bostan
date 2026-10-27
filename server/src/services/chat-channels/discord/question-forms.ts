@@ -16,7 +16,7 @@ import {
 import type {
   SafeChatPublicationPayload,
   AskUserQuestionsInteraction,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   forbidden,

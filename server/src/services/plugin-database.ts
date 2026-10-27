@@ -13,7 +13,7 @@ import type {
   PaperclipPluginManifestV1,
   PluginDatabaseCoreReadTable,
   PluginMigrationRecord,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 const IDENTIFIER_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const MAX_POSTGRES_IDENTIFIER_LENGTH = 63;

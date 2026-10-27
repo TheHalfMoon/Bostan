@@ -23,7 +23,7 @@ import {
   nativeRunFinalizations,
 } from "@paperclipai/db";
 import type { PrpEvent } from "@paperclipai/paperclip-runner";
-import { respondIssueThreadInteractionSchema } from "@paperclipai/shared";
+import { respondIssueThreadInteractionSchema } from "@bostan/shared";
 
 import {
   getEmbeddedPostgresTestSupport,

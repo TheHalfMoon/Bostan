@@ -1,6 +1,6 @@
 import { environmentTaskResultSchema } from "@bostan/plugin-sdk";
 import type { PluginTaskCredentialWritebackBinding } from "./plugin-task-credential-writeback.js";
-import { OPENROUTER_ATTRIBUTION_HEADERS, openRouterClaudeHeaders } from "@paperclipai/shared/openrouter-attribution";
+import { OPENROUTER_ATTRIBUTION_HEADERS, openRouterClaudeHeaders } from "@bostan/shared/openrouter-attribution";
 import { createHash } from "node:crypto";
 import { HttpError, unprocessable } from "../errors.js";
 import { mkdtemp, mkdir, writeFile, readFile, rm } from "node:fs/promises";
@@ -12,16 +12,16 @@ import {
   AI_CONNECTION_CAPABILITIES,
   aiConnectionMetadataSchema, aiRoutingHarness,
   type AiConnectionBinding,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { managedProviderRouting } from "./ai-provider-routing.js";
 import { aiConnectionService } from "./ai-connections.js";
 import { subscriptionService } from "./subscriptions.js";
 import { refreshSubscriptionConnection } from "./subscription-refresh.js";
 import { secretService } from "./secrets.js";
 import { decideCodexAuthMerge, withAccountHomeSecretMutationLock } from "@bostan/adapter-codex-local/server";
-import { WORKSPACE_RESTORE_LOCK_TIMEOUT_CODE } from "@paperclipai/adapter-utils/workspace-restore-merge";
-import type { AdapterExecutionTarget } from "@paperclipai/adapter-utils/execution-target";
-import { runAdapterExecutionTargetProcess } from "@paperclipai/adapter-utils/execution-target";
+import { WORKSPACE_RESTORE_LOCK_TIMEOUT_CODE } from "@bostan/adapter-utils/workspace-restore-merge";
+import type { AdapterExecutionTarget } from "@bostan/adapter-utils/execution-target";
+import { runAdapterExecutionTargetProcess } from "@bostan/adapter-utils/execution-target";
 import { decideGrokAuthMerge } from "@bostan/adapter-grok-local/server";
 
 export function isAiConnectionBusy(error: unknown): error is HttpError {

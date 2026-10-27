@@ -8,7 +8,7 @@ import sharp from "sharp";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 import { createDb, agents, companies, assets, activityLog, authUsers, companyMemberships, mcpOauthClients, mcpOauthGrants, dotAgentBindings, principalPermissionGrants } from "@paperclipai/db";
-import { appearanceForPalette, MAX_AGENT_AVATAR_BYTES } from "@paperclipai/shared";
+import { appearanceForPalette, MAX_AGENT_AVATAR_BYTES } from "@bostan/shared";
 import { startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 import { createLocalDiskStorageProvider } from "../storage/local-disk-provider.js";
 import { createStorageService } from "../storage/service.js";

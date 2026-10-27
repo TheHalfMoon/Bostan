@@ -16,7 +16,7 @@ import {
   type GitHubReviewEventContext,
   type GitHubIssueEventContext,
   type GitHubAutomaticEventContext,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   effectiveGitHubReviewPolicy,
   githubReviewSchedulingDecision,

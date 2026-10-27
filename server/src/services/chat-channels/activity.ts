@@ -25,7 +25,7 @@ import {
 import type {
   ChatPublicationSummary,
   SafeChatPublicationPayload,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   teamsFileTransferService,

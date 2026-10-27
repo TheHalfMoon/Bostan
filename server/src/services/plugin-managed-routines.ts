@@ -16,8 +16,8 @@ import type {
   Routine,
   RoutineManagedByPlugin,
   RoutineStatus,
-} from "@paperclipai/shared";
-import { ROUTINE_STATUSES } from "@paperclipai/shared";
+} from "@bostan/shared";
+import { ROUTINE_STATUSES } from "@bostan/shared";
 import { notFound, unprocessable } from "../errors.js";
 import { logActivity } from "./activity-log.js";
 import { routineService } from "./routines.js";
@@ -28,7 +28,7 @@ const MANAGED_ROUTINE_RESOURCE_KIND = "routine";
 interface PluginManagedRoutineServiceOptions {
   pluginId: string;
   pluginKey: string;
-  manifest?: import("@paperclipai/shared").PaperclipPluginManifestV1 | null;
+  manifest?: import("@bostan/shared").PaperclipPluginManifestV1 | null;
   pluginWorkerManager?: PluginWorkerManager;
 }
 

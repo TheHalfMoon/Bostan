@@ -7,7 +7,7 @@ import {
   companySecretVersions,
   toolConnections,
 } from "@paperclipai/db";
-import type { McpConnectionCredentialRef, SecretProvider, ToolCredentialSecretRef } from "@paperclipai/shared";
+import type { McpConnectionCredentialRef, SecretProvider, ToolCredentialSecretRef } from "@bostan/shared";
 import { getSecretProvider } from "../secrets/provider-registry.js";
 import type { SecretProviderVaultRuntimeConfig } from "../secrets/types.js";
 

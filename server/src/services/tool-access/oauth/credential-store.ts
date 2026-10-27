@@ -4,7 +4,7 @@ import { syncConnectionCredentialBindings } from "../../connection-credential-bi
 import { and, eq, inArray } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { connectionGrants, toolConnections } from "@paperclipai/db";
-import type { ToolConnection, ToolCredentialSecretRef } from "@paperclipai/shared";
+import type { ToolConnection, ToolCredentialSecretRef } from "@bostan/shared";
 import { notFound } from "../../../errors.js";
 import { secretService } from "../../secrets.js";
 import { resolveConnectionGrantSecret, writeConnectionCredential } from "../../connection-credentials.js";

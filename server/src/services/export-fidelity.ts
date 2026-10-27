@@ -4,7 +4,7 @@ import {
   buildExportFidelityWarnings,
   type ExportFidelityCounts,
   type ExportFidelityReport,
-} from "@paperclipai/shared/portability-fidelity";
+} from "@bostan/shared/portability-fidelity";
 import type { Db } from "@paperclipai/db";
 import {
   activityLog,

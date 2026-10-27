@@ -1,4 +1,4 @@
-import { isProvisionedSlackSetup } from "@paperclipai/shared";
+import { isProvisionedSlackSetup } from "@bostan/shared";
 import { createSlackManagerGrants } from "./manager-grants.js";
 import { createManagedSlackSetup } from "./managed.js";
 import { randomBytes } from "node:crypto";

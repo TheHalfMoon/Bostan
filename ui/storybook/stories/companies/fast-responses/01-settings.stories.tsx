@@ -5,7 +5,7 @@ import { choices } from "../../../support/decision-models/fixtures";
 import type {
   FastResponseSettings,
   FastResponseTestResult,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 export const empty: FastResponseSettings = {
   companyId: "company-storybook",
   enabled: false,

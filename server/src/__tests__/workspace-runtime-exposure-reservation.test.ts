@@ -60,7 +60,7 @@ import {
   RUNTIME_EXPOSURE_APP_PORT_MAX,
   RUNTIME_EXPOSURE_APP_PORT_MIN,
   RUNTIME_EXPOSURE_HMR_PORT_OFFSET,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import type { BrokerClient, BrokerListenerRequest } from "../services/runtime-exposure/broker-client.js";
 import { readListenerBindFacts } from "../services/runtime-exposure/loopback-listener.js";

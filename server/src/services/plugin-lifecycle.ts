@@ -41,7 +41,7 @@ import type {
   PluginStatus,
   PluginRecord,
   PaperclipPluginManifestV1,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { pluginRegistryService } from "./plugin-registry.js";
 import { pluginLoader, type PluginLoader } from "./plugin-loader.js";
 import type { PluginWorkerManager, WorkerStartOptions } from "./plugin-worker-manager.js";

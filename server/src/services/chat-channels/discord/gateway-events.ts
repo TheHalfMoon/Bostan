@@ -18,7 +18,7 @@ import {
 } from "@paperclipai/db";
 import type {
   ChatEndpointSetupState,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   type DiscordGatewayCallbackEvent,

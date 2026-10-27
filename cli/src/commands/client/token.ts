@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { createAgentKeySchema, createBoardApiKeySchema, type Agent } from "@paperclipai/shared";
+import { createAgentKeySchema, createBoardApiKeySchema, type Agent } from "@bostan/shared";
 import {
   addCommonClientOptions,
   apiPath,

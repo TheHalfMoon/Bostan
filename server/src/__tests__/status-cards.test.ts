@@ -24,7 +24,7 @@ import {
   LOW_TRUST_REVIEW_PRESET,
   STATUS_CARD_AGENT_MAX_CARDS,
   STATUS_CARD_AGENT_MAX_INTEREST_PROMPT_LENGTH,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { errorHandler } from "../middleware/index.js";
 import { statusCardRoutes } from "../routes/status-cards.js";
 import { withBuiltInAgentMarker } from "../lib/built-in-agent-metadata.js";

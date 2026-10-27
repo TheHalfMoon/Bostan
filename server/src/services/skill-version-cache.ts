@@ -8,7 +8,7 @@ import { companySkillVersions, companySkillRepositorySnapshots, heartbeatRuns,
 import { resolvePaperclipInstanceRoot } from "../home-paths.js";
 import { assertSkillSnapshotPath } from "./skill-snapshot.js";
 import { repositorySkillFrontmatter } from "./skill-repository-package.js";
-import type { CompanySkillVersionFileInventoryEntry } from "@paperclipai/shared";
+import type { CompanySkillVersionFileInventoryEntry } from "@bostan/shared";
 import { parseNativeExecutionInput } from "../vendor/paperclip-runner/index.js";
 
 export const SKILL_VERSION_CACHE_IDLE_MS = 60 * 60 * 1000;

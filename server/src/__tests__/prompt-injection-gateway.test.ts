@@ -10,7 +10,7 @@ import express from "express";
 import { createDb, companies, companyMemberships, agents, issues, heartbeatRuns, toolApplications, toolConnections, connectionGrants,
   toolCatalogEntries, toolPolicies, toolInvocations, toolCallEvents, toolActionRequests, promptInjectionInvocations, costEvents, budgetReservations } from "@paperclipai/db";
 import { startEmbeddedPostgresTestDatabase } from "@paperclipai/db/test-embedded-postgres";
-import { PROMPT_INJECTION_DEFAULT_MODEL } from "@paperclipai/shared";
+import { PROMPT_INJECTION_DEFAULT_MODEL } from "@bostan/shared";
 import { createToolGatewayService } from "../services/tool-gateway.js";
 import { toolGatewayRoutes } from "../routes/tool-gateway.js";
 import { initializeRunIdentity } from "../services/run-identity.js";

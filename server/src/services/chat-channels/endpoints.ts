@@ -8,7 +8,7 @@ import { chatCredentialMutationLease } from "../chat-credential-mutation-lease.j
 import { slackChatRegistrationService, slackRegistrationProjection } from "../chat-slack-registration.js";
 import { chatSlackRegistrations } from "@paperclipai/db";
 
-import { defaultSlackAppConfiguration } from "@paperclipai/shared";
+import { defaultSlackAppConfiguration } from "@bostan/shared";
 import {
   randomBytes,
   randomUUID,
@@ -34,10 +34,10 @@ import type {
   ChatProvider,
   CreateChatEndpointInput,
   UpdateChatEndpointInput,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   isAgentStatusInvokable,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   badRequest,

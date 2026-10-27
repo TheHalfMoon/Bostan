@@ -4,8 +4,8 @@ import { useConnectionModels } from "../ai-connections/useConnectionModels";
 import { AgentCharacter } from "../AgentCharacter";
 import { useAgentAppearanceDraft } from "../../hooks/useAgentAppearanceDraft";
 import { AiConnectionField, aiProviderForAdapter } from "../ai-connections/AiConnectionField";
-import type { AiConnectionBinding } from "@paperclipai/shared";
-import type { AgentRunner, AgentRunnerChoice } from "@paperclipai/shared";
+import type { AiConnectionBinding } from "@bostan/shared";
+import type { AgentRunner, AgentRunnerChoice } from "@bostan/shared";
 import { AgentRunnerSelect } from "../AgentRunnerSelect";
 import { SelectPopover } from "../ui/select";
 import { DEFAULT_CODEX_LOCAL_MODEL } from "@bostan/adapter-codex-local";
@@ -27,8 +27,8 @@ import type {
   AdapterEnvironmentTestResult,
   Agent,
   EnvBinding,
-} from "@paperclipai/shared";
-import { ADAPTER_AUTH_MISSING_CHECK_CODE, paperclipRunnerProfileForHarness } from "@paperclipai/shared";
+} from "@bostan/shared";
+import { ADAPTER_AUTH_MISSING_CHECK_CODE, paperclipRunnerProfileForHarness } from "@bostan/shared";
 import { useNavigate, useSearchParams } from "@/lib/router";
 import { agentsApi } from "@/api/agents";
 import { ApiError } from "@/api/client";

@@ -1,4 +1,4 @@
-import type { CLIAdapterModule } from "@paperclipai/adapter-utils";
+import type { CLIAdapterModule } from "@bostan/adapter-utils";
 import { printClaudeStreamEvent } from "@bostan/adapter-claude-local/cli";
 import { printCodexStreamEvent } from "@bostan/adapter-codex-local/cli";
 import { printCursorStreamEvent } from "@bostan/adapter-cursor-local/cli";

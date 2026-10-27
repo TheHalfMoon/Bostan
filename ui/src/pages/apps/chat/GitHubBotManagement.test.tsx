@@ -9,7 +9,7 @@ import {
   type GitHubChatConfiguration,
   type GitHubTaskReview,
   type ChatExecutionDefaults,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { ChatEndpointDetail } from "./ChatEndpointDetail";
 import { GitHubReviewList, orderedGitHubReviews } from "./GitHubBotManagement";
 import { GitHubPolicyEditor } from "./GitHubBotConfiguration";

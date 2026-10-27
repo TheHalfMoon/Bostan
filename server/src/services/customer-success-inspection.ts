@@ -8,7 +8,7 @@ import {
   MAX_INSPECTION_BYTES,
   type InspectionQuery,
   type InspectionResource,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import type { StorageService } from "../storage/types.js";
 import { HttpError, notFound, unprocessable } from "../errors.js";
 import { redactAgentAdapterConfig, redactEventPayload } from "../redaction.js";

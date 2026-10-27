@@ -5,7 +5,7 @@ import type {
   PluginStateScopeKind,
   SetPluginState,
   ListPluginState,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { notFound } from "../errors.js";
 
 // ---------------------------------------------------------------------------

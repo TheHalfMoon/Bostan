@@ -5,7 +5,7 @@ import { GrokBotConnection } from "../../components/GrokBotConnection";
 import { DotRunnerConnection } from "../../components/DotRunnerConnection";
 import { configFieldsForSection } from "../config-sections";
 import type { AdapterConfigFieldsProps } from "../types";
-import type { CreateConfigValues } from "@paperclipai/adapter-utils";
+import type { CreateConfigValues } from "@bostan/adapter-utils";
 import { buildCodexLocalConfig } from "@bostan/adapter-codex-local/ui";
 import {
   Field,
@@ -33,7 +33,7 @@ import {
   resolvePaperclipRunnerPermissionMode,
   type PaperclipRunnerPermissionMode,
   type PaperclipRunnerPermissionCapability,
-} from "@paperclipai/adapter-utils";
+} from "@bostan/adapter-utils";
 
 const inputClass =
   "w-full rounded-md border border-border px-2.5 py-1.5 bg-transparent outline-none text-sm font-mono placeholder:text-muted-foreground/40";

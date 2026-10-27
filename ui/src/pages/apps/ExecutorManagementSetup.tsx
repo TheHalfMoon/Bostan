@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ToolConnection } from "@paperclipai/shared";
-import { aggregatorManagementUrl } from "@paperclipai/shared/aggregator-apps";
+import type { ToolConnection } from "@bostan/shared";
+import { aggregatorManagementUrl } from "@bostan/shared/aggregator-apps";
 import { toolsApi } from "@/api/tools";
 import { useAccountIdentity } from "@/api/companies-query";
 import { queryKeys } from "@/lib/queryKeys";

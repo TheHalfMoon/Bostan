@@ -17,7 +17,7 @@ import {
 } from "./helpers/embedded-postgres.js";
 import { agentService } from "../services/agents.ts";
 import { approvalService } from "../services/approvals.ts";
-import { paperclipRunnerSupportsPlatform } from "@paperclipai/shared";
+import { paperclipRunnerSupportsPlatform } from "@bostan/shared";
 
 const embeddedPostgresSupport = await getEmbeddedPostgresTestSupport();
 const describeEmbeddedPostgres = embeddedPostgresSupport.supported ? describe : describe.skip;

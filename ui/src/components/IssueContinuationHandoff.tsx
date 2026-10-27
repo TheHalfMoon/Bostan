@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import type { IssueDocument } from "@paperclipai/shared";
-import { ISSUE_CONTINUATION_SUMMARY_DOCUMENT_KEY } from "@paperclipai/shared";
+import type { IssueDocument } from "@bostan/shared";
+import { ISSUE_CONTINUATION_SUMMARY_DOCUMENT_KEY } from "@bostan/shared";
 import { AgentSetupPrompt } from "@/components/AgentSetupPrompt";
 import { cn, relativeTime } from "../lib/utils";
 import { MarkdownBody, type MarkdownExternalReferenceMap } from "./MarkdownBody";

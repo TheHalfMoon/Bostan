@@ -16,7 +16,7 @@ import { externalConversationStateSql, resumeExternalConversation } from "../ser
 import { executionIssueCondition } from "../services/issue-visibility.js";
 import { dashboardService } from "../services/dashboard.js";
 import { attentionService } from "../services/attention.js";
-import { companySearchQuerySchema } from "@paperclipai/shared";
+import { companySearchQuerySchema } from "@bostan/shared";
 import { companySearchService } from "../services/company-search.js";
 import { recoveryService } from "../services/recovery/service.js";
 import { issueService } from "../services/issues.js";

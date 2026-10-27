@@ -10,7 +10,7 @@ import {
   heartbeatRuns, issues, projects, runIdentityContexts, secretAccessEvents, companySecrets,
 } from "@paperclipai/db";
 import { startEmbeddedPostgresTestDatabase } from "@paperclipai/db/test-embedded-postgres";
-import { DECISION_TEST_REQUEST, updateDecisionModelSchema, createCostEventSchema } from "@paperclipai/shared";
+import { DECISION_TEST_REQUEST, updateDecisionModelSchema, createCostEventSchema } from "@bostan/shared";
 import { aiConnectionService } from "../services/ai-connections.js";
 import { agentService } from "../services/agents.js";
 import { decisionModelService, settingsDecisionTest, defineDecisionFeature, type DecisionContext } from "../services/decision-models.js";

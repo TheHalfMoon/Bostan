@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { act, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import type { CreateConfigValues } from "@paperclipai/adapter-utils";
+import type { CreateConfigValues } from "@bostan/adapter-utils";
 
 import { beforeAll, describe, expect, it } from "vitest";
 

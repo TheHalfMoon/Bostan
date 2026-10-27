@@ -60,7 +60,7 @@ import {
   type HeartbeatRunStatusPhase,
   type RequestConfirmationResult,
   type RunLivenessState,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   agents,
   agentRuntimeState,
@@ -165,11 +165,11 @@ import {
 } from "../../redaction.js";
 import {
   type RuntimeStatusUpdate,
-} from "@paperclipai/adapter-utils";
+} from "@bostan/adapter-utils";
 import {
   UNMANAGED_BACKGROUND_TASK_LIVENESS_REASON,
   UNMANAGED_BACKGROUND_TASK_STOP_REASON,
-} from "@paperclipai/adapter-utils/server-utils";
+} from "@bostan/adapter-utils/server-utils";
 import {
   clearHeartbeatRunRuntimeStatus,
   getHeartbeatRunRuntimeStatus,

@@ -1,4 +1,4 @@
-import { agentAppearanceSchema } from "@paperclipai/shared";
+import { agentAppearanceSchema } from "@bostan/shared";
 import { approvals, type Db } from "@paperclipai/db";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { unprocessable } from "../../../errors.js";

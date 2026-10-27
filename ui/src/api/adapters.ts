@@ -34,8 +34,8 @@ export interface AcpTargetDescriptor {
 }
 
 export interface AdapterInfo {
-  supportedRunners?: import("@paperclipai/shared").AgentRunner[];
-  defaultRunner?: import("@paperclipai/shared").AgentRunner;
+  supportedRunners?: import("@bostan/shared").AgentRunner[];
+  defaultRunner?: import("@bostan/shared").AgentRunner;
   type: string;
   label: string;
   source: "builtin" | "external";

@@ -27,7 +27,7 @@ import type {
   ChatEndpointSetupState,
   ChatProvider,
   ToolCredentialSecretRef,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   conflict,

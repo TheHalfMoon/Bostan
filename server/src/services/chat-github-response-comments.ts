@@ -11,7 +11,7 @@ import { githubAutomaticAdmission } from "./chat-github-events.js";
 import { githubBotRepositoryToken, githubBotRequest } from "./chat-github-client.js";
 import { withGitHubPublicationLease } from "./chat-github-publication-lease.js";
 import { projectSafeChatPublicationText } from "./chat-publication-projection.js";
-import type { GitHubAutomaticEventContext } from "@paperclipai/shared";
+import type { GitHubAutomaticEventContext } from "@bostan/shared";
 import { githubRunReplyState } from "./chat-run-publications.js";
 import { logActivity } from "./activity-log.js";
 import { boundRunIssueId } from "./run-task-binding.js";

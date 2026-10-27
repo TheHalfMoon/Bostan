@@ -35,7 +35,7 @@ import {
   type ChatProvider,
   type RoutineRevisionSnapshotV1,
   type SourceTrustMetadata,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   agents,
   assets,
@@ -113,11 +113,11 @@ import { createRunSecretRedactionRegistry } from "../run-secret-redaction.js";
 import {
   readPaperclipSkillSyncPreference,
   writePaperclipSkillSyncPreference,
-} from "@paperclipai/adapter-utils/server-utils";
+} from "@bostan/adapter-utils/server-utils";
 import {
   extractSkillMentionIds,
   isUuidLike,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { evaluateCodexCredentialReadiness } from "@bostan/adapter-codex-local/server";
 import type { TrustPresetResolution } from "../trust-preset-resolver.js";
 

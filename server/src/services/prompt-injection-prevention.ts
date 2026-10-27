@@ -6,7 +6,7 @@ import { agents, budgetReservations, companies, companyPromptInjectionPrevention
 import { PROMPT_INJECTION_DEFAULT_MODEL, PROMPT_INJECTION_POLICY_VERSION, decisionProviderForConnection,
   updatePromptInjectionPreventionSchema, centsToUnits, unitsToCents,
   type PromptInjectionPreventionSettings, type UpdatePromptInjectionPrevention, type PromptInjectionModelOutcome,
-  type PromptInjectionFallbackReason, type PromptInjectionTestResult, type DecisionUsage } from "@paperclipai/shared";
+  type PromptInjectionFallbackReason, type PromptInjectionTestResult, type DecisionUsage } from "@bostan/shared";
 import { HttpError, forbidden } from "../errors.js";
 import { aiConnectionService } from "./ai-connections.js";
 import { withAccountingTransaction } from "./accounting-transaction.js";

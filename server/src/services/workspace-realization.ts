@@ -1,11 +1,11 @@
-import { workspaceProviderBindingSchema } from "@paperclipai/shared";
+import { workspaceProviderBindingSchema } from "@bostan/shared";
 import type {
   Environment,
   EnvironmentLease,
   ExecutionWorkspaceConfig,
   WorkspaceRealizationRecord,
   WorkspaceRealizationRequest,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import type { RealizedExecutionWorkspace } from "./workspace-runtime.js";
 import { ENVIRONMENT_DRIVER_TRAITS, getEnvironmentDriverTraits } from "./environment-driver-traits.js";
 

@@ -43,7 +43,7 @@ import {
   toolRuntimeSlots,
 } from "@paperclipai/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { APP_DEFINITIONS, MCP_CONFIG_HELP_PROMPT } from "@paperclipai/shared";
+import { APP_DEFINITIONS, MCP_CONFIG_HELP_PROMPT } from "@bostan/shared";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

@@ -7,7 +7,7 @@ import { connectionMethodForConnection } from "../connection-methods.js";
 import { and, eq } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { toolConnections } from "@paperclipai/db";
-import type { AppDefinition } from "@paperclipai/shared";
+import type { AppDefinition } from "@bostan/shared";
 import { notFound, unprocessable } from "../../../errors.js";
 import { type RemoteHttpEndpointLookup } from "../../remote-http-endpoint-guard.js";
 

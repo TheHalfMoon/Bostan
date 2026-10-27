@@ -11,7 +11,7 @@ import {
 } from "@paperclipai/db";
 import { conflict, forbidden } from "../errors.js";
 import { boundRunIssueId } from "./run-task-binding.js";
-import { isUuidLike } from "@paperclipai/shared";
+import { isUuidLike } from "@bostan/shared";
 import { queuedCommentIdsFromRunContext, queuedCommentIdsFromWakePayload } from "./issue-queued-comment-queue.js";
 
 /** Resolve an explicit click from persisted receipts, never caller context or message authors. */

@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AdapterExecutionContext } from "@paperclipai/adapter-utils";
+import type { AdapterExecutionContext } from "@bostan/adapter-utils";
 
 // Pi resolves its session directory at module load. Keep that test directory
 // under the temporary root instead of the operator's real home.
@@ -10,11 +10,11 @@ vi.mock("node:os", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:os")>();
   return { ...actual, default: { ...actual.default, homedir: actual.tmpdir }, homedir: actual.tmpdir };
 });
-vi.mock("@paperclipai/adapter-utils/execution-target", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@paperclipai/adapter-utils/execution-target")>();
+vi.mock("@bostan/adapter-utils/execution-target", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@bostan/adapter-utils/execution-target")>();
   return { ...actual, runAdapterExecutionTargetProcess: vi.fn() };
 });
-import { runAdapterExecutionTargetProcess } from "@paperclipai/adapter-utils/execution-target";
+import { runAdapterExecutionTargetProcess } from "@bostan/adapter-utils/execution-target";
 import { execute as gemini } from "@bostan/adapter-gemini-local/server";
 import { execute as kimi } from "@bostan/adapter-kimi-local/server";
 import { execute as cursor } from "@bostan/adapter-cursor-local/server";

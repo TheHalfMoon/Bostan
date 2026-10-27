@@ -4,7 +4,7 @@ import { agents, heartbeatRuns, projects } from "@paperclipai/db";
 import {
   LOW_TRUST_REVIEW_PRESET,
   type SourceTrustMetadata,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { forbidden } from "../errors.js";
 import { readObject } from "../lib/objects.js";
 import { resolveCoreTrustPreset } from "./trust-preset-resolver.js";

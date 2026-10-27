@@ -48,8 +48,8 @@ import {
   updateUserCompanyAccessSchema,
   PERMISSION_KEYS,
   isUuidLike,
-} from "@paperclipai/shared";
-import type { DeploymentExposure, DeploymentMode, HumanCompanyMembershipRole } from "@paperclipai/shared";
+} from "@bostan/shared";
+import type { DeploymentExposure, DeploymentMode, HumanCompanyMembershipRole } from "@bostan/shared";
 import {
   forbidden,
   conflict,

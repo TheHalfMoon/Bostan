@@ -1,8 +1,8 @@
 import fs from "node:fs/promises";
 import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
-import * as executionTargetTools from "@paperclipai/adapter-utils/execution-target";
-import * as ssh from "@paperclipai/adapter-utils/ssh";
+import * as executionTargetTools from "@bostan/adapter-utils/execution-target";
+import * as ssh from "@bostan/adapter-utils/ssh";
 const execFile = promisify(execFileCallback);
 import os from "node:os";
 import path from "node:path";
@@ -19,7 +19,7 @@ import { buildNativeRuntimeContext } from "../services/native-runtime/runtime-co
 import type { EnvironmentRuntimeService } from "../services/environment-runtime.js";
 import { remoteTerminationReceipt } from "../services/remote-execution-termination.js";
 import { AgentDirectoryReuseInvalidatedError, agentDirectoryWorkingCopyService } from "../services/agent-directory-working-copies.js";
-import { withDirectoryMergeLock } from "@paperclipai/adapter-utils/workspace-restore-merge";
+import { withDirectoryMergeLock } from "@bostan/adapter-utils/workspace-restore-merge";
 import { heartbeatRunEvents } from "@paperclipai/db";
 
 describe("persistent agent directories", () => {
@@ -828,7 +828,7 @@ describe("persistent agent directories", () => {
     const remoteCwd = path.join(home, "remote-task");
     await fs.mkdir(remoteCwd, { recursive: true });
     await execFile("git", ["init", remoteCwd]);
-    const runner: import("@paperclipai/adapter-utils/command-managed-runtime").CommandManagedRuntimeRunner = {
+    const runner: import("@bostan/adapter-utils/command-managed-runtime").CommandManagedRuntimeRunner = {
       execute: async input => {
         const startedAt = new Date().toISOString();
         const env = { ...process.env, ...input.env };
@@ -888,7 +888,7 @@ describe("persistent agent directories", () => {
   it("checkpoints and reuses the remote directory through the real transport without copying unchanged bytes", async () => {
     const remoteCwd = path.join(home, "warm-remote-task");
     await fs.mkdir(remoteCwd, { recursive: true });
-    const runner: import("@paperclipai/adapter-utils/command-managed-runtime").CommandManagedRuntimeRunner = {
+    const runner: import("@bostan/adapter-utils/command-managed-runtime").CommandManagedRuntimeRunner = {
       execute: async input => {
         const startedAt = new Date().toISOString();
         const env = { ...process.env, ...input.env };

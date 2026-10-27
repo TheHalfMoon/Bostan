@@ -21,7 +21,7 @@ import {
   CreateDocumentAnnotationComment,
   CreateDocumentAnnotationThread,
   UpdateDocumentAnnotationThread,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { conflict, notFound, unprocessable } from "../errors.js";
 
 type ActorInput = {

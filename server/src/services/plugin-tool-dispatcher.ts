@@ -26,7 +26,7 @@ import type { Db } from "@paperclipai/db";
 import type {
   PaperclipPluginManifestV1,
   PluginRecord,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import type { ToolRunContext, ToolResult } from "@bostan/plugin-sdk";
 import type { PluginWorkerManager } from "./plugin-worker-manager.js";
 import type { PluginLifecycleManager } from "./plugin-lifecycle.js";

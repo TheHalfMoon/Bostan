@@ -1,4 +1,4 @@
-import { isUuidLike } from "@paperclipai/shared";
+import { isUuidLike } from "@bostan/shared";
 import { ApiError } from "@/api/client";
 import { AgentMailCredentialField } from "@/features/connections/AgentMailCredentialField";
 import { AgentMailApiKeyField } from "@/features/connections/AgentMailApiKeyField";
@@ -49,7 +49,7 @@ import { safeCredentialUiError } from "@/lib/credential-ui-error-privacy";
 import type {
   AgentPermissions,
   EmailEndpointSummary,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 const selectClass =
   "w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
 

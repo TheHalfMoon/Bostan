@@ -9,7 +9,7 @@ import {
   assertExecutionLifecycle,
   assertEnvironmentError,
 } from "@bostan/plugin-sdk/testing";
-import type { PaperclipPluginManifestV1 } from "@paperclipai/shared";
+import type { PaperclipPluginManifestV1 } from "@bostan/shared";
 
 const FAKE_MANIFEST: PaperclipPluginManifestV1 = {
   id: "test-env-plugin",

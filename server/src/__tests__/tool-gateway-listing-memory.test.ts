@@ -19,7 +19,7 @@ import {
   toolMcpGatewayTokens,
 } from "@paperclipai/db";
 import { and, eq } from "drizzle-orm";
-import type { ToolAccessDecisionInput } from "@paperclipai/shared";
+import type { ToolAccessDecisionInput } from "@bostan/shared";
 import {
   createToolAccessDecisionCache,
   toolAccessPolicyService,

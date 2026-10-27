@@ -38,7 +38,7 @@ import type {
   PluginJobRunStatus,
   PluginJobRunTrigger,
   PluginJobRecord,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { notFound } from "../errors.js";
 
 /**

@@ -6,7 +6,7 @@ import {
   emailEndpointSetupSchema,
   emailSendSchema,
   isUuidLike,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import type { Db } from "@paperclipai/db";
 import { validate } from "../middleware/validate.js";
 import { assertBoard, assertCompanyAccess, hasCompanyAccess } from "./authz.js";

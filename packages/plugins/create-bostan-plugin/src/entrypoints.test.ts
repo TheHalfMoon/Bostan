@@ -47,7 +47,7 @@ describe("create-bostan-plugin entrypoints", () => {
       description: "A Bostan plugin", paperclipPlugin: { manifest: "./dist/manifest.js" } });
     expect(manifest.devDependencies["@bostan/plugin-sdk"]).toBe(
       "link:" + path.relative(target, sdkPath).split(path.sep).join("/"));
-    expect(manifest.devDependencies["@paperclipai/shared"]).toBeUndefined();
+    expect(manifest.devDependencies["@bostan/shared"]).toBeUndefined();
     expect(fs.existsSync(path.join(target, ".paperclip-sdk"))).toBe(false);
     const readme = fs.readFileSync(path.join(target, "README.md"), "utf8");
     expect(readme).toContain("bostan plugin install ");

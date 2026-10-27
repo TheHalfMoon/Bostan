@@ -3,7 +3,7 @@ import { heartbeatRuns, type Db } from "@paperclipai/db";
 import {
   isResponsibleUserDenialCode,
   type ResponsibleUserDenialCode,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { logger } from "../middleware/logger.js";
 import { publishLiveEvent } from "./live-events.js";
 

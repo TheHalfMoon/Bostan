@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import os from "node:os";
 import path from "node:path";
-import type { QuotaWindow } from "@paperclipai/adapter-utils";
+import type { QuotaWindow } from "@bostan/adapter-utils";
 
 // Pure utility functions — import directly from adapter source
 import {

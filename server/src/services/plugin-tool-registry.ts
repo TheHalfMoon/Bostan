@@ -22,7 +22,7 @@
 import type {
   PaperclipPluginManifestV1,
   PluginToolDeclaration,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import type { ToolRunContext, ToolResult, ExecuteToolParams } from "@bostan/plugin-sdk";
 import type { PluginWorkerManager } from "./plugin-worker-manager.js";
 import { logger } from "../middleware/logger.js";

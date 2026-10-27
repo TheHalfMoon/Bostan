@@ -11,7 +11,7 @@ import {
 } from "./run-failure-diagnostics.js";
 import { logger } from "../middleware/logger.js";
 import { isUnexpectedRunCancellation } from "./run-cancellation.js";
-import { readConnectionFailure, type ConnectionFailure } from "@paperclipai/adapter-utils/connection-failure";
+import { readConnectionFailure, type ConnectionFailure } from "@bostan/adapter-utils/connection-failure";
 import { isAiConnectionConfigurationReason } from "./ai-connection-configuration-failure.js";
 import { readRunFailureReportingMode, type RunFailureReportingMode } from "../sentry-run-failure-policy.js";
 import { RESTRICTED_WORKSPACE_SOURCE_REASON } from "./workspace-source-restriction.js";

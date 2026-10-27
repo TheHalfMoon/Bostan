@@ -4,7 +4,7 @@ import {
   aiConnectionCatalogSlug,
   isAiConnectionCompatible,
   type AiConnectionBinding,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   Select,
   SelectContent,

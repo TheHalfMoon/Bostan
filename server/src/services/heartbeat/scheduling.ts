@@ -17,7 +17,7 @@ import {
   PROVIDER_QUOTA_MONITOR_SERVICE_NAME,
   EXECUTION_RECONCILIATION_CAUSES,
   isUuidLike,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   and,
   eq,

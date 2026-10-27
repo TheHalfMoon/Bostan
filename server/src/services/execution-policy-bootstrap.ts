@@ -18,7 +18,7 @@
  */
 
 import type { Db } from "@paperclipai/db";
-import type { InstanceExecutionMode } from "@paperclipai/shared";
+import type { InstanceExecutionMode } from "@bostan/shared";
 import { logger } from "../middleware/logger.js";
 import { environmentService, type KubernetesEnvironmentConfigInput } from "./environments.js";
 import { instanceSettingsService } from "./instance-settings.js";

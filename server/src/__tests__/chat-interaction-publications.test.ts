@@ -19,7 +19,7 @@ import {
   toolApplications,
   toolConnections,
 } from "@paperclipai/db";
-import type { ChatProvider } from "@paperclipai/shared";
+import type { ChatProvider } from "@bostan/shared";
 import { enqueueIssueInteractionChatPublications, enqueueTerminalIssueInteractionChatPublications } from "../services/chat-interaction-publications.js";
 import { issueThreadInteractionService } from "../services/issue-thread-interactions.js";
 import {

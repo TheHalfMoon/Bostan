@@ -11,7 +11,7 @@ import { emitConnectionUpdated } from "../../connector-telemetry.js";
 import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { connectionGrants, connectionTokenIssuances, companySecretBindings, companySecrets, userSecretDefinitions, userSecretDeclarations, toolApplications, toolCatalogEntries, toolConnectionInstalls, toolConnections, toolOauthStates, toolGatewaySessions, toolMcpGateways, toolMcpGatewayTokens, toolProfileBindings, toolProfileEntries, toolProfiles, toolRuntimeSlots } from "@paperclipai/db";
-import type { ToolConnectionRemovalResult, ToolConnectionRemovalSummary } from "@paperclipai/shared";
+import type { ToolConnectionRemovalResult, ToolConnectionRemovalSummary } from "@bostan/shared";
 import { notFound } from "../../../errors.js";
 import { logger } from "../../../middleware/logger.js";
 import { forgetMcpHttpSessions } from "../../mcp-http.js";

@@ -1,5 +1,5 @@
 import { notifyLoginSessionChanged } from "./login-cleanup-notifications.js";
-import { WORKSPACE_RESTORE_LOCK_TIMEOUT_CODE } from "@paperclipai/adapter-utils/workspace-restore-merge";
+import { WORKSPACE_RESTORE_LOCK_TIMEOUT_CODE } from "@bostan/adapter-utils/workspace-restore-merge";
 import { withAccountHomeSecretMutationLock } from "@bostan/adapter-codex-local/server";
 import { syncConnectionCredentialBindings } from "./connection-credential-bindings.js";
 import { createHash, randomUUID } from "node:crypto";
@@ -38,7 +38,7 @@ import {
   type AiConnectionUsage,
   type CreateAiConnection,
   type AiConnectionLoginIntent,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { forbidden, notFound, unprocessable } from "../errors.js";
 import { aiConnectionConfigurationFailure, aiConnectionCredentialNotSharedFailure } from "./ai-connection-configuration-failure.js";
 import { quotaCredentialRecovery, quotaCredentialHash } from "./quota-credential-recovery.js";

@@ -1,4 +1,4 @@
-import type { AgentInstructionCommitReceipt } from "@paperclipai/shared";
+import type { AgentInstructionCommitReceipt } from "@bostan/shared";
 import { z } from "zod";
 import type { Db } from "@paperclipai/db";
 import { badRequest, notFound } from "../../errors.js";

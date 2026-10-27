@@ -4,7 +4,7 @@ import { inject } from "light-my-request";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { type Db, mcpMutationReceipts } from "@paperclipai/db";
-import { ISSUE_STATUSES } from "@paperclipai/shared";
+import { ISSUE_STATUSES } from "@bostan/shared";
 import { errorHandler } from "../../middleware/error-handler.js";
 import { DEFAULT_JSON_BODY_LIMIT } from "../../http/body-limits.js";
 import { logActivity } from "../activity-log.js";

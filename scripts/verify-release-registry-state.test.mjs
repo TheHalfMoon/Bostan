@@ -115,7 +115,7 @@ test("verifyPackageRegistryState tolerates a stale root versions map when dist-t
       },
     ],
     [
-      "@paperclipai/shared",
+      "@bostan/shared",
       {
         versions: {},
       },
@@ -128,14 +128,14 @@ test("verifyPackageRegistryState tolerates a stale root versions map when dist-t
         name: "@paperclipai/ui",
         version: "2026.430.0-canary.0",
         dependencies: {
-          "@paperclipai/shared": "2026.430.0-canary.0",
+          "@bostan/shared": "2026.430.0-canary.0",
         },
       },
     ],
     [
-      createManifestLookupKey("@paperclipai/shared", "2026.430.0-canary.0"),
+      createManifestLookupKey("@bostan/shared", "2026.430.0-canary.0"),
       {
-        name: "@paperclipai/shared",
+        name: "@bostan/shared",
         version: "2026.430.0-canary.0",
       },
     ],

@@ -144,7 +144,7 @@ export function createChatPublicationResolution(db: Db, options: ResolutionOptio
     action: "mark_delivered" | "retry_anyway" | "cancel",
     userId: string,
     fileTransfer?: {
-      phase: import("@paperclipai/shared").ChatFileTransferPhase;
+      phase: import("@bostan/shared").ChatFileTransferPhase;
       version: number;
     },
   ) {

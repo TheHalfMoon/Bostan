@@ -18,7 +18,7 @@ import {
   heartbeatRuns,
   secretAccessEvents,
 } from "@paperclipai/db";
-import { LOW_TRUST_REVIEW_PRESET, type AgentApiKeyScope } from "@paperclipai/shared";
+import { LOW_TRUST_REVIEW_PRESET, type AgentApiKeyScope } from "@bostan/shared";
 import { REDACTED_EVENT_VALUE } from "../redaction.js";
 import { errorHandler } from "../middleware/error-handler.js";
 import { secretRoutes } from "../routes/secrets.js";

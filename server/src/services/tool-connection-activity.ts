@@ -9,7 +9,7 @@ import {
 import type {
   ToolConnectionLifecycleEvent,
   ToolConnectionLifecycleEventType,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 /** Activity-log actions rendered as connection lifecycle rows. */
 export const CONNECTION_LIFECYCLE_ACTIONS = [

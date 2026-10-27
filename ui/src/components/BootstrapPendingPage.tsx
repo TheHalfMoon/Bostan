@@ -3,7 +3,7 @@ import { Loader2, ShieldCheck, TriangleAlert } from "lucide-react";
 import { Link } from "@/lib/router";
 import { Button } from "@/components/ui/button";
 import { BOSTAN_BOOTSTRAP_PREVIEW_NOTICE } from "@/bootstrapSetup";
-import type { AuthSession } from "@paperclipai/shared";
+import type { AuthSession } from "@bostan/shared";
 import { Card } from "@/components/ui/card";
 
 type BootstrapPendingPageProps = {

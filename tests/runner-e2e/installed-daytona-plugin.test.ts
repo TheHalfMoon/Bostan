@@ -25,7 +25,7 @@ async function fixture() {
   }
   const plugin = await pkg("@bostan/plugin-daytona", "0.1.1", { "@bostan/plugin-sdk": sdkVersion, "@daytonaio/sdk": "0.203.0" }, { paperclipPlugin: { manifest: "./dist/manifest.js", worker: "./dist/worker.js" } });
   await writeFile(join(plugin.root, "dist/manifest.js"), "// manifest"); await writeFile(join(plugin.root, "dist/worker.js"), "// worker");
-  const authority: InstalledDaytonaPluginAuthority = { schema: "paperclip.e2e.installed-daytona-plugin/v1", graphRoot: root, plugin: { ...plugin, manifestSha256: hash("// manifest"), workerSha256: hash("// worker") }, sdk: await pkg("@bostan/plugin-sdk", sdkVersion, { "@paperclipai/shared": "0.3.1" }), shared: await pkg("@paperclipai/shared", "0.3.1"), daytona: await pkg("@daytonaio/sdk", "0.203.0") };
+  const authority: InstalledDaytonaPluginAuthority = { schema: "paperclip.e2e.installed-daytona-plugin/v1", graphRoot: root, plugin: { ...plugin, manifestSha256: hash("// manifest"), workerSha256: hash("// worker") }, sdk: await pkg("@bostan/plugin-sdk", sdkVersion, { "@bostan/shared": "0.3.1" }), shared: await pkg("@bostan/shared", "0.3.1"), daytona: await pkg("@daytonaio/sdk", "0.203.0") };
   const authorityPath = join(root, "authority.json");
   const env: NodeJS.ProcessEnv = { PAPERCLIP_RUNNER_E2E_INSTALLED_CLI: "/reviewed/cli", PAPERCLIP_RUNNER_E2E_INSTALLED_CLI_SHA256: "reviewed-separately", PAPERCLIP_RUNNER_E2E_INSTALLED_SERVER_ROOT: "/reviewed/server", PAPERCLIP_RUNNER_E2E_INSTALLED_SERVER_SHA256: "reviewed-separately", PAPERCLIP_RUNNER_E2E_INSTALLED_DAYTONA_PLUGIN: plugin.root, PAPERCLIP_RUNNER_E2E_INSTALLED_DAYTONA_PLUGIN_AUTHORITY: authorityPath };
   async function seal() { const bytes = JSON.stringify(authority); await writeFile(authorityPath, bytes); env.PAPERCLIP_RUNNER_E2E_INSTALLED_DAYTONA_PLUGIN_AUTHORITY_SHA256 = hash(bytes); }
@@ -70,7 +70,7 @@ it("rejects source exports and workspace dependency versions even with refreshed
 it("rejects linked or escaped roots and a shadowed foreign resolved dependency", async () => {
   const f = await fixture(); const other = await fixture();
   f.authority.shared=other.authority.shared;await f.seal();await expect(verifyInstalledDaytonaPlugin(f.env,[cell])).rejects.toThrow("escapes");
-  f.authority.shared={...other.authority.shared,root:join(f.root,"node_modules/@paperclipai/shared")};await f.seal();
+  f.authority.shared={...other.authority.shared,root:join(f.root,"node_modules/@bostan/shared")};await f.seal();
   const nested=join(f.authority.plugin.root,"node_modules/@paperclipai");await mkdir(nested,{recursive:true});await symlink(other.authority.sdk.root,join(nested,"plugin-sdk"));
   await expect(verifyInstalledDaytonaPlugin(f.env,[cell])).rejects.toThrow("foreign dependency");
   await rm(nested,{recursive:true});await rm(f.authority.shared.root,{recursive:true});await symlink(other.authority.shared.root,f.authority.shared.root);

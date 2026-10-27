@@ -9,7 +9,7 @@ import express from "express";
 import request from "supertest";
 import { createDb, companies, companyMemberships, companyObservability, companySecrets, companySecretBindings, activityLog } from "@paperclipai/db";
 import { startEmbeddedPostgresTestDatabase } from "@paperclipai/db/test-embedded-postgres";
-import { DEFAULT_AGENT_OBSERVABILITY_CAPTURE, type UpdateAgentObservabilityRequest } from "@paperclipai/shared";
+import { DEFAULT_AGENT_OBSERVABILITY_CAPTURE, type UpdateAgentObservabilityRequest } from "@bostan/shared";
 import { agentObservabilityService } from "../services/agent-observability.js";
 import { deleteCompany } from "../services/company-deletion.js";
 import { agentObservabilityRoutes } from "../routes/agent-observability.js";

@@ -19,7 +19,7 @@ import type {
   ConnectionGrantKind,
   VercelConnectCredentialReference,
   VercelConnectGrantReference,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 export type VercelConnectFailureCode =
   | "vercel_connect_unavailable"

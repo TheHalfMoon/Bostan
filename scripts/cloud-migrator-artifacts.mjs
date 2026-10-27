@@ -45,7 +45,7 @@ export function assertLockfile(lock, manifest) {
     const expected = manifest.packages[name];
     if (pin?.version !== version || pin.integrity !== expected.integrity || pin.resolved !== expected.url || pin.link || pin.inBundle) throw new Error("Migrator lockfile package pin mismatch.");
   }
-  if (lock.packages["node_modules/@paperclipai/db"].dependencies?.["@paperclipai/shared"] !== version) throw new Error("Migrator shared dependency mismatch.");
+  if (lock.packages["node_modules/@paperclipai/db"].dependencies?.["@bostan/shared"] !== version) throw new Error("Migrator shared dependency mismatch.");
   for (const [key, entry] of Object.entries(lock.packages)) {
     if (key === "") continue;
     if (!entry || typeof entry !== "object" || entry.link) throw new Error("Invalid migrator lockfile entry.");
@@ -74,7 +74,7 @@ export function buildBundle(directory, sha, { exec = execFileSync } = {}) {
   try {
     for (const name of names) copyFileSync(path.join(directory, `${name}.tgz`), path.join(scratch, `${name}.tgz`));
     const root = { name: "paperclip-migrator-install-root", version: "0.0.0", private: true,
-      dependencies: { "@paperclipai/db": "file:db.tgz", "@paperclipai/shared": "file:shared.tgz" } };
+      dependencies: { "@paperclipai/db": "file:db.tgz", "@bostan/shared": "file:shared.tgz" } };
     writeFileSync(path.join(scratch, "package.json"), JSON.stringify(root));
     exec("npm", ["install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund", "--registry=https://registry.npmjs.org"], { cwd: scratch, stdio: "inherit", timeout: 180_000 });
     const lock = JSON.parse(readFileSync(path.join(scratch, "package-lock.json"), "utf8"));
@@ -128,7 +128,7 @@ export function verifyInstall(directory, sha, { exec = execFileSync } = {}) {
     exec("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund", "--update-notifier=false", "--cache", path.join(scratch, "empty-cache"),
       "--registry=https://registry.npmjs.org"], { cwd: scratch, stdio: "inherit", timeout: 180_000 });
     for (const name of names) assertMetadata(JSON.parse(readFileSync(path.join(scratch, "node_modules", "@paperclipai", name, "package.json"), "utf8")), `@paperclipai/${name}`, sha);
-    exec(process.execPath, ["--input-type=module", "--eval", "await import('@paperclipai/db'); await import('@paperclipai/shared');"], { cwd: scratch, stdio: "inherit", timeout: 30_000 });
+    exec(process.execPath, ["--input-type=module", "--eval", "await import('@paperclipai/db'); await import('@bostan/shared');"], { cwd: scratch, stdio: "inherit", timeout: 30_000 });
   } finally { rmSync(scratch, { recursive: true, force: true }); }
 }
 

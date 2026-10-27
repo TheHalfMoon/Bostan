@@ -4,7 +4,7 @@ import { and, asc, eq, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "@paperclipai/db";
 import { agentWakeupRequests, chatActions, chatDeliveries, chatMessageLinks, chatPublications, issueComments } from "@paperclipai/db";
-import { isUuidLike } from "@paperclipai/shared";
+import { isUuidLike } from "@bostan/shared";
 import { NativeChatReviewPresentationContentionError } from "../../native-runtime/native-chat-review-presentation.js";
 import { isExternalChatWaitAuthorizationContention } from "../../native-runtime/chat-attachment-reuse.js";
 import { projectSafeChatPublication } from "../../chat-publication-projection.js";

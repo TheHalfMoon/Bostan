@@ -19,7 +19,7 @@ import {
   issueDocuments,
   issues,
 } from "@paperclipai/db";
-import { readPaperclipSkillSyncPreference } from "@paperclipai/adapter-utils/server-utils";
+import { readPaperclipSkillSyncPreference } from "@bostan/adapter-utils/server-utils";
 import { claudeConfigDir, parseClaudeStreamJson } from "@bostan/adapter-claude-local/server";
 import { codexHomeDir, parseCodexJsonl } from "@bostan/adapter-codex-local/server";
 import { parseOpenCodeJsonl } from "@bostan/adapter-opencode-local/server";
@@ -36,7 +36,7 @@ import {
   type FeedbackTraceStatus,
   type FeedbackTraceTargetSummary,
   type FeedbackVoteValue,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { resolveHomeAwarePath, resolvePaperclipInstanceRoot } from "../home-paths.js";
 import { notFound, unprocessable } from "../errors.js";
 import { agentInstructionsBundleMode, agentInstructionsService } from "./agent-instructions.js";

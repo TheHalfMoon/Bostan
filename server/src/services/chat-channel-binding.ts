@@ -5,7 +5,7 @@ import {
   chatEndpoints,
   chatPublications,
 } from "@paperclipai/db";
-import type { ExternalChannelBindingSummary } from "@paperclipai/shared";
+import type { ExternalChannelBindingSummary } from "@bostan/shared";
 import { chatProviderConversationUrl } from "./chat-provider-links.js";
 
 /**

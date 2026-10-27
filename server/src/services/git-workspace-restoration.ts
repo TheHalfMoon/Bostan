@@ -17,7 +17,7 @@ import { findRegenerableWorkspaceDirs } from "./workspace-compaction.js";
 import { ensureGitRestorePointCommit, validateGitRestorePointRef, type GitRestorePointRef } from "./git-restore-point-storage.js";
 import { getStorageService } from "../storage/index.js";
 import type { StorageService } from "../storage/types.js";
-import { PROJECT_REPOSITORIES_DIR } from "@paperclipai/adapter-utils/git-workspace-sync";
+import { PROJECT_REPOSITORIES_DIR } from "@bostan/adapter-utils/git-workspace-sync";
 
 const execFile = promisify(execFileCallback);
 const shaPattern = /^[a-f0-9]{40}$/;

@@ -26,7 +26,7 @@ import {
   type CompanyArtifactMediaKind,
   type CompanyArtifactsQuery,
   type CompanyArtifactsResponse,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { badRequest, notFound } from "../errors.js";
 import type { StorageService } from "../storage/types.js";
 

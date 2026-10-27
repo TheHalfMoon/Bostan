@@ -10,7 +10,7 @@ import { pendingNativeGovernance } from "../services/native-runtime/native-run-f
 import { getConversationConfirmationContext } from "../services/conversation-confirmation-context.js";
 
 const { resolvedTelemetry } = vi.hoisted(() => ({ resolvedTelemetry: vi.fn() }));
-vi.mock("@paperclipai/shared/telemetry", async importOriginal => ({
+vi.mock("@bostan/shared/telemetry", async importOriginal => ({
   ...await importOriginal<Record<string, unknown>>(), trackInteractionResolved: resolvedTelemetry, trackInteractionCreated: vi.fn(),
 }));
 vi.mock("../telemetry.js", async importOriginal => ({

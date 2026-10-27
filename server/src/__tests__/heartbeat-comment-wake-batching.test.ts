@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { WebSocketServer } from "ws";
-import { FAST_RESPONSE_AGENT_GUIDANCE } from "@paperclipai/shared";
+import { FAST_RESPONSE_AGENT_GUIDANCE } from "@bostan/shared";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
   agents,

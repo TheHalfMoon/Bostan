@@ -5,7 +5,7 @@ import type { EndpointRow } from "../runtime-types.js";
 import { type CredentialMutationLeaseGuard } from "../../chat-credential-mutation-lease.js";
 
 import { photonSharedScope, photonSharedIdentity } from "../../photon/cloud.js";
-import { photonChannelConfigurationSchema } from "@paperclipai/shared";
+import { photonChannelConfigurationSchema } from "@bostan/shared";
 
 import {
   and,
@@ -19,7 +19,7 @@ import {
 } from "@paperclipai/db";
 import type {
   ConfigureChatEndpointInput,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   conflict,

@@ -9,7 +9,7 @@ import type {
   MoveFolder,
   MoveFolderItem,
   UpdateFolder,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { conflict, forbidden, notFound, unprocessable } from "../errors.js";
 
 const MAX_FOLDER_DEPTH = 4;

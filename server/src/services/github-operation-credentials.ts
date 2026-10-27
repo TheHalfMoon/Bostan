@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { isUuidLike } from "@paperclipai/shared";
+import { isUuidLike } from "@bostan/shared";
 import {
   agents,
   heartbeatRuns,

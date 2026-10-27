@@ -1,4 +1,4 @@
-import { slackTestMessageSchema, slackRegistrationSchema, slackSetupActionSchema, slackManagedProvisionSchema } from "@paperclipai/shared";
+import { slackTestMessageSchema, slackRegistrationSchema, slackSetupActionSchema, slackManagedProvisionSchema } from "@bostan/shared";
 import { isCrossSiteOAuthCallbackNavigation, oauthCallbackInterstitialHtml } from "../lib/oauth-browser-return.js";
 import {
   Router,
@@ -7,7 +7,7 @@ import {
 } from "express";
 import { z } from "zod";
 import { githubChatManagementService } from "../services/chat-github-management.js";
-import { updateGitHubChatConfigurationSchema } from "@paperclipai/shared";
+import { updateGitHubChatConfigurationSchema } from "@bostan/shared";
 import type { Db } from "@paperclipai/db";
 import {
   CHAT_PROVIDERS,
@@ -25,7 +25,7 @@ import {
   resolveChatPublicationSchema,
   updateChatEndpointSchema,
   type ChatProvider,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { validate } from "../middleware/validate.js";
 import {
   chatChannelService,

@@ -7,7 +7,7 @@ import { providerTraceRecords } from "@paperclipai/db";
 import type {
   ProviderTraceFrame,
   ProviderTraceMetadata,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { resolvePaperclipInstanceRoot } from "../home-paths.js";
 import { logActivity } from "./activity-log.js";
 

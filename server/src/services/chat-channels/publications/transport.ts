@@ -35,7 +35,7 @@ import type {
   ChatEndpointSetupState,
   ChatProvider,
   SafeChatPublicationPayload,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import { telegramAttachmentForUpload } from "../../chat-telegram-photo.js";
 

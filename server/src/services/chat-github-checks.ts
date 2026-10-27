@@ -15,7 +15,7 @@ import {
   heartbeatRuns,
   type Db,
 } from "@paperclipai/db";
-import type { GitHubReviewEventContext } from "@paperclipai/shared";
+import type { GitHubReviewEventContext } from "@bostan/shared";
 import { runtimePublicOrigin } from "./cloud-runtime-identity.js";
 import {
   githubBotRepositoryToken,

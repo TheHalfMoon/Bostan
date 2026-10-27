@@ -9,7 +9,7 @@ import { definePlugin } from "../../../packages/plugins/sdk/src/define-plugin.js
 import { startWorkerRpcHost } from "../../../packages/plugins/sdk/src/worker-rpc-host.js";
 import { createRequest, parseMessage, serializeMessage, isJsonRpcSuccessResponse, isJsonRpcErrorResponse } from "../../../packages/plugins/sdk/src/protocol.js";
 import { environmentTaskOperationSchema, type PluginEnvironmentTaskOperation } from "@bostan/plugin-sdk";
-import type { PaperclipPluginManifestV1 } from "@paperclipai/shared";
+import type { PaperclipPluginManifestV1 } from "@bostan/shared";
 import { agentEnvironmentTestService } from "../services/agent-environment-test.js";
 import { heartbeatService } from "../services/heartbeat.js";
 import { remoteExecutionHasStopped } from "../services/remote-execution-termination.js";

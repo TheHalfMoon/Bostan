@@ -1,4 +1,4 @@
-import { slackSearchConfigSchema } from "@paperclipai/shared";
+import { slackSearchConfigSchema } from "@bostan/shared";
 import { SLACK_NATIVE_SEARCH_LIMITATION } from "./slack-native-search.js";
 import { syncConnectionCredentialBindings } from "../connection-credential-bindings.js";
 import { randomBytes } from "node:crypto";

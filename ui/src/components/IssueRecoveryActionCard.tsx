@@ -1,6 +1,6 @@
-import { isNativeWorkspaceExportRepairCause } from "@paperclipai/shared";
+import { isNativeWorkspaceExportRepairCause } from "@bostan/shared";
 import { useWorkspaceIsolationControls } from "@/hooks/useWorkspaceIsolationControls";
-import { requiresExecutionReconciliation } from "@paperclipai/shared";
+import { requiresExecutionReconciliation } from "@bostan/shared";
 import { useMemo, useState } from "react";
 import type {
   Agent,
@@ -10,7 +10,7 @@ import type {
   IssueRecoveryActionOutcome,
   IssueRecoveryActionStatus,
   IssueScheduledRetry,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   Eye,
   GitBranch,

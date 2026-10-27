@@ -16,7 +16,7 @@ import { type CredentialMutationLeaseGuard } from "../chat-credential-mutation-l
 
 import { photonSharedScope } from "../photon/cloud.js";
 
-import { photonChannelConfigurationSchema } from "@paperclipai/shared";
+import { photonChannelConfigurationSchema } from "@bostan/shared";
 
 import {
   randomBytes,
@@ -39,7 +39,7 @@ import {
 import type {
   ChatProvider,
   ToolCredentialSecretRef,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import { isUniqueViolation } from "../../db-errors.js";
 

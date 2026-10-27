@@ -16,7 +16,7 @@ import {
   parseInspectionQuery,
   type InspectionQuery,
   type InspectionPermit,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { customerSuccessRunAuthority } from "../services/customer-success-authority.js";
 import {
   readCustomerSuccessResource,

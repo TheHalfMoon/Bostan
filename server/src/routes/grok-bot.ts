@@ -2,7 +2,7 @@ import { Router, type Request } from "express";
 import { z } from "zod";
 import { heartbeatRuns, issues, type Db } from "@paperclipai/db";
 import { and, eq, sql } from "drizzle-orm";
-import { createGrokInvitationSchema, configureGrokRoutineSchema, verifyGrokRoutineSchema, recoverGrokRoutineSchema, pairGrokBindingSchema, stopGrokWorkSchema, retryGrokDeliverySchema } from "@paperclipai/shared";
+import { createGrokInvitationSchema, configureGrokRoutineSchema, verifyGrokRoutineSchema, recoverGrokRoutineSchema, pairGrokBindingSchema, stopGrokWorkSchema, retryGrokDeliverySchema } from "@bostan/shared";
 import { assertBoard, assertCompanyAccess } from "./authz.js";
 import { forbidden, HttpError, notFound } from "../errors.js";
 import { issueReadSqlCondition } from "../services/authorization.js";

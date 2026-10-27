@@ -12,7 +12,7 @@ import type {
   SecretProvider,
   SecretVersionSelector,
   SshEnvironmentConfig,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { unprocessable } from "../errors.js";
 import { parseObject } from "../adapters/utils.js";
 import { secretService } from "./secrets.js";

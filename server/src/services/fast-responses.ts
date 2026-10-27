@@ -47,7 +47,7 @@ import {
   type FastResponseHistoryEntry,
   type UpdateFastResponse,
   type FastResponseTestResult,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { aiConnectionService } from "./ai-connections.js";
 import { instanceSettingsService } from "./instance-settings.js";
 import { isAutomaticRecoverySuppressedByPauseHold } from "./recovery/pause-hold-guard.js";

@@ -7,7 +7,7 @@ import {
   moveFolderItemSchema,
   moveFolderSchema,
   updateFolderSchema,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { validate } from "../middleware/validate.js";
 import { badRequest, forbidden } from "../errors.js";
 import { folderService, logActivity } from "../services/index.js";

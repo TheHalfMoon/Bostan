@@ -3,7 +3,7 @@ import type { Db } from "@paperclipai/db";
 import {
   updateDocumentResourceMembershipSchema,
   updateResourceMembershipSchema,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { validate } from "../middleware/validate.js";
 import { getActorInfo } from "./authz.js";
 import { logActivity, resourceMembershipService } from "../services/index.js";

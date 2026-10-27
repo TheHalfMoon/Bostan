@@ -11,9 +11,9 @@ import { and, eq } from "drizzle-orm";
 import { agents, companies, createDb, executionWorkspaces, executionWorkspaceRepositories, heartbeatRuns, issues } from "@paperclipai/db";
 import { executionWorkspaceService } from "../services/execution-workspaces.js";
 import { executionWorkspaceRepositoryService } from "../services/execution-workspace-repositories.js";
-import { listLocalProjectRepositories } from "@paperclipai/adapter-utils/ssh";
-import { readManagedWorkspaceRepositories, disposeGitWorkspaceSnapshot } from "@paperclipai/adapter-utils/git-workspace-sync";
-import { captureDirectorySnapshot, disposeDirectorySnapshot } from "@paperclipai/adapter-utils/workspace-restore-merge";
+import { listLocalProjectRepositories } from "@bostan/adapter-utils/ssh";
+import { readManagedWorkspaceRepositories, disposeGitWorkspaceSnapshot } from "@bostan/adapter-utils/git-workspace-sync";
+import { captureDirectorySnapshot, disposeDirectorySnapshot } from "@bostan/adapter-utils/workspace-restore-merge";
 import { getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 
 const catalog = vi.hoisted(() => ({ available: true }));

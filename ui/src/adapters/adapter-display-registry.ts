@@ -6,7 +6,7 @@
  * `getAdapterDisplay()`.
  */
 import type { ComponentType } from "react";
-import { agentHarnessType } from "@paperclipai/shared";
+import { agentHarnessType } from "@bostan/shared";
 import {
   Bot,
   Code,

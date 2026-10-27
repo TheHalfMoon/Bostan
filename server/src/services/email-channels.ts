@@ -31,7 +31,7 @@ import {
   companyMemberships,
   instanceUserRoles,
 } from "@paperclipai/db";
-import { compareCents } from "@paperclipai/shared";
+import { compareCents } from "@bostan/shared";
 import type {
   AgentPermissions,
   EmailEndpointSetupInput,
@@ -40,7 +40,7 @@ import type {
   EmailThreadSummary,
   EmailPublicationSummary,
   EmailEnvelope,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { badRequest, conflict, forbidden, notFound } from "../errors.js";
 import { environmentService } from "./environments.js";
 import { resolveExecutionWorkspaceEnvironmentId } from "./execution-workspace-policy.js";

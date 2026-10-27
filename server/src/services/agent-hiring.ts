@@ -1,5 +1,5 @@
-import { agentAppearanceSchema, randomAgentAppearance } from "@paperclipai/shared";
-import { normalizePaperclipRunnerAdapterConfig } from "@paperclipai/adapter-utils/server-utils";
+import { agentAppearanceSchema, randomAgentAppearance } from "@bostan/shared";
+import { normalizePaperclipRunnerAdapterConfig } from "@bostan/adapter-utils/server-utils";
 import { agents, toolConnectionInstalls, principalPermissionGrants, type Db } from "@paperclipai/db";
 import { eq } from "drizzle-orm";
 import { unprocessable } from "../errors.js";

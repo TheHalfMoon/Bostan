@@ -22,7 +22,7 @@ import type {
   RemoteSecretImportPreviewResult,
   RemoteSecretImportResult,
   RemoteSecretImportRowResult,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { ApiError } from "../../api/client";
 import { safeSecretUiError, safeVaultImportRowReason } from "./secret-error-messages";
 import {

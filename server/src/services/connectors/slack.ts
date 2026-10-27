@@ -3,7 +3,7 @@ import { slackDelivery } from "./slack-delivery.js";
 import { slackMessage } from "./slack-message.js";
 import { executeSlackWrite } from "./slack-writes.js";
 import { slackBotCatalogIsCurrent, syncSlackBotTools } from "./slack-catalog.js";
-import { SLACK_TOOLS } from "@paperclipai/shared";
+import { SLACK_TOOLS } from "@bostan/shared";
 import { measureRunPhase } from "../execution-preparation-timing.js";
 import { measureRunTransaction } from "../execution-transaction-timing.js";
 import { prepareSlackEndpoints } from "./slack-endpoint-preparation.js";

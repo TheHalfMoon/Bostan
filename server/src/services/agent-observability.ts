@@ -6,7 +6,7 @@ import {
   DEFAULT_AGENT_OBSERVABILITY_CAPTURE, updateAgentObservabilitySchema,
   isSameOtlpOrigin,
   type AgentObservabilitySettings, type AgentObservabilityTestReceipt, type UpdateAgentObservabilityRequest, type AgentObservabilityUnavailableReason,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { conflict, notFound, unprocessable } from "../errors.js";
 import { withAccountingTransaction } from "./accounting-transaction.js";
 import { logActivity } from "./activity-log.js";

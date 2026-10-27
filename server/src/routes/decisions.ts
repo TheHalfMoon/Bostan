@@ -9,7 +9,7 @@ import {
   type AttentionArchiveTargetSnapshot,
   type AttentionItem,
   type CreateDecisionArchiveProposalInput,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { validate } from "../middleware/validate.js";
 import { decisionService, type DecisionServiceOptions } from "../services/decisions.js";
 import { bostanRecommendationSchema, createBostanRecommendation } from "../services/bostan-decision-recommendations.js";

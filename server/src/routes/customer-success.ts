@@ -8,7 +8,7 @@ import {
   INSPECTION_PERMIT_TYPE,
   INSPECTION_HEADER,
   type InspectionPermit,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import type { StorageService } from "../storage/types.js";
 import { getCloudRuntimeIdentity } from "../services/cloud-runtime-identity.js";
 import { customerSuccessRunAuthority } from "../services/customer-success-authority.js";

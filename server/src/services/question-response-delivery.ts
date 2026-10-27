@@ -14,7 +14,7 @@ import {
 import type {
   AskUserQuestionsInteraction,
   PaperclipQuestionSetPayload,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import type { PaperclipQuestionResponse } from "../vendor/paperclip-runner/index.js";
 import { isUniqueViolation } from "../db-errors.js";
 import { getTelemetryClient } from "../telemetry.js";

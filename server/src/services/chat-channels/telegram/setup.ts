@@ -7,7 +7,7 @@ import type { Db } from "@paperclipai/db";
 
 import type {
   ConfigureChatEndpointInput,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   unprocessable,

@@ -1434,7 +1434,7 @@ test("metadata must identify the exact published artifact with valid SHA512 synt
   const fixtures = [
     { status: 404 }, { status: 401 }, { status: 403 }, { status: 302 }, { redirected: true },
     { responseUrl: "https://registry.example.invalid/metadata" }, { rawBody: "not json" },
-    { manifest: { name: "@paperclipai/shared" } }, { manifest: { version: "2026.1009.0-canary.2" } },
+    { manifest: { name: "@bostan/shared" } }, { manifest: { version: "2026.1009.0-canary.2" } },
     { manifest: { dist: { tarball: canaryTarball + "?query=1" } } },
     ...[undefined, "", "sha512-A===", `sha256-${Buffer.alloc(32).toString("base64")}`, `sha512-${Buffer.alloc(64).toString("base64")} extra`]
       .map((integrity) => ({ manifest: { dist: { integrity } } })),

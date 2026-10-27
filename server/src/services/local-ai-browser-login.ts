@@ -4,7 +4,7 @@ import { constants } from "node:fs";
 import path from "node:path";
 import { runSetupTokenLogin } from "@bostan/adapter-claude-local/server";
 import { runDeviceLogin } from "@bostan/adapter-codex-local/server";
-import { ensureCommandResolvable, resolveCommandForLogs } from "@paperclipai/adapter-utils/server-utils";
+import { ensureCommandResolvable, resolveCommandForLogs } from "@bostan/adapter-utils/server-utils";
 import { resolveCodexCommand } from "../vendor/paperclip-runner/index.js";
 
 export type LocalBrowserLoginState = {

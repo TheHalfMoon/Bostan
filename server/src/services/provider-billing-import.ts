@@ -11,7 +11,7 @@ import {
   unitsToCents,
   importProviderCostsSchema,
   type ImportProviderCosts,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { secretService } from "./secrets.js";
 import { withAccountingTransaction } from "./accounting-transaction.js";
 import { createFinanceEventInTransaction } from "./finance.js";

@@ -13,7 +13,7 @@ import {
   issueDocuments,
   issues,
 } from "@paperclipai/db";
-import { artifactReviewDocumentKey } from "@paperclipai/shared";
+import { artifactReviewDocumentKey } from "@bostan/shared";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

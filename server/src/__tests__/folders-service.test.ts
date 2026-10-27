@@ -3,7 +3,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { eq, sql } from "drizzle-orm";
 import {
   folderSlugSchema,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   companies,
   companySkills,

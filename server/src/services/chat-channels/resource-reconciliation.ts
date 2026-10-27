@@ -6,7 +6,7 @@ import { telegramResourceLabelIsFallback, prepareTelegramResourceMigration, migr
 import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
 import { chatConversations, chatDeliveries, chatEndpointResources, chatEndpoints, toolConnections, type Db } from "@paperclipai/db";
 import { assertChatExecutionDefaultsAccess } from "../chat-execution-defaults.js";
-import type { ChatExecutionDefaults, ChatEndpointSetupState } from "@paperclipai/shared";
+import type { ChatExecutionDefaults, ChatEndpointSetupState } from "@bostan/shared";
 import { badRequest, conflict, notFound, unprocessable } from "../../errors.js";
 import { redactSensitiveText } from "../../redaction.js";
 import { notifyChatDeliveryWork, notifyChatEndpointWork } from "../chat-work-notifications.js";

@@ -17,7 +17,7 @@ const fakeScript = (root, body) => { const script = join(root, 'fake-prepare.mjs
 
 test('package names map to stable log and timing slugs', () => {
   assert.equal(bundledPackageSlug('@paperclipai/server'), 'server');
-  assert.equal(bundledPackageSlug('@paperclipai/adapter-utils'), 'adapter_utils');
+  assert.equal(bundledPackageSlug('@bostan/adapter-utils'), 'adapter_utils');
   assert.equal(bundledPackageSlug('@paperclipai/db'), 'db');
 });
 
@@ -96,7 +96,7 @@ test('a failed install rejects with the tail of its own log and leaves the other
     if (target.endsWith('package-1')) { console.error('bundled install exploded'); process.exit(2); }
     setTimeout(() => {}, 30_000);
   `);
-  const installs = startBundledInstalls(entriesFor(root, ['@paperclipai/server', '@paperclipai/adapter-utils']), { logDir: root, cwd: root, script });
+  const installs = startBundledInstalls(entriesFor(root, ['@paperclipai/server', '@bostan/adapter-utils']), { logDir: root, cwd: root, script });
   await assert.rejects(Promise.all(installs.map(({ handle }) => handle.done)), /bundled-adapter_utils prefetch failed \(exit 2\): bundled install exploded/);
   assert.equal(installs[0].handle.child.exitCode, null, 'the other install is still running when the failure surfaces');
   await stopPrefetches(installs.map(({ handle }) => handle));

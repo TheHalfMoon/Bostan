@@ -9,7 +9,7 @@ import {
   isMarkdownAttachmentContent,
   type AttachmentArtifactWorkProductMetadata,
   type IssueWorkProduct,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   HttpError,
   conflict,

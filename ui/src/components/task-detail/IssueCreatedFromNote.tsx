@@ -1,4 +1,4 @@
-import type { IssueCreationSource } from "@paperclipai/shared";
+import type { IssueCreationSource } from "@bostan/shared";
 import { GitBranch } from "lucide-react";
 import {
   createIssueDetailPath,

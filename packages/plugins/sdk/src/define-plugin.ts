@@ -1,7 +1,7 @@
 import type { PluginWorkspaceParams, PluginWorkspaceResult } from "./workspace-provider.js";
 import type { PluginEnvironmentTaskParams, PluginEnvironmentTaskResult } from "./environment-tasks.js";
-import type { AgentLifecycleRequest, AgentLifecycleResult } from "@paperclipai/shared";
-import type { AiConnectionRouterRequest, AiConnectionRouterResult } from "@paperclipai/shared";
+import type { AgentLifecycleRequest, AgentLifecycleResult } from "@bostan/shared";
+import type { AiConnectionRouterRequest, AiConnectionRouterResult } from "@bostan/shared";
 /**
  * `definePlugin` — the top-level helper for authoring a Paperclip plugin.
  *

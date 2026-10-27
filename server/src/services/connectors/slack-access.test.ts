@@ -8,7 +8,7 @@ import {
 import { slackClient } from "./slack-client.js";
 import type { SlackTaskAuthority } from "./slack-authority.js";
 import type { Db } from "@paperclipai/db";
-import { SLACK_TOOLS } from "@paperclipai/shared";
+import { SLACK_TOOLS } from "@bostan/shared";
 import { tooManyRequests, unprocessable } from "../../errors.js";
 const authority = {
   endpoint: {

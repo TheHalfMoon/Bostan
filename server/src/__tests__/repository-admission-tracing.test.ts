@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 import { context, trace } from "@opentelemetry/api";
 import { AsyncLocalStorageContextManager } from "@opentelemetry/context-async-hooks";
 import { InMemorySpanExporter, SimpleSpanProcessor, TracerProvider, type ReadableSpan, type SpanProcessor } from "@opentelemetry/sdk-trace";
-import { withDirectoryPublicationLock } from "@paperclipai/adapter-utils/workspace-restore-merge";
+import { withDirectoryPublicationLock } from "@bostan/adapter-utils/workspace-restore-merge";
 import { createDb, executionWorkspaceRepositories, executionWorkspaces, issues, projects, projectWorkspaces, EMBEDDED_POSTGRES_TEST_TIMEOUT_MS } from "@paperclipai/db";
 import { eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";

@@ -30,7 +30,7 @@ import type {
   PrincipalType,
   SkillTestAgentKeyScope,
   TaskBridgeAgentKeyScope,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   LOW_TRUST_REVIEW_PRESET,
   extractAgentMentionIds,
@@ -38,7 +38,7 @@ import {
   lowTrustBoundarySchema,
   lowTrustReviewPresetPolicySchema,
   type LowTrustBoundary,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   LOW_TRUST_ISSUE_ANCESTRY_MAX_DEPTH,
   isIssueWithinLowTrustBoundary,

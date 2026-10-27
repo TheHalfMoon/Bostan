@@ -46,7 +46,7 @@ test('packs run together up to the concurrency, in the order given, and the tarb
     console.log(args.join(' '));
     console.log(name + '-1.0.0.tgz');
   `);
-  const entries = entriesFor(root, ['@paperclipai/server', '@paperclipai/db', '@paperclipai/shared', 'paperclipai']);
+  const entries = entriesFor(root, ['@paperclipai/server', '@paperclipai/db', '@bostan/shared', 'paperclipai']);
   const registered = [];
   const packs = await packStagedPackages(entries, { logDir: root, concurrency: 2, register: handle => registered.push(handle), command });
   assert.deepEqual(packs.map(({ name }) => name), entries.map(({ name }) => name));
@@ -77,7 +77,7 @@ test('a failed pack rejects with the tail of its log, launches nothing more, and
     if (basename(process.cwd()) === 'package-1') { console.error('pack exploded'); process.exit(2); }
     setTimeout(() => {}, 30_000);
   `);
-  const entries = entriesFor(root, ['@paperclipai/server', '@paperclipai/db', '@paperclipai/shared', 'paperclipai']);
+  const entries = entriesFor(root, ['@paperclipai/server', '@paperclipai/db', '@bostan/shared', 'paperclipai']);
   const registered = [];
   await assert.rejects(packStagedPackages(entries, { logDir: root, concurrency: 2, register: handle => registered.push(handle), command }), /pack-1 prefetch failed \(exit 2\): pack exploded/);
   await settle(100);

@@ -17,7 +17,7 @@ import type {
   AttentionArchiveManifestEntry,
   AttentionItem,
   AttentionSourceKind,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { conflict, notFound, unprocessable } from "../errors.js";
 import { logActivity } from "./activity-log.js";
 import type { AuthorizationActor } from "./authorization.js";

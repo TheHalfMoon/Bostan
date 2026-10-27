@@ -3,10 +3,10 @@ import { probePluginRunnerEnvironment } from "./native-runtime/plugin-runner-pro
 import { registerPluginTaskCredentialHandoff } from "./plugin-task-credential-writeback.js";
 import { randomUUID } from "node:crypto";
 import type { Db } from "@paperclipai/db";
-import type { AdapterExecutionTarget } from "@paperclipai/adapter-utils/execution-target";
-import type { AdapterEnvironmentCheck } from "@paperclipai/adapter-utils";
-import { parseObject } from "@paperclipai/adapter-utils/server-utils";
-import { aiRoutingHarness, ADAPTER_AUTH_MISSING_CHECK_CODE, AI_CONNECTION_CAPABILITIES, type AiConnectionBinding } from "@paperclipai/shared";
+import type { AdapterExecutionTarget } from "@bostan/adapter-utils/execution-target";
+import type { AdapterEnvironmentCheck } from "@bostan/adapter-utils";
+import { parseObject } from "@bostan/adapter-utils/server-utils";
+import { aiRoutingHarness, ADAPTER_AUTH_MISSING_CHECK_CODE, AI_CONNECTION_CAPABILITIES, type AiConnectionBinding } from "@bostan/shared";
 import { requireServerAdapter } from "../adapters/index.js";
 import { forbidden, HttpError, unprocessable } from "../errors.js";
 import { instanceSettingsService } from "./instance-settings.js";

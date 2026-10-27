@@ -4,7 +4,7 @@ import path from "node:path";
 import { readIsolatedClaudeKeychainToken } from "@bostan/adapter-claude-local/server";
 import { readCodexAuthInfo, fetchCodexQuota } from "@bostan/adapter-codex-local/server";
 import { parseGrokAuthPayload, hasUsableGrokAuthValue } from "@bostan/adapter-grok-local/server";
-import type { AiProvider } from "@paperclipai/shared";
+import type { AiProvider } from "@bostan/shared";
 import { unprocessable } from "../errors.js";
 
 /** Read and verify a connection-specific login home. */

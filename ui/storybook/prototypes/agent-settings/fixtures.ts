@@ -3,7 +3,7 @@ import type {
   AgentInstructionsBundle,
   AgentSkillSnapshot,
   CompanySkillListItem,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   storybookHiredAgent,
   storybookAgents,

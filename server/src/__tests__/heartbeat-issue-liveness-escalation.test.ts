@@ -48,9 +48,9 @@ vi.mock("../telemetry.ts", () => ({
   getTelemetryClient: () => ({ track: vi.fn() }),
 }));
 
-vi.mock("@paperclipai/shared/telemetry", async () => {
-  const actual = await vi.importActual<typeof import("@paperclipai/shared/telemetry")>(
-    "@paperclipai/shared/telemetry",
+vi.mock("@bostan/shared/telemetry", async () => {
+  const actual = await vi.importActual<typeof import("@bostan/shared/telemetry")>(
+    "@bostan/shared/telemetry",
   );
   return {
     ...actual,

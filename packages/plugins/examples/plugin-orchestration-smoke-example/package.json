@@ -31,7 +31,7 @@
     "@bostan/plugin-sdk": "workspace:*"
   },
   "devDependencies": {
-    "@paperclipai/shared": "workspace:*",
+    "@bostan/shared": "workspace:*",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-typescript": "^12.1.2",
     "@types/node": "^24.0.0",

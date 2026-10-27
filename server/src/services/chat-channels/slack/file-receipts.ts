@@ -34,7 +34,7 @@ import {
 
 import {
   isUuidLike,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   type SlackFileUploadAcceptedReceipt,

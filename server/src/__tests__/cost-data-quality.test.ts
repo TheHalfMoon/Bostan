@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq, sql } from "drizzle-orm";
-import { appearanceForPalette } from "@paperclipai/shared";
+import { appearanceForPalette } from "@bostan/shared";
 import { agents, companies, costEvents, createDb, heartbeatRuns, issues, nativeRunFinalizations } from "@paperclipai/db";
 import { costDataQualityReport, RECEIPT_WAIT_MS } from "../services/cost-data-quality.js";
 import { accountingIntegrityService } from "../services/accounting-integrity.js";

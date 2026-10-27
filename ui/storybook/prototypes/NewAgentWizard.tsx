@@ -23,7 +23,7 @@ import { useCompany } from "@/context/CompanyContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { agentsApi } from "@/api/agents";
-import type { AdapterEnvironmentTestResult, Agent } from "@paperclipai/shared";
+import type { AdapterEnvironmentTestResult, Agent } from "@bostan/shared";
 import { storybookAgents, storybookHiredAgent } from "../fixtures/paperclipData";
 import { PREVIEW_AGENT_ID, PREVIEW_COMPANY_ID, runtimeTestResult, useNewAgentFixtures, type TestOutcome, type TestState } from "./new-agent-fixtures";
 import { stepMotion } from "@/components/onboarding/onboarding-motion";

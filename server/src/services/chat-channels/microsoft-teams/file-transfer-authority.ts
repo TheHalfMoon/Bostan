@@ -49,10 +49,10 @@ import {
 import type {
   ChatEndpointSetupState,
   ToolCredentialSecretRef,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   isUuidLike,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   isAllowedContentType,
   MAX_ATTACHMENT_BYTES,

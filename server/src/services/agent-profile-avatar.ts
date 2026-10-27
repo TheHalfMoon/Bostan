@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import sharp from "sharp";
 import { agents, assets, companies, type Db } from "@paperclipai/db";
-import { MAX_AGENT_AVATAR_BYTES, resolveAgentAppearance, agentAvatarUrl, setAgentAvatarSchema, type SetAgentAvatarInput } from "@paperclipai/shared";
+import { MAX_AGENT_AVATAR_BYTES, resolveAgentAppearance, agentAvatarUrl, setAgentAvatarSchema, type SetAgentAvatarInput } from "@bostan/shared";
 import { conflict, notFound, unprocessable } from "../errors.js";
 import type { StorageService } from "../storage/types.js";
 import { logActivity, publishActivity, type ActivityPublication, type LogActivityInput } from "./activity-log.js";

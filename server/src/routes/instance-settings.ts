@@ -6,7 +6,7 @@ import {
   patchInstanceExperimentalSettingsSchema,
   patchInstanceGeneralSettingsSchema,
   startTaskDrainRequestSchema,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { conflict, forbidden } from "../errors.js";
 import {
   cloudTenantPrimaryCompanyId,

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { and, eq, exists, or } from "drizzle-orm";
 import { caseDocuments, caseIssueLinks, documents, issues, type Db } from "@paperclipai/db";
-import { isSystemIssueDocumentKey, issueDocumentKeySchema } from "@paperclipai/shared";
+import { isSystemIssueDocumentKey, issueDocumentKeySchema } from "@bostan/shared";
 import { badRequest, conflict, notFound, unprocessable } from "../errors.js";
 import { authorizationService, issueReadSqlCondition, type AuthorizationActor } from "./authorization.js";
 import { documentService } from "./documents.js";

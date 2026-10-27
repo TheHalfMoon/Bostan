@@ -5,7 +5,7 @@ import {
   agents, companies, createDb, environmentLeases, heartbeatRuns,
   issueComments, issueRecoveryActions, issues,
 } from "@paperclipai/db";
-import type { ExecutionReconciliation } from "@paperclipai/shared";
+import type { ExecutionReconciliation } from "@bostan/shared";
 import { getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "../__tests__/helpers/embedded-postgres.js";
 import { getExecutionBlocker } from "./execution-blocker.js";
 import { markExecutionReconciliation, validateExecutionReconciliation } from "./execution-recovery-resolution.js";

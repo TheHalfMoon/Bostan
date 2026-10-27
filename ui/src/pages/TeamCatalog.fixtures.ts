@@ -2,7 +2,7 @@ import type {
   CatalogTeam,
   CatalogTeamSkillPreparation,
   InstalledCatalogTeam,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 // ---------------------------------------------------------------------------
 // Shared Team Catalog fixtures.

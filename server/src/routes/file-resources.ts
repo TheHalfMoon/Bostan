@@ -12,7 +12,7 @@ import {
   type WorkspaceFileAvailabilityResponse,
   type WorkspaceFileContent,
   type WorkspaceFileListResponse,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { badRequest, HttpError, notFound, unprocessable } from "../errors.js";
 import { workspaceFileResourceService } from "../services/index.js";
 import { assertBoard, getActorInfo, hasCompanyAccess } from "./authz.js";

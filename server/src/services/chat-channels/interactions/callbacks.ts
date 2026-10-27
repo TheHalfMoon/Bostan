@@ -38,7 +38,7 @@ import type {
   ChatAdapterCapabilities,
   ChatProvider,
   SafeChatPublicationPayload,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   readTelegramCallbackProvenance,

@@ -12,7 +12,7 @@ import { agentInstructionWorkingCopyService } from "../services/agent-instructio
 import { instructionBytes, instructionPath, materializeInstructionBytes, readInstructionBytes } from "../services/agent-instruction-files.js";
 import { agentInstructionsService, resolveManagedInstructionsRoot } from "../services/agent-instructions.js";
 import type { AuthorizationActor } from "../services/authorization.js";
-import { upsertAgentInstructionsFileSchema } from "@paperclipai/shared";
+import { upsertAgentInstructionsFileSchema } from "@bostan/shared";
 
 describe("canonical instruction revisions", () => {
   let database: Awaited<ReturnType<typeof startEmbeddedPostgresTestDatabase>>;

@@ -23,7 +23,7 @@ import type { agentInstructionWorkingCopyService } from "../agent-instruction-wo
 import { createHash, randomUUID } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
-import { agentHarnessType, CHAT_PROVIDERS } from "@paperclipai/shared";
+import { agentHarnessType, CHAT_PROVIDERS } from "@bostan/shared";
 import {
   type agents,
   completionContracts,
@@ -78,8 +78,8 @@ import { CHAT_CONTROL_RECOVERY_ADMISSION_KEY } from "../chat-control-recovery-st
 import { NATIVE_PREPARATION_FENCING_VERSION } from "../native-runtime/native-active-runs.js";
 import type { issueService } from "../issues.js";
 import { buildPlanReviewContext } from "../plan-review-context.js";
-import { resolvePaperclipRunnerIdleTimeoutMs } from "@paperclipai/adapter-utils";
-import { normalizePaperclipWakePayload, selectPaperclipTaskMarkdown } from "@paperclipai/adapter-utils/server-utils";
+import { resolvePaperclipRunnerIdleTimeoutMs } from "@bostan/adapter-utils";
+import { normalizePaperclipWakePayload, selectPaperclipTaskMarkdown } from "@bostan/adapter-utils/server-utils";
 import type { ProviderResourceDisposition } from "../environment-runtime.js";
 
 type Run = typeof heartbeatRuns.$inferSelect;

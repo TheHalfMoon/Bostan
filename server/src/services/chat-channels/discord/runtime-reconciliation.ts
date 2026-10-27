@@ -9,7 +9,7 @@ import type { ChatRuntime } from "../../chat-runtime.js";
 import type { ChatEndpointRuntime } from "../../voice/voice-runtime.js";
 import type { createDiscordCommands } from "./commands.js";
 import type { createChatMessageLifecycle } from "../inbound/lifecycle.js";
-import type { ToolCredentialSecretRef } from "@paperclipai/shared";
+import type { ToolCredentialSecretRef } from "@bostan/shared";
 type ReconciliationOptions = {
   reconcileDiscordCommands: ReturnType<typeof createDiscordCommands>["reconcileDiscordCommands"];
   endpointRecord: (endpointId: string) => Promise<EndpointRecord | null>;

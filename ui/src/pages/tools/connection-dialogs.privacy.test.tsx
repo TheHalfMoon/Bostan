@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ToolConnection } from "@paperclipai/shared";
+import type { ToolConnection } from "@bostan/shared";
 import { AddConnectionDialog, CatalogDialog } from "./connection-dialogs";
 
 const api = vi.hoisted(() => ({

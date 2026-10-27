@@ -1,4 +1,4 @@
-import { FAST_RESPONSE_AGENT_GUIDANCE, fastResponseHistoryBody } from "@paperclipai/shared";
+import { FAST_RESPONSE_AGENT_GUIDANCE, fastResponseHistoryBody } from "@bostan/shared";
 import {
   persistActivity,
   publishActivity,

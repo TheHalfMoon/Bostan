@@ -5,9 +5,9 @@ import { heartbeatRuns, issueThreadInteractions } from "@paperclipai/db";
 import type {
   AskUserQuestionsInteraction,
   RespondIssueThreadInteraction,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
-import { questionSetToAskUserQuestionsPayload } from "@paperclipai/shared";
+import { questionSetToAskUserQuestionsPayload } from "@bostan/shared";
 
 import type { PrpEvent } from "../../vendor/paperclip-runner/index.js";
 import {

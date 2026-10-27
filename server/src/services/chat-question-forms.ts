@@ -7,7 +7,7 @@ import type {
   AskUserQuestionsInteraction,
   AskUserQuestionsQuestion,
   PaperclipQuestionSetQuestion,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   Modal,
   Select,

@@ -32,7 +32,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.31.0",
-    "@paperclipai/shared": "workspace:*",
+    "@bostan/shared": "workspace:*",
     "zod": "^4.4.3"
   },
   "devDependencies": {

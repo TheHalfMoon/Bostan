@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PaperclipPluginManifestV1 } from "@paperclipai/shared";
+import type { PaperclipPluginManifestV1 } from "@bostan/shared";
 import { createTestHarness } from "@bostan/plugin-sdk/testing";
 
 describe("plugin SDK test harness", () => {

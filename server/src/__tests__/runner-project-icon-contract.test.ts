@@ -4,7 +4,7 @@ import {
   capabilitySemanticToolDescriptor,
   paperclipSemanticAction,
 } from "@paperclipai/paperclip-runner";
-import { PROJECT_ICON_NAMES } from "@paperclipai/shared";
+import { PROJECT_ICON_NAMES } from "@bostan/shared";
 
 // Cross-package parity belongs at the App boundary: the standalone runner
 // must not import the App's shared package, even from its own tests.

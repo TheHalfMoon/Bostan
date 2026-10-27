@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { and, eq, sql } from "drizzle-orm";
 import { createDb, companies, agents, heartbeatRuns, costEvents, activityLog, aiSubscriptions, aiSubscriptionPrices, aiSubscriptionConnections, companySecrets, toolApplications, toolConnections, connectionGrants, connectionGrantMembers } from "@paperclipai/db";
 import { startEmbeddedPostgresTestDatabase } from "@paperclipai/db/test-embedded-postgres";
-import { monthlySubscriptionCents, subscriptionPlan, subscriptionPriceSchema } from "@paperclipai/shared";
+import { monthlySubscriptionCents, subscriptionPlan, subscriptionPriceSchema } from "@bostan/shared";
 import { subscriptionService, type SubscriptionConnection } from "../services/subscriptions.js";
 import { subscriptionCostReport } from "../services/subscription-report.js";
 import { refreshSubscriptionConnection } from "../services/subscription-refresh.js";

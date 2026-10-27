@@ -5,7 +5,7 @@ import {
 } from "@paperclipai/db";
 import type {
   SafeChatPublicationPayload,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
   function isExplicitOperatorPublication(
     publication: Pick<typeof chatPublications.$inferSelect, "idempotencyKey">,

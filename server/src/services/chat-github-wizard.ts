@@ -14,7 +14,7 @@ import type {
   GitHubAppRegistrationInput,
   GitHubAppWizardState,
   GitHubAppCloudState,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { badRequest, conflict, forbidden, notFound } from "../errors.js";
 import { logActivity } from "./activity-log.js";
 import {

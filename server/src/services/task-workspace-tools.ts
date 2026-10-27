@@ -1,4 +1,4 @@
-import { prepareWorkspaceRepositorySchema, selectTaskWorkspaceSchema } from "@paperclipai/shared";
+import { prepareWorkspaceRepositorySchema, selectTaskWorkspaceSchema } from "@bostan/shared";
 import { badRequest } from "../errors.js";
 import { executionWorkspaceRepositories, type Db } from "@paperclipai/db";
 import { and, asc, eq, inArray } from "drizzle-orm";

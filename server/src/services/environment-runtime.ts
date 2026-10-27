@@ -26,13 +26,13 @@ import type {
   PluginEnvironmentConfig,
   SandboxEnvironmentConfig,
   SandboxProviderCapabilities,
-} from "@paperclipai/shared";
-import { resolveDeclaredSandboxCapabilities } from "@paperclipai/shared";
-import type { EffectiveExecutionCapabilities } from "@paperclipai/adapter-utils/execution-target";
-import type { RunnerIngressEndpoint } from "@paperclipai/adapter-utils/runner-connectivity";
+} from "@bostan/shared";
+import { resolveDeclaredSandboxCapabilities } from "@bostan/shared";
+import type { EffectiveExecutionCapabilities } from "@bostan/adapter-utils/execution-target";
+import type { RunnerIngressEndpoint } from "@bostan/adapter-utils/runner-connectivity";
 import type {
   CommandManagedDuplexChannel,
-} from "@paperclipai/adapter-utils/command-managed-runtime";
+} from "@bostan/adapter-utils/command-managed-runtime";
 import type {
   PluginEnvironmentAcquireLeaseParams,
   PluginEnvironmentExecuteResult,
@@ -42,12 +42,12 @@ import type {
   PluginEnvironmentSyncResult,
   PluginSyncOperation,
 } from "@bostan/plugin-sdk";
-import { ensureSshWorkspaceReady } from "@paperclipai/adapter-utils/ssh";
+import { ensureSshWorkspaceReady } from "@bostan/adapter-utils/ssh";
 import {
   getActiveStepContext,
   runWithRuntimeParent,
   type StartupSpanContext,
-} from "@paperclipai/adapter-utils/acpx-engine/startup-timing";
+} from "@bostan/adapter-utils/acpx-engine/startup-timing";
 import { environmentService } from "./environments.js";
 import { instanceSettingsService } from "./instance-settings.js";
 import { hasSandboxSnapshotQualification, qualifiedSandboxSnapshotId, type SandboxTemplateIdentity } from "./sandbox-snapshot-qualification.js";

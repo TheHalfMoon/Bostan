@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { Environment, EnvironmentLease } from "@paperclipai/shared";
-import { isNativeWorkspaceExportRepairCause } from "@paperclipai/shared";
+import type { Environment, EnvironmentLease } from "@bostan/shared";
+import { isNativeWorkspaceExportRepairCause } from "@bostan/shared";
 import { and, eq, gt, inArray, ne, or, sql } from "drizzle-orm";
 import { environmentLeases, environments, heartbeatRuns, issues, issueRecoveryActions, nativeRunFinalizations, nativeRunResults, type Db } from "@paperclipai/db";
 import { conflict } from "../../errors.js";

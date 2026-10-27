@@ -29,7 +29,7 @@ import {
 } from "@paperclipai/db";
 import type {
   ChatProvider,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   conflict,

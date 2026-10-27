@@ -110,21 +110,21 @@ importers:
       '@bostan/adapter-pi-local':
         specifier: workspace:*
         version: link:../packages/adapters/pi-local
+      '@bostan/adapter-utils':
+        specifier: workspace:*
+        version: link:../packages/adapter-utils
       '@bostan/server':
         specifier: workspace:*
         version: link:../server
+      '@bostan/shared':
+        specifier: workspace:*
+        version: link:../packages/shared
       '@clack/prompts':
         specifier: ^1.7.0
         version: 1.7.0
-      '@paperclipai/adapter-utils':
-        specifier: workspace:*
-        version: link:../packages/adapter-utils
       '@paperclipai/db':
         specifier: workspace:*
         version: link:../packages/db
-      '@paperclipai/shared':
-        specifier: workspace:*
-        version: link:../packages/shared
       commander:
         specifier: ^15.0.0
         version: 15.0.0
@@ -153,7 +153,7 @@ importers:
 
   packages/adapter-utils:
     dependencies:
-      '@paperclipai/shared':
+      '@bostan/shared':
         specifier: workspace:*
         version: link:../shared
       acpx:
@@ -184,10 +184,10 @@ importers:
       '@anthropic-ai/sdk':
         specifier: 0.129.0
         version: 0.129.0(zod@4.6.5)
-      '@paperclipai/adapter-utils':
+      '@bostan/adapter-utils':
         specifier: workspace:*
         version: link:../../adapter-utils
-      '@paperclipai/shared':
+      '@bostan/shared':
         specifier: workspace:*
         version: link:../../shared
       picocolors:
@@ -206,10 +206,10 @@ importers:
       '@agentclientprotocol/codex-acp':
         specifier: ^1.6.2
         version: 1.6.2(patch_hash=2iynuypg76nxmydiylgtffhr7e)
-      '@paperclipai/adapter-utils':
+      '@bostan/adapter-utils':
         specifier: workspace:*
         version: link:../../adapter-utils
-      '@paperclipai/shared':
+      '@bostan/shared':
         specifier: workspace:*
         version: link:../../shared
       picocolors:
@@ -225,12 +225,12 @@ importers:
 
   packages/adapters/cursor-cloud:
     dependencies:
+      '@bostan/adapter-utils':
+        specifier: workspace:*
+        version: link:../../adapter-utils
       '@cursor/sdk':
         specifier: ^1.0.28
         version: 1.0.28
-      '@paperclipai/adapter-utils':
-        specifier: workspace:*
-        version: link:../../adapter-utils
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
@@ -244,7 +244,7 @@ importers:
 
   packages/adapters/cursor-local:
     dependencies:
-      '@paperclipai/adapter-utils':
+      '@bostan/adapter-utils':
         specifier: workspace:*
         version: link:../../adapter-utils
       picocolors:
@@ -260,7 +260,7 @@ importers:
 
   packages/adapters/gemini-local:
     dependencies:
-      '@paperclipai/adapter-utils':
+      '@bostan/adapter-utils':
         specifier: workspace:*
         version: link:../../adapter-utils
       picocolors:
@@ -276,10 +276,10 @@ importers:
 
   packages/adapters/grok-local:
     dependencies:
-      '@paperclipai/adapter-utils':
+      '@bostan/adapter-utils':
         specifier: workspace:*
         version: link:../../adapter-utils
-      '@paperclipai/shared':
+      '@bostan/shared':
         specifier: workspace:*
         version: link:../../shared
       picocolors:
@@ -295,7 +295,7 @@ importers:
 
   packages/adapters/hermes:
     dependencies:
-      '@paperclipai/adapter-utils':
+      '@bostan/adapter-utils':
         specifier: workspace:*
         version: link:../../adapter-utils
       picocolors:
@@ -330,7 +330,7 @@ importers:
 
   packages/adapters/kimi-local:
     dependencies:
-      '@paperclipai/adapter-utils':
+      '@bostan/adapter-utils':
         specifier: workspace:*
         version: link:../../adapter-utils
       picocolors:
@@ -346,7 +346,7 @@ importers:
 
   packages/adapters/openclaw-gateway:
     dependencies:
-      '@paperclipai/adapter-utils':
+      '@bostan/adapter-utils':
         specifier: workspace:*
         version: link:../../adapter-utils
       picocolors:
@@ -368,7 +368,7 @@ importers:
 
   packages/adapters/opencode-local:
     dependencies:
-      '@paperclipai/adapter-utils':
+      '@bostan/adapter-utils':
         specifier: workspace:*
         version: link:../../adapter-utils
       picocolors:
@@ -384,7 +384,7 @@ importers:
 
   packages/adapters/pi-local:
     dependencies:
-      '@paperclipai/adapter-utils':
+      '@bostan/adapter-utils':
         specifier: workspace:*
         version: link:../../adapter-utils
       picocolors:
@@ -409,7 +409,7 @@ importers:
 
   packages/db:
     dependencies:
-      '@paperclipai/shared':
+      '@bostan/shared':
         specifier: workspace:*
         version: link:../shared
       drizzle-orm:
@@ -481,12 +481,12 @@ importers:
 
   packages/mcp-server:
     dependencies:
+      '@bostan/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@modelcontextprotocol/sdk':
         specifier: ^1.31.0
         version: 1.31.0(zod@4.4.3)
-      '@paperclipai/shared':
-        specifier: workspace:*
-        version: link:../shared
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -723,7 +723,7 @@ importers:
       '@bostan/plugin-sdk':
         specifier: workspace:*
         version: link:../../sdk
-      '@paperclipai/shared':
+      '@bostan/shared':
         specifier: workspace:*
         version: link:../../../shared
     devDependencies:
@@ -827,7 +827,7 @@ importers:
 
   packages/plugins/sdk:
     dependencies:
-      '@paperclipai/shared':
+      '@bostan/shared':
         specifier: workspace:*
         version: link:../../shared
       zod:
@@ -865,7 +865,7 @@ importers:
 
   packages/skills-catalog:
     dependencies:
-      '@paperclipai/shared':
+      '@bostan/shared':
         specifier: workspace:*
         version: link:../shared
     devDependencies:
@@ -953,9 +953,15 @@ importers:
       '@bostan/adapter-pi-local':
         specifier: workspace:*
         version: link:../packages/adapters/pi-local
+      '@bostan/adapter-utils':
+        specifier: workspace:*
+        version: link:../packages/adapter-utils
       '@bostan/plugin-sdk':
         specifier: workspace:*
         version: link:../packages/plugins/sdk
+      '@bostan/shared':
+        specifier: workspace:*
+        version: link:../packages/shared
       '@bostan/skills-catalog':
         specifier: workspace:*
         version: link:../packages/skills-catalog
@@ -995,15 +1001,9 @@ importers:
       '@opentelemetry/resources':
         specifier: 2.10.0
         version: 2.10.0(@opentelemetry/api@1.9.1)
-      '@paperclipai/adapter-utils':
-        specifier: workspace:*
-        version: link:../packages/adapter-utils
       '@paperclipai/db':
         specifier: workspace:*
         version: link:../packages/db
-      '@paperclipai/shared':
-        specifier: workspace:*
-        version: link:../packages/shared
       '@photon-ai/advanced-imessage':
         specifier: 2.1.0
         version: 2.1.0(@grpc/grpc-js@1.14.5)(nice-grpc-common@2.0.4)(nice-grpc@2.1.17)
@@ -1216,6 +1216,12 @@ importers:
       '@bostan/adapter-pi-local':
         specifier: workspace:*
         version: link:../packages/adapters/pi-local
+      '@bostan/adapter-utils':
+        specifier: workspace:*
+        version: link:../packages/adapter-utils
+      '@bostan/shared':
+        specifier: workspace:*
+        version: link:../packages/shared
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -1231,12 +1237,6 @@ importers:
       '@mdxeditor/editor':
         specifier: ^4.2.3
         version: 4.2.3(@codemirror/language@6.12.4)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@7.0.2)(yjs@13.6.32)
-      '@paperclipai/adapter-utils':
-        specifier: workspace:*
-        version: link:../packages/adapter-utils
-      '@paperclipai/shared':
-        specifier: workspace:*
-        version: link:../packages/shared
       '@radix-ui/react-slot':
         specifier: ^1.3.3
         version: 1.3.3(@types/react@19.2.18)(react@19.2.8)

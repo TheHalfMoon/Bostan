@@ -4,7 +4,7 @@ import {
   type AiConnectionUsage,
   type AiConnectionUsageLimit,
   type AiConnectionUsageOverage,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { parseGrokAuthPayload } from "@bostan/adapter-grok-local/server";
 
 type Observation = Pick<AiConnectionUsage, "source" | "planType" | "limits" | "overage">;

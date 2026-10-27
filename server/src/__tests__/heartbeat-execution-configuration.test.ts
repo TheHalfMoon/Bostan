@@ -14,7 +14,7 @@ import { registerServerAdapter, unregisterServerAdapter, type AdapterExecutionCo
 import { HttpError } from "../errors.js";
 import { heartbeatService } from "../services/heartbeat.js";
 import { bindHeartbeatRunnerHomeMode, prepareHeartbeatExecutionConfiguration, type HeartbeatExecutionConfigurationInput } from "../services/heartbeat/execution-configuration.js";
-import { aiRuntimeConnectionBindingSchema } from "@paperclipai/shared";
+import { aiRuntimeConnectionBindingSchema } from "@bostan/shared";
 import { secretService } from "../services/secrets.js";
 import { instanceSettingsService } from "../services/instance-settings.js";
 import { aiConnectionService } from "../services/ai-connections.js";

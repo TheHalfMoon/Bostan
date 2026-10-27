@@ -17,8 +17,8 @@ import type {
   PatchStatusCard,
   WriteStatusCardQuery,
   WriteStatusCardSummary,
-} from "@paperclipai/shared";
-import { companySearchQuerySchema, STATUS_CARD_AGENT_MAX_CARDS } from "@paperclipai/shared";
+} from "@bostan/shared";
+import { companySearchQuerySchema, STATUS_CARD_AGENT_MAX_CARDS } from "@bostan/shared";
 import { conflict, forbidden, notFound, unprocessable } from "../errors.js";
 import { logger } from "../middleware/logger.js";
 import { readBuiltInAgentMarker } from "../lib/built-in-agent-metadata.js";

@@ -1,4 +1,4 @@
-import type { ChatEndpointSetupState } from "@paperclipai/shared";
+import type { ChatEndpointSetupState } from "@bostan/shared";
 import type { VerifiedProviderIdentity } from "../runtime-types.js";
 
 import { createSetupProbes } from "../setup-probes.js";
@@ -37,7 +37,7 @@ import type {
   ConfigureChatEndpointInput,
   ToolCredentialSecretRef,
   UpdateChatEndpointInput,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   HttpError,

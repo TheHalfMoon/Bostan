@@ -21,7 +21,7 @@ import {
 } from "@paperclipai/db";
 import type {
   SafeChatPublicationPayload,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import { projectSafeChatPublication } from "../../chat-publication-projection.js";
 

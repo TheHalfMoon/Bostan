@@ -9,7 +9,7 @@ import * as activityLogModule from "../services/activity-log.js";
 import * as connectionCredentialBindings from "../services/connection-credential-bindings.js";
 import { chatSlackManagerGrants, chatSlackRegistrations, toolOauthStates } from "@paperclipai/db";
 import type { PaperclipCloudConnector, SealedConnectorCredentials } from "../services/paperclip-cloud-connector.js";
-import { buildSlackAppManifest, SLACK_MANAGER_SCOPES } from "@paperclipai/shared";
+import { buildSlackAppManifest, SLACK_MANAGER_SCOPES } from "@bostan/shared";
 import { registerChatActionWork, dueChatAction } from "../services/chat-action-work.js";
 import { createDeliveryWorkCoordinator } from "../services/delivery-work-coordinator.js";
 import { registerChatDeliveryWork } from "../services/chat-delivery-work.js";
@@ -120,8 +120,8 @@ import {
   projectWorkspaces,
   toolConnections,
 } from "@paperclipai/db";
-import { defaultGitHubReviewPolicy, type ChatProvider } from "@paperclipai/shared";
-import { isPaperclipExternalChatTurn } from "@paperclipai/adapter-utils/server-utils";
+import { defaultGitHubReviewPolicy, type ChatProvider } from "@bostan/shared";
+import { isPaperclipExternalChatTurn } from "@bostan/adapter-utils/server-utils";
 import type { Attachment, Author, Message, Thread } from "chat";
 import { errorHandler } from "../middleware/index.js";
 import { issueRoutes } from "../routes/issues.js";
@@ -2430,7 +2430,7 @@ describeEmbeddedPostgres("chat channel control-plane integration", () => {
       const injected = await skill("injected");
       const foreign = await skill("foreign", other.companyId);
       // Use the production link format, including the slash picker identity.
-      const { buildSkillMentionHref } = await import("@paperclipai/shared");
+      const { buildSkillMentionHref } = await import("@bostan/shared");
       const ref = (s: typeof common) => `[/skill](${buildSkillMentionHref(s.id, s.slug)})`;
       const saved = await f.management.configuration(f.endpoint.id, "owner-user");
       await f.management.saveConfiguration(f.endpoint.id, { expectedRevision: saved.revision, configuration: {
@@ -5694,7 +5694,7 @@ describeEmbeddedPostgres("chat channel control-plane integration", () => {
     });
     it("admits opt-in signed issue events without PR checks, deduplicates them and rechecks revoked policy", async () => {
       const f = await reviewBotFixture();
-      const { buildSkillMentionHref } = await import("@paperclipai/shared");
+      const { buildSkillMentionHref } = await import("@bostan/shared");
       const [skill] = await db.insert(companySkills).values({
         companyId: f.companyId, key: `company/${f.companyId}/automatic-playbook`,
         slug: "automatic-playbook", name: "Automatic playbook", markdown: "# Automatic playbook",
@@ -5767,7 +5767,7 @@ describeEmbeddedPostgres("chat channel control-plane integration", () => {
     });
     it("admits signed PR events into an ordinary assigned task and deduplicates delivery", async () => {
       const f = await reviewBotFixture();
-      const { buildSkillMentionHref } = await import("@paperclipai/shared");
+      const { buildSkillMentionHref } = await import("@bostan/shared");
       const [skill] = await db.insert(companySkills).values({
         companyId: f.companyId, key: `company/${f.companyId}/automatic-playbook`,
         slug: "automatic-playbook", name: "Automatic playbook", markdown: "# Automatic playbook",
@@ -5899,7 +5899,7 @@ describeEmbeddedPostgres("chat channel control-plane integration", () => {
           wakeReason: "External chat message received", paperclipHarnessCheckedOut: true } };
       const wake = await buildPaperclipWakePayload(wakeArgs);
       expect(wake?.githubReviewConfigurations).toEqual(configs);
-      const { renderPaperclipWakePrompt } = await import("@paperclipai/adapter-utils/server-utils");
+      const { renderPaperclipWakePrompt } = await import("@bostan/adapter-utils/server-utils");
       const prompt = renderPaperclipWakePrompt(wake);
       expect(prompt.split(instruction)).toHaveLength(2);
       expect(prompt).not.toContain("Untrusted PR body");
@@ -8795,7 +8795,7 @@ describeEmbeddedPostgres("chat channel control-plane integration", () => {
   }, 15_000);
 
   it("refreshes Slack tool guidance without restoring disabled catalog policies", async () => {
-    const { SLACK_TOOLS } = await import("@paperclipai/shared");
+    const { SLACK_TOOLS } = await import("@bostan/shared");
     const { slackBotCatalogIsCurrent, syncSlackBotTools } = await import("../services/connectors/slack-catalog.js");
     const fixture = await seedCompany();
     const { endpoint } = await configuredSlackEndpoint(fixture);

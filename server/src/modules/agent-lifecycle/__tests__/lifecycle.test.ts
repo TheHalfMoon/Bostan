@@ -736,8 +736,8 @@ const support = await getEmbeddedPostgresTestSupport();
       manifestJson: { agentLifecycle: true, capabilities: ["agents.lifecycle.manage"] } as never });
     let resourcesReady = false;
     let resourcesRemoved = false;
-    const requests: import("@paperclipai/shared").AgentLifecycleRequest[] = [];
-    const call = async (id: string, method: string, input: import("@paperclipai/shared").AgentLifecycleRequest) => {
+    const requests: import("@bostan/shared").AgentLifecycleRequest[] = [];
+    const call = async (id: string, method: string, input: import("@bostan/shared").AgentLifecycleRequest) => {
       expect(id).toBe(pluginId);
       expect(method).toBe("agentLifecycle");
       expect(input.companyId).toBe(companyId);

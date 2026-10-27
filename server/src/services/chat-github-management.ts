@@ -19,7 +19,7 @@ import {
   defaultGitHubReviewPolicy,
   updateGitHubChatConfigurationSchema,
   type GitHubChatConfiguration,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { badRequest, conflict, forbidden, notFound } from "../errors.js";
 import { toolAccessService } from "./tool-access.js";
 import { logActivity } from "./activity-log.js";

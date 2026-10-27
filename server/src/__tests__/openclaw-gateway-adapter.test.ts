@@ -6,7 +6,7 @@ import {
   buildOpenClawGatewayConfig,
   parseOpenClawGatewayStdoutLine,
 } from "@bostan/adapter-openclaw-gateway/ui";
-import type { AdapterExecutionContext } from "@paperclipai/adapter-utils";
+import type { AdapterExecutionContext } from "@bostan/adapter-utils";
 
 function buildContext(
   config: Record<string, unknown>,

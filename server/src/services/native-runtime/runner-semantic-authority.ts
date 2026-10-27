@@ -1,4 +1,4 @@
-import { fastResponseHistoryBody } from "@paperclipai/shared";
+import { fastResponseHistoryBody } from "@bostan/shared";
 import { readTaskQuestionContext } from "../issue-question-context.js";
 import { isConversation } from "../agent-conversations.js";
 import {

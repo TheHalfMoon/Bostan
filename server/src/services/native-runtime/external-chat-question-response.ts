@@ -20,7 +20,7 @@ import {
   issueQuestionResponseDeliveries,
   issueThreadInteractions,
 } from "@paperclipai/db";
-import type { AskUserQuestionsInteraction } from "@paperclipai/shared";
+import type { AskUserQuestionsInteraction } from "@bostan/shared";
 import {
   parseChatQuestionFormSubmitTokenPayload,
   validateChatQuestionFormSubmission,

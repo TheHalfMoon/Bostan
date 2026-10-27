@@ -1,7 +1,7 @@
 import { notifyChatPublicationWork } from "./chat-work-notifications.js";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
-import { CHAT_FILE_TRANSFER_PHASES } from "@paperclipai/shared";
+import { CHAT_FILE_TRANSFER_PHASES } from "@bostan/shared";
 import {
   chatActions,
   chatConversations,

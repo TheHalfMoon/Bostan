@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Issue } from "@paperclipai/shared";
+import type { Issue } from "@bostan/shared";
 import { useTaskRetry } from "./useTaskRetry";
 import { issuesApi } from "../api/issues";
 vi.mock("../api/issues", () => ({ issuesApi: { retryTask: vi.fn() } }));

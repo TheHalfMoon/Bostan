@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import os from "node:os";
 import path from "node:path";
-import * as serverUtils from "@paperclipai/adapter-utils/server-utils";
+import * as serverUtils from "@bostan/adapter-utils/server-utils";
 import {
   discoverOpenCodeModels,
   ensureOpenCodeModelConfiguredAndAvailable,

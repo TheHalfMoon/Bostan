@@ -10,7 +10,7 @@ import {
 } from "@paperclipai/db";
 import type {
   SafeChatPublicationPayload,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   discordMarkdownRequiresAttachment,
 } from "../../chat-discord.js";

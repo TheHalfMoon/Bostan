@@ -11,8 +11,8 @@ import {
   type ExternalObjectStatusCategory,
   type ExternalObjectStatusTone,
   type PaperclipPluginManifestV1,
-} from "@paperclipai/shared";
-import { extractExternalObjectCanonicalUrls } from "@paperclipai/shared/external-objects-server";
+} from "@bostan/shared";
+import { extractExternalObjectCanonicalUrls } from "@bostan/shared/external-objects-server";
 import type { PluginExternalObjectRecordSnapshot, PluginExternalObjectResolveResult } from "@bostan/plugin-sdk";
 import { notFound } from "../errors.js";
 import { logger } from "../middleware/logger.js";

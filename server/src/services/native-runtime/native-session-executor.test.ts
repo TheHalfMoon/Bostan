@@ -60,7 +60,7 @@ import { RemoteRunnerRecoveryError, readRemoteRunnerRecoveryError } from "./remo
 import { agentDirectoryWorkingCopyService } from "../agent-directory-working-copies.js";
 import { probeAgentDirectory } from "../agent-directory-probe.js";
 import { AGENT_FILES_CONTRACT } from "../agent-file-store.js";
-import { captureDirectorySnapshot, directorySnapshotSha256, serializeDirectorySnapshot } from "@paperclipai/adapter-utils/workspace-restore-merge";
+import { captureDirectorySnapshot, directorySnapshotSha256, serializeDirectorySnapshot } from "@bostan/adapter-utils/workspace-restore-merge";
 import { agentInstructionWorkingCopies } from "@paperclipai/db";
 import * as noLaunchProofModule from "./native-maintenance-no-launch.js";
 import {
@@ -82,7 +82,7 @@ import * as nativeSessionResume from "./native-session-resume.js";
 import { buildNativeHeartbeatPreparationSpans } from "./native-run-trace.js";
 import { NativeRunnerOwnershipUnverifiedError } from "./native-runner-ownership.js";
 import type { AdapterRuntimeEvent } from "../../adapters/index.js";
-import type { AdapterUsageCheckpoint } from "@paperclipai/adapter-utils";
+import type { AdapterUsageCheckpoint } from "@bostan/adapter-utils";
 
 vi.mock("node:fs", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:fs")>();
@@ -5999,7 +5999,7 @@ describe("native terminal-turn accounting", () => {
   it.each([false, true])("prices only complete direct Claude API turn accounting (%s)", async complete => {
     const { rehydrateRunnerdUsageNotification } = await import("@paperclipai/paperclip-runner/live");
     const { priceAnthropicReceipt } = await import("../anthropic-pricing.js");
-    const onUsage = vi.fn(async (_receipt: import("@paperclipai/adapter-utils").AdapterUsageCheckpoint) => {});
+    const onUsage = vi.fn(async (_receipt: import("@bostan/adapter-utils").AdapterUsageCheckpoint) => {});
     const counts = { inputTokens: 12, outputTokens: 4, cacheReadTokens: 30, cacheWriteTokens: 20, providerCostUsd: 0 };
     state.execute.mockReset().mockImplementationOnce(async () => {
       const notification = rehydrateRunnerdUsageNotification({ provider: "acpx", cumulative: { ...counts, providerCostUsd: 10 }, runDelta: counts, runDeltaAvailable: complete }, "session", "turn");
@@ -6017,7 +6017,7 @@ describe("native terminal-turn accounting", () => {
     [false, true].flatMap(partialFirst => [false, true].map(zeroFirst => ({ agent, restart, partialFirst, zeroFirst }))),
   )))("accumulates ACPX turns for $agent (restart: $restart, partial: $partialFirst, zero first: $zeroFirst)", async ({ agent, restart, partialFirst, zeroFirst }) => {
     const { rehydrateRunnerdUsageNotification } = await import("@paperclipai/paperclip-runner/live");
-    const onUsage = vi.fn(async (_receipt: import("@paperclipai/adapter-utils").AdapterUsageCheckpoint) => {});
+    const onUsage = vi.fn(async (_receipt: import("@bostan/adapter-utils").AdapterUsageCheckpoint) => {});
     const event = (eventType: string, turnId: string, sourceSeq: number, payload: object = {}) => ({
       eventType, turnId, sourceSeq, sourceInstanceId: "provider", emittedAt: new Date().toISOString(), payload,
     }) as unknown as PrpEvent;
@@ -6059,7 +6059,7 @@ describe("native terminal-turn accounting", () => {
     ["missing", "partial", "complete_zero", "later_partial", "recovered"].map(scenario => ({ agent, scenario })),
   ))("honors runner completeness for ACPX $agent ($scenario)", async ({ agent, scenario }) => {
     const { rehydrateRunnerdUsageNotification } = await import("@paperclipai/paperclip-runner/live");
-    const onUsage = vi.fn(async (_receipt: import("@paperclipai/adapter-utils").AdapterUsageCheckpoint) => {});
+    const onUsage = vi.fn(async (_receipt: import("@bostan/adapter-utils").AdapterUsageCheckpoint) => {});
     const complete = ["complete_zero", "recovered"].includes(scenario);
     const zero = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, providerCostUsd: 0 };
     const full = { ...zero, inputTokens: 12, outputTokens: 4 };
@@ -6091,7 +6091,7 @@ describe("native terminal-turn accounting", () => {
 
   it.each([0, 0.25])("keeps interrupted AgentCore accounting pending despite cumulative cost %s", async providerCostUsd => {
     const { rehydrateRunnerdUsageNotification } = await import("@paperclipai/paperclip-runner/live");
-    const onUsage = vi.fn(async (_receipt: import("@paperclipai/adapter-utils").AdapterUsageCheckpoint) => {});
+    const onUsage = vi.fn(async (_receipt: import("@bostan/adapter-utils").AdapterUsageCheckpoint) => {});
     const total = { inputTokens: 10, outputTokens: 2, cacheReadTokens: 0, cacheWriteTokens: 0, providerCostUsd };
     const notification = rehydrateRunnerdUsageNotification({ provider: "aws_agentcore", cumulative: total, runDelta: null, runDeltaAvailable: false }, "session", "turn");
     state.execute.mockReset().mockImplementationOnce(async () => {
@@ -6109,7 +6109,7 @@ describe("native terminal-turn accounting", () => {
 
   it.each(["claude_managed", "aws_agentcore"] as const)("settles fresh runner receipts for %s and preserves estimated pricing", async kind => {
     const { rehydrateRunnerdUsageNotification } = await import("@paperclipai/paperclip-runner/live");
-    const onUsage = vi.fn(async (_receipt: import("@paperclipai/adapter-utils").AdapterUsageCheckpoint) => {});
+    const onUsage = vi.fn(async (_receipt: import("@bostan/adapter-utils").AdapterUsageCheckpoint) => {});
     const total = { inputTokens: 121, outputTokens: 18, cacheReadTokens: 33, cacheWriteTokens: 15, providerCostUsd: 1.25 };
     const delta = { inputTokens: 21, outputTokens: 8, cacheReadTokens: 13, cacheWriteTokens: 5, providerCostUsd: 0.25 };
     const notification = rehydrateRunnerdUsageNotification({ provider: kind, cumulative: total, runDelta: delta, runDeltaAvailable: true }, "session", "turn");
@@ -6132,7 +6132,7 @@ describe("native terminal-turn accounting", () => {
     { provider: "codex", restart: false }, { provider: "codex", restart: true },
     { provider: "opencode", restart: false }, { provider: "opencode", restart: true },
   ] as const)("preserves earlier turns for $provider (restart: $restart)", async ({ provider, restart }) => {
-    const onUsage = vi.fn(async (_receipt: import("@paperclipai/adapter-utils").AdapterUsageCheckpoint) => {});
+    const onUsage = vi.fn(async (_receipt: import("@bostan/adapter-utils").AdapterUsageCheckpoint) => {});
     const event = (eventType: string, turnId: string, sourceSeq: number, payload: object = {}) => ({
       eventType, turnId, sourceSeq, sourceInstanceId: "provider", emittedAt: new Date().toISOString(), payload,
     }) as unknown as PrpEvent;
@@ -6163,7 +6163,7 @@ describe("native terminal-turn accounting", () => {
   });
 
   it.each(["missing_usage", "partial_usage", "missing_terminal", "unknown_price", "late_update"] as const)("keeps OpenCode retry accounting conservative (%s)", async scenario => {
-    const onUsage = vi.fn(async (_receipt: import("@paperclipai/adapter-utils").AdapterUsageCheckpoint) => {});
+    const onUsage = vi.fn(async (_receipt: import("@bostan/adapter-utils").AdapterUsageCheckpoint) => {});
     let seq = 0;
     const emit = (eventType: string, turnId: string, payload: object = {}) => accountingEvents.committed!({
       eventType, turnId, sourceSeq: ++seq, sourceInstanceId: "provider", emittedAt: new Date().toISOString(), payload,
@@ -6197,7 +6197,7 @@ describe("native terminal-turn accounting", () => {
   });
 
   it.each(["committed", "duplicate"] as const)("saves completed usage before returning to result commitment (%s)", async mode => {
-    const onUsage = vi.fn(async (_receipt: import("@paperclipai/adapter-utils").AdapterUsageCheckpoint) => {});
+    const onUsage = vi.fn(async (_receipt: import("@bostan/adapter-utils").AdapterUsageCheckpoint) => {});
     const failure = new Error("stopped after result commit, before executor returns");
     state.execute.mockReset().mockImplementationOnce(async () => {
       const observe = accountingEvents[mode]!;
@@ -6248,7 +6248,7 @@ describe("native terminal-turn accounting", () => {
   });
 
   it.each(["stale_warm_zero", "partial", "fresh", "fresh_zero", "new_turn", "later_partial", "merged_partial"])("requires fresh complete usage at native completion (%s)", async scenario => {
-    const onUsage = vi.fn(async (_receipt: import("@paperclipai/adapter-utils").AdapterUsageCheckpoint) => {});
+    const onUsage = vi.fn(async (_receipt: import("@bostan/adapter-utils").AdapterUsageCheckpoint) => {});
     const usage = { inputTokens: 120, cacheReadTokens: 100, outputTokens: 10, providerCostUsd: 0 };
     const runDelta = scenario === "partial" ? { inputTokens: 120 } : scenario === "fresh_zero" ? { inputTokens: 0, outputTokens: 0 } : usage;
     state.execute.mockReset().mockImplementationOnce(async () => {
@@ -6277,7 +6277,7 @@ describe("native terminal-turn accounting", () => {
   beforeEach(() => vi.spyOn(issueServiceModule, "issueService").mockReturnValue({ update: vi.fn(async () => ({ status: "blocked", statusVersion: 1 })) } as unknown as ReturnType<typeof issueServiceModule.issueService>));
   afterEach(() => vi.restoreAllMocks());
   it.each(["turn.failed", "turn.cancelled", "turn.interrupted", "missing_terminal", "session_total", "empty_usage", "different_turn"])("preserves run usage for %s without certifying incomplete evidence", async (scenario) => {
-    const onUsage = vi.fn(async (_receipt: import("@paperclipai/adapter-utils").AdapterUsageCheckpoint) => {});
+    const onUsage = vi.fn(async (_receipt: import("@bostan/adapter-utils").AdapterUsageCheckpoint) => {});
     const failure = new Error("provider_transport_failed: no semantic result");
     state.execute.mockReset().mockImplementationOnce(async () => {
       const usage = { inputTokens: 120, cacheReadTokens: 100, outputTokens: 10, providerCostUsd: 0.25 };
@@ -7235,7 +7235,7 @@ describe("native warm session supervision", () => {
     const canonical = resolveManagedInstructionsRoot({ id: agentId, companyId, name: "Warm remote", adapterConfig: {} }), remoteCwd = join(home, "remote");
     let currentLease = "", failCleanup = false, failProbe = false, closed = false;
     const commands: Array<{ leaseId: string; command: string }> = [];
-    const commandRunner = (leaseId: string): import("@paperclipai/adapter-utils/command-managed-runtime").CommandManagedRuntimeRunner => ({ execute: async input => {
+    const commandRunner = (leaseId: string): import("@bostan/adapter-utils/command-managed-runtime").CommandManagedRuntimeRunner => ({ execute: async input => {
       expect(leaseId).toBe(currentLease); // The replaced collector must never execute.
       commands.push({ leaseId, command: `${input.command} ${(input.args ?? []).join(" ")}` });
       if (failProbe) {

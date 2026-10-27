@@ -1,5 +1,5 @@
 import { toolApplications } from "@paperclipai/db";
-import type { ToolApplication } from "@paperclipai/shared";
+import type { ToolApplication } from "@bostan/shared";
 
 export function toApplication(
   row: typeof toolApplications.$inferSelect,

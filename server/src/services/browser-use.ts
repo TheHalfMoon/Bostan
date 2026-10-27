@@ -29,7 +29,7 @@ import {
   unitsToCents,
   centsToUsd,
   usdToUnits,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   browserUseClient,
   BrowserUseError,

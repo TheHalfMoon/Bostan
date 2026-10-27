@@ -24,7 +24,7 @@ import {
 import type {
   ChatEndpointSetupState,
   SafeChatPublicationPayload,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   type ChatSdkRuntime,

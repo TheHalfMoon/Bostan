@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 import { parse } from "dotenv";
 import { environmentLeases, environments, type Db } from "@paperclipai/db";
 import { eq } from "drizzle-orm";
-import type { AdapterSandboxExecutionTarget } from "@paperclipai/adapter-utils/execution-target";
+import type { AdapterSandboxExecutionTarget } from "@bostan/adapter-utils/execution-target";
 import { readEnvironmentCreationCleanupError, type PluginEnvironmentCreationCleanup,
   type PluginEnvironmentLease, type PluginEnvironmentTerminationReceipt } from "@bostan/plugin-sdk";
 

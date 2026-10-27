@@ -1,6 +1,6 @@
 import Ajv2020 from "ajv/dist/2020.js";
 import { requestHumanInputAction } from "../../../packages/paperclip-runner/src/protocol-actions/request-human-input.js";
-import { questionSetToAskUserQuestionsPayload } from "@paperclipai/shared";
+import { questionSetToAskUserQuestionsPayload } from "@bostan/shared";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";

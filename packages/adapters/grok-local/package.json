@@ -29,8 +29,8 @@
     "prepublishOnly": "node ../../../scripts/bostan-release-disabled.mjs"
   },
   "dependencies": {
-    "@paperclipai/adapter-utils": "workspace:*",
-    "@paperclipai/shared": "workspace:*",
+    "@bostan/adapter-utils": "workspace:*",
+    "@bostan/shared": "workspace:*",
     "picocolors": "^1.1.1"
   },
   "devDependencies": {

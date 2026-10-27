@@ -42,7 +42,7 @@ import {
   createLoginPtyTransport,
   type LoginPtySession,
   type LoginPtySessionOpener,
-} from "@paperclipai/adapter-utils/login-pty-transport";
+} from "@bostan/adapter-utils/login-pty-transport";
 import {
   runSetupTokenLogin,
   CLAUDE_SETUP_TOKEN_COMMAND,

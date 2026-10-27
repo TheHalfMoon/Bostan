@@ -9,7 +9,7 @@ import {
   DECISION_MODELS, decisionProviderForConnection, decisionRequestSchema, updateDecisionModelSchema,
   centsToUnits, unitsToCents, type DecisionAvailability, type DecisionConnectionChoice, type DecisionHistoryEntry,
   type DecisionModelSettings, type DecisionProvider, type DecisionRequest, type DecisionResult, type DecisionUnavailableReason, type UpdateDecisionModel,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { HttpError, forbidden, unprocessable } from "../errors.js";
 import { aiConnectionService } from "./ai-connections.js";
 import { accessService } from "./access.js";

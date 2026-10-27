@@ -2,7 +2,7 @@ import { connectorToolDefinitionsForSkills } from "../connector-runtime.js";
 import * as cloudIdentity from "../cloud-runtime-identity.js";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
-import { LOW_TRUST_REVIEW_PRESET, upsertIssueDocumentSchema } from "@paperclipai/shared";
+import { LOW_TRUST_REVIEW_PRESET, upsertIssueDocumentSchema } from "@bostan/shared";
 import { and, eq, inArray } from "drizzle-orm";
 import {
   activityLog,

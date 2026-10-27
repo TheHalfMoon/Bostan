@@ -81,7 +81,7 @@ import {
 import type { Db } from "@paperclipai/db";
 import {
   type EnvironmentLeaseStatus,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   agentWakeupRequests,
   browserUseRuns,
@@ -121,7 +121,7 @@ import {
 import { terminateLocalService } from "../local-service-supervisor.js";
 import { deriveCommentId } from "../../modules/run-dispatch/index.js";
 import { WakeQueueApplicationError } from "../../modules/wake-queue/index.js";
-import { isUuidLike } from "@paperclipai/shared";
+import { isUuidLike } from "@bostan/shared";
 import {
   type ProviderResourceDisposition,
 } from "../environment-runtime.js";

@@ -9,7 +9,7 @@ import type { heartbeatService } from "../../services/heartbeat.js";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { and, asc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
-import { DOT_AGENT_TOOL_GUIDANCE, GROK_BOT_AGENT_TOOL_GUIDANCE, setAgentAvatarSchema, type SetAgentAvatarInput } from "@paperclipai/shared";
+import { DOT_AGENT_TOOL_GUIDANCE, GROK_BOT_AGENT_TOOL_GUIDANCE, setAgentAvatarSchema, type SetAgentAvatarInput } from "@bostan/shared";
 import { setAgentProfileAvatar } from "../../services/agent-profile-avatar.js";
 import { consumeDotHistoryReceipt } from "../../services/dot-assignment-follow-up.js";
 import { getStorageService } from "../../storage/index.js";

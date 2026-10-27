@@ -27,7 +27,7 @@ import type {
   ExecutionWorkspace,
   ExecutionWorkspaceConfig,
   IssueExecutionWorkspaceSettings,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { resolveRunnerEnvironmentForRun } from "./runner-environment-lifecycle.js";
 import { environmentService } from "./environments.js";
 import {
@@ -47,8 +47,8 @@ import {
   type AdapterExecutionTarget,
   type AdapterRemoteExecutionSpec,
   type AdapterWorkspaceRealization,
-} from "@paperclipai/adapter-utils/execution-target";
-import type { DuplexObservabilityRecorder } from "@paperclipai/adapter-utils/duplex-observability";
+} from "@bostan/adapter-utils/execution-target";
+import type { DuplexObservabilityRecorder } from "@bostan/adapter-utils/duplex-observability";
 import { buildWorkspaceRealizationRequest } from "./workspace-realization.js";
 import { executionWorkspaceService } from "./execution-workspaces.js";
 import { logActivity } from "./activity-log.js";
