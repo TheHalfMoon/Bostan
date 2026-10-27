@@ -120,7 +120,7 @@ describe("mcpRemoteHeaderNameFromConfigPath", () => {
 
 describe("mcpRemoteHeaderRejectionMessage", () => {
   it("explains the problem without echoing the value", () => {
-    expect(mcpRemoteHeaderRejectionMessage("Host", "forbidden")).toContain("Host");
+    expect(mcpRemoteHeaderRejectionMessage("Host", "forbidden")).toBe('Bostan manages the "Host" header and cannot send a custom value for it.');
     expect(mcpRemoteHeaderRejectionMessage("X-Api-Key", "value_control_characters"))
       .toBe('The value for "X-Api-Key" contains line breaks or control characters.');
   });

@@ -6,6 +6,14 @@ function source(overrides: Parameters<typeof buildAgentSkillSourceMeta>[0]) {
 }
 
 describe("buildAgentSkillSourceMeta", () => {
+  it("labels native Bostan-managed sources without changing source badge compatibility", () => {
+    for (const label of [null, "Paperclip", "Paperclip catalog", "Paperclip managed"]) {
+      const expected = label === "Paperclip" ? "Bostan" : label === "Paperclip catalog" ? "Bostan catalog" : "Bostan managed";
+      expect(source({ sourceBadge: "paperclip", sourceLabel: label, sourceLocator: null, sourceType: "catalog" })).toBe(expected);
+    }
+    expect(source({ sourceBadge: "paperclip", sourceLabel: "Custom partner", sourceLocator: null, sourceType: "catalog" })).toBe("Custom partner");
+  });
+
   it("shows GitHub skills as owner/repo text", () => {
     expect(source({
       sourceBadge: "github",

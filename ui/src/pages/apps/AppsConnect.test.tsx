@@ -559,7 +559,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     await vi.waitFor(() => expect(startOAuthMock).toHaveBeenCalledWith(connection.id, { asCurrentUser: true, interactionId: "intent-inline" }));
     expect(popup.location.assign).toHaveBeenCalled();
     popup.closed = true;
-    expect(container.textContent).toContain("Paperclip is waiting for confirmation");
+    expect(container.textContent).toContain("Bostan is waiting for confirmation");
     expect(container.querySelector('a[target="_blank"]')?.getAttribute("href")).toBe("https://mcp.notion.com/authorize?state=resumed");
     expect(navigateTopLevelMock).not.toHaveBeenCalled();
     expect(putConnectionInstallsMock).not.toHaveBeenCalled();
@@ -4301,7 +4301,7 @@ describe("AppsConnect — guided generic MCP flow (PAP-17087)", () => {
     await flushReact();
     await flushReact();
 
-    expect(container.textContent).toContain("This Paperclip needs a public HTTPS address first");
+    expect(container.textContent).toContain("This Bostan needs a public HTTPS address first");
     expect(container.textContent).not.toContain("PAPERCLIP_PUBLIC_URL");
   });
 
@@ -4319,7 +4319,7 @@ describe("AppsConnect — guided generic MCP flow (PAP-17087)", () => {
     await flushReact();
     await flushReact();
 
-    expect(container.textContent).toContain("Paperclip couldn’t name this connection");
+    expect(container.textContent).toContain("Bostan couldn’t name this connection");
     expect(container.textContent).not.toContain("Choose a different name");
     expect(container.querySelector("#generic-mcp-name")).toBeNull();
   });
@@ -4575,7 +4575,7 @@ describe("AppsConnect — guided generic MCP flow (PAP-17087)", () => {
     await act(async () => setInputValue(valueInput, "evil.example"));
     await flushReact();
 
-    expect(container.textContent).toContain('Paperclip manages the "Host" header');
+    expect(container.textContent).toContain('Bostan manages the "Host" header');
     expect(buttonByText("Check link")?.disabled).toBe(true);
     expect(connectAppMock).not.toHaveBeenCalled();
   });

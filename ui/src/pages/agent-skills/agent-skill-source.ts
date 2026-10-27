@@ -104,7 +104,11 @@ export function buildAgentSkillSourceMeta(skill: SourceSkill): AgentSkillSourceM
   }
 
   if (skill.sourceBadge === "paperclip") {
-    return { icon: Paperclip, label: skill.sourceLabel?.trim() || "Paperclip managed" };
+    const nativeLabel = skill.sourceLabel?.trim();
+    const label = nativeLabel === "Paperclip" ? "Bostan"
+      : nativeLabel === "Paperclip catalog" ? "Bostan catalog"
+      : !nativeLabel || nativeLabel === "Paperclip managed" ? "Bostan managed" : nativeLabel;
+    return { icon: Paperclip, label };
   }
 
   if (skill.sourceBadge === "catalog" || skill.sourceType === "catalog") {

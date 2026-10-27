@@ -93,23 +93,31 @@ describe("genericConnectGuidance", () => {
     expect(guidance.body).toContain("Advanced authentication");
   });
 
-  it("points at the deployment when Paperclip itself has no public HTTPS address", () => {
+  it("points at the deployment when Bostan itself has no public HTTPS address", () => {
     expect(genericConnectGuidance("oauth_redirect_origin_unsupported", null).focus).toBe("deployment");
   });
 
   it("does not ask the operator to resolve an internal name conflict", () => {
     const guidance = genericConnectGuidance("tool_access_name_conflict", null);
-    expect(guidance).toMatchObject({ title: "Paperclip couldn’t name this connection", focus: "none" });
+    expect(guidance).toMatchObject({ title: "Bostan couldn’t name this connection", focus: "none" });
     expect(guidance.body).not.toContain("different name");
   });
 
   it("passes a rejected header's own message through", () => {
     const guidance = genericConnectGuidance(
       "mcp_header_rejected",
-      'Paperclip manages the "Host" header and cannot send a custom value for it.',
+      'Bostan manages the "Host" header and cannot send a custom value for it.',
     );
     expect(guidance.body).toContain('"Host"');
     expect(guidance.focus).toBe("credentials");
+  });
+
+  it("uses the Bostan identity for every built-in recovery message", () => {
+    const codes = ["mcp_remote_url_invalid", "remote_http_private_endpoint", "remote_http_dns_failed", "mcp_header_rejected", "tool_access_name_conflict", "oauth_challenge", "oauth_manual_client_required", "oauth_redirect_origin_unsupported", "runtime_error", "anything_new"];
+    for (const code of codes) {
+      const guidance = genericConnectGuidance(code, null);
+      expect(guidance.title + " " + guidance.body).not.toMatch(/Paperclip/i);
+    }
   });
 
   it("falls back to the server's message for an unrecognised code", () => {
@@ -126,9 +134,9 @@ describe("customHeaderError", () => {
     ])).toBeNull();
   });
 
-  it("rejects headers Paperclip refuses to send", () => {
+  it("rejects headers Bostan refuses to send", () => {
     expect(customHeaderError([{ id: "a", name: "Host", value: "evil.example" }]))
-      .toContain('Paperclip manages the "Host" header');
+      .toContain('Bostan manages the "Host" header');
   });
 
   it("rejects a value that would split the request", () => {
