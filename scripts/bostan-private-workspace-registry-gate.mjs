@@ -17,6 +17,9 @@ export function inspectPrivateManifest(manifest, relativePath) {
     throw Error(`Bostan invalid package manifest: ${relativePath}`);
   if(typeof manifest.name!=='string'||!manifest.name.trim())
     throw Error(`Bostan package name missing: ${relativePath}`);
+  if(!(manifest.name==='bostan'||manifest.name.startsWith('bostan-')
+      ||manifest.name.startsWith('@bostan/')))
+    throw Error(`Bostan tracked package retains a non-Bostan identity: ${relativePath}`);
   if(manifest.private!==true)
     throw Error(`Bostan registry publication not quarantined: ${relativePath}`);
   if(Object.hasOwn(manifest,'publishConfig'))
@@ -58,6 +61,19 @@ export function verifyBostanPrivateWorkspace({
     if(result.licensed)licensed++; else missingLicense++;
   }
   for(const category of catalogs)checkCatalogReleaseHooks(JSON.parse(read(`packages/${category}-catalog/package.json`)),category);
+  const fixtures = [
+    ['packages/paperclip-runner/scripts/pi-distribution/package.json','bostan-pi-runtime-distribution'],
+    ['packages/plugins/sandbox-providers/cloudflare/bridge-template/package.json','bostan-cloudflare-sandbox-bridge-template'],
+    ['tests/speko-voice-proof/package.json','@bostan/speko-voice-proof'],
+  ];
+  for(const [path,name] of fixtures){
+    const pkg=JSON.parse(read(path));
+    if(pkg.name!==name||pkg.private!==true)throw Error(`Bostan internal fixture identity mismatch: ${path}`);
+  }
+  const piLock=JSON.parse(read('packages/paperclip-runner/scripts/pi-distribution/package-lock.json'));
+  if(piLock.name!=='bostan-pi-runtime-distribution'
+      ||piLock.packages?.['']?.name!==piLock.name)
+    throw Error('Bostan PI distribution private lockfile identity mismatch');
   const releaseMap=JSON.parse(read('scripts/release-package-manifest.json'));
   if(!Array.isArray(releaseMap)||releaseMap.length<5
     ||releaseMap.some(item=>item.publishFromCi!==false)
@@ -69,6 +85,7 @@ export function verifyBostanPrivateWorkspace({
     manifestsWithDeclaredLicenses:licensed,
     manifestsWithoutDeclaredLicenses:missingLicense,
     quarantinedCatalogs:catalogs.length,
+    bostanPrivateFixtures:fixtures.length,
     releaseMapEntries:releaseMap.length,
     thirdPartyLicenseReviewComplete:false};
 }

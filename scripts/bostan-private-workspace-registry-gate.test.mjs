@@ -13,6 +13,7 @@ test('repository-wide source inventory keeps every Bostan package unpublishable'
   assert.equal(receipt.releaseQualified,false);
   assert.ok(receipt.trackedManifestCount>=45);
   assert.equal(receipt.quarantinedCatalogs,2);
+  assert.equal(receipt.bostanPrivateFixtures,3);
   assert.equal(receipt.thirdPartyLicenseReviewComplete,false);
   assert.equal(receipt.manifestsWithDeclaredLicenses+receipt.manifestsWithoutDeclaredLicenses,receipt.trackedManifestCount);
 });
@@ -25,6 +26,8 @@ test('manifest gate rejects both public registry exposure patterns and omission'
     {...good,publishConfig:{access:'public'}},
   ])assert.throws(()=>inspectPrivateManifest(bad,'test/package.json'),/quarantined|publishConfig/);
   assert.throws(()=>inspectPrivateManifest({private:true},'test/package.json'),/name missing/);
+  assert.throws(()=>inspectPrivateManifest({name:'@paperclipai/fake',private:true},'test/package.json'),/non-Bostan identity/);
+  assert.throws(()=>inspectPrivateManifest({name:'paperclip-fake',private:true},'test/package.json'),/non-Bostan identity/);
 });
 
 test('both public-facing catalogs also block packaging hooks',()=>{
