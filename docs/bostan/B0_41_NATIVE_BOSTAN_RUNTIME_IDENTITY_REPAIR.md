@@ -18,8 +18,8 @@ A nine-suite source regression run initially passed 51/52 tests and identified a
 - Windows `node --test` on nine existing source identity/security suites plus the new `bostan-runtime-identity-regressions.test.mjs`: **56/56 PASS, 0 skipped, 0 failed**. The prior 51/52 finding is repaired.
 - New pure Node 24 dynamic TypeScript test verifies the **actual `formatNodeVersionWarning` implementation** with no npm dependencies or network; file contract checks assert strict Pi-server product ownership, inherited protocol stability, plugin names and Bostan dependency traversal.
 - `git diff --check` PASS. No heavy builds or source installer usage.
-- The remote Pi companion fixture negative test was authored but **cannot be counted as executed evidence** until the native macOS/Linux platform-specific suite runs. The Windows qualification capacity gate remains blocked (free RAM and staging/TEMP storage below threshold), so no installed Windows E2E or Rust compilation is claimed.
+- On the **actual macOS arm64 device**, after a filtered offline frozen-lockfile pnpm install, executed `pnpm --filter @bostan/server exec vitest run src/__tests__/remote-pi-companion.test.ts --maxWorkers=1`: **27/27 PASS**. The source-authority/manifest, corruption, symlink/hardlink safety, strict Bostan installed-server identity including explicit donor rejection, and SIGTERM cleanup cases all passed. No model calls, native Rust compile or external services were used. The Windows qualification gate remains blocked (free RAM and staging/TEMP storage below threshold), so no installed Windows E2E or Rust compilation is claimed.
 
 ## Remaining release gates
 
-Full real Linux/macOS Pi companion import, Native Rust, Windows installed lifecycle, a model-authored governed Case with evidence, independent security signoff and a separate qualified installer/publication plan remain open. **Release NO-GO.**
+Full installed Linux Pi companion distribution, Native Rust, Windows installed lifecycle, a model-authored governed Case with evidence, independent security signoff and a separate qualified installer/publication plan remain open. **Release NO-GO.**
