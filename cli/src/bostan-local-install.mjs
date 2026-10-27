@@ -95,7 +95,7 @@ function requireWindowsTempQa(home) {
   const temp = fs.realpathSync(os.tmpdir()).toLowerCase();
   const actual = fs.realpathSync(home).toLowerCase();
   if (!actual.startsWith(temp + path.sep) ||
-      !/(?:^|[\\/])bostan-native-install-test-[^\\/]+[\\/]home$/.test(actual) ||
+      !/(?:^|[\\/])bostan-native-install-test-[^\\/]+[\\/]home[^\\/]*$/.test(actual) ||
       fs.lstatSync(home).isSymbolicLink()) {
     throw new Error("Windows local CLI QA refuses any non-disposable HOME");
   }
