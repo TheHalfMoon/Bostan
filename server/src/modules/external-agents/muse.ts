@@ -5,7 +5,7 @@ import { z } from "zod";
 import { agents, companies, projects, activityLog, heartbeatRuns, issues, issueComments, issueDocuments, documents, nativeRunFinalizations, agentWakeupRequests,
   museAgentBindings as bindings, museCredentials as credentials, museRunnerAssignments as assignments, museRunnerOperations as operations,
   museMailboxItems as mailbox, museInputDeliveries as inputs, museIdleReceipts as idleReceipts, externalAgentHolds as holds,
-  museReceiverContactBuckets, mcpOauthGrants, mcpOauthTokens, type Db } from "@paperclipai/db";
+  museReceiverContactBuckets, mcpOauthGrants, mcpOauthTokens, type Db } from "@bostan/db";
 import { MUSE_TICKET_TTL_MS, MUSE_CLEANUP_TTL_MS, MUSE_RESOURCE_PATH, museStopBoundarySchema, MUSE_ASSET_VERSION, type AgentConnectionSubject, type MuseBinding, type MuseCommand,
   type MuseQuery, type MusePairing, type MuseStopBoundary, type MuseQualificationEvidence, type MuseQualificationBeginResult, museDetectorCleanupAttestationSchema, type MuseDetectorCleanupEvidence, type MuseDetectorCleanupAttestationInput } from "@bostan/shared";
 import { externalOperationDigest, parsePaperclipQuestionSet, type MuseBindingSnapshot, type ExternalProviderPort, type ExternalProviderOperation } from "../../vendor/paperclip-runner/index.js";

@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { and, eq, gt, like, sql } from "drizzle-orm";
-import { chatEndpoints, chatSlackManagerGrants, chatSlackRegistrations, companySecrets, toolOauthStates } from "@paperclipai/db";
+import { chatEndpoints, chatSlackManagerGrants, chatSlackRegistrations, companySecrets, toolOauthStates } from "@bostan/db";
 import { SLACK_MANAGER_SCOPES, type SlackSetupOptions as SetupChoices } from "@bostan/shared";
 import { conflict, forbidden } from "../../../../errors.js";
 import { getCloudRuntimeIdentity } from "../../../cloud-runtime-identity.js";

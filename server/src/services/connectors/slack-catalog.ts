@@ -12,7 +12,7 @@ import {
   toolProfileEntries,
   toolProfileBindings,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ToolGatewayDescriptor,
   ToolGatewaySession,

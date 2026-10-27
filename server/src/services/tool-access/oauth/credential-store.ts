@@ -2,8 +2,8 @@ import type { ActorInfo, DbTransaction, ToolAccessMutationDb } from "../types.js
 import { oauthConfig } from "./metadata.js";
 import { syncConnectionCredentialBindings } from "../../connection-credential-bindings.js";
 import { and, eq, inArray } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { connectionGrants, toolConnections } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { connectionGrants, toolConnections } from "@bostan/db";
 import type { ToolConnection, ToolCredentialSecretRef } from "@bostan/shared";
 import { notFound } from "../../../errors.js";
 import { secretService } from "../../secrets.js";

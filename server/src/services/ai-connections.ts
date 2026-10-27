@@ -21,7 +21,7 @@ import {
   toolApplications,
   toolConnections,
   toolConnectionInstalls,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   AI_CONNECTION_CAPABILITIES,
   decisionProviderForConnection,

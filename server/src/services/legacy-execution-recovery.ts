@@ -9,7 +9,7 @@ import { claimedAdapterType, hasConversationContinuationPolicy } from "./convers
 import { canonicalExecutionUuid } from "./execution-identity.js";
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
-import { environmentLeases, heartbeatRuns, issueRecoveryActions, issues, nativeRunFinalizations, type Db } from "@paperclipai/db";
+import { environmentLeases, heartbeatRuns, issueRecoveryActions, issues, nativeRunFinalizations, type Db } from "@bostan/db";
 import { issueRecoveryActionService } from "./issue-recovery-actions.js";
 import { parseIssueExecutionState } from "./issue-execution-policy.js";
 import { executionFailureRetryCount } from "./execution-recovery-attempt.js";

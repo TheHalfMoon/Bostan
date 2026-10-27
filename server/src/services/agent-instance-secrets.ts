@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { agents, type Db } from "@paperclipai/db";
+import { agents, type Db } from "@bostan/db";
 import type { AgentLifecycleRequest } from "@bostan/shared";
 import { secretService } from "./secrets.js";
 import { persistActivity } from "./activity-log.js";

@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-import { activityLog, heartbeatRuns, issues } from "@paperclipai/db";
+import { activityLog, heartbeatRuns, issues } from "@bostan/db";
 import { isUuidLike } from "@bostan/shared";
 import { unprocessable } from "../errors.js";
 

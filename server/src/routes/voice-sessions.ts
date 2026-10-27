@@ -1,5 +1,5 @@
 import { Router, type Request } from "express";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { isUuidLike, startVoiceSessionSchema, voiceCallbackPreferenceSchema, voicePhoneConfigurationSchema, voiceInboundDecisionSchema } from "@bostan/shared";
 import { badRequest, forbidden, HttpError, tooManyRequests } from "../errors.js";
 import { validate } from "../middleware/validate.js";

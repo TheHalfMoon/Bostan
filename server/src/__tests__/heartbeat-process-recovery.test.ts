@@ -1,5 +1,5 @@
 import { enableRunFailureReporting } from "./helpers/run-failure-reporting.js";
-import { EMBEDDED_POSTGRES_TEST_TIMEOUT_MS } from "@paperclipai/db";
+import { EMBEDDED_POSTGRES_TEST_TIMEOUT_MS } from "@bostan/db";
 import { createSystemRecovery } from "../services/system-recovery-state.js";
 import * as conversationContinuation from "../services/conversation-continuation.js";
 import { classifyEnvironmentCapabilities, environmentRuntimeService } from "../services/environment-runtime.js";
@@ -101,7 +101,7 @@ import {
   toolConnections,
   workAssessments,
   workspaceOperations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

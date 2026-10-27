@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type {
   Environment,
   EnvironmentDriver,

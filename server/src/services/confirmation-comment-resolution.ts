@@ -1,5 +1,5 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { heartbeatRuns, issueComments, issueThreadInteractions, issues, type Db } from "@paperclipai/db";
+import { heartbeatRuns, issueComments, issueThreadInteractions, issues, type Db } from "@bostan/db";
 import { resolveConfirmationFromCommentSchema, type ResolveConfirmationFromComment } from "@bostan/shared";
 import { assertAgentRunWriteAllowed } from "../agent-run-cancellation.js";
 import { conflict, forbidden, notFound, unprocessable } from "../errors.js";

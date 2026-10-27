@@ -16,7 +16,7 @@ import {
   sql,
 } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   agentWakeupRequests,
@@ -28,7 +28,7 @@ import {
   chatExternalPrincipals,
   heartbeatRuns,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   SafeChatPublicationPayload,
 } from "@bostan/shared";

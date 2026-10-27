@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it, vi } from "vitest";
-import type { agents } from "@paperclipai/db";
+import type { agents } from "@bostan/db";
 import { sessionCodec as codexSessionCodec } from "@bostan/adapter-codex-local/server";
 import { resolveDefaultAgentWorkspaceDir } from "../home-paths.js";
 import {

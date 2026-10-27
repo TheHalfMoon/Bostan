@@ -34,7 +34,7 @@ import {
   toolGatewaySessions,
   toolInvocations,
   toolPolicies,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { PluginToolDispatcher } from "../services/plugin-tool-dispatcher.js";
 import type { VercelConnectClient } from "../services/vercel-connect.js";
 import { initializeRunIdentity, reserveSteeredIdentity, reconcileSteeredIdentity } from "../services/run-identity.js";

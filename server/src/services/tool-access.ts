@@ -98,8 +98,8 @@ import { measureRunPhase } from "./execution-preparation-timing.js";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { and, asc, desc, eq, inArray, max, ne, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { agents, connectionGrantMembers, connectionGrants, companyMemberships, principalPermissionGrants, userSecretDefinitions, plugins, toolAccessAuditEvents, toolApplications, toolCatalogEntries, toolConnectionInstalls, toolConnections, toolStdioCommandTemplates, toolCallEvents, toolPolicies, toolProfileBindings, toolProfileEntries, toolProfiles } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { agents, connectionGrantMembers, connectionGrants, companyMemberships, principalPermissionGrants, userSecretDefinitions, plugins, toolAccessAuditEvents, toolApplications, toolCatalogEntries, toolConnectionInstalls, toolConnections, toolStdioCommandTemplates, toolCallEvents, toolPolicies, toolProfileBindings, toolProfileEntries, toolProfiles } from "@bostan/db";
 import type { AppDefinition, ConnectionGrantKind, CreateToolApplication, CreateToolConnection, ConnectToolApp, ConnectToolAppResult, CreateToolStdioCommandTemplate, FinishToolApp, FinishToolAppResult, CreateToolProfileBindingForProfile, CreateToolProfileEntryForProfile, DeploymentExposure, DeploymentMode, ImportMcpJson, McpConnectionCredentialRef, McpJsonImportPreview, ToolApplication, ToolCatalogEntry, ToolCatalogRefreshResult, ToolConnection, ToolConnectionInstall, ToolConnectionHealthCheckResult, ToolConnectionAuthKind, ToolConnectionCredentialPolicy, ToolConnectionCredentialSource, ToolConnectionTransport, ToolAppMetadataPreflightResult, ToolExampleInstallResult, ToolExampleSmokeCheck, ToolExampleSmokeResult, ToolExampleSummary, ToolProfileBinding, ToolProfileEntry, ToolPolicyDecision, ToolStdioCommandTemplate, UpdateToolApplication, UpdateToolConnection, VercelConnectCredentialReference } from "@bostan/shared";
 import { getAppDefinitionForUrl, getAvailableConnectionMethods, getConnectableAppDefinition, recommendedDefaultsForApp } from "@bostan/shared";
 import {

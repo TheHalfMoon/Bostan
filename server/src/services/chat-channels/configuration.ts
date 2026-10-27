@@ -38,7 +38,7 @@ import {
   sql,
 } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   chatConversations,
@@ -46,7 +46,7 @@ import {
   chatEndpoints,
   toolApplications,
   toolConnections,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ChatEndpoint,
   ChatEndpointSetupState,

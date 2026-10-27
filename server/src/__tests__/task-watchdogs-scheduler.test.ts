@@ -17,7 +17,7 @@ import {
   issueWorkProducts,
   issues,
   issueWatchdogs,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   normalizePaperclipWakePayload,
   renderPaperclipWakePrompt,

@@ -1,5 +1,5 @@
 import { environmentTaskOperationSchema } from "@bostan/plugin-sdk";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type { Environment, EnvironmentLease } from "@bostan/shared";
 import { adapterSupportsRemoteManagedEnvironments } from "@bostan/shared";
 import {

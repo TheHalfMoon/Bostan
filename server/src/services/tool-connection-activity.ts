@@ -1,11 +1,11 @@
 import { and, desc, eq, gte, ilike, inArray, lt, or, sql, type SQL } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   activityLog,
   agents,
   authUsers,
   toolAccessAuditEvents,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ToolConnectionLifecycleEvent,
   ToolConnectionLifecycleEventType,

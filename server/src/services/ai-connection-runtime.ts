@@ -7,7 +7,7 @@ import { mkdtemp, mkdir, writeFile, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { and, eq } from "drizzle-orm";
-import { type Db, companySecrets, connectionGrants } from "@paperclipai/db";
+import { type Db, companySecrets, connectionGrants } from "@bostan/db";
 import {
   AI_CONNECTION_CAPABILITIES,
   aiConnectionMetadataSchema, aiRoutingHarness,

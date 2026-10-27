@@ -9,7 +9,7 @@ import {
   issueThreadInteractions,
   issues,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { ExecutionContinuationEnvelope } from "@bostan/shared";
 import { sanitizeQuarantinedCommentForHigherTrust } from "./source-trust.js";
 import { hasConversationContinuationPolicy } from "./conversation-continuation.js";

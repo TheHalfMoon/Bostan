@@ -11,7 +11,7 @@ import os from "node:os";
 import { skillFileBytes, snapshotFile, assertSkillSnapshotPath, skillSnapshotHash } from "./skill-snapshot.js";
 import { fileURLToPath } from "node:url";
 import { and, asc, desc, eq, inArray, isNull, isNotNull, lt, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents as agentsTable,
   assets,
@@ -31,7 +31,7 @@ import {
   issues,
   issueThreadInteractions,
   issueWorkProducts,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { readPaperclipSkillSyncPreference, writePaperclipSkillSyncPreference, resolvePaperclipDesiredSkillNames,
   resolveLegacyPaperclipDesiredSkillNames } from "@bostan/adapter-utils/server-utils";
 import { REPOSITORY_CONTENT_DIR, repositorySkillProjection } from "./skill-repository-package.js";

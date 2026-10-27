@@ -2,7 +2,7 @@ import type { LifecycleRuntimeFence } from "../runtime-types.js";
 
 import {
   chatPublications,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   SafeChatPublicationPayload,
 } from "@bostan/shared";

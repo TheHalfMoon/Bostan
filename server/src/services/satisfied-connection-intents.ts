@@ -1,5 +1,5 @@
 import { and, asc, eq, gt, inArray, isNull, or } from "drizzle-orm";
-import { approvals, companyMemberships, connectionIntentDeliveries, issueApprovals, issueThreadInteractions, issues, type Db } from "@paperclipai/db";
+import { approvals, companyMemberships, connectionIntentDeliveries, issueApprovals, issueThreadInteractions, issues, type Db } from "@bostan/db";
 import { connectionIntentPayloadSchema } from "@bostan/shared";
 import { logActivity, publishActivity, type ActivityPublication } from "./activity-log.js";
 import { connectionIntentService } from "./connection-intents.js";

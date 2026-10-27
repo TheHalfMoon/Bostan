@@ -28,7 +28,7 @@ import {
   principalPermissionGrants,
   routines,
   routineTriggers,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { readPaperclipSkillSyncPreference } from "@bostan/adapter-utils/server-utils";
 import {
   getEmbeddedPostgresTestSupport,

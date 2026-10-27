@@ -22,7 +22,7 @@ import {
   issueComments,
   issueDocuments,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { feedbackService } from "../services/feedback.ts";
 import {
   getBostanFeedbackPostgresTestSupport,

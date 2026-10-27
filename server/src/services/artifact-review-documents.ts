@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
 import { and, eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { assets, documentRevisions, documents, issueAttachments, issueDocuments } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { assets, documentRevisions, documents, issueAttachments, issueDocuments } from "@bostan/db";
 import {
   MARKDOWN_REVIEW_DOCUMENT_MAX_BYTES,
   artifactReviewDocumentKey,

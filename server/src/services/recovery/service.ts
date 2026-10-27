@@ -35,7 +35,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   hasCommittedNativeBoardResponseWait,
   readNativeBoardResponseWaitSource,
@@ -73,7 +73,7 @@ import {
   routines,
   workAssessments,
   workspaceOperations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { parseObject, asBoolean, asNumber } from "../../adapters/utils.js";
 import { runningProcesses } from "../../adapters/index.js";
 import {

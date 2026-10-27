@@ -1,5 +1,5 @@
 import { enableRunFailureReporting } from "./helpers/run-failure-reporting.js";
-import { EMBEDDED_POSTGRES_TEST_TIMEOUT_MS } from "@paperclipai/db";
+import { EMBEDDED_POSTGRES_TEST_TIMEOUT_MS } from "@bostan/db";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { once } from "node:events";
@@ -29,7 +29,7 @@ import {
   statusDecisionEffects,
   statusDecisions,
   workAssessments,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   type NativeExecutionInputV1,
   type NativeExecutionInput,

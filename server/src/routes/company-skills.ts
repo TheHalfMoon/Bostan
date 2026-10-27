@@ -10,11 +10,11 @@ import { once } from "node:events";
 import type { SkillSourceDiscoveryEvent } from "@bostan/shared";
 import { createHash } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
-import { activityLog, companySkills } from "@paperclipai/db";
+import { activityLog, companySkills } from "@bostan/db";
 import { persistActivity, publishActivity } from "../services/activity-log.js";
 import { projectToolContext } from "../services/project-tool-context.js";
 import { Router, type Request } from "express";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   catalogSkillListQuerySchema,
   companySkillCommentCreateSchema,

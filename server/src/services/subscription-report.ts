@@ -1,5 +1,5 @@
 import { and, eq, exists, gte, isNull, lte, notExists, or, sql } from "drizzle-orm";
-import { aiSubscriptions, aiSubscriptionPrices, aiSubscriptionConnections, connectionGrants, connectionGrantMembers, agents, authUsers, companyMemberships, costEvents, type Db } from "@paperclipai/db";
+import { aiSubscriptions, aiSubscriptionPrices, aiSubscriptionConnections, connectionGrants, connectionGrantMembers, agents, authUsers, companyMemberships, costEvents, type Db } from "@bostan/db";
 import { addCents, monthlySubscriptionCents, type SubscriptionCostReport, type SubscriptionPrice, type SubscriptionUsage } from "@bostan/shared";
 import { withAccountingReadSnapshot } from "./accounting-transaction.js";
 import { ordinaryInputTokens } from "./costs.js";

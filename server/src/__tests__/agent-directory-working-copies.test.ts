@@ -10,7 +10,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { agentFileStore, fileHash, inspectAgentFile, snapshotAgentFiles, MAX_AGENT_FILE_BYTES, MAX_AGENT_DIRECTORY_BYTES, MAX_AGENT_DIRECTORY_ENTRIES } from "../services/agent-file-store.js";
-import { agents, companies, authUsers, companyMemberships, principalPermissionGrants, heartbeatRuns, environmentLeases, environments, agentInstructionWorkingCopies, agentInstructionRevisions, agentInstructionHeads, createDb } from "@paperclipai/db";
+import { agents, companies, authUsers, companyMemberships, principalPermissionGrants, heartbeatRuns, environmentLeases, environments, agentInstructionWorkingCopies, agentInstructionRevisions, agentInstructionHeads, createDb } from "@bostan/db";
 import { startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 import { agentInstructionRevisionService } from "../services/agent-instruction-revisions.js";
 import { agentInstructionWorkingCopyService, instructionWorkingCopyGuidance } from "../services/agent-instruction-working-copies.js";
@@ -20,7 +20,7 @@ import type { EnvironmentRuntimeService } from "../services/environment-runtime.
 import { remoteTerminationReceipt } from "../services/remote-execution-termination.js";
 import { AgentDirectoryReuseInvalidatedError, agentDirectoryWorkingCopyService } from "../services/agent-directory-working-copies.js";
 import { withDirectoryMergeLock } from "@bostan/adapter-utils/workspace-restore-merge";
-import { heartbeatRunEvents } from "@paperclipai/db";
+import { heartbeatRunEvents } from "@bostan/db";
 
 describe("persistent agent directories", () => {
   let database: Awaited<ReturnType<typeof startEmbeddedPostgresTestDatabase>>;

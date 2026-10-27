@@ -2,7 +2,7 @@ import { updateAgentConfigurationInTransaction } from "./agent-configuration-tra
 import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import sharp from "sharp";
-import { agents, assets, companies, type Db } from "@paperclipai/db";
+import { agents, assets, companies, type Db } from "@bostan/db";
 import { MAX_AGENT_AVATAR_BYTES, resolveAgentAppearance, agentAvatarUrl, setAgentAvatarSchema, type SetAgentAvatarInput } from "@bostan/shared";
 import { conflict, notFound, unprocessable } from "../errors.js";
 import type { StorageService } from "../storage/types.js";

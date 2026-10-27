@@ -11,7 +11,7 @@ import {
   projects,
   projectWorkspaces,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   readWorkspaceProviderBinding,
   type WorkspaceProviderBinding,

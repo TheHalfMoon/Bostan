@@ -78,7 +78,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   type EnvironmentLeaseStatus,
 } from "@bostan/shared";
@@ -94,7 +94,7 @@ import {
   issueRecoveryActions,
   issues,
   nativeRunFinalizations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   conflict,
   HttpError,

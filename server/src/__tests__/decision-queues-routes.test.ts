@@ -16,7 +16,7 @@ import {
   issueThreadInteractions,
   issueWorkProducts,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { AttentionItem } from "@bostan/shared";
 import {
   getEmbeddedPostgresTestSupport,

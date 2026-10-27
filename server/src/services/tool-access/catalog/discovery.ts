@@ -15,8 +15,8 @@ import { browserUseClient, isBrowserUseConnection } from "../../browser-use-clie
 import { COGNEE_STDIO_TEMPLATE, cogneeCloudUrl } from "../../cognee-connection.js";
 import { isMemoryConnectorId } from "@bostan/shared";
 import { and, eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { connectionGrants, toolConnections } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { connectionGrants, toolConnections } from "@bostan/db";
 import { GOOGLE_WORKSPACE_CONNECTOR_PROFILES, getConnectableAppDefinition } from "@bostan/shared";
 import { badRequest, HttpError, unprocessable } from "../../../errors.js";
 import { isSlackMcpAccessDisabledResponse } from "../../slack-mcp-error.js";

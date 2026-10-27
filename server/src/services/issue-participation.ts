@@ -1,5 +1,5 @@
 import { sql, type SQL } from "drizzle-orm";
-import { activityLog, chatConversations, chatMessageLinks, issueComments, issues, issueThreadInteractions } from "@paperclipai/db";
+import { activityLog, chatConversations, chatMessageLinks, issueComments, issues, issueThreadInteractions } from "@bostan/db";
 import { HUMAN_TASK_ORIGIN_KINDS } from "@bostan/shared";
 import { activeIssueInteractionCondition } from "./issue-question-context.js";
 

@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 import { Router } from "express";
 import type { NextFunction, Request, Response } from "express";
 import { and, desc, eq, gt, inArray, isNotNull, isNull, lte, ne } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   assets,
   agentApiKeys,
@@ -28,7 +28,7 @@ import {
   invites,
   joinRequests,
   principalPermissionGrants,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   EXTERNAL_AGENT_TOOL_GUIDANCE,
   acceptInviteSchema,

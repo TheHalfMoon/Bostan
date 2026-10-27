@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { agents, caseDocuments, caseIssueLinks, cases, companies, createDb, documents, heartbeatRuns, issueDocuments, issues } from "@paperclipai/db";
+import { agents, caseDocuments, caseIssueLinks, cases, companies, createDb, documents, heartbeatRuns, issueDocuments, issues } from "@bostan/db";
 import { SYSTEM_ISSUE_DOCUMENT_KEYS } from "@bostan/shared";
 import { startEmbeddedPostgresTestDatabase } from "../__tests__/helpers/embedded-postgres.js";
 import { listCaseTaskDocuments } from "./case-task-documents.js";

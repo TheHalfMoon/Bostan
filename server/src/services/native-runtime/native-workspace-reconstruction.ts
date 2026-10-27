@@ -1,5 +1,5 @@
 import { and, eq, gt, inArray, ne, notInArray, or, sql } from "drizzle-orm";
-import { agentWakeupRequests, assets, environmentLeases, heartbeatRuns, issueAttachments, issueRecoveryActions, issues, nativeRunFinalizations, nativeRunResults, type Db } from "@paperclipai/db";
+import { agentWakeupRequests, assets, environmentLeases, heartbeatRuns, issueAttachments, issueRecoveryActions, issues, nativeRunFinalizations, nativeRunResults, type Db } from "@bostan/db";
 import { reconstructWorkspaceSchema, type ExecutionReconciliation } from "@bostan/shared";
 import type { z } from "zod";
 import { conflict } from "../../errors.js";

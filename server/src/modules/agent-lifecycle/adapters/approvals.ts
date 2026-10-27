@@ -1,5 +1,5 @@
 import { agentAppearanceSchema } from "@bostan/shared";
-import { approvals, type Db } from "@paperclipai/db";
+import { approvals, type Db } from "@bostan/db";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { unprocessable } from "../../../errors.js";
 import { approvalResolutionRecords, resolvableApprovalStatuses } from "../../../lib/approval-records.js";

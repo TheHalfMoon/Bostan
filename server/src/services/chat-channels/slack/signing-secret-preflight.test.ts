@@ -1,6 +1,6 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type { ToolCredentialSecretRef } from "@bostan/shared";
 import { createChatCredentials } from "../credentials.js";
 import type { EndpointRow } from "../runtime-types.js";

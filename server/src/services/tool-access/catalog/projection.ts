@@ -1,4 +1,4 @@
-import { toolCatalogEntries } from "@paperclipai/db";
+import { toolCatalogEntries } from "@bostan/db";
 import type { ToolCatalogEntry } from "@bostan/shared";
 
 export function toCatalogEntry(

@@ -1,5 +1,5 @@
 import { Router, type Request } from "express";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { AGENT_ICON_NAMES } from "@bostan/shared";
 import { forbidden } from "../errors.js";
 import { listServerAdapters } from "../adapters/index.js";

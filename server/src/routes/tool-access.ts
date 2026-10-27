@@ -4,8 +4,8 @@ import { aiConnectionRouterService } from "../services/ai-connection-router.js";
 import { composioAppSetupSchema, composioAppsRefreshSchema, composioAppsSyncSchema, composioAppAccountSchema } from "@bostan/shared";
 import { aggregatorAppsSyncSchema, aggregatorAppsRefreshSchema, arcadeDiscoverySetupSchema } from "@bostan/shared/aggregator-apps";
 import { Router, type Request, type Response } from "express";
-import type { Db } from "@paperclipai/db";
-import { agents, companies, connectionGrants, issueThreadInteractions, toolConnectionInstalls } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { agents, companies, connectionGrants, issueThreadInteractions, toolConnectionInstalls } from "@bostan/db";
 import { and, eq, or } from "drizzle-orm";
 import {
   APP_STORE_DEFINITIONS,

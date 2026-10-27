@@ -9,7 +9,7 @@ import { createChatResourceReconciliation } from "../resource-reconciliation.js"
 
 import { chatCredentialMutationLease, type CredentialMutationLeaseGuard } from "../../chat-credential-mutation-lease.js";
 
-import { chatGitHubRegistrations } from "@paperclipai/db";
+import { chatGitHubRegistrations } from "@bostan/db";
 
 import { githubChatWizardService } from "../../chat-github-wizard.js";
 import { registerGitHubBotCloudIngress } from "../../chat-github-cloud-ingress.js";
@@ -25,12 +25,12 @@ import {
   sql,
 } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   chatEndpointResources,
   chatEndpoints,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ChatEndpoint,
   ChatProvider,

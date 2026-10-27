@@ -1,5 +1,5 @@
 import { and, asc, eq, inArray, isNull, notInArray, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agentWakeupRequests,
   heartbeatRuns,
@@ -7,7 +7,7 @@ import {
   issueTreeHoldMembers,
   issueTreeHolds,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   ISSUE_STATUSES,
   type IssueStatus,

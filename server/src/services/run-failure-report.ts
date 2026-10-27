@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { agents, dotRunnerAssignments, grokBotDispatches, heartbeatRuns, nativeRunFinalizations, type Db } from "@paperclipai/db";
+import { agents, dotRunnerAssignments, grokBotDispatches, heartbeatRuns, nativeRunFinalizations, type Db } from "@bostan/db";
 import { captureRunFailure, type RunFailureStatus } from "../sentry.js";
 import {
   collectRunFailureDiagnostics,

@@ -1,12 +1,12 @@
 import { and, eq, ne, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   companySecretBindings,
   companySecretProviderConfigs,
   companySecrets,
   companySecretVersions,
   toolConnections,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { McpConnectionCredentialRef, SecretProvider, ToolCredentialSecretRef } from "@bostan/shared";
 import { getSecretProvider } from "../secrets/provider-registry.js";
 import type { SecretProviderVaultRuntimeConfig } from "../secrets/types.js";

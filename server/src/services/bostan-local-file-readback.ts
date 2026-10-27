@@ -2,7 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { lstat, realpath } from "node:fs/promises";
 import path from "node:path";
 import { and, eq } from "drizzle-orm";
-import { executionWorkspaces, toolInvocations, type Db } from "@paperclipai/db";
+import { executionWorkspaces, toolInvocations, type Db } from "@bostan/db";
 import { openRunnerApiWorkspaceFile } from "./native-runtime/runner-api-files.js";
 
 // One deliberately small, independently read local artifact; no provider

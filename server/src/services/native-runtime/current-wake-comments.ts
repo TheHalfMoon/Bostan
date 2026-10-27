@@ -1,14 +1,14 @@
 import { createHash } from "node:crypto";
 
 import { and, asc, eq, inArray } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   assets,
   heartbeatRuns,
   issueAttachments,
   issueComments,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { SourceTrustMetadata } from "@bostan/shared";
 
 import { createRunSecretRedactionRegistry } from "../run-secret-redaction.js";

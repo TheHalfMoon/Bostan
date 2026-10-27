@@ -1,4 +1,4 @@
-import { chatConversations, issues, type Db } from "@paperclipai/db";
+import { chatConversations, issues, type Db } from "@bostan/db";
 import { and, desc, eq } from "drizzle-orm";
 import type { EndpointRow } from "../runtime-types.js";
 

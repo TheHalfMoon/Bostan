@@ -31,7 +31,7 @@ import {
   projects,
   projectWorkspaces,
   workspaceOperations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

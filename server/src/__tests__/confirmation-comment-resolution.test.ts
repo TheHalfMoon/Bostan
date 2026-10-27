@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { activityLog, agents, authUsers, companies, companyMemberships, createDb, documents, documentRevisions, heartbeatRuns,
-  issueComments, issueDocuments, issues, issueThreadInteractions } from "@paperclipai/db";
+  issueComments, issueDocuments, issues, issueThreadInteractions } from "@bostan/db";
 import { getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 import { resolveConfirmationFromComment } from "../services/confirmation-comment-resolution.js";
 import { issueThreadInteractionService } from "../services/issue-thread-interactions.js";

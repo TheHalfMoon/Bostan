@@ -1,8 +1,8 @@
 import { writeExecutionControl } from "./execution-control-notifications.js";
 import { DELIVERY_QUEUES, notifyDeliveryWork } from "./delivery-work-notifications.js";
 import { and, desc, eq, inArray, isNull, isNotNull, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { heartbeatRuns, issueRecoveryActions, workspaceOperations } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { heartbeatRuns, issueRecoveryActions, workspaceOperations } from "@bostan/db";
 import { isUuidLike } from "@bostan/shared";
 import type {
   IssueRecoveryAction,

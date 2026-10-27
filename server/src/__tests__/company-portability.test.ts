@@ -6,7 +6,7 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CompanyPortabilityFileEntry } from "@bostan/shared";
-import { runnerApiResponseReservations } from "@paperclipai/db";
+import { runnerApiResponseReservations } from "@bostan/db";
 
 const runnerTarget = vi.hoisted(() => ({ driver: "local", platform: "linux", architecture: "x64" }));
 

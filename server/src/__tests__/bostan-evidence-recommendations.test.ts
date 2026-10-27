@@ -5,7 +5,7 @@ import { decisionRoutes } from "../routes/decisions.js";
 import { errorHandler } from "../middleware/error-handler.js";
 import { sql, eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { agents, authUsers, budgetPolicies, companies, companyMemberships, costEvents, createDb, decisions, documents, issueDocuments, heartbeatRuns, issues, decisionEffectExecutions, projects } from "@paperclipai/db";
+import { agents, authUsers, budgetPolicies, companies, companyMemberships, costEvents, createDb, decisions, documents, issueDocuments, heartbeatRuns, issues, decisionEffectExecutions, projects } from "@bostan/db";
 import { createBostanRecommendation, bostanRecommendationSchema, type BostanRecommendationInput } from "../services/bostan-decision-recommendations.js";
 import { readBostanIssueDocumentEvidence } from "../services/bostan-knowledge-evidence.js";
 import { decisionService } from "../services/decisions.js";

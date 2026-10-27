@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
-import { agents, environmentLeases, environments, agentInstructionWorkingCopies as copies, type Db } from "@paperclipai/db";
+import { agents, environmentLeases, environments, agentInstructionWorkingCopies as copies, type Db } from "@bostan/db";
 import { syncDirectoryToSsh, restoreWorkspaceFromSshExecution } from "@bostan/adapter-utils/ssh";
 import { prepareAdapterExecutionTargetRuntime, runAdapterExecutionTargetShellCommand, type AdapterExecutionTarget, type PreparedAdapterExecutionTargetRuntime } from "@bostan/adapter-utils/execution-target";
 import { withDirectoryMergeLock, directorySnapshotSha256, parseDirectorySnapshot, serializeDirectorySnapshot, type DirectoryMergeLockOperation } from "@bostan/adapter-utils/workspace-restore-merge";

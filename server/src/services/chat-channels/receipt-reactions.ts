@@ -22,14 +22,14 @@ import {
   sql,
 } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   chatActions,
   chatDeliveries,
   chatEndpoints,
   toolConnections,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ChatEndpointSetupState,
   ChatProvider,

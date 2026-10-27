@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 
 import { SANDBOX_PLATFORM_PROBE_METADATA_KEY } from "./environment-custom-image-runtime.js";
 import { and, desc, eq, inArray, isNull, ne, sql, type SQL } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents,
   builtInManagedResources,
@@ -16,7 +16,7 @@ import {
   instanceSettings,
   issues,
   projects,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   ENVIRONMENT_DRIVERS,
   ENVIRONMENT_LEASE_CLEANUP_STATUSES,

@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { cases, heartbeatRuns, issues, type Db } from "@paperclipai/db";
+import { cases, heartbeatRuns, issues, type Db } from "@bostan/db";
 import { isUuidLike } from "@bostan/shared";
 import { assertAgentRunWriteAllowed } from "../agent-run-cancellation.js";
 import { forbidden, notFound } from "../errors.js";

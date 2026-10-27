@@ -12,7 +12,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   type BillingType,
   type CostStatus,
@@ -25,7 +25,7 @@ import {
   heartbeatRunEvents,
   heartbeatRuns,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { notFound } from "../../errors.js";
 import { logger } from "../../middleware/logger.js";
 import { getServerAdapter } from "../../adapters/index.js";

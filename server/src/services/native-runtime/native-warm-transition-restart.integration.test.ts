@@ -18,7 +18,7 @@ import {
   heartbeatRuns,
   issues,
   nativeRunFinalizations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { NativeExecutionInputV1 } from "@paperclipai/paperclip-runner";
 import { describe, expect, it, vi } from "vitest";
 import { nativeSha256 } from "./canonical.js";

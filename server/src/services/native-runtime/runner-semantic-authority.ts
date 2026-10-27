@@ -8,7 +8,7 @@ import {
 } from "../source-trust.js";
 import { and, desc, eq, isNull } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents,
   documentRevisions,
@@ -17,7 +17,7 @@ import {
   issueComments,
   issueDocuments,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   PaperclipSemanticDispatcher,
   type PaperclipJsonValue,

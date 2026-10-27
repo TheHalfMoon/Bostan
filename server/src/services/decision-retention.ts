@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { and, asc, eq, inArray, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents,
   approvals,
@@ -12,7 +12,7 @@ import {
   issueRecoveryActions,
   issueThreadInteractions,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   AttentionArchiveManifestEntry,
   AttentionItem,

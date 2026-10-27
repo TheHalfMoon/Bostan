@@ -25,7 +25,7 @@ import {
   isNull,
   sql,
 } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   CHAT_PROVIDERS,
   CONNECTION_INTENT_AGENT_GUIDANCE,
@@ -66,7 +66,7 @@ import {
   toolConnections,
   toolProfileEntries,
   toolProfiles,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { HttpError } from "../../errors.js";
 import { filterResolvedGitHubConnectionsForRun } from "../git-credentials.js";
 import type {

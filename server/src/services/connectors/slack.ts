@@ -12,7 +12,7 @@ import {
   toolProfileBindings,
   toolProfileEntries,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { and, eq } from "drizzle-orm";
 import { badRequest, forbidden } from "../../errors.js";
 import {

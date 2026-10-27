@@ -1,5 +1,5 @@
 import { and, asc, eq, exists, getTableColumns, inArray, notInArray, or, sql } from "drizzle-orm";
-import { caseIssueLinks, documents, issueDocuments, issues, type Db } from "@paperclipai/db";
+import { caseIssueLinks, documents, issueDocuments, issues, type Db } from "@bostan/db";
 import { LOW_TRUST_REVIEW_PRESET, SYSTEM_ISSUE_DOCUMENT_KEYS } from "@bostan/shared";
 import { authorizationService, issueReadSqlCondition, type AuthorizationActor } from "./authorization.js";
 

@@ -4,7 +4,7 @@ import { constants, promises as fs } from "node:fs";
 import path from "node:path";
 import { and, eq, sql } from "drizzle-orm";
 import { companySkillVersions, companySkillRepositorySnapshots, heartbeatRuns,
-  nativeRunFinalizations, environmentLeases, withDedicatedDbConnection, type Db } from "@paperclipai/db";
+  nativeRunFinalizations, environmentLeases, withDedicatedDbConnection, type Db } from "@bostan/db";
 import { resolvePaperclipInstanceRoot } from "../home-paths.js";
 import { assertSkillSnapshotPath } from "./skill-snapshot.js";
 import { repositorySkillFrontmatter } from "./skill-repository-package.js";

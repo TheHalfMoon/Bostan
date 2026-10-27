@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { companies, companyMemberships, instanceUserRoles } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { companies, companyMemberships, instanceUserRoles } from "@bostan/db";
 import type { DeploymentMode } from "@bostan/shared";
 import { ensureHumanRoleDefaultGrants } from "./services/principal-access-compatibility.js";
 

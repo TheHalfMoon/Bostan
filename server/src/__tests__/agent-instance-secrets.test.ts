@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { eq, sql } from "drizzle-orm";
-import { agents, companies, companySecrets, companySecretVersions, activityLog, plugins, toolApplications, toolConnections, createDb, type Db } from "@paperclipai/db";
+import { agents, companies, companySecrets, companySecretVersions, activityLog, plugins, toolApplications, toolConnections, createDb, type Db } from "@bostan/db";
 import type { AgentLifecycleRequest } from "@bostan/shared";
 import { getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 import { agentInstanceSecretService } from "../services/agent-instance-secrets.js";

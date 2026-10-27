@@ -1,6 +1,6 @@
 import type { ToolAccessMutationDb } from "../types.js";
-import type { Db } from "@paperclipai/db";
-import { connectionTokenIssuances } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { connectionTokenIssuances } from "@bostan/db";
 import type { ConnectionTokenIssuanceOutcome, ConnectionTokenIssuancePath } from "@bostan/shared";
 import { logActivity } from "../../activity-log.js";
 

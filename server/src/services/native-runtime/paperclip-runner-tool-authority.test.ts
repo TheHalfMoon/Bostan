@@ -18,7 +18,7 @@ import {
   issueComments,
   issueThreadInteractions,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { startEmbeddedPostgresTestDatabase } from "../../__tests__/helpers/embedded-postgres.js";
 import { initializeRunIdentity, reserveSteeredIdentity, reconcileSteeredIdentity } from "../run-identity.js";
 import { documentService } from "../documents.js";

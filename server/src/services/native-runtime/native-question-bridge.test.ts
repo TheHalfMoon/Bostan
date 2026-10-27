@@ -21,7 +21,7 @@ import {
   issueThreadInteractions,
   issues,
   nativeRunFinalizations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { PrpEvent } from "@paperclipai/paperclip-runner";
 import { respondIssueThreadInteractionSchema } from "@bostan/shared";
 

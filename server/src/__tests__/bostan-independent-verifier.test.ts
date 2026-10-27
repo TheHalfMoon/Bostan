@@ -4,7 +4,7 @@ import request from "supertest";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { agents, caseAccessSources, caseHandoffs, cases, companies,
-  createDb, documentRevisions, heartbeatRuns, issues, toolInvocations } from "@paperclipai/db";
+  createDb, documentRevisions, heartbeatRuns, issues, toolInvocations } from "@bostan/db";
 import { caseHandoffService } from "../services/case-handoffs.js";
 import { issueService } from "../services/issues.js";
 import { documentService } from "../services/documents.js";

@@ -1,6 +1,6 @@
 import { connectionIntentDeliveryService } from "../services/connection-intent-delivery.js";
 import { Router, type Request } from "express";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   CONNECTION_REQUEST_TOOL_DESCRIPTION,
   CONNECTIONS_SEARCH_TOOL_DESCRIPTION,

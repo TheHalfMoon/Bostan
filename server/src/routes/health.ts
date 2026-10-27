@@ -1,9 +1,9 @@
 import { supportsLocalAiLogin } from "../services/local-ai-login-policy.js";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { Router } from "express";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { and, count, eq, gt, inArray, isNull, sql } from "drizzle-orm";
-import { heartbeatRuns, instanceUserRoles, invites } from "@paperclipai/db";
+import { heartbeatRuns, instanceUserRoles, invites } from "@bostan/db";
 import type { DeploymentExposure, DeploymentMode } from "@bostan/shared";
 import {
   readPersistedDevServerStatus,

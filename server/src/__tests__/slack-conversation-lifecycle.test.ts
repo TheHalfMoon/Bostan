@@ -9,7 +9,7 @@ import {
   chatMessageLinks, chatPublications, companies, createDb, heartbeatRuns, issueApprovals,
   issueComments, issueRelations, issueThreadInteractions, issues, nativeRunFinalizations,
   toolApplications, toolConnections,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 import { settleSlackConversation } from "../services/slack-conversation-lifecycle.js";
 import { externalConversationStateSql, resumeExternalConversation } from "../services/slack-conversation-state.js";

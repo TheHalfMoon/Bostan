@@ -11,7 +11,7 @@ import { VOICE_RESULT_NOTIFICATION } from "@bostan/shared";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { chatActions, instanceUserRoles, principalPermissionGrants, environments, chatVoiceInboundCalls, chatVoicePhoneLines, chatVoiceReports, heartbeatRuns, toolProfileBindings, chatVoiceCallbacks, agentWakeupRequests, issueThreadInteractions, issueQuestionResponseDeliveries, issueComments, agents, chatConversations, chatDeliveries, chatEndpoints, chatPublications, chatVoiceReplies, chatVoiceSessions, chatVoiceToolCalls, companies, companyMemberships, companySecrets, connectionGrants, connectionGrantMembers, createDb, EMBEDDED_POSTGRES_TEST_TIMEOUT_MS, issues, toolApplications, toolConnections, toolConnectionInstalls } from "@paperclipai/db";
+import { chatActions, instanceUserRoles, principalPermissionGrants, environments, chatVoiceInboundCalls, chatVoicePhoneLines, chatVoiceReports, heartbeatRuns, toolProfileBindings, chatVoiceCallbacks, agentWakeupRequests, issueThreadInteractions, issueQuestionResponseDeliveries, issueComments, agents, chatConversations, chatDeliveries, chatEndpoints, chatPublications, chatVoiceReplies, chatVoiceSessions, chatVoiceToolCalls, companies, companyMemberships, companySecrets, connectionGrants, connectionGrantMembers, createDb, EMBEDDED_POSTGRES_TEST_TIMEOUT_MS, issues, toolApplications, toolConnections, toolConnectionInstalls } from "@bostan/db";
 import { configureSpekoSessionTools } from "../services/voice/speko-tool-setup.js";
 import { instanceSettingsService } from "../services/instance-settings.js";
 import { chatChannelService } from "../services/chat-channels.js";

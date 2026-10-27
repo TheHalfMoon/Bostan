@@ -1,6 +1,6 @@
 import { createPublicKey, verify } from "node:crypto";
 import { Router } from "express";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   canonicalJson,
   parseInspectionQuery,

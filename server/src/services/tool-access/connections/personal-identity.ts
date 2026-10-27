@@ -1,7 +1,7 @@
 import type { ActorInfo } from "../types.js";
 import { and, desc, eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { connectionGrants, toolConnections } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { connectionGrants, toolConnections } from "@bostan/db";
 import { forbidden } from "../../../errors.js";
 
 import { actorBinding } from "../actor.js";

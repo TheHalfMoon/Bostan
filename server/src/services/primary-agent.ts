@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { agents, userCompanyPreferences, type Db } from "@paperclipai/db";
+import { agents, userCompanyPreferences, type Db } from "@bostan/db";
 import type { PrimaryAgentPreference } from "@bostan/shared";
 import { notFound, unprocessable } from "../errors.js";
 import { persistActivity, publishActivity } from "./activity-log.js";

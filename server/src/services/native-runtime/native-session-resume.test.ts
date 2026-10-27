@@ -22,7 +22,7 @@ import {
   heartbeatRuns,
   issues,
   nativeRunResults,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { describe, expect, it, vi } from "vitest";
 import {
   CodexAppServerDriver,

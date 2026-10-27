@@ -31,13 +31,13 @@ import {
   externalThreadIdentityCondition,
 } from "../../chat-control-chronology.js";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   chatDeliveries,
   chatEndpointLeases,
   chatEndpoints,
-} from "@paperclipai/db";
+} from "@bostan/db";
 
 import {
   normalizeContentType,

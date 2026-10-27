@@ -4,7 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import {
   agents, companies, createDb, toolApplications, toolCatalogEntries,
   toolConnections, toolProfileBindings, toolProfileEntries, toolProfiles, type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { toolAccessService } from "../services/tool-access.js";
 import { getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 

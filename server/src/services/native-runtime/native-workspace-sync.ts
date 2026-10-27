@@ -8,8 +8,8 @@ import { createReadStream } from "node:fs";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { environmentLeases, heartbeatRuns } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { environmentLeases, heartbeatRuns } from "@bostan/db";
 import type { EnvironmentLease } from "@bostan/shared";
 import {
   prepareAdapterExecutionTargetRuntime,

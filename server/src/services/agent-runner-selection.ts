@@ -1,4 +1,4 @@
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { agentHarnessType, isEnvironmentDriverSupportedForAdapter, paperclipRunnerSupportsPlatform, type AgentRunnerChoice, type AgentRunnerAvailability } from "@bostan/shared";
 import { normalizeLegacyRunnerProvider, PAPERCLIP_RUNNER_DEFAULT_MODELS } from "@bostan/adapter-utils";
 import { resolveClaudeModel } from "@bostan/adapter-claude-local";

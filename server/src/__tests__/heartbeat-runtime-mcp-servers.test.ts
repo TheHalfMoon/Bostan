@@ -22,7 +22,7 @@ import {
   toolProfileBindings,
   toolProfileEntries,
   toolProfiles,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

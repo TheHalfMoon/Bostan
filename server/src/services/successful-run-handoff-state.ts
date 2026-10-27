@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { activityLog, agentWakeupRequests, heartbeatRuns } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { activityLog, agentWakeupRequests, heartbeatRuns } from "@bostan/db";
 import type { SuccessfulRunHandoffState } from "@bostan/shared";
 import { logActivity } from "./activity-log.js";
 

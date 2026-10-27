@@ -3,7 +3,7 @@ import { skillAccessService } from "./skill-access.js";
 import { credentialAccessConnectionNameSql } from "./credential-access-visibility.js";
 import { executionProjectionsForRuns } from "./execution-projection.js";
 import { and, asc, desc, eq, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   activityLog,
   agents,
@@ -18,7 +18,7 @@ import {
   issues,
   issueWorkProducts,
   workspaceOperations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { hasWorkspaceRestoreFailure, safeWorkspaceRestorePath, ISSUE_CONTINUATION_SUMMARY_DOCUMENT_KEY } from "@bostan/shared";
 import { logger } from "../middleware/logger.js";
 import { visibleIssueCondition } from "./issue-visibility.js";

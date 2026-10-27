@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { heartbeatRuns, type Db } from "@paperclipai/db";
+import { heartbeatRuns, type Db } from "@bostan/db";
 import type { AdapterExecutionResult } from "@bostan/adapter-utils";
 import { parseObject } from "../../adapters/utils.js";
 import { assertLowTrustRuntimeServicesAllowed } from "../low-trust-runtime-containment.js";

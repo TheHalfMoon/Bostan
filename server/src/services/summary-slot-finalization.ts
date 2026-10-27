@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { summarySlots } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { summarySlots } from "@bostan/db";
 import type { IssueStatus } from "@bostan/shared";
 
 const TERMINAL_ISSUE_STATUSES = new Set<IssueStatus>(["done", "cancelled"]);

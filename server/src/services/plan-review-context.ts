@@ -1,12 +1,12 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   documentAnnotationComments,
   documentAnnotationThreads,
   documents,
   issueDocuments,
   issueThreadInteractions,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   DocumentReviewContext,
   DocumentReviewContextDocument,

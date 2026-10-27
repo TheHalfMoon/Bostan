@@ -586,7 +586,7 @@ export async function onboard(opts: OnboardOptions): Promise<void> {
       const s = p.spinner();
       s.start("Testing database connection...");
       try {
-        const { createDb } = await import("@paperclipai/db");
+        const { createDb } = await import("@bostan/db");
         const db = createDb(database.connectionString);
         await db.execute("SELECT 1");
         s.stop("Database connection successful");

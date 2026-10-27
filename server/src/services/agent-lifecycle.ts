@@ -1,5 +1,5 @@
 import { logger } from "../middleware/logger.js";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import * as lifecycle from "../modules/agent-lifecycle/index.js";
 import { withAccountingTransaction } from "./accounting-transaction.js";
 import { budgetServiceInTransaction, policyBlocks, type BudgetServiceHooks } from "./budgets.js";

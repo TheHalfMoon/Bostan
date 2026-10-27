@@ -13,7 +13,7 @@ import {
   issueComments,
   issues,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { projectChatFileTransfer } from "./chat-publication-batches.js";
 import type { TeamsFileTransferSummary } from "./chat-teams-file-transfers.js";
 

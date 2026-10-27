@@ -2,7 +2,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { JsonRpcCallError, readEnvironmentAcquisitionDiagnostic, readEnvironmentCreationCleanupError } from "@bostan/plugin-sdk";
-import type { heartbeatRuns } from "@paperclipai/db";
+import type { heartbeatRuns } from "@bostan/db";
 import { createPluginWorkerHandle } from "../services/plugin-worker-manager.js";
 import { captureEnvironmentAcquisitionDiagnostic } from "../services/environment-acquisition-diagnostics.js";
 import { collectRunFailureDiagnostics } from "../services/run-failure-diagnostics.js";

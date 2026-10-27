@@ -37,7 +37,7 @@ import { secretService } from "./secrets.js";
 import type { environmentService } from "./environments.js";
 import type { environmentRuntimeService } from "./environment-runtime.js";
 import { buildLoginLeaseAcquireArgs } from "./adapter-login-lease.js";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   createLoginPtyTransport,
   type LoginPtySession,

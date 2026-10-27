@@ -14,7 +14,7 @@ import {
   issueRelations,
   issueWorkProducts,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { and, eq, sql } from "drizzle-orm";
 import {
   getEmbeddedPostgresTestSupport,

@@ -1,7 +1,7 @@
 import { projectInstanceSecretService } from "./project-instance-secrets.js";
 import { pluginAgentRuntimeState } from "./plugin-agent-runtime-state.js";
 import { createAgentLifecycle } from "./agent-lifecycle.js";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   activityLog,
   agentTaskSessions as agentTaskSessionsTable,
@@ -15,7 +15,7 @@ import {
   pluginLogs,
   principalPermissionGrants,
   projects as projectsTable,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { eq, and, like, desc, inArray, sql, isNull, isNotNull, gt, lte } from "drizzle-orm";
 import type {
   HostServices,

@@ -10,8 +10,8 @@ import { googleWorkspaceToolTarget, googleWorkspaceGrantedScopes, isGoogleWorksp
 import { retainMcpConnectionFailure } from "../../mcp-connection-failure.js";
 import { isRemoteMcpConnectorMethod } from "@bostan/shared";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { connectionGrants, toolApplications, toolCatalogEntries, toolConnections, toolRuntimeSlots } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { connectionGrants, toolApplications, toolCatalogEntries, toolConnections, toolRuntimeSlots } from "@bostan/db";
 import type { ToolCatalogRefreshResult } from "@bostan/shared";
 import { getConnectableAppDefinition, isGoogleWorkspaceConnectorProfileId } from "@bostan/shared";
 import { HttpError, unprocessable } from "../../../errors.js";

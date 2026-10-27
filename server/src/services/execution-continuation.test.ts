@@ -9,7 +9,7 @@ import {
   issueComments,
   issueThreadInteractions,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { renderPaperclipWakePrompt } from "@bostan/adapter-utils/server-utils";
 import {
   getEmbeddedPostgresTestSupport,

@@ -31,8 +31,8 @@
  */
 
 import { and, desc, eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { plugins, pluginJobs, pluginJobRuns } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { plugins, pluginJobs, pluginJobRuns } from "@bostan/db";
 import type {
   PluginJobDeclaration,
   PluginJobRunStatus,

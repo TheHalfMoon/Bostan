@@ -7,7 +7,7 @@ import {
 } from "./slack-access.js";
 import { slackClient } from "./slack-client.js";
 import type { SlackTaskAuthority } from "./slack-authority.js";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { SLACK_TOOLS } from "@bostan/shared";
 import { tooManyRequests, unprocessable } from "../../errors.js";
 const authority = {

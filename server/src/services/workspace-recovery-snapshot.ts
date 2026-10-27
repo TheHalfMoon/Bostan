@@ -7,7 +7,7 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { workspaceOperations, type Db } from "@paperclipai/db";
+import { workspaceOperations, type Db } from "@bostan/db";
 import type { AdapterSandboxExecutionTarget } from "@bostan/adapter-utils/execution-target";
 import { createCommandManagedRuntimeClient } from "@bostan/adapter-utils/command-managed-runtime";
 import { createTarballFromDirectory, exportSandboxWorkspaceSnapshot, restoreVerifiedSnapshotArchive } from "@bostan/adapter-utils/sandbox-managed-runtime";

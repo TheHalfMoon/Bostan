@@ -7,7 +7,7 @@ import {
   projects,
   runIdentityContexts,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { forbidden } from "../errors.js";
 import { captureRunIdentity } from "./run-identity.js";
 import {

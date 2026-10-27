@@ -3,8 +3,8 @@ import { createOAuthClientProtocol, storedOAuthTokenEndpointAuthMethod } from ".
 import { oauthConfig, normalizeOauthScopes } from "./metadata.js";
 import { emitConnectionUpdated } from "../../connector-telemetry.js";
 import { and, eq, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { companySecrets, toolConnections } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { companySecrets, toolConnections } from "@bostan/db";
 import { conflict, HttpError, unprocessable } from "../../../errors.js";
 import { secretService } from "../../secrets.js";
 

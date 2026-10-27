@@ -22,7 +22,7 @@ import os from "node:os";
 import path from "node:path";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { agents, approvals, budgetPolicies, costEvents, completionContracts, issueApprovals, issueTreeHolds, issueTreeHoldMembers, companies, createDb, environmentLeases, environments, heartbeatRuns, issueComments, issueRecoveryActions, issues, nativeRunFinalizations, nativeRunResults, agentWakeupRequests, workspaceOperations } from "@paperclipai/db";
+import { agents, approvals, budgetPolicies, costEvents, completionContracts, issueApprovals, issueTreeHolds, issueTreeHoldMembers, companies, createDb, environmentLeases, environments, heartbeatRuns, issueComments, issueRecoveryActions, issues, nativeRunFinalizations, nativeRunResults, agentWakeupRequests, workspaceOperations } from "@bostan/db";
 import { resumePreservedResultFinalization } from "./preserved-result-finalization.js";
 import type { AdapterSandboxExecutionTarget } from "@bostan/adapter-utils/execution-target";
 import type { EnvironmentLease } from "@bostan/shared";

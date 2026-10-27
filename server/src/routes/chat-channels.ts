@@ -8,7 +8,7 @@ import {
 import { z } from "zod";
 import { githubChatManagementService } from "../services/chat-github-management.js";
 import { updateGitHubChatConfigurationSchema } from "@bostan/shared";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   CHAT_PROVIDERS,
   configureChatEndpointSchema,

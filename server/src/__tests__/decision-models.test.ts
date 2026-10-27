@@ -8,8 +8,8 @@ import {
   createDb, companies, agents, companyMemberships, companyDecisionModels, costEvents, decisionInvocations,
   connectionGrants, connectionGrantMembers, toolConnectionInstalls, budgetPolicies, budgetReservations,
   heartbeatRuns, issues, projects, runIdentityContexts, secretAccessEvents, companySecrets,
-} from "@paperclipai/db";
-import { startEmbeddedPostgresTestDatabase } from "@paperclipai/db/test-embedded-postgres";
+} from "@bostan/db";
+import { startEmbeddedPostgresTestDatabase } from "@bostan/db/test-embedded-postgres";
 import { DECISION_TEST_REQUEST, updateDecisionModelSchema, createCostEventSchema } from "@bostan/shared";
 import { aiConnectionService } from "../services/ai-connections.js";
 import { agentService } from "../services/agents.js";

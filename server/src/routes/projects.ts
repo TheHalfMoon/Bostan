@@ -1,7 +1,7 @@
 import { skillAccessRequestContext } from "../services/skill-access.js";
 import { createHash } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
-import { activityLog } from "@paperclipai/db";
+import { activityLog } from "@bostan/db";
 import { projectToolContext } from "../services/project-tool-context.js";
 import { museExternalAgents, withExternalExecutionAdmission } from "../modules/external-agents/index.js";
 import { parseNativeExecutionInput } from "../vendor/paperclip-runner/index.js";
@@ -10,8 +10,8 @@ import { z } from "zod";
 import { normalizeProjectRepositoryUrl, resolveProjectRepositorySelection } from "../services/project-repositories.js";
 import { toolAccessService } from "../services/tool-access.js";
 import { Router, type Request, type Response } from "express";
-import type { Db } from "@paperclipai/db";
-import { agents, authUsers, companyMemberships, instanceUserRoles, projectAccessMembers } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { agents, authUsers, companyMemberships, instanceUserRoles, projectAccessMembers } from "@bostan/db";
 import { inArray } from "drizzle-orm";
 import {
   addProjectAccessMemberSchema,

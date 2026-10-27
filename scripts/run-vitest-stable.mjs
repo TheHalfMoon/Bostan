@@ -25,7 +25,7 @@ const nonServerProjects = [
   "@bostan/shared",
   "@bostan/skills-catalog",
   "@bostan/teams-catalog",
-  "@paperclipai/db",
+  "@bostan/db",
   "@bostan/adapter-utils",
   "@bostan/adapter-claude-local",
   "@bostan/adapter-codex-local",
@@ -131,7 +131,7 @@ const generalWorkspacesAProjects = ["@bostan/ui", "bostan"];
 // slow suites on one runner. Splitting by project is deterministic and
 // leaves the remaining projects at ~265-275s of vitest time, roughly level
 // with this lane.
-const generalWorkspacesCProjects = ["@paperclipai/db"];
+const generalWorkspacesCProjects = ["@bostan/db"];
 const generalWorkspacesBProjects = nonServerProjects.filter(
   (project) => !generalWorkspacesAProjects.includes(project) && !generalWorkspacesCProjects.includes(project),
 );

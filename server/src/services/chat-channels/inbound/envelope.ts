@@ -19,7 +19,7 @@ import {
 
 import type { ChatEndpointRuntime } from "../../voice/voice-runtime.js";
 
-import { chatGitHubConfigurations } from "@paperclipai/db";
+import { chatGitHubConfigurations } from "@bostan/db";
 import type { GitHubReviewEventContext, GitHubIssueEventContext, GitHubReviewPolicy } from "@bostan/shared";
 
 import { photonReplyReference } from "../../photon/adapter.js";
@@ -29,11 +29,11 @@ import {
   eq,
 } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   chatEndpointResources,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ChatEventKind,
 } from "@bostan/shared";

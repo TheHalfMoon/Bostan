@@ -1,5 +1,5 @@
 import { imessageProgressSupersessionReason } from "./imessage-photon/publications.js";
-import { fastResponseRequests } from "@paperclipai/db";
+import { fastResponseRequests } from "@bostan/db";
 
 import {
   and,
@@ -16,7 +16,7 @@ import {
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   agentWakeupRequests,
@@ -27,7 +27,7 @@ import {
   issueComments,
   issueThreadInteractions,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   SafeChatPublicationPayload,
 } from "@bostan/shared";

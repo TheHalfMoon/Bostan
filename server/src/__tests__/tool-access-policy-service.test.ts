@@ -24,7 +24,7 @@ import {
   toolProfileEntries,
   toolProfiles,
   toolRateLimitCounters,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getBostanFeedbackPostgresTestSupport as getEmbeddedPostgresTestSupport,
   startBostanFeedbackPostgresTestDatabase as startEmbeddedPostgresTestDatabase,

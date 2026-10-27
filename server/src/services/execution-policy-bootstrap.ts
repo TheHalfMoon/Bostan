@@ -17,7 +17,7 @@
  * The env-var parsing is a pure function so it is trivially unit-testable.
  */
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type { InstanceExecutionMode } from "@bostan/shared";
 import { logger } from "../middleware/logger.js";
 import { environmentService, type KubernetesEnvironmentConfigInput } from "./environments.js";

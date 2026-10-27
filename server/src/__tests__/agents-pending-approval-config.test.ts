@@ -10,7 +10,7 @@ import {
   companies,
   createDb,
   principalPermissionGrants,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

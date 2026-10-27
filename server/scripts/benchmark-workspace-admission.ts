@@ -17,7 +17,7 @@ import {
   heartbeatRuns,
   issues,
   startEmbeddedPostgresTestDatabase,
-} from "@paperclipai/db";
+} from "@bostan/db";
 
 import { createAgentLifecycle } from "../src/services/agent-lifecycle.js";
 

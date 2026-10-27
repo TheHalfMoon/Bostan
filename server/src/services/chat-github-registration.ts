@@ -7,7 +7,7 @@ import {
   companies,
   companyMemberships,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { GitHubAppRegistrationInput } from "@bostan/shared";
 import { badRequest, conflict, forbidden, notFound } from "../errors.js";
 import { githubBotRequest } from "./chat-github-client.js";

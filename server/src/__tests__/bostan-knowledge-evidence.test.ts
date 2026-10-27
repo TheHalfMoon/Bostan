@@ -3,7 +3,7 @@ import express from "express";
 import request from "supertest";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { agents, caseHandoffs, cases, companies, createDb, documents, heartbeatRuns, issueDocuments, issues } from "@paperclipai/db";
+import { agents, caseHandoffs, cases, companies, createDb, documents, heartbeatRuns, issueDocuments, issues } from "@bostan/db";
 import { issueRoutes } from "../routes/issues.js";
 import { errorHandler } from "../middleware/error-handler.js";
 import { readBostanIssueDocumentEvidence } from "../services/bostan-knowledge-evidence.js";

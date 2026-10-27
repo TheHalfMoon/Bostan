@@ -1,5 +1,5 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { heartbeatRuns, type Db } from "@paperclipai/db";
+import { heartbeatRuns, type Db } from "@bostan/db";
 import {
   isResponsibleUserDenialCode,
   type ResponsibleUserDenialCode,

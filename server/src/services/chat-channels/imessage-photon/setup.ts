@@ -12,11 +12,11 @@ import {
   eq,
   ne,
 } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   chatEndpoints,
   toolConnections,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ConfigureChatEndpointInput,
 } from "@bostan/shared";

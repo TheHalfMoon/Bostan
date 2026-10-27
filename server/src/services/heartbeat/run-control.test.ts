@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { Db } from "@paperclipai/db";
-import { activityLog, agents, agentWakeupRequests, caseEvents, caseHandoffs, cases, companies, environmentLeases, heartbeatRuns, issueComments, issues, nativeRunFinalizations } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { activityLog, agents, agentWakeupRequests, caseEvents, caseHandoffs, cases, companies, environmentLeases, heartbeatRuns, issueComments, issues, nativeRunFinalizations } from "@bostan/db";
 import { eq, inArray } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runningProcesses } from "../../adapters/index.js";

@@ -21,7 +21,7 @@ import {
   issueDocuments,
   issues,
   workspaceRuntimeServices,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

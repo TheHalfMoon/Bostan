@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { issues, type Db } from "@paperclipai/db";
+import { issues, type Db } from "@bostan/db";
 import type { StalledReviewDecisionAction } from "@bostan/shared";
 import { conflict, notFound } from "../errors.js";
 import {

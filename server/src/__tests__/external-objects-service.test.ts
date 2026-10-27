@@ -10,7 +10,7 @@ import {
   issueComments,
   issues,
   plugins,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

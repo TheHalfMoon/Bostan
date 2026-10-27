@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { updatePromptInjectionPreventionSchema } from "@bostan/shared";
 import { assertBoard, assertCompanyAccess, getActorInfo } from "./authz.js";
 import { canManageAiConnections } from "./ai-connections.js";

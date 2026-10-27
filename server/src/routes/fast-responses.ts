@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { updateFastResponseSchema } from "@bostan/shared";
 import { assertBoard, assertCompanyAccess, getActorInfo } from "./authz.js";
 import { canManageAiConnections } from "./ai-connections.js";

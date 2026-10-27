@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
 import { access, mkdtemp, writeFile, rm, readFile } from "node:fs/promises";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { agents, companies, companyMemberships, connectionGrants, createDb, heartbeatRuns, issues, toolApplications, toolCatalogEntries, toolConnections, toolPolicies, toolProfileBindings, toolActionRequests } from "@paperclipai/db";
+import { agents, companies, companyMemberships, connectionGrants, createDb, heartbeatRuns, issues, toolApplications, toolCatalogEntries, toolConnections, toolPolicies, toolProfileBindings, toolActionRequests } from "@bostan/db";
 import { createToolGatewayService } from "../services/tool-gateway.js";
 import { toolDiscoveryScheduler } from "../services/tool-discovery-scheduler.js";
 import { toolAccessService, projectedConnectionToolArguments, projectedConnectionToolInputSchema } from "../services/tool-access.js";

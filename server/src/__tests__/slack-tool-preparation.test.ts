@@ -5,7 +5,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import {
   agents, chatEndpoints, chatExternalPrincipals, chatIdentityLinks, companies,
   companyMemberships, createDb, heartbeatRuns, issues, toolApplications, toolConnections,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { ToolCredentialSecretRef } from "@bostan/shared";
 import { createChatCredentials } from "../services/chat-channels/credentials.js";
 import { createSlackTaskAuthorityRegistration } from "../services/chat-channels/slack/task-authority.js";

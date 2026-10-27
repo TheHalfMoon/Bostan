@@ -10,7 +10,7 @@ import {
   costEvents,
   createDb,
   projects,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { budgetService, deliverBudgetEnforcement, hasPendingBudgetEnforcement } from "../services/budgets.ts";
 import {
   getEmbeddedPostgresTestSupport,

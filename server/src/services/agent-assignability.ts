@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { agents } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { agents } from "@bostan/db";
 import {
   getAgentWorkEligibility,
   type AgentEligibilityAgent,

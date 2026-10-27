@@ -1,7 +1,7 @@
 import { buffer } from "node:stream/consumers";
 import { and, desc, eq, inArray, isNotNull, isNull, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents,
   assets,
@@ -14,7 +14,7 @@ import {
   issues,
   issueWorkProducts,
   projects,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   attachmentArtifactWorkProductMetadataSchema,
   COMPANY_ARTIFACTS_MAX_LIMIT,

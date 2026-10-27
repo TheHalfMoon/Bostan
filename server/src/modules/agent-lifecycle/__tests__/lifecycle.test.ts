@@ -16,7 +16,7 @@ import { errorHandler } from "../../../middleware/error-handler.js";
 import { createLifecycleDriver } from "../../../services/agent-lifecycle-driver.js";
 import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
-import { agents, approvals, projects, issues, heartbeatRuns, nativeRunFinalizations, budgetPolicies, environmentLeases, agentApiKeys, activityLog, agentConfigRevisions, userCompanyPreferences, companies, companyMemberships, principalPermissionGrants, plugins, pluginCompanySettings, createDb, type Db } from "@paperclipai/db";
+import { agents, approvals, projects, issues, heartbeatRuns, nativeRunFinalizations, budgetPolicies, environmentLeases, agentApiKeys, activityLog, agentConfigRevisions, userCompanyPreferences, companies, companyMemberships, principalPermissionGrants, plugins, pluginCompanySettings, createDb, type Db } from "@bostan/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "../../../__tests__/helpers/embedded-postgres.js";
 import { createAgentLifecycle, configureAgentLifecycle, startAgentLifecycle } from "../../../services/agent-lifecycle.js";

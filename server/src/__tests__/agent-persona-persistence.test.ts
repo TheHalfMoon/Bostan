@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq, sql } from "drizzle-orm";
-import { agents, companies, createDb } from "@paperclipai/db";
+import { agents, companies, createDb } from "@bostan/db";
 import { agentAppearanceSchema, appearanceForPalette, legacyAgentAppearance } from "@bostan/shared";
 import { startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 import { agentService } from "../services/agents.js";

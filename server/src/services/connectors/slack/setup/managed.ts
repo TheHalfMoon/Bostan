@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { chatActions, chatSlackRegistrations } from "@paperclipai/db";
+import { chatActions, chatSlackRegistrations } from "@bostan/db";
 import { type SlackManagedProvisionInput, type SlackManagedResult } from "@bostan/shared";
 import { conflict } from "../../../../errors.js";
 import type { createCustomerOwnedSetup } from "./customer-owned.js";

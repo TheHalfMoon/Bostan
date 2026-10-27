@@ -1,4 +1,4 @@
-import { toolActionRequests, toolCallEvents, toolInvocations } from "@paperclipai/db";
+import { toolActionRequests, toolCallEvents, toolInvocations } from "@bostan/db";
 import type { ToolActionRequest, ToolCallEvent, ToolInvocation } from "@bostan/shared";
 
 export function toToolInvocation(

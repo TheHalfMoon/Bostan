@@ -4,7 +4,7 @@ import { accessService } from "../services/access.js";
 import { assertBoard } from "./authz.js";
 import type { Request } from "express";
 import { Router } from "express";
-import { companies, type Db } from "@paperclipai/db";
+import { companies, type Db } from "@bostan/db";
 import { eq } from "drizzle-orm";
 import { instanceSettingsService } from "../services/instance-settings.js";
 import { slackToolCallSchema, isUuidLike } from "@bostan/shared";

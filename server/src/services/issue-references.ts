@@ -1,5 +1,5 @@
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   documentAnnotationComments,
   documents,
@@ -7,7 +7,7 @@ import {
   issueDocuments,
   issueReferenceMentions,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   IssueReferenceSource,
   IssueReferenceSourceKind,

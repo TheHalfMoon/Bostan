@@ -1,5 +1,5 @@
 import { asc, eq, isNull, ne, sql, and } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   plugins,
   pluginConfig,
@@ -8,7 +8,7 @@ import {
   pluginJobs,
   pluginJobRuns,
   pluginWebhookDeliveries,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   PaperclipPluginManifestV1,
   PluginStatus,

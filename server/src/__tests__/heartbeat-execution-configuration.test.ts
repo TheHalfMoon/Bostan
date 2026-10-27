@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { agents, authUsers, companies, companyMemberships, companySkills, createDb, heartbeatRunEvents, heartbeatRuns, issues, projects } from "@paperclipai/db";
+import { agents, authUsers, companies, companyMemberships, companySkills, createDb, heartbeatRunEvents, heartbeatRuns, issues, projects } from "@bostan/db";
 import { companySkillService } from "../services/company-skills.js";
 import { withSkillVersionCacheLock } from "../services/skill-version-cache.js";
 import { registerServerAdapter, unregisterServerAdapter, type AdapterExecutionContext } from "../adapters/index.js";

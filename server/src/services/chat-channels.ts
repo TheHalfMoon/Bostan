@@ -126,7 +126,7 @@ import { createChatRuntime, type ChatRuntime } from "./chat-runtime.js";
 import type { ChatEndpointRuntime } from "./voice/voice-runtime.js";
 
 import { fastResponseService, fastResponseSourceCurrent } from "./fast-responses.js";
-import { fastResponseRequests } from "@paperclipai/db";
+import { fastResponseRequests } from "@bostan/db";
 import { chatCredentialMutationLease } from "./chat-credential-mutation-lease.js";
 import type { AgentAvatarRequest } from "./agent-avatars.js";
 
@@ -168,9 +168,9 @@ import {
   readChatControlChronology,
 } from "./chat-control-chronology.js";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
-import { agentWakeupRequests, agents, chatActions, chatConversations, chatDeliveries, chatEndpointResources, chatEndpoints, chatExternalPrincipals, chatIdentityLinks, chatMessageLinks, chatPublications, chatTeamsFileTransfers, companyMemberships, heartbeatRuns, issueComments, issueThreadInteractions, issues, toolConnections } from "@paperclipai/db";
+import { agentWakeupRequests, agents, chatActions, chatConversations, chatDeliveries, chatEndpointResources, chatEndpoints, chatExternalPrincipals, chatIdentityLinks, chatMessageLinks, chatPublications, chatTeamsFileTransfers, companyMemberships, heartbeatRuns, issueComments, issueThreadInteractions, issues, toolConnections } from "@bostan/db";
 import type { ChatEventKind, ChatEndpointSetupState, ChatProvider, ExternalChannelBindingSummary, SafeChatPublicationPayload, ToolCredentialSecretRef } from "@bostan/shared";
 import {
   isUuidLike,

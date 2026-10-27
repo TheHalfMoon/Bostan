@@ -31,7 +31,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { PLUGIN_RPC_ERROR_CODES } from "@bostan/plugin-sdk";
 import type {
   PaperclipPluginManifestV1,

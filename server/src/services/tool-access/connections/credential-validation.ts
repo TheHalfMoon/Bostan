@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { companySecrets } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { companySecrets } from "@bostan/db";
 import { CLASS3_STATIC_LEASE_ALLOWLIST } from "@bostan/shared";
 import { unprocessable } from "../../../errors.js";
 

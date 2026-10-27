@@ -3,7 +3,7 @@ import {
   completionContracts, heartbeatRunEvents, heartbeatRuns, issues, issueComments,
   nativeRunFinalizations, nativeRunResults, statusDecisions,
   issueQuestionResponseDeliveries, issueThreadInteractions, type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { AskUserQuestionsInteraction } from "@bostan/shared";
 import {
   parsePaperclipQuestionResponse, parsePaperclipQuestionSet,

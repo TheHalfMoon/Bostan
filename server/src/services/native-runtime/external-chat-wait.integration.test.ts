@@ -40,7 +40,7 @@ import {
   toolConnections,
   chatVoiceSessions, chatVoiceReplies, chatVoiceToolCalls,
   workspaceOperations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   PrpStructuredRunResult,
   PrpTerminalState,

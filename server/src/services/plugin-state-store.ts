@@ -1,6 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { plugins, pluginState } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { plugins, pluginState } from "@bostan/db";
 import type {
   PluginStateScopeKind,
   SetPluginState,

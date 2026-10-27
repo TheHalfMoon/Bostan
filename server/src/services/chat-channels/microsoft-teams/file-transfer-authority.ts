@@ -23,7 +23,7 @@ import {
   canonicalTeamsThreadId,
 } from "../../chat-control-chronology.js";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   createDurableChatWakeupRequest,
 } from "../../durable-chat-wakeup.js";
@@ -45,7 +45,7 @@ import {
   issueAttachments,
   issues,
   toolConnections,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ChatEndpointSetupState,
   ToolCredentialSecretRef,

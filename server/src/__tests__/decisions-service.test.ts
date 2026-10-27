@@ -19,7 +19,7 @@ import {
   issueComments,
   issueRelations,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 import { attentionService } from "../services/attention.js";
 import { decisionService } from "../services/decisions.js";

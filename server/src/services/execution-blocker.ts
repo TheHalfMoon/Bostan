@@ -3,7 +3,7 @@ import { preDispatchExecutionWaitRecoveryActionPredicate } from "./pre-dispatch-
 import { and, desc, eq, gt, inArray, not, or, sql } from "drizzle-orm";
 import { conversationRecoveryActionPredicate, getConversationOwnershipBlocker } from "./conversation-continuation.js";
 import { z } from "zod";
-import { agentWakeupRequests, chatConversations, chatEndpoints, environmentLeases, heartbeatRuns, issueComments, issues, issueRecoveryActions, nativeRunFinalizations, toolConnections, type Db } from "@paperclipai/db";
+import { agentWakeupRequests, chatConversations, chatEndpoints, environmentLeases, heartbeatRuns, issueComments, issues, issueRecoveryActions, nativeRunFinalizations, toolConnections, type Db } from "@bostan/db";
 import { canContinueCancelledRun, readRunCancellation } from "./run-cancellation.js";
 import { canRetryStoppedRun } from "./cancelled-native-startup.js";
 import { queuedCommentIdsFromWakePayload } from "./issue-queued-comment-queue.js";

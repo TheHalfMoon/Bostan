@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { captureDirectorySnapshot, directorySnapshotSha256, serializeDirectorySnapshot } from "@bostan/adapter-utils/workspace-restore-merge";
 import type { AdapterExecutionTarget } from "@bostan/adapter-utils/execution-target";
-import { agentWakeupRequests, issueRecoveryActions, agents, companies, createDb, EMBEDDED_POSTGRES_TEST_TIMEOUT_MS, environmentLeases, executionWorkspaces, executionWorkspaceRepositoryAccess, heartbeatRuns, issues, issueAccessGrants, plugins, projects, projectWorkspaces, type Db } from "@paperclipai/db";
+import { agentWakeupRequests, issueRecoveryActions, agents, companies, createDb, EMBEDDED_POSTGRES_TEST_TIMEOUT_MS, environmentLeases, executionWorkspaces, executionWorkspaceRepositoryAccess, heartbeatRuns, issues, issueAccessGrants, plugins, projects, projectWorkspaces, type Db } from "@bostan/db";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "../../__tests__/helpers/embedded-postgres.js";

@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { heartbeatRuns, type Db } from "@paperclipai/db";
+import { heartbeatRuns, type Db } from "@bostan/db";
 import { classifyWorkspaceRestoreFailure } from "@bostan/adapter-utils/workspace-restore-merge";
 import { appendHeartbeatRunEvent } from "../heartbeat-run-events.js";
 import { logger } from "../../middleware/logger.js";

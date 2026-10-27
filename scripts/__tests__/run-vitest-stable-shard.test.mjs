@@ -157,10 +157,10 @@ test("workspaces-c runs the db project alone and workspaces-b no longer carries 
   // (PR runs 38084171761, 38083084276 and 38083020834, 2026-10-10), so it
   // runs in its own lane. The PR and release matrices both carry that lane.
   const workspacesC = dryRunJson(["--mode", "general", "--group", "general-workspaces-c"]);
-  assert.deepEqual(workspacesC.workspaceProjects, ["@paperclipai/db"]);
+  assert.deepEqual(workspacesC.workspaceProjects, ["@bostan/db"]);
   assert.equal(workspacesC.workspacesVitestShard, null);
   const workspacesB = dryRunJson(["--mode", "general", "--group", "general-workspaces-b"]);
-  assert.ok(!workspacesB.workspaceProjects.includes("@paperclipai/db"), "db must not run twice");
+  assert.ok(!workspacesB.workspaceProjects.includes("@bostan/db"), "db must not run twice");
   assert.ok(workspacesB.workspaceProjects.length > 0, "workspaces-b must still run its other projects");
   for (const workflow of ["pr-trusted.yml", "release-verify.yml"]) {
     const entries = matrixEntries(readFileSync(path.join(repoRoot, ".github", "workflows", workflow), "utf8"));

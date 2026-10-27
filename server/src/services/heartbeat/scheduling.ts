@@ -9,7 +9,7 @@ import {
   agentSessionGoalActions,
   agents,
   activityLog,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   type IssueExecutionMonitorPolicy,
   type IssueExecutionMonitorClearReason,
@@ -54,7 +54,7 @@ import {
 import { logger } from "../../middleware/logger.js";
 import { failRunnerGoalAction } from "../runner-goals.js";
 import { evaluateAgentInvokability } from "../agent-invokability.js";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type { issueService } from "../issues.js";
 import type { createHeartbeatQueue } from "./queue.js";
 import type { createHeartbeatRetries, HeartbeatRetryDependencies } from "./retries.js";

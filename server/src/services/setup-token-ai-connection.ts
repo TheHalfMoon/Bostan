@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { adapterAuthSessions, type Db } from "@paperclipai/db";
+import { adapterAuthSessions, type Db } from "@bostan/db";
 import type { AgentAdapterType } from "@bostan/shared";
 import { forbidden } from "../errors.js";
 import { aiConnectionService } from "./ai-connections.js";

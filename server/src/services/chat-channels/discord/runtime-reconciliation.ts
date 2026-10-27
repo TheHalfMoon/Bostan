@@ -1,9 +1,9 @@
 import { CAPABILITIES } from "../provider-catalog.js";
 
 import { and, eq } from "drizzle-orm";
-import { chatEndpoints, toolConnections } from "@paperclipai/db";
+import { chatEndpoints, toolConnections } from "@bostan/db";
 import { readRegisteredDiscordCommandRegistration } from "../../chat-discord-command-registration-store.js";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type { EndpointRow, EndpointRecord, RuntimeContext } from "../runtime-types.js";
 import type { ChatRuntime } from "../../chat-runtime.js";
 import type { ChatEndpointRuntime } from "../../voice/voice-runtime.js";

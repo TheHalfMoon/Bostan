@@ -6,7 +6,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import { and, eq, isNull, sql } from "drizzle-orm";
-import { heartbeatRuns, runUsageReceipts, type Db } from "@paperclipai/db";
+import { heartbeatRuns, runUsageReceipts, type Db } from "@bostan/db";
 import type { AdapterExecutionResult, AdapterUsageCheckpoint } from "@bostan/adapter-utils";
 import { compareCents, normalizeCents, pricingProvenanceSchema, usdToUnits } from "@bostan/shared";
 import { idleAccountingSpoolPath, registerIdleSpoolDirectory } from "./idle-local-work.js";

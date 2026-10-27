@@ -3,7 +3,7 @@ import { environmentService } from "../environments.js";
 import { logger } from "../../middleware/logger.js";
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
-import { activityLog, chatVoicePhoneLines, chatVoiceInboundCalls, chatVoiceCallbacks, chatEndpoints, chatConversations, chatDeliveries, chatPublications, chatVoiceSessions, chatVoiceToolCalls, chatVoiceReplies, companyMemberships, companySecrets, connectionGrants, connectionGrantMembers, toolConnectionInstalls, instanceUserRoles, issueThreadInteractions, issues, heartbeatRuns, toolConnections, type Db } from "@paperclipai/db";
+import { activityLog, chatVoicePhoneLines, chatVoiceInboundCalls, chatVoiceCallbacks, chatEndpoints, chatConversations, chatDeliveries, chatPublications, chatVoiceSessions, chatVoiceToolCalls, chatVoiceReplies, companyMemberships, companySecrets, connectionGrants, connectionGrantMembers, toolConnectionInstalls, instanceUserRoles, issueThreadInteractions, issues, heartbeatRuns, toolConnections, type Db } from "@bostan/db";
 import { LOW_TRUST_REVIEW_PRESET } from "@bostan/shared";
 import type { ToolCredentialSecretRef, VoiceSession } from "@bostan/shared";
 import { conflict, forbidden, notFound, HttpError } from "../../errors.js";

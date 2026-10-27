@@ -24,7 +24,7 @@ import { boundRunIssueIdSql } from "./run-task-binding.js";
 import { executeSlackTool } from "./connectors/slack.js";
 import { githubGuestBotConnectionForSession, githubBotToolsForSession } from "./chat-github-tools.js";
 import { githubChatReviewService } from "./chat-github-reviews.js";
-import { runIdentityContexts } from "@paperclipai/db";
+import { runIdentityContexts } from "@bostan/db";
 import { executeSpekoVoiceTool, spekoToolsForSession } from "./voice/speko-agent-tools.js";
 import { captureRunIdentity } from "./run-identity.js";
 import { emitConnectionInvoked } from "./connector-telemetry.js";
@@ -49,7 +49,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents,
   approvals,
@@ -82,7 +82,7 @@ import {
   toolProfileEntries,
   toolProfiles,
   toolStdioCommandTemplates,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { ToolRunContext } from "@bostan/plugin-sdk";
 import type {
   CreateToolMcpGateway,

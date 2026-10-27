@@ -31,7 +31,7 @@ import {
   routineRuns,
   routines,
   routineTriggers,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

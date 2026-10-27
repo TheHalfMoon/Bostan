@@ -1,5 +1,5 @@
-import type { Db } from "@paperclipai/db";
-import { agents } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { agents } from "@bostan/db";
 import { reconcileManagedCodexHome } from "@bostan/adapter-codex-local/server";
 import { eq } from "drizzle-orm";
 import { logger } from "../middleware/logger.js";

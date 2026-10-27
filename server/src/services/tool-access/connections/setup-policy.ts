@@ -2,8 +2,8 @@ import { getAppDefinitionForApplicationKey, isConnectorFeatureEnabled } from "@b
 import { isMemoryConnectorId } from "@bostan/shared";
 import { instanceSettingsService } from "../../instance-settings.js";
 import { and, eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { toolApplications, toolConnections } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { toolApplications, toolConnections } from "@bostan/db";
 import { getConnectableAppDefinition } from "@bostan/shared";
 import { forbidden, unprocessable } from "../../../errors.js";
 import { isRetiredComposioConnection, RETIRED_COMPOSIO_MESSAGE } from "@bostan/shared";

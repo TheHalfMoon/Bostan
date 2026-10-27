@@ -16,7 +16,7 @@ import {
   issues,
   principalPermissionGrants,
   userInboxAgentPolicies,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { LOW_TRUST_REVIEW_PRESET } from "@bostan/shared";
 import { errorHandler } from "../middleware/index.js";
 import { issueRoutes } from "../routes/issues.js";

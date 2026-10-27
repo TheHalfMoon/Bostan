@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { chatConversations, chatDeliveries, chatEndpoints, chatMessageLinks, type Db } from "@paperclipai/db";
+import { chatConversations, chatDeliveries, chatEndpoints, chatMessageLinks, type Db } from "@bostan/db";
 import { githubReviewConfigurationPrompt } from "../../chat-github-review-policy.js";
 import type { GitHubReviewPolicy } from "@bostan/shared";
 

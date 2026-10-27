@@ -1,5 +1,5 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { type Db, toolConnections, companySecretBindings, connectionGrants, companySecrets, userSecretDefinitions } from "@paperclipai/db";
+import { type Db, toolConnections, companySecretBindings, connectionGrants, companySecrets, userSecretDefinitions } from "@bostan/db";
 import type { ToolCredentialSecretRef } from "@bostan/shared";
 import { secretService } from "./secrets.js";
 import { connectionCredentialConfigPath as credentialRefConfigPath } from "./connection-credentials.js";

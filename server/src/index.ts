@@ -76,7 +76,7 @@ import {
   companyMemberships,
   instanceUserRoles,
   closeLivenessDb,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import detectPort from "detect-port";
 import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";

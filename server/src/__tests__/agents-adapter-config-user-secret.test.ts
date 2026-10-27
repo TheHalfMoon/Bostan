@@ -16,7 +16,7 @@ import {
   secretAccessEvents,
   userSecretDeclarations,
   userSecretDefinitions,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { ServerAdapterModule } from "../adapters/index.js";
 import { getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 

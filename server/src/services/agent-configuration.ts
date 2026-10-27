@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { assets, agentConfigRevisions, agentTaskSessions, agentRuntimeState, type Db } from "@paperclipai/db";
+import { assets, agentConfigRevisions, agentTaskSessions, agentRuntimeState, type Db } from "@bostan/db";
 import { normalizeAgentUrlKey } from "@bostan/shared";
 import { normalizePaperclipRunnerAdapterConfig } from "@bostan/adapter-utils/server-utils";
 import { conflict, notFound, unprocessable } from "../errors.js";

@@ -3,7 +3,7 @@ import type { GitHubReviewEventContext, GitHubIssueEventContext, GitHubReviewPol
 
 import {
   chatDeliveries,
-} from "@paperclipai/db";
+} from "@bostan/db";
 
 import type {
   Message,

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { agents, companies, createDb, heartbeatRuns, agentWakeupRequests, issues, projects } from "@paperclipai/db";
+import { agents, companies, createDb, heartbeatRuns, agentWakeupRequests, issues, projects } from "@bostan/db";
 import { LOW_TRUST_REVIEW_PRESET } from "@bostan/shared";
 import { getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 import { createPostgresWatchdogAdapter } from "../modules/active-run-watchdog/adapters/postgres.js";

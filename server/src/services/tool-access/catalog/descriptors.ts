@@ -3,7 +3,7 @@ import { restConnectorFor } from "../../connectors/rest-registry.js";
 import { googleWorkspaceToolTarget } from "@bostan/shared";
 import { BROWSER_USE_TOOLS } from "@bostan/shared";
 import { isMemoryConnectorId } from "@bostan/shared";
-import { toolConnections } from "@paperclipai/db";
+import { toolConnections } from "@bostan/db";
 import type { ToolRiskLevel } from "@bostan/shared";
 import { GOOGLE_WORKSPACE_CONNECTOR_PROFILES, type GoogleWorkspaceConnectorProfileId } from "@bostan/shared";
 import { connectorToolPolicy } from "../../connectors/tool-policy.js";

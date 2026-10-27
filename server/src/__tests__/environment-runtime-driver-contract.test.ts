@@ -20,7 +20,7 @@ import {
   environmentLeases,
   environments,
   heartbeatRuns,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { Environment } from "@bostan/shared";
 import {
   getEmbeddedPostgresTestSupport,

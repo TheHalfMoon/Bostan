@@ -17,7 +17,7 @@ import {
   createDb,
   heartbeatRuns,
   secretAccessEvents,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { LOW_TRUST_REVIEW_PRESET, type AgentApiKeyScope } from "@bostan/shared";
 import { REDACTED_EVENT_VALUE } from "../redaction.js";
 import { errorHandler } from "../middleware/error-handler.js";

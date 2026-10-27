@@ -1,4 +1,4 @@
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type { CaseWorkflowTransition } from "@bostan/shared";
 import { documentService } from "./documents.js";
 import { getWorkflow, getWorkflowMetadata } from "./workflows.js";

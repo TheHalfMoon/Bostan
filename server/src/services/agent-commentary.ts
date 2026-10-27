@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { agentCommentary, agents, heartbeatRuns, issues, nativeRunResults, type Db } from "@paperclipai/db";
+import { agentCommentary, agents, heartbeatRuns, issues, nativeRunResults, type Db } from "@bostan/db";
 import { isUuidLike, submitAgentCommentarySchema, type AgentCommentaryAcknowledgement } from "@bostan/shared";
 import { badRequest, conflict, forbidden, HttpError } from "../errors.js";
 import { redactSensitiveText } from "../redaction.js";

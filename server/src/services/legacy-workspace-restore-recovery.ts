@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
 import { and, eq, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
-import { environmentLeases, environments, heartbeatRuns, type Db } from "@paperclipai/db";
+import { environmentLeases, environments, heartbeatRuns, type Db } from "@bostan/db";
 import { hasWorkspaceRestoreFailure, WORKSPACE_RESTORE_FAILURE_CODES } from "@bostan/shared";
 import { hasConfirmedSandboxStopAndRetain, prepareSandboxStopAndRetain } from "./sandbox-stop-and-retain.js";
 

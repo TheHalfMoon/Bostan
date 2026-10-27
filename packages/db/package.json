@@ -1,35 +1,20 @@
 {
-  "name": "@paperclipai/db",
+  "name": "@bostan/db",
   "version": "0.3.1",
   "license": "MIT",
-  "homepage": "https://github.com/paperclipai/paperclip",
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
   "bugs": {
-    "url": "https://github.com/paperclipai/paperclip/issues"
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/paperclipai/paperclip",
+    "url": "https://github.com/TheHalfMoon/Bostan",
     "directory": "packages/db"
   },
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
     "./*": "./src/*.ts"
-  },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js"
-      },
-      "./*": {
-        "types": "./dist/*.d.ts",
-        "import": "./dist/*.js"
-      }
-    },
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts"
   },
   "files": [
     "dist"
@@ -45,7 +30,9 @@
     "generate": "pnpm run check:migrations && pnpm run clean && tsc -p tsconfig.json && drizzle-kit generate && pnpm run prune:snapshots",
     "prune:snapshots": "ls src/migrations/meta/*_snapshot.json | sort -r | tail -n +6 | xargs rm -f",
     "migrate": "pnpm run check:migrations && tsx src/migrate.ts",
-    "seed": "pnpm --filter @bostan/server exec tsx scripts/seed.ts"
+    "seed": "pnpm --filter @bostan/server exec tsx scripts/seed.ts",
+    "prepack": "node ../../scripts/bostan-release-disabled.mjs",
+    "prepublishOnly": "node ../../scripts/bostan-release-disabled.mjs"
   },
   "dependencies": {
     "@bostan/shared": "workspace:*",
@@ -62,5 +49,6 @@
   },
   "engines": {
     "node": ">=24.11.0"
-  }
+  },
+  "private": true
 }

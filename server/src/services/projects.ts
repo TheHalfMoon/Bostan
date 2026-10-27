@@ -3,7 +3,7 @@ import { retireRemovedPluginWorkspaceDependents } from "./plugin-workspaces.js";
 import { DELIVERY_QUEUES, notifyDeliveryWork } from "./delivery-work-notifications.js";
 import { enqueueProjectSkillSource, detachProjectSkillSource } from "./project-skill-source-bindings.js";
 import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   projects,
   executionWorkspaces,
@@ -16,7 +16,7 @@ import {
   plugins,
   projectWorkspaces,
   workspaceRuntimeServices,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   deriveProjectUrlKey,
   hasNonAsciiContent,

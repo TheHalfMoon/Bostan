@@ -4,7 +4,7 @@ import { PassThrough } from "node:stream";
 import { setTimeout as delay } from "node:timers/promises";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
-import { agents, companies, createDb, environmentLeases, environments, heartbeatRuns, plugins, projects } from "@paperclipai/db";
+import { agents, companies, createDb, environmentLeases, environments, heartbeatRuns, plugins, projects } from "@bostan/db";
 import { definePlugin } from "../../../packages/plugins/sdk/src/define-plugin.js";
 import { startWorkerRpcHost } from "../../../packages/plugins/sdk/src/worker-rpc-host.js";
 import { createRequest, parseMessage, serializeMessage, isJsonRpcSuccessResponse, isJsonRpcErrorResponse } from "../../../packages/plugins/sdk/src/protocol.js";

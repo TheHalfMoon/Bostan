@@ -15,7 +15,7 @@ import { stageRemoteLaunchAssets } from "./remote-launch-assets.js";
 import { createRunPreparationTiming } from "../execution-preparation-timing.js";
 import { configuredEnvironment } from "../../vendor/paperclip-runner/index.js";
 import { apiKeyBillingType } from "@bostan/adapter-utils/api-billing-type";
-import { agents } from "@paperclipai/db";
+import { agents } from "@bostan/db";
 import { isCloudManagedInstance } from "../cloud-instance.js";
 import { dotRunnerBroker } from "../dot-runner-broker.js";
 import { CURSOR_DISTRIBUTION_PINS, QUALIFIED_ACPX_PROFILES, QUALIFIED_ACPX_VERSION } from "../../vendor/paperclip-runner/index.js";
@@ -128,7 +128,7 @@ import { discoverRemoteExecutable, parseRemoteExecutableCandidate } from "./code
 export { parseRemoteExecutableCandidate } from "./codex-model-fallback.js";
 import type { CommandManagedRuntimeRunner } from "@bostan/adapter-utils/command-managed-runtime";
 import { createNativeRunnerExecutionDriver, resolveRemoteRunnerTransportMode } from "./native-runner-execution-driver.js";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   and,
   desc,
@@ -152,7 +152,7 @@ import {
   issues,
   nativeRunFinalizations,
   nativeRunResults,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { PaperclipControlPlanePort } from "./paperclip-control-plane-port.js";
 import { appendHeartbeatRunEvent } from "../heartbeat-run-events.js";
 import { appendNativeCredentialUpdate } from "./native-credential-updates.js";

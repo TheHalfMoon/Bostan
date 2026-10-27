@@ -1,6 +1,6 @@
 import { and, desc, eq, getTableColumns, gte, lte, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { agents, costEvents, financeEvents, goals, heartbeatRuns, issues, projects } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { agents, costEvents, financeEvents, goals, heartbeatRuns, issues, projects } from "@bostan/db";
 import { notFound, unprocessable, conflict } from "../errors.js";
 
 import { resolveCostDateRange, type CostDateRange as FinanceDateRange } from "./cost-date-range.js";

@@ -123,8 +123,8 @@ describe("managed install commands", () => {
         const checkout = args[args.indexOf("-C") + 1];
         const packages = [
           { dir: "packages/shared", name: "@bostan/shared", packageJson: { name: "@bostan/shared", version: "0.3.1" } },
-          { dir: "packages/db", name: "@paperclipai/db", packageJson: { name: "@paperclipai/db", version: "0.3.1", dependencies: { "@bostan/shared": "workspace:*" }, bundleDependencies: ["embedded-postgres"] } },
-          { dir: "server", name: "@bostan/server", packageJson: { name: "@bostan/server", version: "0.3.1", dependencies: { "@paperclipai/db": "workspace:*" } } },
+          { dir: "packages/db", name: "@bostan/db", packageJson: { name: "@bostan/db", version: "0.3.1", dependencies: { "@bostan/shared": "workspace:*" }, bundleDependencies: ["embedded-postgres"] } },
+          { dir: "server", name: "@bostan/server", packageJson: { name: "@bostan/server", version: "0.3.1", dependencies: { "@bostan/db": "workspace:*" } } },
         ];
         fs.mkdirSync(path.join(checkout, "cli"), { recursive: true });
         fs.writeFileSync(path.join(checkout, "cli", "package.json"), JSON.stringify({ version: "0.3.1" }));
@@ -154,7 +154,7 @@ describe("managed install commands", () => {
       if (file === "npm" && args[0] === "install") { const prefix = args[args.indexOf("--prefix") + 1]; const packageRoot = path.join(prefix, "node_modules", "paperclipai"); fs.mkdirSync(path.join(packageRoot, "dist"), { recursive: true }); fs.writeFileSync(path.join(packageRoot, "package.json"), JSON.stringify({ version: "0.3.1" })); fs.writeFileSync(path.join(packageRoot, "dist", "index.js"), "#!/usr/bin/env node\n"); return { stdout: "", stderr: "" }; }
       if (file === process.execPath && args[0]?.endsWith("prepare-bundled-package.mjs")) {
         fs.mkdirSync(args[2], { recursive: true });
-        fs.writeFileSync(path.join(args[2], "package.json"), JSON.stringify({ name: "@paperclipai/db", version: "0.3.1" }));
+        fs.writeFileSync(path.join(args[2], "package.json"), JSON.stringify({ name: "@bostan/db", version: "0.3.1" }));
         return { stdout: "", stderr: "" };
       }
       if (file === process.execPath) return { stdout: "0.3.1\n", stderr: "" };
@@ -202,8 +202,8 @@ describe("managed install commands", () => {
     const checkout = path.join(root, "checkout");
     const packages = [
       { dir: "packages/shared", name: "@bostan/shared", dependencies: {} },
-      { dir: "packages/db", name: "@paperclipai/db", dependencies: { "@bostan/shared": "workspace:*" } },
-      { dir: "server", name: "@bostan/server", dependencies: { "@paperclipai/db": "workspace:*" } },
+      { dir: "packages/db", name: "@bostan/db", dependencies: { "@bostan/shared": "workspace:*" } },
+      { dir: "server", name: "@bostan/server", dependencies: { "@bostan/db": "workspace:*" } },
     ];
     fs.mkdirSync(path.join(checkout, "scripts"), { recursive: true });
     fs.writeFileSync(path.join(checkout, "scripts", "release-package-manifest.json"), JSON.stringify(packages.map(({ dir, name }) => ({ dir, name }))));
@@ -214,7 +214,7 @@ describe("managed install commands", () => {
 
     expect(resolveGitInstallWorkspacePackages(checkout).map(({ name }) => name)).toEqual([
       "@bostan/shared",
-      "@paperclipai/db",
+      "@bostan/db",
       "@bostan/server",
     ]);
   });

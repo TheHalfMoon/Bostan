@@ -1,6 +1,6 @@
 import { addCents, compareCents, normalizeCents } from "@bostan/shared";
 import { and, desc, eq, inArray, sql, or, isNull } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   agents,
@@ -12,7 +12,7 @@ import {
   costEvents,
   heartbeatRuns,
   projects,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   BudgetIncident,
   BudgetIncidentResolutionInput,

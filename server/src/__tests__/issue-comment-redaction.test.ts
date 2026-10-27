@@ -21,7 +21,7 @@ import {
   issueComments,
   issueReferenceMentions,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   companySearchQuerySchema,
   LOW_TRUST_REVIEW_PRESET,

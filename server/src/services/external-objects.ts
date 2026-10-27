@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, eq, inArray, isNull, lte, not, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { companies, documents, externalObjectMentions, externalObjects, issueComments, issueDocuments, issues, plugins } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { companies, documents, externalObjectMentions, externalObjects, issueComments, issueDocuments, issues, plugins } from "@bostan/db";
 import {
   formatExternalObjectMentionSourceLabel,
   type ExternalObjectCanonicalUrl,

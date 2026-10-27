@@ -1,5 +1,5 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { agents, toolApplications, toolCatalogEntries, toolConnections, toolPolicies, toolProfiles } from "@paperclipai/db";
+import { agents, toolApplications, toolCatalogEntries, toolConnections, toolPolicies, toolProfiles } from "@bostan/db";
 import type { CreateToolProfileEntryForProfile } from "@bostan/shared";
 import type { ToolAccessMutationDb } from "./types.js";
 export async function lockManagedAppPolicies(client: ToolAccessMutationDb, companyId: string, connectionId: string) {

@@ -8,7 +8,7 @@ import {
 import { parseQuestionInteractionAnswers } from "./question-interaction-answers.js";
 import { isUniqueViolation } from "../db-errors.js";
 import { assertAgentRunWriteAllowed } from "../agent-run-cancellation.js";
-import { connectionIntentDeliveries } from "@paperclipai/db";
+import { connectionIntentDeliveries } from "@bostan/db";
 import { isDeepStrictEqual } from "node:util";
 import {
   and,
@@ -23,7 +23,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents,
   chatVoiceSessions,
@@ -40,7 +40,7 @@ import {
   issues,
   toolActionRequests,
   toolOauthStates,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   trackInteractionCreated,
   trackInteractionResolved,

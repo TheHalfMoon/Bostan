@@ -1,4 +1,4 @@
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type { NativeInteractionResponseEnvelope } from "../../vendor/paperclip-runner/index.js";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import {
@@ -12,7 +12,7 @@ import {
   nativeRunResults,
   statusDecisions,
   workAssessments,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { getAgentWorkEligibility } from "@bostan/shared";
 import { issueThreadInteractionService } from "../issue-thread-interactions.js";
 import { commitNativeStatusDecision } from "./status-decision-committer.js";

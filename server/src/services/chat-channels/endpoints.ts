@@ -6,7 +6,7 @@ import type { EndpointRow } from "./runtime-types.js";
 import { chatCredentialMutationLease } from "../chat-credential-mutation-lease.js";
 
 import { slackChatRegistrationService, slackRegistrationProjection } from "../chat-slack-registration.js";
-import { chatSlackRegistrations } from "@paperclipai/db";
+import { chatSlackRegistrations } from "@bostan/db";
 
 import { defaultSlackAppConfiguration } from "@bostan/shared";
 import {
@@ -20,14 +20,14 @@ import {
   ne,
 } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   agents,
   chatEndpoints,
   toolApplications,
   toolConnections,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ChatAdapterCapabilities,
   ChatEndpoint,

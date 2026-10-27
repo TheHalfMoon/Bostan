@@ -7,7 +7,7 @@ import fs from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import path from "node:path";
 import { and, eq, or, sql } from "drizzle-orm";
-import { activityLog, agents, heartbeatRuns, projects, projectWorkspaces, executionWorkspaceRepositories, executionWorkspaces, issues, type Db } from "@paperclipai/db";
+import { activityLog, agents, heartbeatRuns, projects, projectWorkspaces, executionWorkspaceRepositories, executionWorkspaces, issues, type Db } from "@bostan/db";
 import { prepareWorkspaceRepositorySchema, type PrepareWorkspaceRepository, type ProjectRepository } from "@bostan/shared";
 import { withDirectoryPublicationLock } from "@bostan/adapter-utils/workspace-restore-merge";
 import { conflict, forbidden, notFound } from "../errors.js";

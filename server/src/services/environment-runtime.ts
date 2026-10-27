@@ -14,8 +14,8 @@ import { remoteTerminationReceipt } from "./remote-execution-termination.js";
 import { hasNativeWorkspaceExportResume, releaseCompletedNativeWorkspaceExportRetention } from "./native-runtime/native-workspace-export-resume.js";
 import { createHash, randomUUID } from "node:crypto";
 import { and, eq, inArray, ne, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { companySecrets, companySecretVersions, environmentLeases, heartbeatRuns } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { companySecrets, companySecretVersions, environmentLeases, heartbeatRuns } from "@bostan/db";
 import type {
   Environment,
   EnvironmentLease,

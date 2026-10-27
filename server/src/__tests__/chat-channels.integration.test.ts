@@ -4,10 +4,10 @@ import { requestTaskRetry } from "../services/task-retry.js";
 import { createSystemRecovery } from "../services/system-recovery-state.js";
 import { remoteTerminationReceipt } from "../services/remote-execution-termination.js";
 import { stageReceiptReactionRemovals } from "../services/chat-receipt-reactions.js";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import * as activityLogModule from "../services/activity-log.js";
 import * as connectionCredentialBindings from "../services/connection-credential-bindings.js";
-import { chatSlackManagerGrants, chatSlackRegistrations, toolOauthStates } from "@paperclipai/db";
+import { chatSlackManagerGrants, chatSlackRegistrations, toolOauthStates } from "@bostan/db";
 import type { PaperclipCloudConnector, SealedConnectorCredentials } from "../services/paperclip-cloud-connector.js";
 import { buildSlackAppManifest, SLACK_MANAGER_SCOPES } from "@bostan/shared";
 import { registerChatActionWork, dueChatAction } from "../services/chat-action-work.js";
@@ -18,9 +18,9 @@ import { DELIVERY_QUEUES, subscribeDeliveryWork } from "../services/delivery-wor
 import { aiConnectionService } from "../services/ai-connections.js";
 import { fastResponseService } from "../services/fast-responses.js";
 import { fastResponseReceipt } from "../services/fast-response-provider.js";
-import { fastResponseRequests } from "@paperclipai/db";
+import { fastResponseRequests } from "@bostan/db";
 import { toolAccessService } from "../services/tool-access.js";
-import { toolActionRequests, toolInvocations, toolPolicies } from "@paperclipai/db";
+import { toolActionRequests, toolInvocations, toolPolicies } from "@bostan/db";
 import { GitHubPublicationLeaseLost, withGitHubPublicationLease } from "../services/chat-github-publication-lease.js";
 import { secretService } from "../services/secrets.js";
 import { githubChatWizardService } from "../services/chat-github-wizard.js";
@@ -37,7 +37,7 @@ import { createAssignedMcpTools } from "../services/native-runtime/assigned-mcp-
 import { createToolGatewayService } from "../services/tool-gateway.js";
 import { resolveGitHubOperationCredentials } from "../services/github-operation-credentials.js";
 import { initializeRunIdentity } from "../services/run-identity.js";
-import { chatGitHubRegistrations, chatGitHubReviews, chatGitHubConfigurations, toolCatalogEntries } from "@paperclipai/db";
+import { chatGitHubRegistrations, chatGitHubReviews, chatGitHubConfigurations, toolCatalogEntries } from "@bostan/db";
 import { AsyncLocalStorage } from "node:async_hooks";
 import * as cloudRuntimeIdentity from "../services/cloud-runtime-identity.js";
 import {
@@ -119,7 +119,7 @@ import {
   projects,
   projectWorkspaces,
   toolConnections,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { defaultGitHubReviewPolicy, type ChatProvider } from "@bostan/shared";
 import { isPaperclipExternalChatTurn } from "@bostan/adapter-utils/server-utils";
 import type { Attachment, Author, Message, Thread } from "chat";
@@ -3393,7 +3393,7 @@ describeEmbeddedPostgres("chat channel control-plane integration", () => {
       onTestFinished(() => vi.unstubAllGlobals());
       const { aiConnectionService } = await import("../services/ai-connections.js");
       const { promptInjectionPreventionService } = await import("../services/prompt-injection-prevention.js");
-      const { promptInjectionInvocations } = await import("@paperclipai/db");
+      const { promptInjectionInvocations } = await import("@bostan/db");
       const binding = await aiConnectionService(db).save(f.companyId, "owner-user", { provider: "openrouter", method: "api_key",
         name: "Classifier", ownership: "shared", apiKey: "fixture-key", allAgents: true, agentIds: [] }, "fixture-key");
       await promptInjectionPreventionService(db).configure(f.companyId, "owner-user", { ...binding, enabled: true, model: "openai/gpt-oss-safeguard-20b" });
@@ -8688,7 +8688,7 @@ describeEmbeddedPostgres("chat channel control-plane integration", () => {
   });
 
   it.each(["cancelled", "paused", "blocked", "closed-workspace"] as const)("does not bypass %s task guards from the Slack Board composer or its outbox", async (guard) => {
-    const { issueTreeHolds, issueRelations, executionWorkspaces, projects } = await import("@paperclipai/db");
+    const { issueTreeHolds, issueRelations, executionWorkspaces, projects } = await import("@bostan/db");
     const fixture = await seedCompany();
     const { callbacks, endpoint, service, wakeup, runtime } = await configuredSlackEndpoint(fixture);
     const channel = makeThread({ channelId: "CGUARD", id: "slack:CGUARD:8100.1", name: "guard" });
@@ -9171,7 +9171,7 @@ describeEmbeddedPostgres("chat channel control-plane integration", () => {
     await rejected;
     await expect(oauth.status(fixture.companyId, endpoint.id, "owner-user")).resolves.toMatchObject({ connected: false });
     await expect(oauth.status(randomUUID(), endpoint.id, "owner-user")).rejects.toThrow("not found");
-    const { toolProfiles, toolProfileBindings } = await import("@paperclipai/db");
+    const { toolProfiles, toolProfileBindings } = await import("@bostan/db");
     const [slackProfile] = await db.select().from(toolProfiles).where(and(eq(toolProfiles.companyId, fixture.companyId), eq(toolProfiles.profileKey, `slack-bot:${endpoint.id}`)));
     const [removedBinding] = await db.delete(toolProfileBindings).where(and(eq(toolProfileBindings.profileId, slackProfile.id), eq(toolProfileBindings.targetId, binding.agentId))).returning();
     await expect(resolveConnectorAssignments(db, recovered)).resolves.toEqual([]);

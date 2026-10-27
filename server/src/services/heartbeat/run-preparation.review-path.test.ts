@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { isPaperclipRecoveryWakePayload, renderPaperclipWakePrompt, selectPaperclipPromptSections, stringifyPaperclipWakePayload } from "@bostan/adapter-utils/server-utils";
 import { buildPaperclipWakePayload } from "./run-preparation.js";
 import { decideIssueReviewPathRecovery, REVIEW_PATH_RECOVERY_INSTRUCTION } from "../recovery/review-path-recovery.js";

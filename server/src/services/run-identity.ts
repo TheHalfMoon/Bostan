@@ -8,7 +8,7 @@ import {
   issues,
   runIdentityContexts,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { conflict, forbidden } from "../errors.js";
 import { boundRunIssueId } from "./run-task-binding.js";
 import { isUuidLike } from "@bostan/shared";

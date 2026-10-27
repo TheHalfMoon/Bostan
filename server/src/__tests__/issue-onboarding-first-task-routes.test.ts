@@ -18,7 +18,7 @@ import {
   issueComments,
   issueThreadInteractions,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { ONBOARDING_FIRST_TASK_ORIGIN_KIND } from "@bostan/shared";
 import {
   getEmbeddedPostgresTestSupport,

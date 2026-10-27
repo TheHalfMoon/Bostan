@@ -11,7 +11,7 @@ import {
   issueRecoveryActions,
   issues,
   nativeRunFinalizations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ControlPlanePort,
   NativeExecutionInputV1,

@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { heartbeatRuns, issueRecoveryActions, workspaceOperations, type Db } from "@paperclipai/db";
+import { heartbeatRuns, issueRecoveryActions, workspaceOperations, type Db } from "@bostan/db";
 import type { ExecutionBlocker } from "@bostan/shared";
 import { z } from "zod";
 import { readNativeWorkspaceSyncReference } from "./native-runtime/native-workspace-sync.js";

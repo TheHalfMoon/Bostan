@@ -25,7 +25,7 @@ import {
   statusDecisionEffects,
   statusDecisions,
   workAssessments,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   executeNativeSession,
   parseNativeExecutionInput,

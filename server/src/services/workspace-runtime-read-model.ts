@@ -1,5 +1,5 @@
-import type { Db } from "@paperclipai/db";
-import { workspaceRuntimeServices } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { workspaceRuntimeServices } from "@bostan/db";
 import {
   listWorkspaceServiceCommandDefinitions,
   matchWorkspaceRuntimeServiceToCommand,

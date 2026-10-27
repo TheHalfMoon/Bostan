@@ -1,6 +1,6 @@
 import { resumePreservedResultFinalization } from "./preserved-result-finalization.js";
 import { and, asc, eq, gt, inArray, ne, or, sql } from "drizzle-orm";
-import { agentWakeupRequests, environmentLeases, heartbeatRuns, issues, issueRecoveryActions, workspaceOperations, type Db } from "@paperclipai/db";
+import { agentWakeupRequests, environmentLeases, heartbeatRuns, issues, issueRecoveryActions, workspaceOperations, type Db } from "@bostan/db";
 import type { Environment, EnvironmentLease } from "@bostan/shared";
 import { conflict } from "../errors.js";
 import { logger } from "../middleware/logger.js";

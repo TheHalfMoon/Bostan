@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { toolConnections, toolInvocations, type Db } from "@paperclipai/db";
+import { toolConnections, toolInvocations, type Db } from "@bostan/db";
 import { getConnectableAppDefinition } from "@bostan/shared";
 import {
   trackConnectionCreated,

@@ -3,8 +3,8 @@ import express, { Router, type NextFunction, type Request, type Response } from 
 import multer from "multer";
 import { and, count as countFn, eq } from "drizzle-orm";
 import { z } from "zod";
-import type { Db } from "@paperclipai/db";
-import { agents as agentsTable } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { agents as agentsTable } from "@bostan/db";
 import type { CompanyPortabilityImportResult } from "@bostan/shared";
 import {
   MAX_ZIP_ENTRY_DECOMPRESSED_BYTES,

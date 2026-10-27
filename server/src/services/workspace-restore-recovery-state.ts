@@ -1,4 +1,4 @@
-import type { heartbeatRuns } from "@paperclipai/db";
+import type { heartbeatRuns } from "@bostan/db";
 import { hasWorkspaceRestoreFailure } from "@bostan/shared";
 
 export const LEGACY_WORKSPACE_RECOVERY_KEY = "workspaceRestoreRecovery";

@@ -1,6 +1,6 @@
 import type { Message, Thread } from "chat";
 import type { ChatSdkMessageCallbackEvent } from "../chat-sdk-runtime.js";
-import type { Db, chatEndpoints } from "@paperclipai/db";
+import type { Db, chatEndpoints } from "@bostan/db";
 import type { ToolCredentialSecretRef, ChatEndpointSetupState, ChatEndpointCallbackSurfaces } from "@bostan/shared";
 import type { ChatEndpointRuntime } from "../voice/voice-runtime.js";
 

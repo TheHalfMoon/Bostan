@@ -1,4 +1,4 @@
-import type { chatConversations, chatPublications } from "@paperclipai/db";
+import type { chatConversations, chatPublications } from "@bostan/db";
 import type { SafeChatPublicationPayload } from "@bostan/shared";
 import type { EndpointRow } from "../runtime-types.js";
 import type { TelegramDraftControl } from "../../chat-telegram-draft-stop.js";

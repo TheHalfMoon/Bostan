@@ -12,7 +12,7 @@ import {
   toolConnections,
   connectionGrants,
   agents,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   createAiConnectionSchema,
   aiConnectionLoginIntentSchema,

@@ -10,7 +10,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
-import { agents, companies, authUsers, companyMemberships, principalPermissionGrants, heartbeatRuns, agentInstructionWorkingCopies, createDb } from "@paperclipai/db";
+import { agents, companies, authUsers, companyMemberships, principalPermissionGrants, heartbeatRuns, agentInstructionWorkingCopies, createDb } from "@bostan/db";
 import { startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 import { agentInstructionRevisionService } from "../services/agent-instruction-revisions.js";
 import { agentInstructionWorkingCopyService } from "../services/agent-instruction-working-copies.js";

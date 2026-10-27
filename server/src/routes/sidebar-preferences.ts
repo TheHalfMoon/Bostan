@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { upsertSidebarOrderPreferenceSchema } from "@bostan/shared";
 import { validate } from "../middleware/validate.js";
 import { logActivity, sidebarPreferenceService } from "../services/index.js";

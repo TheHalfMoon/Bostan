@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
-import { adapterAuthSessions, companies, createDb, environmentLeases, environments } from "@paperclipai/db";
+import { adapterAuthSessions, companies, createDb, environmentLeases, environments } from "@bostan/db";
 import type { AgentAdapterType } from "@bostan/shared";
 import { DEVICE_LOGIN_URL } from "@bostan/adapter-codex-local/server";
 import {

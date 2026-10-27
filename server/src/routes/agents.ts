@@ -29,7 +29,7 @@ import {
   type AiConnectionBinding,
   type AiRuntimeConnectionBinding,
 } from "@bostan/shared";
-import { toolConnections } from "@paperclipai/db";
+import { toolConnections } from "@bostan/db";
 import { aiConnectionService } from "../services/ai-connections.js";
 import { probeCopilotConnection, probeCopilotExecutionTarget } from "../services/copilot-connection-probe.js";
 import { defaultAiConnectionForHire } from "../services/agent-ai-connection-default.js";
@@ -47,9 +47,9 @@ import { Router, type NextFunction, type Request, type Response } from "express"
 import { generateKeyPairSync, randomUUID } from "node:crypto";
 import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type { ChatChannelService } from "../services/chat-channels.js";
-import { activityLog, agents as agentsTable, chatConversations, companies, heartbeatRuns, issues as issuesTable, projects as projectsTable } from "@paperclipai/db";
+import { activityLog, agents as agentsTable, chatConversations, companies, heartbeatRuns, issues as issuesTable, projects as projectsTable } from "@bostan/db";
 import { and, desc, eq, inArray, not, sql } from "drizzle-orm";
 import { sha256Digest } from "../services/feedback-redaction.js";
 import {

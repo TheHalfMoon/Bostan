@@ -54,7 +54,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   ISSUE_CONTINUATION_SUMMARY_DOCUMENT_KEY,
   type HeartbeatRunStatusPhase,
@@ -81,7 +81,7 @@ import {
   issueWorkProducts,
   routines,
   workspaceOperations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { logger } from "../../middleware/logger.js";
 import { publishLiveEvent } from "../live-events.js";
 import {

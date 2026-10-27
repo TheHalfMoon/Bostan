@@ -9,8 +9,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   agents, authUsers, companies, companyMemberships, createDb,
   heartbeatRuns, issueAccessGrants, issues, type Db,
-} from "@paperclipai/db";
-import * as schema from "@paperclipai/db/schema/index";
+} from "@bostan/db";
+import * as schema from "@bostan/db/schema/index";
 import { setupLiveEventsWebSocketServer } from "../realtime/live-events-ws.js";
 import { publishLiveEvent } from "../services/live-events.js";
 import { startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";

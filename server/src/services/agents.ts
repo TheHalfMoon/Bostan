@@ -1,8 +1,8 @@
 import { type BudgetServiceHooks } from "./budgets.js";
 
 import { and, desc, eq, inArray, ne } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { agents, agentConfigRevisions, agentApiKeys, heartbeatRuns } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { agents, agentConfigRevisions, agentApiKeys, heartbeatRuns } from "@bostan/db";
 import { isUuidLike, normalizeAgentApiKeyScope, normalizeAgentUrlKey, type AgentApiKeyScope } from "@bostan/shared";
 
 import { conflict, notFound, unprocessable } from "../errors.js";

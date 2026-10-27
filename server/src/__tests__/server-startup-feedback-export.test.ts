@@ -6,7 +6,7 @@ import * as idleLocalWork from "../services/idle-local-work.js";
 import { idleBackupWakeMarker, markIdleBackupWakeRequired } from "../services/idle-database-backup.js";
 import { DELIVERY_QUEUES } from "../services/delivery-work-notifications.js";
 import { reconcileBuiltInAgentsOnStartup, reconcileCodexLocalManagedHomesOnStartup, reconcilePersistedRuntimeServicesOnStartup } from "../services/index.js";
-import { runDatabaseBackup } from "@paperclipai/db";
+import { runDatabaseBackup } from "@bostan/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
@@ -249,8 +249,8 @@ vi.mock("detect-port", () => ({
   default: detectPortMock,
 }));
 
-vi.mock("@paperclipai/db", async (importOriginal) => ({
-  ...await importOriginal<typeof import("@paperclipai/db")>(),
+vi.mock("@bostan/db", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@bostan/db")>(),
   createDb: createDbMock,
   ensurePostgresDatabase: vi.fn(),
   getPostgresDataDirectory: vi.fn(),

@@ -1,5 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
-import { agents, agentRuntimeState, companies, heartbeatRuns, type Db } from "@paperclipai/db";
+import { agents, agentRuntimeState, companies, heartbeatRuns, type Db } from "@bostan/db";
 import { normalizeCents, usdToCents, type AccountingFinding, type AccountingHealth, type AccountingInspection } from "@bostan/shared";
 import { conflict, notFound } from "../errors.js";
 import { receiptFingerprint } from "./receipt-fingerprint.js";

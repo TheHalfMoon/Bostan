@@ -19,7 +19,7 @@ import {
   issueDocuments,
   issueThreadInteractions,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { ISSUE_CONTINUATION_SUMMARY_DOCUMENT_KEY } from "@bostan/shared";
 import {
   getEmbeddedPostgresTestSupport,

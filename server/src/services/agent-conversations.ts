@@ -15,7 +15,7 @@ import {
   issueThreadInteractions,
   issues,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 
 import { sanitizeQuarantinedCommentForHigherTrust } from "./source-trust.js";
 

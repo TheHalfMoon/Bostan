@@ -1,5 +1,5 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { aiSubscriptions, aiSubscriptionPrices, aiSubscriptionConnections, companySecrets, connectionGrants, toolConnections, type Db } from "@paperclipai/db";
+import { aiSubscriptions, aiSubscriptionPrices, aiSubscriptionConnections, companySecrets, connectionGrants, toolConnections, type Db } from "@bostan/db";
 import { aiConnectionMetadataSchema, normalizeCents, subscriptionPlan, type AiProvider, type UpdateSubscriptionPrice } from "@bostan/shared";
 import { conflict, forbidden, notFound } from "../errors.js";
 import { logActivity, type ActivityPublication } from "./activity-log.js";

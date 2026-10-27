@@ -23,7 +23,7 @@ import { loadAgentCaseDocument, projectAgentCaseRead } from "../services/case-ag
 import multer from "multer";
 import { z } from "zod";
 import { and, asc, desc, eq, getTableColumns, ilike, inArray, isNull, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents,
   assets,
@@ -41,7 +41,7 @@ import {
   issues,
   labels,
   projects,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   createDocumentAnnotationCommentSchema,
   createDocumentAnnotationThreadSchema,

@@ -12,7 +12,7 @@ vi.mock("../services/environment-execution-target.js", () => ({ resolveEnvironme
 import { logger } from "../middleware/logger.js";
 import { probeCopilotConnection, probeCopilotExecutionTarget } from "../services/copilot-connection-probe.js";
 import { QUALIFIED_ACPX_PROFILES } from "../../../packages/paperclip-runner/src/drivers/acpx/qualified-profiles.js";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type { AdapterExecutionTarget } from "@bostan/adapter-utils/execution-target";
 const verified = { status: "verified", version: "1.0.88", profileDigest: QUALIFIED_ACPX_PROFILES.copilot.commandDigest, promptSent: false, models: [{ id: "gpt-5.6-luna", label: "GPT" }] };
 const remote = { kind: "remote", remoteCwd: "/workspace" } as AdapterExecutionTarget;

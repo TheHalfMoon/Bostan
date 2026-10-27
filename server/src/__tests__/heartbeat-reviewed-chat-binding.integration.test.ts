@@ -19,7 +19,7 @@ import {
   companyMemberships,
   chatDeliveries,
   chatMessageLinks,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { renderPaperclipWakePrompt } from "@bostan/adapter-utils/server-utils";
 import { startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 import {

@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { Request, RequestHandler } from "express";
 import { and, eq, isNull, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   activityLog,
   agentApiKeys,
@@ -11,7 +11,7 @@ import {
   companyMemberships,
   heartbeatRuns,
   instanceUserRoles,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   MAX_ISSUE_PREFIX_ATTEMPTS,
   deriveIssuePrefixBase,

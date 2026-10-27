@@ -1,5 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
-import { caseHandoffs, cases, type issues, type Db } from "@paperclipai/db";
+import { caseHandoffs, cases, type issues, type Db } from "@bostan/db";
 import { conflict } from "../errors.js";
 import { assertBostanCurrentVerificationEvidence } from "./bostan-current-verification-evidence.js";
 

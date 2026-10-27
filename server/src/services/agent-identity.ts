@@ -1,6 +1,6 @@
 import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { agentIdentityKeys, agents, type Db } from "@paperclipai/db";
+import { agentIdentityKeys, agents, type Db } from "@bostan/db";
 import type { AgentPublicIdentity } from "@bostan/shared";
 import { notFound } from "../errors.js";
 import { localEncryptedProvider } from "../secrets/local-encrypted-provider.js";

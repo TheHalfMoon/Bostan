@@ -54,7 +54,7 @@ import {
   toolConnectionInstalls,
   connectionGrants,
   projects,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 import {
   emailChannelService,

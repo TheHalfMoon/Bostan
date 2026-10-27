@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { toolCatalogEntries, toolConnections, toolProfiles, toolProfileEntries, toolPolicies, toolProfileBindings } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { toolCatalogEntries, toolConnections, toolProfiles, toolProfileEntries, toolPolicies, toolProfileBindings } from "@bostan/db";
 import type { ConnectionIntentInteraction } from "@bostan/shared";
 import { conflict } from "../errors.js";
 import { toolAccessPolicyService } from "./tool-access-policy.js";

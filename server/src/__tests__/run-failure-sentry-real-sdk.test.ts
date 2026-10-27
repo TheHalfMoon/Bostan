@@ -7,7 +7,7 @@ import path from "node:path";
 import { buildHeartbeatRunStopMetadata, mergeHeartbeatRunStopMetadata } from "../services/heartbeat-stop-metadata.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { collectRunFailureDiagnostics, sanitizeRunFailureDiagnostics } from "../services/run-failure-diagnostics.js";
-import type { heartbeatRuns } from "@paperclipai/db";
+import type { heartbeatRuns } from "@bostan/db";
 import {
   preserveWorkspaceRestoreErrorDiagnostic,
   withWorkspaceRestoreDiagnostics,

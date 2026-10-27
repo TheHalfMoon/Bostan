@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { issues, type Db } from "@paperclipai/db";
+import { issues, type Db } from "@bostan/db";
 import {
   browserUseControlSchema,
   browserUseSettingsSchema,

@@ -1,7 +1,7 @@
-import type { chatPublications } from "@paperclipai/db";
+import type { chatPublications } from "@bostan/db";
 import { and, eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { chatTeamsFileTransfers } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { chatTeamsFileTransfers } from "@bostan/db";
 import { conflict } from "../../../errors.js";
 import { logActivity } from "../../activity-log.js";
 import type { DbTransaction } from "../runtime-types.js";

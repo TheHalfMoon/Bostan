@@ -1,5 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
-import { agentWakeupRequests, environmentLeases, heartbeatRuns, issueRecoveryActions, type Db } from "@paperclipai/db";
+import { agentWakeupRequests, environmentLeases, heartbeatRuns, issueRecoveryActions, type Db } from "@bostan/db";
 import { verifiedWorkspaceRepairReceipt } from "./workspace-recovery-receipt.js";
 import { persistActivity } from "./activity-log.js";
 import { readSystemRecovery } from "./system-recovery-state.js";

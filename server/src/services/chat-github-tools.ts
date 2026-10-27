@@ -16,7 +16,7 @@ import {
   toolProfileEntries,
   toolProfiles,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ToolGatewayDescriptor,
   ToolGatewaySession,

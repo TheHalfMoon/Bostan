@@ -1,7 +1,7 @@
 import { oauthConfig, sameOAuthIssuer } from "./metadata.js";
 import type { OAuthProviderEndpoints } from "./types.js";
 import { createHash, randomBytes } from "node:crypto";
-import { toolConnections } from "@paperclipai/db";
+import { toolConnections } from "@bostan/db";
 import type { AppDefinition } from "@bostan/shared";
 import { badRequest, unprocessable } from "../../../errors.js";
 

@@ -1,5 +1,5 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { agentWakeupRequests, issueThreadInteractions, type Db } from "@paperclipai/db";
+import { agentWakeupRequests, issueThreadInteractions, type Db } from "@bostan/db";
 import type { IssueComment, IssueQueuedCommentEntry } from "@bostan/shared";
 
 function record(value: unknown): Record<string, unknown> {

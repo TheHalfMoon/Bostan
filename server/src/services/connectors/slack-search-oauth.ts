@@ -12,7 +12,7 @@ import {
   toolConnections,
   toolOauthStates,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { z } from "zod";
 import {
   badRequest,

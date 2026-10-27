@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { heartbeatRuns, issues, issueThreadInteractions, statusDecisions, type Db } from "@paperclipai/db";
+import { heartbeatRuns, issues, issueThreadInteractions, statusDecisions, type Db } from "@bostan/db";
 import type { ExecutionContinuationEnvelope } from "@bostan/shared";
 import { issueReadSqlCondition, type AuthorizationActor } from "../authorization.js";
 

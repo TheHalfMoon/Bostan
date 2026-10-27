@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { Db, agents, agentTaskSessions, heartbeatRuns, issueComments } from "@paperclipai/db";
+import type { Db, agents, agentTaskSessions, heartbeatRuns, issueComments } from "@bostan/db";
 import { FAST_RESPONSE_AGENT_GUIDANCE, fastResponseHistoryBody } from "@bostan/shared";
 import type { PaperclipTurnContext } from "@bostan/adapter-utils/server-utils";
 import { parseObject } from "../../adapters/utils.js";

@@ -1,6 +1,6 @@
 import { environmentTaskResultSchema } from "@bostan/plugin-sdk";
 import { randomUUID } from "node:crypto";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { probeCopilotMetadata, validateCopilotMetadata } from "../vendor/paperclip-runner/live/index.js";
 import { runAdapterExecutionTargetShellCommand, type AdapterExecutionTarget } from "@bostan/adapter-utils/execution-target";
 import { environmentService } from "./environments.js";

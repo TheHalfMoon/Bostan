@@ -3,7 +3,7 @@ import { sql, eq } from "drizzle-orm";
 import express from "express";
 import request from "supertest";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { agentCommentary, agents, authUsers, companies, companyMemberships, createDb, heartbeatRuns, issueAccessGrants, issues, principalPermissionGrants } from "@paperclipai/db";
+import { agentCommentary, agents, authUsers, companies, companyMemberships, createDb, heartbeatRuns, issueAccessGrants, issues, principalPermissionGrants } from "@bostan/db";
 import { agentCommentaryQuerySchema } from "@bostan/shared";
 import { startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 import { agentCommentaryReader } from "../services/agent-commentary-reader.js";

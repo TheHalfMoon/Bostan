@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { issues, type Db } from "@paperclipai/db";
+import { issues, type Db } from "@bostan/db";
 import { Router, type Request } from "express";
 import { prepareWorkspaceRepositorySchema, selectTaskWorkspaceSchema } from "@bostan/shared";
 import { accessService } from "../services/access.js";

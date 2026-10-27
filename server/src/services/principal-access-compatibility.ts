@@ -1,6 +1,6 @@
 import { and, eq, inArray, notInArray } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { agents, companyMemberships, principalPermissionGrants } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { agents, companyMemberships, principalPermissionGrants } from "@bostan/db";
 import type { PermissionKey, PrincipalType } from "@bostan/shared";
 import { grantsForHumanRole, normalizeHumanRole } from "./company-member-roles.js";
 

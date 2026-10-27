@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { agents, agentWakeupRequests, approvals, companies, heartbeatRuns, issueApprovals, issueRecoveryActions,
-  issues, issueTreeHoldMembers, issueTreeHolds, projects, type Db } from "@paperclipai/db";
+  issues, issueTreeHoldMembers, issueTreeHolds, projects, type Db } from "@bostan/db";
 import type { TaskInterruptionPresentation } from "@bostan/shared";
 import { isAiAuthenticationBlocked } from "./ai-auth-failure.js";
 import { readSystemRecovery } from "./system-recovery-state.js";

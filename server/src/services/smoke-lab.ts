@@ -5,7 +5,7 @@ import { createServer as createNetServer } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   connectionGrants,
   smokeRuns,
@@ -17,7 +17,7 @@ import {
   toolProfileEntries,
   toolProfiles,
   toolStdioCommandTemplates,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   CreateSmokeRun,
   DeploymentExposure,

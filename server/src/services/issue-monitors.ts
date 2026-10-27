@@ -1,5 +1,5 @@
 import { issueExecutionMonitorPolicySchema, PROVIDER_QUOTA_MONITOR_SERVICE_NAME } from "@bostan/shared";
-import type { issues } from "@paperclipai/db";
+import type { issues } from "@bostan/db";
 import { z } from "zod";
 import { forbidden, unprocessable } from "../errors.js";
 import type { accessService } from "./access.js";

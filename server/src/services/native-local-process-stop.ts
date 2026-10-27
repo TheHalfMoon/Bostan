@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
-import { environmentLeases, heartbeatRunEvents, heartbeatRuns, type Db } from "@paperclipai/db";
+import { environmentLeases, heartbeatRunEvents, heartbeatRuns, type Db } from "@bostan/db";
 import { appendHeartbeatRunEvent } from "./heartbeat-run-events.js";
 import os from "node:os";
 

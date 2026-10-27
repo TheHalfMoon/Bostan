@@ -30,7 +30,7 @@ import path from "node:path";
 import { CONTROLLER_PROVISION_COPY_ONLY, workspaceRequiresCopyOnlyProvisioning } from "../workspace-host-provision.js";
 import { and, asc, eq } from "drizzle-orm";
 import { type ExecutionWorkspace } from "@bostan/shared";
-import { executionWorkspaces as executionWorkspacesTable, heartbeatRuns, issues, projectWorkspaces } from "@paperclipai/db";
+import { executionWorkspaces as executionWorkspacesTable, heartbeatRuns, issues, projectWorkspaces } from "@bostan/db";
 import { getStartupTracer } from "../../instrumentation.js";
 import { createHostDuplexObservabilityRecorder } from "../duplex-observability-recorder.js";
 import { incrementToolRuntimeMetricCounter } from "../tool-runtime-metrics.js";
@@ -59,7 +59,7 @@ import {
   resolveEffectiveWorkspaceStrategyType,
 } from "../execution-workspace-policy.js";
 import { evaluateExecutionAllowlist } from "../execution-allowlist.js";
-import type { Db, agents } from "@paperclipai/db";
+import type { Db, agents } from "@bostan/db";
 import type {
   Environment,
   IssueExecutionWorkspaceSettings,

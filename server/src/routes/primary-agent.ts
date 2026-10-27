@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { agents, companies, type Db } from "@paperclipai/db";
+import { agents, companies, type Db } from "@bostan/db";
 import { and, eq } from "drizzle-orm";
 import { updatePrimaryAgentSchema } from "@bostan/shared";
 import { forbidden, notFound } from "../errors.js";

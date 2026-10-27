@@ -6,7 +6,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type { AgentSkillSnapshot } from "@bostan/shared";
 import {
   resolvePaperclipSkillsDir,

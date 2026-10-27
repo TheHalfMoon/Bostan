@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { toolAccessAuditEvents, toolRuntimeSlots } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { toolAccessAuditEvents, toolRuntimeSlots } from "@bostan/db";
 import type { DeploymentExposure, DeploymentMode, ToolRuntimeSlotStatus } from "@bostan/shared";
 import { logActivity } from "./activity-log.js";
 

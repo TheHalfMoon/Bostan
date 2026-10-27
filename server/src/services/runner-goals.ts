@@ -1,14 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents,
   agentSessionGoalActions,
   agentTaskSessions,
   heartbeatRuns,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   RunnerGoalActionAccepted,
   RunnerGoalActionRequest,

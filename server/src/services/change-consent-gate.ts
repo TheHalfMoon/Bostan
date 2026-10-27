@@ -1,5 +1,5 @@
-import type { Db } from "@paperclipai/db";
-import { issueThreadInteractions } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { issueThreadInteractions } from "@bostan/db";
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import type { RequestConfirmationPayload, RequestConfirmationResult } from "@bostan/shared";
 import { forbidden } from "../errors.js";

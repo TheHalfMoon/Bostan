@@ -29,7 +29,7 @@ import {
   externalThreadIdentityCondition,
 } from "../chat-control-chronology.js";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   chatConversations,
@@ -37,7 +37,7 @@ import {
   chatEndpointResources,
   chatMessageLinks,
   chatPublications,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ChatEventKind,
   ChatProvider,

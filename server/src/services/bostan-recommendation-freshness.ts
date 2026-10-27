@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { budgetPolicies, heartbeatRuns, issues, type Db } from "@paperclipai/db";
+import { budgetPolicies, heartbeatRuns, issues, type Db } from "@bostan/db";
 import { addCents, unitsToCents, usdToUnits } from "@bostan/shared";
 import { budgetPoliciesForRun, computeObservedSpends } from "./budgets.js";
 import { resolveDecisionSigningSecret } from "./decision-signing.js";

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { agents, companies, createDb, issueThreadInteractions, issues } from "@paperclipai/db";
+import { agents, companies, createDb, issueThreadInteractions, issues } from "@bostan/db";
 import { issueService } from "../services/issues.js";
 import {
   getBostanFeedbackPostgresTestSupport,

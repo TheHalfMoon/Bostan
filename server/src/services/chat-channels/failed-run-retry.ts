@@ -21,7 +21,7 @@ import {
   sql,
 } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   createDurableChatWakeupRequest,
   assertDurableChatWakeupReceipt,
@@ -46,7 +46,7 @@ import {
   issueThreadInteractions,
   issueQuestionResponseDeliveries,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ChatProvider,
 } from "@bostan/shared";

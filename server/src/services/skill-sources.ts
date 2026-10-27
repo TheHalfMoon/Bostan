@@ -8,7 +8,7 @@ import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { folderService } from './folders.js';
 import { and, eq, isNull, lt, or, sql } from 'drizzle-orm';
-import { companySkillSources as sources, companySkillSourceEntries as entries, companySkills, companySkillRepositorySnapshots, projectSkillSources, projects, type Db, authUsers } from '@paperclipai/db';
+import { companySkillSources as sources, companySkillSourceEntries as entries, companySkills, companySkillRepositorySnapshots, projectSkillSources, projects, type Db, authUsers } from '@bostan/db';
 import type { CompanySkill, SkillSource, SkillSourceCreateRequest, SkillSourceDiscoveryRequest, SkillSourceSelectionRequest, SkillSourceRefreshResult, SkillSourcePreviewRequest, SkillSourceSettingsRequest, SkillSourceDisconnectRequest, SkillSourceDisconnectResult, SkillSourceBranchesQuery } from '@bostan/shared';
 import { normalizeAgentUrlKey } from '@bostan/shared';
 import { conflict, notFound, unprocessable } from '../errors.js';

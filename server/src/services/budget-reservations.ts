@@ -1,5 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
-import { agents, budgetReservations, heartbeatRuns, nativeRunFinalizations, type Db } from "@paperclipai/db";
+import { agents, budgetReservations, heartbeatRuns, nativeRunFinalizations, type Db } from "@bostan/db";
 import { centsToUnits, unitsToCents } from "@bostan/shared";
 import { conflict, notFound } from "../errors.js";
 import { withAccountingTransaction } from "./accounting-transaction.js";

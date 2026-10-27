@@ -1,4 +1,4 @@
-import { subscribeDatabaseWork } from "@paperclipai/db";
+import { subscribeDatabaseWork } from "@bostan/db";
 import { DELIVERY_QUEUES } from "../services/delivery-work-notifications.js";
 import { createHmac, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
@@ -27,7 +27,7 @@ import {
   routines,
   routineTriggers,
   secretAccessEvents,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

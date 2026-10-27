@@ -35,8 +35,8 @@ import { DELIVERY_QUEUES } from "./delivery-work-notifications.js";
 
 import { randomBytes } from "node:crypto";
 import { and, eq, gt, inArray, isNotNull, isNull, lte, notInArray, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { adapterAuthSessions } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { adapterAuthSessions } from "@bostan/db";
 import type { AgentAdapterType } from "@bostan/shared";
 
 // The setup-token login flow supports only the `claude_local` adapter. The

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { workflows, type Db } from "@paperclipai/db";
+import { workflows, type Db } from "@bostan/db";
 import { createWorkflowSchema, updateWorkflowSchema, listWorkflowsSchema, readWorkflowQuerySchema } from "@bostan/shared";
 import { validate } from "../middleware/validate.js";
 import { notFound } from "../errors.js";

@@ -12,13 +12,13 @@ import {
   sql,
 } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   chatConversations,
   chatPublications,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   SafeChatPublicationPayload,
 } from "@bostan/shared";

@@ -315,7 +315,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   CHAT_PROVIDERS,
   ISSUE_DISPOSITION_REPAIR_RETRY_REASON,
@@ -332,7 +332,7 @@ import {
   nativeRunFinalizations,
   projects,
   projectWorkspaces,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { conflict, HttpError, notFound } from "../errors.js";
 
 import { logger } from "../middleware/logger.js";

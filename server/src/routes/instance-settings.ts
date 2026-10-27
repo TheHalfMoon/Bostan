@@ -1,6 +1,6 @@
 import { trackIdleWork } from "../services/task-admission.js";
 import { Router, type Request } from "express";
-import { companies, type Db } from "@paperclipai/db";
+import { companies, type Db } from "@bostan/db";
 import {
   patchInstanceSettingsSchema,
   patchInstanceExperimentalSettingsSchema,

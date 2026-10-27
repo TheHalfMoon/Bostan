@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { activityLog, agentWakeupRequests, agents, approvals, authUsers, companies, companyMemberships, connectionGrants, connectionGrantDelegations,
   connectionIntentDeliveries, createDb, environmentLeases, heartbeatRunEvents, heartbeatRuns, issueApprovals, issueRecoveryActions, issueThreadInteractions, issues, projects, toolApplications,
   toolCatalogEntries, toolConnectionInstalls, toolConnections, toolProfileBindings, toolProfiles, toolPolicies,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { createPostgresRunDispatchAdapter } from "../modules/run-dispatch/adapters/postgres.js";
 import { connectionIntentDeliveryService } from "../services/connection-intent-delivery.js";
 import { connectionContinuationPendingResponse, findSatisfiedToolConnection, satisfiedConnectionIntentService } from "../services/satisfied-connection-intents.js";

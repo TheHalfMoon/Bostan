@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { withDedicatedDbConnection, type Db } from "@paperclipai/db";
+import { withDedicatedDbConnection, type Db } from "@bostan/db";
 import { sql } from "drizzle-orm";
 import path from "node:path";
 import fs from "node:fs/promises";

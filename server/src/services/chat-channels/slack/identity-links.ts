@@ -1,9 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
 import { and, desc, eq, gt, or, sql } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
-import { authUsers, chatActions, chatEndpoints, chatIdentityLinks, invites, joinRequests } from "@paperclipai/db";
+import { authUsers, chatActions, chatEndpoints, chatIdentityLinks, invites, joinRequests } from "@bostan/db";
 
 import { conflict, forbidden, unprocessable } from "../../../errors.js";
 

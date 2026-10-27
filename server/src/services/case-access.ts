@@ -1,5 +1,5 @@
 import { and, eq, inArray, or, sql, type SQL } from "drizzle-orm";
-import { agents, cases, caseAccessSources, caseDocuments, caseEvents, companyMemberships, documentRevisions, documents, heartbeatRuns, issues, projects, type Db } from "@paperclipai/db";
+import { agents, cases, caseAccessSources, caseDocuments, caseEvents, companyMemberships, documentRevisions, documents, heartbeatRuns, issues, projects, type Db } from "@bostan/db";
 import { isUuidLike } from "@bostan/shared";
 import { forbidden, notFound } from "../errors.js";
 import { authorizationService, issueReadSqlCondition, projectReadSqlCondition, type AuthorizationActor } from "./authorization.js";

@@ -1,4 +1,4 @@
-import { issues } from "@paperclipai/db";
+import { issues } from "@bostan/db";
 import { and, eq } from "drizzle-orm";
 import { LOW_TRUST_REVIEW_PRESET, LOW_TRUST_REVIEW_PRESET_VERSION, LOW_TRUST_REVIEW_RAW_OUTPUT_DISPOSITION } from "@bostan/shared";
 import type { DbOrTransaction, EndpointRow } from "../runtime-types.js";

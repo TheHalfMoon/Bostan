@@ -1,5 +1,5 @@
 import { Router, type Request } from "express";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { generateSummarySlotSchema, writeSummarySlotSchema } from "@bostan/shared";
 import { validate } from "../middleware/validate.js";
 import { forbidden, notFound } from "../errors.js";

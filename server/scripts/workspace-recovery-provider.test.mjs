@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { eq } from "drizzle-orm";
 import { expect, it, vi } from "vitest";
 import { agents, companies, createDb, environmentLeases, environments, heartbeatRuns, issueRecoveryActions,
-  issues, workspaceOperations } from "@paperclipai/db";
+  issues, workspaceOperations } from "@bostan/db";
 import { NOOP_PLUGIN_TRACER } from "@bostan/plugin-sdk";
 import { startEmbeddedPostgresTestDatabase } from "../src/__tests__/helpers/embedded-postgres.js";
 import { readSystemRecovery } from "../src/services/system-recovery-state.js";

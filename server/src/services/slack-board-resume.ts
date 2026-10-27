@@ -1,4 +1,4 @@
-import { type Db, type issues } from "@paperclipai/db";
+import { type Db, type issues } from "@bostan/db";
 import { isClosedIsolatedExecutionWorkspace } from "@bostan/shared";
 import { conflict } from "../errors.js";
 import { issueTreeControlService } from "./issue-tree-control.js";

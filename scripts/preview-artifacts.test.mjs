@@ -25,7 +25,7 @@ test("preview request requires immutable SHA and correlation UUID", () => {
 });
 
 test("migrator-only planning never waits for GHCR and reuses complete exact-source packages", async () => {
-  for (const available of [[], ["@bostan/shared"], ["@bostan/shared", "@paperclipai/db"]]) {
+  for (const available of [[], ["@bostan/shared"], ["@bostan/shared", "@bostan/db"]]) {
     const calls = [];
     const result = await planArtifacts(sha, { image: false, migrator: true, fetchImpl: async (url) => {
       assert.equal(new URL(url).hostname, "registry.npmjs.org");
@@ -35,7 +35,7 @@ test("migrator-only planning never waits for GHCR and reuses complete exact-sour
     } });
     assert.deepEqual(result, { image: false, packages: available.length !== 2 });
     assert.ok(calls.includes("@bostan/shared"));
-    if (available.length) assert.ok(calls.includes("@paperclipai/db"));
+    if (available.length) assert.ok(calls.includes("@bostan/db"));
   }
 });
 
@@ -54,23 +54,23 @@ test("ordinary preview planning still requests a missing image without publishin
 });
 
 test("preview manifests carry exact source, isolated versions and shared dependency", () => {
-  const pkg = manifest("@paperclipai/db");
+  const pkg = manifest("@bostan/db");
   assert.equal(pkg.version, `0.0.0-preview.g${sha}`);
   assert.equal(pkg.dependencies["@bostan/shared"], pkg.version);
   assert.deepEqual(pkg.exports, { ".": "./dist/index.js" });
-  assertMetadata(pkg, "@paperclipai/db", sha);
+  assertMetadata(pkg, "@bostan/db", sha);
   assert.throws(() => assertMetadata({ ...pkg, gitHead: "b".repeat(40) }, pkg.name, sha));
   assert.throws(() => assertMetadata({ ...pkg, dependencies: { "@bostan/shared": "latest" } }, pkg.name, sha));
   assert.deepEqual(tarManifest(pack(pkg)), pkg);
 });
 
 test("only 404 means an artifact is missing; auth and outages are fatal", async () => {
-  assert.equal(await packageExists("@paperclipai/db", sha, async () => json({}, 404)), false);
-  await assert.rejects(packageExists("@paperclipai/db", sha, async () => json({}, 403)));
-  await assert.rejects(packageExists("@paperclipai/db", sha, async () => json({}, 503)));
+  assert.equal(await packageExists("@bostan/db", sha, async () => json({}, 404)), false);
+  await assert.rejects(packageExists("@bostan/db", sha, async () => json({}, 403)));
+  await assert.rejects(packageExists("@bostan/db", sha, async () => json({}, 503)));
   await assert.rejects(imageExists(sha, async () => json({}, 503)));
   assert.equal(await imageExists(sha, async (url) => url.includes("/token?") ? json({ token: "test-pull-token" }) : json({}, 404)), false);
-  await assert.rejects(packageExists("@paperclipai/db", sha, async () => json({ ...manifest("@paperclipai/db"), gitHead: "b".repeat(40) })));
+  await assert.rejects(packageExists("@bostan/db", sha, async () => json({ ...manifest("@bostan/db"), gitHead: "b".repeat(40) })));
 });
 
 test("publishing reuses existing previews and never executes package lifecycle hooks", async () => {
@@ -84,7 +84,7 @@ test("publishing reuses existing previews and never executes package lifecycle h
         const name = decodeURIComponent(new URL(url).pathname.split("/")[1]);
         return published.has(name) ? json({ ...manifest(name), dist: { integrity: "test-integrity", tarball: "https://registry.npmjs.org/package.tgz" } }) : json({}, 404);
       },
-      exec: (command, args) => { calls.push({ command, args }); published.add("@paperclipai/db"); },
+      exec: (command, args) => { calls.push({ command, args }); published.add("@bostan/db"); },
       sleep: async () => {},
     });
     assert.equal(calls.length, 1);
@@ -126,7 +126,7 @@ test("a visibility timeout identifies the missing package after both were submit
       exec: (_command, args) => submitted.push(path.basename(args[1], ".tgz")),
       fetchImpl: async (url) => {
         const name = decodeURIComponent(new URL(url).pathname.split("/")[1]);
-        return name === "@paperclipai/db" && submitted.includes("db")
+        return name === "@bostan/db" && submitted.includes("db")
           ? json({ ...manifest(name), dist: { integrity: "test-integrity", tarball: "https://registry.npmjs.org/package.tgz" } })
           : json({}, 404);
       },
@@ -140,7 +140,7 @@ test("invalid DB package metadata prevents publication of either package", async
   const dir = mkdtempSync(path.join(tmpdir(), "preview-publish-invalid-"));
   try {
     writeFileSync(path.join(dir, "shared.tgz"), pack(manifest("@bostan/shared")));
-    writeFileSync(path.join(dir, "db.tgz"), pack({ ...manifest("@paperclipai/db"), gitHead: "b".repeat(40) }));
+    writeFileSync(path.join(dir, "db.tgz"), pack({ ...manifest("@bostan/db"), gitHead: "b".repeat(40) }));
     await assert.rejects(publishPreview(dir, sha, {
       exec: () => assert.fail("Invalid package pairs must not be published"),
       fetchImpl: async () => assert.fail("Validate the pair before registry requests"),

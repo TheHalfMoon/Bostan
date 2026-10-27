@@ -1,6 +1,6 @@
 import { readWorkspaceBaseRefDiagnostic } from "./workspace-base-ref-diagnostics.js";
 import { getEnvironmentAcquisitionDiagnostic } from "./environment-acquisition-diagnostics.js";
-import type { heartbeatRuns } from "@paperclipai/db";
+import type { heartbeatRuns } from "@bostan/db";
 import { readControllerLeaseLoss, readControllerLeaseLossCause, readRunCancellation } from "./run-cancellation.js";
 import { readProcessLossDiagnostic } from "./process-loss-diagnostics.js";
 import { WORKSPACE_RESTORE_FAILURE_CODES } from "@bostan/shared";

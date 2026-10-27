@@ -4,10 +4,10 @@ import {
   eq,
   sql,
 } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   chatPublications,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   SafeChatPublicationPayload,
 } from "@bostan/shared";

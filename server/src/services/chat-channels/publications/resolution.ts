@@ -1,8 +1,8 @@
 import { providerEffectPayload } from "../provider-effects.js";
 import { notifyChatDeliveryWork, notifyChatPublicationWork, notifyChatActionWork } from "../../chat-work-notifications.js";
 import { and, eq, inArray } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { chatActions, chatConversations, chatDeliveries, chatEndpoints, chatPublications, chatTeamsFileTransfers, issueThreadInteractions } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { chatActions, chatConversations, chatDeliveries, chatEndpoints, chatPublications, chatTeamsFileTransfers, issueThreadInteractions } from "@bostan/db";
 import { conflict, notFound } from "../../../errors.js";
 import { logActivity } from "../../activity-log.js";
 import type { EndpointRecord } from "../runtime-types.js";

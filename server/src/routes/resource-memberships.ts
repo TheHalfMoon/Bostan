@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   updateDocumentResourceMembershipSchema,
   updateResourceMembershipSchema,

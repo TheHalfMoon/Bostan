@@ -4,7 +4,7 @@ import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { agents, heartbeatRuns, issueAttachments, issueComments, issues, issueWorkProducts } from "@paperclipai/db";
+import { agents, heartbeatRuns, issueAttachments, issueComments, issues, issueWorkProducts } from "@bostan/db";
 import { startAdapterExecutionTargetPaperclipBridge, type AdapterSandboxExecutionTarget } from "@bostan/adapter-utils/execution-target";
 import type { CommandManagedRuntimeRunner } from "@bostan/adapter-utils/command-managed-runtime";
 import { runChildProcess } from "@bostan/adapter-utils/server-utils";

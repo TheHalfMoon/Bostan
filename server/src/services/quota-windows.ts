@@ -4,7 +4,7 @@ import { listServerAdapters } from "../adapters/registry.js";
 import { logger } from "../middleware/logger.js";
 import { createHash } from "node:crypto";
 import { eq, inArray, and } from "drizzle-orm";
-import { companySecrets, companySecretVersions, userSecretDefinitions, type Db } from "@paperclipai/db";
+import { companySecrets, companySecretVersions, userSecretDefinitions, type Db } from "@bostan/db";
 import { fetchCodexQuota } from "@bostan/adapter-codex-local/server";
 import { fetchClaudeQuota } from "@bostan/adapter-claude-local/server";
 import { aiConnectionService } from "./ai-connections.js";

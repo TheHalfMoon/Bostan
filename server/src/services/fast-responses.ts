@@ -34,7 +34,7 @@ import {
   issues,
   chatPublications,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   aiConnectionCatalogSlug,
   aiConnectionMetadataSchema,

@@ -17,7 +17,7 @@ import {
   toolProfileBindings,
   toolProfileEntries,
   toolProfiles,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { AdapterRuntimeMcpServer } from "@bostan/adapter-utils";
 import type { PaperclipSkillEntry } from "@bostan/adapter-utils/server-utils";
 import {

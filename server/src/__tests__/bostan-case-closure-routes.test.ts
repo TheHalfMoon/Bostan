@@ -3,7 +3,7 @@ import express from "express";
 import request from "supertest";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { cases, companies, createDb } from "@paperclipai/db";
+import { cases, companies, createDb } from "@bostan/db";
 import { caseRoutes } from "../routes/cases.js";
 import { errorHandler } from "../middleware/error-handler.js";
 import { instanceSettingsService } from "../services/instance-settings.js";

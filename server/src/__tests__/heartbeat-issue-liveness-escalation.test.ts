@@ -1,4 +1,4 @@
-import { EMBEDDED_POSTGRES_TEST_TIMEOUT_MS } from "@paperclipai/db";
+import { EMBEDDED_POSTGRES_TEST_TIMEOUT_MS } from "@bostan/db";
 import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -26,7 +26,7 @@ import {
   projects,
   projectWorkspaces,
   workspaceOperations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

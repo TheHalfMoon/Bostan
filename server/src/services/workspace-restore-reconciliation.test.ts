@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   agents, companies, createDb, environmentLeases, heartbeatRuns,
   issueComments, issueRecoveryActions, issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { ExecutionReconciliation } from "@bostan/shared";
 import { getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "../__tests__/helpers/embedded-postgres.js";
 import { getExecutionBlocker } from "./execution-blocker.js";

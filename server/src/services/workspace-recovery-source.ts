@@ -1,5 +1,5 @@
 import { and, eq, inArray, ne, or, sql } from "drizzle-orm";
-import { environmentLeases, environments, heartbeatRuns, issueRecoveryActions, nativeRunFinalizations, type Db } from "@paperclipai/db";
+import { environmentLeases, environments, heartbeatRuns, issueRecoveryActions, nativeRunFinalizations, type Db } from "@bostan/db";
 import { adapterExecutionControls } from "./adapter-execution-control.js";
 import { readNativeWorkspaceSyncReference } from "./native-runtime/native-workspace-sync.js";
 import { SystemRecoveryFailure } from "./system-recovery-state.js";

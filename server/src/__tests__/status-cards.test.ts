@@ -18,7 +18,7 @@ import {
   issues,
   statusCards,
   statusCardUpdates,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   defaultStatusCardRefreshPolicy,
   LOW_TRUST_REVIEW_PRESET,

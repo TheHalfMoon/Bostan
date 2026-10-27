@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { instanceUserRoles } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { instanceUserRoles } from "@bostan/db";
 
 type FirstAdminTransaction = Pick<Db, "execute" | "select" | "insert" | "update">;
 

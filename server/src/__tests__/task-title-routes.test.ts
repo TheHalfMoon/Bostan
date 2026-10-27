@@ -11,7 +11,7 @@ vi.mock("chat", async importOriginal => {
   };
 });
 import { and, eq } from "drizzle-orm";
-import { activityLog, externalObjectMentions, heartbeatRuns, issues } from "@paperclipai/db";
+import { activityLog, externalObjectMentions, heartbeatRuns, issues } from "@bostan/db";
 import { createChildIssueSchema, createIssueSchema, setIssueTitleSchema } from "@bostan/shared";
 import { createLocalAgentJwt } from "../agent-auth-jwt.js";
 import { issueService } from "../services/issues.js";

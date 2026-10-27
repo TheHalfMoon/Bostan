@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type { CostDataQualityItem, CostDataQualityReport } from "@bostan/shared";
 import { resolveCostDateRange, type CostDateRange } from "./cost-date-range.js";
 import { withAccountingReadSnapshot } from "./accounting-transaction.js";

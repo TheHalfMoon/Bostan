@@ -14,7 +14,7 @@ import {
   companies,
   heartbeatRuns,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { GitHubReviewEventContext } from "@bostan/shared";
 import { runtimePublicOrigin } from "./cloud-runtime-identity.js";
 import {

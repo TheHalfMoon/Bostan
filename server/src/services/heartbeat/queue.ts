@@ -73,7 +73,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { AGENT_DEFAULT_MAX_CONCURRENT_RUNS } from "@bostan/shared";
 import {
   agents,
@@ -92,7 +92,7 @@ import {
   issueRecoveryActions,
   issueRelations,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   conflict,
   HttpError,

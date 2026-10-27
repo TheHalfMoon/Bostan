@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { parse } from "dotenv";
-import { environmentLeases, environments, type Db } from "@paperclipai/db";
+import { environmentLeases, environments, type Db } from "@bostan/db";
 import { eq } from "drizzle-orm";
 import type { AdapterSandboxExecutionTarget } from "@bostan/adapter-utils/execution-target";
 import { readEnvironmentCreationCleanupError, type PluginEnvironmentCreationCleanup,

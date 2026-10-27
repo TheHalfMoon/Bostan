@@ -1,8 +1,8 @@
 import type { ActorInfo } from "../types.js";
 import { isRemoteMcpConnectorMethod } from "@bostan/shared";
 import { and, eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { issueThreadInteractions, toolConnectionInstalls, toolConnections } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { issueThreadInteractions, toolConnectionInstalls, toolConnections } from "@bostan/db";
 import type { ConnectToolAppResult, FinishToolApp, ToolCatalogEntry } from "@bostan/shared";
 
 import type { FinishConnectionSetup } from "../catalog/contracts.js";

@@ -2,8 +2,8 @@ import fs from "node:fs/promises";
 import { constants } from "node:fs";
 import { and, eq, getTableColumns, type SQL } from "drizzle-orm";
 import type { AnyPgTable, AnyPgColumn } from "drizzle-orm/pg-core";
-import * as schema from "@paperclipai/db";
-import type { Db } from "@paperclipai/db";
+import * as schema from "@bostan/db";
+import type { Db } from "@bostan/db";
 import {
   MAX_INSPECTION_BYTES,
   type InspectionQuery,

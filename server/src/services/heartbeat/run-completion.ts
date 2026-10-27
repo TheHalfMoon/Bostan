@@ -15,7 +15,7 @@ import { isConversation, settleConversationTurn } from "../agent-conversations.j
 import { legacyExecutionNeedsReconciliationWithEvidence } from "../legacy-execution-recovery.js";
 import { isWorkspaceGitScanError } from "../workspace-git-operation-scheduler.js";
 import { and, eq, sql } from "drizzle-orm";
-import { heartbeatRuns, issues, nativeRunFinalizations } from "@paperclipai/db";
+import { heartbeatRuns, issues, nativeRunFinalizations } from "@bostan/db";
 import { HttpError } from "../../errors.js";
 import { logger } from "../../middleware/logger.js";
 import { normalizeResponsibleUserDenialCode } from "../responsible-user-denial-run-outcomes.js";
@@ -47,7 +47,7 @@ import type { AdapterExecutionResult } from "@bostan/adapter-utils";
 import type { getRunLogStore, RunLogHandle } from "../run-log-store.js";
 import type { createHeartbeatRunState, getAdapterSessionCodec } from "./run-state.js";
 import type { EffectiveRunSessionConfigMetadata } from "./workspaces.js";
-import type { Db, agents } from "@paperclipai/db";
+import type { Db, agents } from "@bostan/db";
 
 type Run = typeof heartbeatRuns.$inferSelect;
 type Agent = typeof agents.$inferSelect;

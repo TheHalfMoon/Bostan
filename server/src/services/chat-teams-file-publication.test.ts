@@ -21,7 +21,7 @@ import {
   startEmbeddedPostgresTestDatabase,
   toolApplications,
   toolConnections,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { ChatFileTransferPhase } from "@bostan/shared";
 import type { TeamsFileTransferSummary } from "./chat-teams-file-transfers.js";
 import { projectTeamsFilePublication } from "./chat-teams-file-publication.js";

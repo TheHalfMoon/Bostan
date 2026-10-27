@@ -16,7 +16,7 @@ import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,
   type EmbeddedPostgresTestDatabase,
-} from "@paperclipai/db";
+} from "@bostan/db";
 
 const execFile = promisify(execFileCallback);
 const SYSTEM_OPT_IN = "system";

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { environmentCustomImageTemplates } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { environmentCustomImageTemplates } from "@bostan/db";
 import {
   ENVIRONMENT_CUSTOM_IMAGE_TEMPLATE_KINDS,
   type EnvironmentCustomImageTemplate,

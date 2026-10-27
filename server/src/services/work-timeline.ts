@@ -1,6 +1,6 @@
 import { withAgentAppearance } from "@bostan/shared";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   activityLog,
   agents,
@@ -11,7 +11,7 @@ import {
   issueComments,
   issues,
   issueThreadInteractions,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { executionIssueCondition } from "./issue-visibility.js";
 
 // DTO types are shared with the UI via @bostan/shared so both sides consume

@@ -65,7 +65,7 @@ import {
   formatEmbeddedPostgresError,
   loadWithoutEmbeddedPostgresExitHooks,
   prepareEmbeddedPostgresNativeRuntime,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { Command } from "commander";
 import { ensureAgentJwtSecret, ensureToolActionSigningSecret, loadPaperclipEnvFile, mergePaperclipEnvEntries, readPaperclipEnvEntries, resolvePaperclipEnvFile } from "../config/env.js";
 import { expandHomePrefix } from "../config/home.js";

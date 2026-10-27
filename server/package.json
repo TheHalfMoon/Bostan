@@ -67,7 +67,7 @@
     "@bostan/adapter-opencode-local": "workspace:*",
     "@bostan/adapter-pi-local": "workspace:*",
     "@bostan/adapter-utils": "workspace:*",
-    "@paperclipai/db": "workspace:*",
+    "@bostan/db": "workspace:*",
     "@bostan/adapter-hermes": "workspace:*",
     "@bostan/plugin-sdk": "workspace:*",
     "@bostan/shared": "workspace:*",

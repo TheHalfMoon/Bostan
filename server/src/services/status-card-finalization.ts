@@ -1,6 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { statusCards, statusCardUpdates } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { statusCards, statusCardUpdates } from "@bostan/db";
 import type { IssueStatus } from "@bostan/shared";
 
 // A status-card generation run stops making progress when its task reaches one

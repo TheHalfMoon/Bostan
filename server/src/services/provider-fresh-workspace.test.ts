@@ -4,7 +4,7 @@ import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { releaseProviderRecoveryTransfers, stageProviderFreshWorkspace } from "./provider-fresh-workspace.js";
 const state = vi.hoisted(() => ({ getObject: vi.fn() }));
 vi.mock("../storage/index.js", () => ({ getStorageService: () => ({ getObject: state.getObject }) }));

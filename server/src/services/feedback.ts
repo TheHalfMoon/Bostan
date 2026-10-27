@@ -2,7 +2,7 @@ import { notifyDeliveryWork, DELIVERY_QUEUES } from "./delivery-work-notificatio
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { and, asc, desc, eq, getTableColumns, gte, isNull, lte, ne, or } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents,
   companies,
@@ -18,7 +18,7 @@ import {
   issueComments,
   issueDocuments,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { readPaperclipSkillSyncPreference } from "@bostan/adapter-utils/server-utils";
 import { claudeConfigDir, parseClaudeStreamJson } from "@bostan/adapter-claude-local/server";
 import { codexHomeDir, parseCodexJsonl } from "@bostan/adapter-codex-local/server";

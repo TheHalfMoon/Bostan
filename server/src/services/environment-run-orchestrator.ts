@@ -16,7 +16,7 @@ import { freshWorkspaceSchema } from "@bostan/plugin-sdk";
  * and transport logic.
  */
 
-import { environmentLeases, type Db } from "@paperclipai/db";
+import { environmentLeases, type Db } from "@bostan/db";
 import { and, eq } from "drizzle-orm";
 import { remoteExecutionHasStopped } from "./remote-execution-termination.js";
 import type {

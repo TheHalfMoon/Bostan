@@ -1,6 +1,6 @@
 import os from "node:os";
 import { and, eq, sql } from "drizzle-orm";
-import { heartbeatRuns, issues, issueRecoveryActions, nativeRunFinalizations, type Db } from "@paperclipai/db";
+import { heartbeatRuns, issues, issueRecoveryActions, nativeRunFinalizations, type Db } from "@bostan/db";
 import { resumeWorkspaceFinalizationSchema } from "@bostan/shared";
 import { conflict } from "../../errors.js";
 import { persistActivity, publishActivity } from "../activity-log.js";

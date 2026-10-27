@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, not } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { agents, approvals, heartbeatRuns } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { agents, approvals, heartbeatRuns } from "@bostan/db";
 import { isHeartbeatRunVisibleInMine, type SidebarBadges } from "@bostan/shared";
 
 const ACTIONABLE_APPROVAL_STATUSES = ["pending", "revision_requested"];

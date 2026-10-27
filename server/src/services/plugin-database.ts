@@ -3,12 +3,12 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { and, eq, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   pluginDatabaseNamespaces,
   pluginMigrations,
   plugins,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   PaperclipPluginManifestV1,
   PluginDatabaseCoreReadTable,

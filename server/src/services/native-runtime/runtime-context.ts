@@ -8,7 +8,7 @@ import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { and, eq } from "drizzle-orm";
-import { heartbeatRuns, type Db } from "@paperclipai/db";
+import { heartbeatRuns, type Db } from "@bostan/db";
 import type { PaperclipSkillEntry } from "@bostan/adapter-utils/server-utils";
 import { isToolConnectionAttentionHealth } from "@bostan/shared";
 import {

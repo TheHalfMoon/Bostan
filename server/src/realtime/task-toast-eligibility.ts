@@ -1,5 +1,5 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
-import { heartbeatRuns, issueComments, issues, type Db } from "@paperclipai/db";
+import { heartbeatRuns, issueComments, issues, type Db } from "@bostan/db";
 import { extractUserMentionIds, type LiveEvent } from "@bostan/shared";
 import { touchedByUserCondition } from "../services/issue-participation.js";
 

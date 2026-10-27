@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { applyOnboardingSeedSchema } from "@bostan/shared";
 import { validate } from "../middleware/index.js";
 import { onboardingSeedService } from "../services/onboarding-seed.js";

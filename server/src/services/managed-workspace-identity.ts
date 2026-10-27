@@ -13,7 +13,7 @@
 
 import path from "node:path";
 import { and, eq } from "drizzle-orm";
-import { authUsers, companyMemberships, type Db } from "@paperclipai/db";
+import { authUsers, companyMemberships, type Db } from "@bostan/db";
 import type { WorkspaceReadiness, WorkspaceReadinessProbeResult } from "@bostan/shared";
 import {
   deriveWorkspaceHandoffKey,

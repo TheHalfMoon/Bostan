@@ -1,5 +1,5 @@
 import type { Environment, EnvironmentProbeResult } from "@bostan/shared";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { ensureSshWorkspaceReady } from "@bostan/adapter-utils/ssh";
 import {
   parseEnvironmentDriverConfig,

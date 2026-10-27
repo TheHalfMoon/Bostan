@@ -5,7 +5,7 @@ import { agentObservabilityLaunch } from "../agent-observability-launch.js";
 import { withSkillActor } from "../skill-access.js";
 import type { AuthorizationActor } from "../authorization.js";
 import { eq, sql } from "drizzle-orm";
-import { heartbeatRuns, type Db, type agents, type projects } from "@paperclipai/db";
+import { heartbeatRuns, type Db, type agents, type projects } from "@bostan/db";
 import type { AiConnectionBinding } from "@bostan/shared";
 import { readPaperclipSkillSyncPreference, resolvePaperclipDesiredSkillNames, resolveLegacyPaperclipDesiredSkillNames,
   writePaperclipSkillSyncPreference } from "@bostan/adapter-utils/server-utils";

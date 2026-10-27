@@ -7,8 +7,8 @@ import { and, eq } from "drizzle-orm";
 
 import type { AdapterExecutionResult } from "@bostan/adapter-utils";
 import type { CommandManagedRuntimeRunner } from "@bostan/adapter-utils/command-managed-runtime";
-import type { Db } from "@paperclipai/db";
-import { agentSessionGoalActions, agentTaskSessions } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { agentSessionGoalActions, agentTaskSessions } from "@bostan/db";
 
 import { resolvePaperclipInstanceRoot } from "../../home-paths.js";
 import { failRunnerGoalAction } from "../runner-goals.js";

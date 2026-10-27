@@ -22,7 +22,7 @@
  * @see PLUGIN_SPEC.md §13.10 — `executeTool`
  */
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type {
   PaperclipPluginManifestV1,
   PluginRecord,

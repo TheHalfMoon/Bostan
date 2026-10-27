@@ -1,4 +1,4 @@
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { MUSE_RESOURCE_PATH } from "@bostan/shared";
 import { createPublicMcpOAuth } from "./public-mcp/oauth.js";
 import { musePublicOrigin } from "./muse-setup.js";

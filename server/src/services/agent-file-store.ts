@@ -5,7 +5,7 @@ import { constants } from "node:fs";
 import { Readable } from "node:stream";
 import path from "node:path";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
-import { agents, activityLog, agentInstructionHeads, agentInstructionRevisions, resourceLifecycleEvents, type Db } from "@paperclipai/db";
+import { agents, activityLog, agentInstructionHeads, agentInstructionRevisions, resourceLifecycleEvents, type Db } from "@bostan/db";
 import { captureDirectorySnapshot, mergeDirectoryWithBaseline, type DirectorySnapshot } from "@bostan/adapter-utils/workspace-restore-merge";
 import { HttpError, conflict, notFound, unprocessable } from "../errors.js";
 import { authorizeInstructionCommit, authorizeInstructionRead } from "./agent-instruction-authorization.js";

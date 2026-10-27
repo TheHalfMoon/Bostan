@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { companyObservability, type Db } from "@paperclipai/db";
+import { companyObservability, type Db } from "@bostan/db";
 import {
   agentObservabilityCaptureSchema, agentObservabilityDestinationSchema, agentObservabilityHeadersSchema,
   DEFAULT_AGENT_OBSERVABILITY_CAPTURE, updateAgentObservabilitySchema,

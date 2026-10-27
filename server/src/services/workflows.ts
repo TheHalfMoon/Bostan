@@ -1,6 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
-import { workflows, type Db } from "@paperclipai/db";
+import { workflows, type Db } from "@bostan/db";
 import type { z } from "zod";
 import type { createWorkflowSchema, updateWorkflowSchema } from "@bostan/shared";
 import { conflict, forbidden, notFound } from "../errors.js";

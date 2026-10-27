@@ -9,7 +9,7 @@ import {
   projectWorkspaces,
   resourceLifecycleEvents,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { ResourceLifecycleEvent } from "@bostan/plugin-sdk";
 import { z } from "zod";
 import { secretService } from "./secrets.js";

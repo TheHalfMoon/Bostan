@@ -1,5 +1,5 @@
 import { and, eq, isNull, or, sql } from "drizzle-orm";
-import { chatConversations, chatEndpoints, chatMessageLinks, heartbeatRuns, issueComments, runIdentityContexts, type Db } from "@paperclipai/db";
+import { chatConversations, chatEndpoints, chatMessageLinks, heartbeatRuns, issueComments, runIdentityContexts, type Db } from "@bostan/db";
 import type { ChatProvider } from "@bostan/shared";
 import { forbidden } from "../../errors.js";
 import { boundRunIssueId, boundRunIssueIdSql } from "../run-task-binding.js";

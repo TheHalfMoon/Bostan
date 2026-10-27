@@ -7,7 +7,7 @@ import request from "supertest";
 import sharp from "sharp";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
-import { createDb, agents, companies, assets, activityLog, authUsers, companyMemberships, mcpOauthClients, mcpOauthGrants, dotAgentBindings, principalPermissionGrants } from "@paperclipai/db";
+import { createDb, agents, companies, assets, activityLog, authUsers, companyMemberships, mcpOauthClients, mcpOauthGrants, dotAgentBindings, principalPermissionGrants } from "@bostan/db";
 import { appearanceForPalette, MAX_AGENT_AVATAR_BYTES } from "@bostan/shared";
 import { startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 import { createLocalDiskStorageProvider } from "../storage/local-disk-provider.js";

@@ -22,7 +22,7 @@ import {
   toolProfiles,
   toolProfileBindings,
   toolConnectionInstalls,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { RuntimeToolsTokenClaims } from "../runtime-tools-token.js";
 import { connectionIntentService } from "../services/connection-intents.js";
 import { instanceSettingsService } from "../services/instance-settings.js";

@@ -28,7 +28,7 @@ function fixture(t) {
   const manifest = buildBundle(dir, sha, { exec: (cmd, args, options) => {
     assert.equal(cmd, "npm"); assert.ok(args.includes("--ignore-scripts"));
     const localRoot = JSON.parse(readFileSync(path.join(options.cwd, "package.json")));
-    assert.deepEqual(localRoot.dependencies, { "@paperclipai/db": "file:db.tgz", "@bostan/shared": "file:shared.tgz" });
+    assert.deepEqual(localRoot.dependencies, { "@bostan/db": "file:db.tgz", "@bostan/shared": "file:shared.tgz" });
     const packages = { "": localRoot };
     for (const name of ["db", "shared"]) packages[`node_modules/@paperclipai/${name}`] = {
       version: versionFor(sha), integrity: descriptor(readFileSync(path.join(dir, `${name}.tgz`)), "tgz").integrity,
@@ -73,9 +73,9 @@ test("lockfile rejects mutable, foreign, linked, and mismatched dependencies", (
   const { dir, manifest } = fixture(t);
   const lock = JSON.parse(readFileSync(path.join(dir, "package-lock.json")));
   for (const mutate of [
-    (l) => { l.packages[""].dependencies["@paperclipai/db"] = "latest"; },
+    (l) => { l.packages[""].dependencies["@bostan/db"] = "latest"; },
     (l) => { l.packages["node_modules/@bostan/shared"].version = "0.0.0"; },
-    (l) => { l.packages["node_modules/@paperclipai/db"].link = true; },
+    (l) => { l.packages["node_modules/@bostan/db"].link = true; },
     (l) => { l.packages["node_modules/evil"] = { inBundle: true }; },
     (l) => { l.packages["node_modules/evil"] = { integrity: manifest.packages.db.integrity, resolved: "https://evil.invalid/pkg.tgz" }; },
     (l) => { l.packages["node_modules/evil"] = { integrity: "sha1-weak", resolved: "https://registry.npmjs.org/pkg.tgz" }; },
@@ -121,7 +121,7 @@ test("real npm ci installs the new pair from pinned archives with an empty cache
   t.after(() => new Promise((resolve) => server.close(resolve)));
   const base = `http://127.0.0.1:${server.address().port}`;
   for (const name of ["db", "shared"]) lock.packages[`node_modules/@paperclipai/${name}`].resolved = `${base}/${name}.tgz`;
-  writeFileSync(path.join(dir, "package.json"), JSON.stringify({ name: "paperclip-migrator-install-root", version: "0.0.0", private: true, dependencies: { "@paperclipai/db": versionFor(sha) } }));
+  writeFileSync(path.join(dir, "package.json"), JSON.stringify({ name: "paperclip-migrator-install-root", version: "0.0.0", private: true, dependencies: { "@bostan/db": versionFor(sha) } }));
   writeFileSync(path.join(dir, "package-lock.json"), JSON.stringify(lock));
   await promisify(execFile)("npm", ["ci", "--update-notifier=false", "--ignore-scripts", "--no-audit", "--no-fund", "--registry", base, "--cache", path.join(dir, "empty-cache")], { cwd: dir, timeout: 60_000 });
   assert.deepEqual(requests.sort(), ["/db.tgz", "/shared.tgz"]);

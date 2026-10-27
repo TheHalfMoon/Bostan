@@ -29,7 +29,7 @@ import { fileURLToPath } from "node:url";
 import { Router } from "express";
 import type { Request, Response } from "express";
 import { and, desc, eq, gte } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents,
   companies,
@@ -37,7 +37,7 @@ import {
   pluginLogs,
   pluginWebhookDeliveries,
   projects,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   PluginApiRouteDeclaration,
   PluginStatus,

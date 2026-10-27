@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { agents, companies, type Db } from "@paperclipai/db";
+import { agents, companies, type Db } from "@bostan/db";
 import type { AdapterEnvironmentTestResult } from "@bostan/adapter-utils";
 import { ADAPTER_AUTH_MISSING_CHECK_CODE, aiRuntimeConnectionBindingSchema } from "@bostan/shared";
 import { isForbiddenConfigEnvKey, parseObject } from "@bostan/adapter-utils/server-utils";

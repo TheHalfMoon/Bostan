@@ -9,7 +9,7 @@ import express from "express";
 import request from "supertest";
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { activityLog, agents, authUsers, companies, companyMemberships, createDb, closeRegisteredClients, heartbeatRuns, issues, plugins, principalPermissionGrants, toolConnectionInstalls } from "@paperclipai/db";
+import { activityLog, agents, authUsers, companies, companyMemberships, createDb, closeRegisteredClients, heartbeatRuns, issues, plugins, principalPermissionGrants, toolConnectionInstalls } from "@bostan/db";
 import { type AiConnectionBinding, type AiConnectionPoolMember, type PaperclipPluginManifestV1 } from "@bostan/shared";
 import { startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 import { agentRoutes } from "../routes/agents.js";

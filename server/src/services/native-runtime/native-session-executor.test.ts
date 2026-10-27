@@ -36,7 +36,7 @@ import {
   nativeRunFinalizations,
   nativeRunResults,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   canonicalNativeRuntimeContextDigest,
   CURSOR_DISTRIBUTION_PINS,
@@ -61,7 +61,7 @@ import { agentDirectoryWorkingCopyService } from "../agent-directory-working-cop
 import { probeAgentDirectory } from "../agent-directory-probe.js";
 import { AGENT_FILES_CONTRACT } from "../agent-file-store.js";
 import { captureDirectorySnapshot, directorySnapshotSha256, serializeDirectorySnapshot } from "@bostan/adapter-utils/workspace-restore-merge";
-import { agentInstructionWorkingCopies } from "@paperclipai/db";
+import { agentInstructionWorkingCopies } from "@bostan/db";
 import * as noLaunchProofModule from "./native-maintenance-no-launch.js";
 import {
   NativeSessionCleanupQuarantinedError,
@@ -7214,7 +7214,7 @@ describe("bounded stopped instruction collection", () => {
 
 describe("native warm session supervision", () => {
   it.each(["collect", "close-failure", "stopped", "destroyed", "missing-lease", "foreign-run", "foreign-environment", "deleted-environment", "claim-edit", "claim-add", "claim-remove", "claim-remove-entry", "claim-canonical", "claim-config", "claim-uncertain"])("composes remote warm ownership with real DB successor leases and current-run collection: %s", async ending => {
-    const tables = await import("@paperclipai/db");
+    const tables = await import("@bostan/db");
     const { eq } = await import("drizzle-orm");
     const { randomUUID } = await import("node:crypto");
     const { promisify } = await import("node:util");

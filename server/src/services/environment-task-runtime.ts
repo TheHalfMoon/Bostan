@@ -2,7 +2,7 @@ import { releaseProviderRecoveryTransfers, stageProviderFreshWorkspace } from ".
 import { readWorkspaceProviderBinding } from "@bostan/shared";
 import { settlePluginTaskCredentialHandoff } from "./plugin-task-credential-writeback.js";
 import { and, eq, inArray, or, sql } from "drizzle-orm";
-import { environmentLeases, executionWorkspaces, environments, heartbeatRuns, issues, projects, type Db } from "@paperclipai/db";
+import { environmentLeases, executionWorkspaces, environments, heartbeatRuns, issues, projects, type Db } from "@bostan/db";
 import { freshWorkspaceSchema, environmentTaskOperationSchema, parseEnvironmentTaskResult, type PluginEnvironmentTaskOperation } from "@bostan/plugin-sdk";
 import { pluginRegistryService } from "./plugin-registry.js";
 import { hasRemoteTerminationReceipt, remoteExecutionHasStopped } from "./remote-execution-termination.js";

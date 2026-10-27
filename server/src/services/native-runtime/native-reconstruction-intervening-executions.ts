@@ -1,5 +1,5 @@
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
-import { environmentLeases, heartbeatRuns, issueRecoveryActions, nativeRunFinalizations, nativeRunResults, type Db } from "@paperclipai/db";
+import { environmentLeases, heartbeatRuns, issueRecoveryActions, nativeRunFinalizations, nativeRunResults, type Db } from "@bostan/db";
 import type { ExecutionReconciliation } from "@bostan/shared";
 import { hasAcknowledgedNativeStopIntent } from "../acknowledged-native-stop.js";
 import { hasRemoteTerminationReceipt } from "../remote-execution-termination.js";

@@ -1,7 +1,7 @@
 import { promptInjectionPreventionRoutes } from "./routes/prompt-injection-prevention.js";
 import { voiceSessionRoutes, voiceWebhookRoutes } from "./routes/voice-sessions.js";
 import { eq } from "drizzle-orm";
-import { chatEndpoints } from "@paperclipai/db";
+import { chatEndpoints } from "@bostan/db";
 import { fastResponseRoutes } from "./routes/fast-responses.js";
 import { fastResponseService } from "./services/fast-responses.js";
 import { createDeliveryWorkCoordinator } from "./services/delivery-work-coordinator.js";
@@ -51,7 +51,7 @@ import {
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   derivePaperclipViteHmrPort,
   type DeploymentExposure,

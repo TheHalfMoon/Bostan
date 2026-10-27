@@ -36,7 +36,7 @@
  * @see PLUGIN_SPEC.md §12.5 — Graceful Shutdown Policy
  */
 import { EventEmitter } from "node:events";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type {
   PluginStatus,
   PluginRecord,

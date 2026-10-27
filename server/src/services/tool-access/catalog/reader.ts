@@ -4,8 +4,8 @@ import { descriptorHash } from "../../tool-catalog-hash.js";
 import { nativeProviderCatalogFor } from "../../native-provider-catalogs.js";
 import { restConnectorFor } from "../../connectors/rest-registry.js";
 import { desc, eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { toolCatalogEntries, toolConnections } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { toolCatalogEntries, toolConnections } from "@bostan/db";
 import type { ToolCatalogEntry } from "@bostan/shared";
 
 import type { RefreshConnectionCatalog } from "./contracts.js";

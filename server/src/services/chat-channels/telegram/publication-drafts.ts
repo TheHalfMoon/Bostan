@@ -13,14 +13,14 @@ import {
   sql,
 } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   chatActions,
   chatConversations,
   chatPublications,
   toolConnections,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ToolCredentialSecretRef,
 } from "@bostan/shared";

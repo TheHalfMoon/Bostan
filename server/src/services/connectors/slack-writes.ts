@@ -11,7 +11,7 @@ import {
   issueAttachments,
   toolInvocations,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { SLACK_TOOLS } from "@bostan/shared";
 import { conflict, forbidden, HttpError, unprocessable } from "../../errors.js";
 import { getStorageService } from "../../storage/index.js";

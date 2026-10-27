@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type {
   CatalogManifest,
   CatalogTeam,

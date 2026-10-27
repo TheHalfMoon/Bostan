@@ -52,7 +52,7 @@ import {
   toolStdioCommandTemplates,
   userSecretDefinitions,
   userSecretDeclarations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   APP_DEFINITIONS,

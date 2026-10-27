@@ -1,5 +1,5 @@
 // The public-install verifier stages three packages that bundle dependencies
-// (`@bostan/server`, `@bostan/adapter-utils`, `@paperclipai/db`).
+// (`@bostan/server`, `@bostan/adapter-utils`, `@bostan/db`).
 // Each one is a host-side `npm install` of that package's bundled closure into
 // its own pack directory, and none reads what another produces, so they run as
 // concurrent children instead of one after another inside the staging loop.

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import request from "supertest";
 import { expect, it } from "vitest";
-import { activityLog, agents, authUsers, chatConversations, chatEndpoints, chatMessageLinks, issueComments, issueReadStates, issues, issueThreadInteractions, toolApplications, toolConnections } from "@paperclipai/db";
+import { activityLog, agents, authUsers, chatConversations, chatEndpoints, chatMessageLinks, issueComments, issueReadStates, issues, issueThreadInteractions, toolApplications, toolConnections } from "@bostan/db";
 import { isAgentCreatedIssue } from "@bostan/shared";
 import { issueRoutes } from "../routes/issues.js";
 import { issueService } from "../services/issues.js";

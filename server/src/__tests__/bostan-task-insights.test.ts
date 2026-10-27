@@ -3,7 +3,7 @@ import express from "express";
 import request from "supertest";
 import { sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { companies, createDb, issues } from "@paperclipai/db";
+import { companies, createDb, issues } from "@bostan/db";
 import { issueRoutes } from "../routes/issues.js";
 import { errorHandler } from "../middleware/error-handler.js";
 import { parseTaskInsightWindow, readBostanTaskInsights

@@ -2,7 +2,7 @@ import { createReadStream } from "node:fs";
 import { pipeline } from "node:stream/promises";
 import { Router, type Request, type Response } from "express";
 import { ZodError } from "zod";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   workspaceFileAvailabilityRequestSchema,
   workspaceFileListQuerySchema,

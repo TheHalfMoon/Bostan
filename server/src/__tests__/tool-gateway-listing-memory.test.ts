@@ -17,7 +17,7 @@ import {
   toolProfileEntries,
   toolProfiles,
   toolMcpGatewayTokens,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { and, eq } from "drizzle-orm";
 import type { ToolAccessDecisionInput } from "@bostan/shared";
 import {

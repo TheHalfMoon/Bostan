@@ -10,7 +10,7 @@ import {
   issues,
   plugins,
   pluginCompanySettings,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   preparePluginWorkspace,
   inspectPluginWorkspace,

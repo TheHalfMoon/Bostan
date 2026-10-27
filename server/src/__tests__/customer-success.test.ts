@@ -7,7 +7,7 @@ import express from "express";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { eq, sql } from "drizzle-orm";
-import * as schema from "@paperclipai/db";
+import * as schema from "@bostan/db";
 import {
   INSPECTION_AUDIENCE,
   INSPECTION_HEADER,

@@ -14,7 +14,7 @@ import { voiceSessionStore } from "../../voice/voice-session-store.js";
 import { type ChatRuntime } from "../../chat-runtime.js";
 import type { ChatEndpointRuntime } from "../../voice/voice-runtime.js";
 
-import { chatGitHubConfigurations } from "@paperclipai/db";
+import { chatGitHubConfigurations } from "@bostan/db";
 
 import { githubResponseCommentService } from "../../chat-github-response-comments.js";
 
@@ -24,12 +24,12 @@ import {
   isNull,
 } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   chatMessageLinks,
   chatPublications,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ChatAdapterCapabilities,
   ChatEndpointSetupState,

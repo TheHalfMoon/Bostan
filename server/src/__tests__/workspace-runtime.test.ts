@@ -22,7 +22,7 @@ import {
   projects,
   workspaceOperations,
   workspaceRuntimeServices,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { eq } from "drizzle-orm";
 import {
   buildExecutionWorkspaceAdapterConfig,
@@ -702,19 +702,19 @@ describe("ensureServerWorkspaceLinksCurrent", () => {
       JSON.stringify({
         name: "@paperclipai/server",
         dependencies: {
-          "@paperclipai/db": "workspace:*",
+          "@bostan/db": "workspace:*",
         },
       }),
       "utf8",
     );
     await fs.writeFile(
       path.join(expectedPackageDir, "package.json"),
-      JSON.stringify({ name: "@paperclipai/db" }),
+      JSON.stringify({ name: "@bostan/db" }),
       "utf8",
     );
     await fs.writeFile(
       path.join(stalePackageDir, "package.json"),
-      JSON.stringify({ name: "@paperclipai/db" }),
+      JSON.stringify({ name: "@bostan/db" }),
       "utf8",
     );
     await fs.symlink(stalePackageDir, path.join(serverNodeModulesScopeDir, "db"));
@@ -738,14 +738,14 @@ describe("ensureServerWorkspaceLinksCurrent", () => {
       JSON.stringify({
         name: "@paperclipai/server",
         dependencies: {
-          "@paperclipai/db": "workspace:*",
+          "@bostan/db": "workspace:*",
         },
       }),
       "utf8",
     );
     await fs.writeFile(
       path.join(expectedPackageDir, "package.json"),
-      JSON.stringify({ name: "@paperclipai/db" }),
+      JSON.stringify({ name: "@bostan/db" }),
       "utf8",
     );
     await fs.symlink(expectedPackageDir, path.join(serverNodeModulesScopeDir, "db"));
@@ -771,19 +771,19 @@ describe("ensureServerWorkspaceLinksCurrent", () => {
       JSON.stringify({
         name: "@paperclipai/server",
         dependencies: {
-          "@paperclipai/db": "workspace:*",
+          "@bostan/db": "workspace:*",
         },
       }),
       "utf8",
     );
     await fs.writeFile(
       path.join(expectedPackageDir, "package.json"),
-      JSON.stringify({ name: "@paperclipai/db" }),
+      JSON.stringify({ name: "@bostan/db" }),
       "utf8",
     );
     await fs.writeFile(
       path.join(stalePackageDir, "package.json"),
-      JSON.stringify({ name: "@paperclipai/db" }),
+      JSON.stringify({ name: "@bostan/db" }),
       "utf8",
     );
     await fs.symlink(stalePackageDir, path.join(serverNodeModulesScopeDir, "db"));

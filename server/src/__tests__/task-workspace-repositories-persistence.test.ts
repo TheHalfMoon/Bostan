@@ -1,4 +1,4 @@
-import { EMBEDDED_POSTGRES_TEST_TIMEOUT_MS } from "@paperclipai/db";
+import { EMBEDDED_POSTGRES_TEST_TIMEOUT_MS } from "@bostan/db";
 import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
@@ -8,7 +8,7 @@ import path from "node:path";
 import { constants as fsConstants } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { and, eq } from "drizzle-orm";
-import { agents, companies, createDb, executionWorkspaces, executionWorkspaceRepositories, heartbeatRuns, issues } from "@paperclipai/db";
+import { agents, companies, createDb, executionWorkspaces, executionWorkspaceRepositories, heartbeatRuns, issues } from "@bostan/db";
 import { executionWorkspaceService } from "../services/execution-workspaces.js";
 import { executionWorkspaceRepositoryService } from "../services/execution-workspace-repositories.js";
 import { listLocalProjectRepositories } from "@bostan/adapter-utils/ssh";

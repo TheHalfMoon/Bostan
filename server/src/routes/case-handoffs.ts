@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { handoffCaseSchema } from "@bostan/shared";
 import { validate } from "../middleware/validate.js";
 import { notFound } from "../errors.js";

@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import request from "supertest";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { createDb, plugins } from "@paperclipai/db";
+import { createDb, plugins } from "@bostan/db";
 import {
   ensureLocalPluginBuilt,
   pluginLoader,

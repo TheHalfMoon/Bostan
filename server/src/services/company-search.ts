@@ -1,7 +1,7 @@
 import { externalConversationStateSql } from "./slack-conversation-state.js";
 import { and, desc, eq, gte, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents,
   assets,
@@ -12,7 +12,7 @@ import {
   issueWorkProducts,
   issues,
   projects,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   COMPANY_SEARCH_MAX_LIMIT,
   COMPANY_SEARCH_MAX_OFFSET,

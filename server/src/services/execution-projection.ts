@@ -9,7 +9,7 @@ import {
   issueThreadInteractions,
   nativeRunFinalizations,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { ExecutionProjection } from "@bostan/shared";
 import { EXECUTION_CONTROL_DEADLINE_MS } from "./execution-control-deadline.js";
 import { executionFailureRetryCount } from "./execution-recovery-attempt.js";

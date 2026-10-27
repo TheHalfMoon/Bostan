@@ -113,6 +113,9 @@ importers:
       '@bostan/adapter-utils':
         specifier: workspace:*
         version: link:../packages/adapter-utils
+      '@bostan/db':
+        specifier: workspace:*
+        version: link:../packages/db
       '@bostan/server':
         specifier: workspace:*
         version: link:../server
@@ -122,9 +125,6 @@ importers:
       '@clack/prompts':
         specifier: ^1.7.0
         version: 1.7.0
-      '@paperclipai/db':
-        specifier: workspace:*
-        version: link:../packages/db
       commander:
         specifier: ^15.0.0
         version: 15.0.0
@@ -956,6 +956,9 @@ importers:
       '@bostan/adapter-utils':
         specifier: workspace:*
         version: link:../packages/adapter-utils
+      '@bostan/db':
+        specifier: workspace:*
+        version: link:../packages/db
       '@bostan/plugin-sdk':
         specifier: workspace:*
         version: link:../packages/plugins/sdk
@@ -1001,9 +1004,6 @@ importers:
       '@opentelemetry/resources':
         specifier: 2.10.0
         version: 2.10.0(@opentelemetry/api@1.9.1)
-      '@paperclipai/db':
-        specifier: workspace:*
-        version: link:../packages/db
       '@photon-ai/advanced-imessage':
         specifier: 2.1.0
         version: 2.1.0(@grpc/grpc-js@1.14.5)(nice-grpc-common@2.0.4)(nice-grpc@2.1.17)

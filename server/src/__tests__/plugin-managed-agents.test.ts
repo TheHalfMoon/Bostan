@@ -21,7 +21,7 @@ import {
   pluginManagedResources,
   plugins,
   principalPermissionGrants,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { PaperclipPluginManifestV1 } from "@bostan/shared";
 import {
   getEmbeddedPostgresTestSupport,

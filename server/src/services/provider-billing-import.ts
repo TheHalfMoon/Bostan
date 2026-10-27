@@ -4,7 +4,7 @@ import {
   companySecrets,
   providerBillingSnapshots,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   centsToUnits,
   usdToUnits,

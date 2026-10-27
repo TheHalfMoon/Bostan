@@ -16,7 +16,7 @@ import {
   issues,
   nativeRunFinalizations,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { conflict } from "../errors.js";
 import { buildExecutionContinuation } from "./execution-continuation.js";
 import {

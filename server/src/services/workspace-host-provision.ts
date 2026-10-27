@@ -1,4 +1,4 @@
-import { projectWorkspaces, type Db } from "@paperclipai/db";
+import { projectWorkspaces, type Db } from "@bostan/db";
 import type { TaskWorkspaceIntent } from "@bostan/shared";
 import { and, eq } from "drizzle-orm";
 

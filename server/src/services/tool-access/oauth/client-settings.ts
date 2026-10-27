@@ -3,7 +3,7 @@ import { oauthConfig, isSmokeLabOAuthFixture } from "./metadata.js";
 import { connectionMethodForConnection } from "../connection-methods.js";
 import { stableHash } from "../../tool-catalog-hash.js";
 import { ASANA_CONNECTOR_SCOPES, isAsanaConnectorProfileId, type AsanaConnectorProfileId } from "@bostan/shared";
-import { connectionGrants, toolConnections } from "@paperclipai/db";
+import { connectionGrants, toolConnections } from "@bostan/db";
 import { GITHUB_CONNECTOR_PROFILES, GOOGLE_WORKSPACE_CONNECTOR_PROFILES, getConnectableAppDefinition, isGitHubConnectorProfileId, isGoogleWorkspaceConnectorProfileId, type GitHubConnectorProfileId, type GoogleWorkspaceConnectorProfileId } from "@bostan/shared";
 import { unprocessable } from "../../../errors.js";
 

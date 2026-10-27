@@ -4,7 +4,7 @@ import path from "node:path";
 import { promises as fs } from "node:fs";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { and, eq } from "drizzle-orm";
-import { companies, companySkills, createDb, folders } from "@paperclipai/db";
+import { companies, companySkills, createDb, folders } from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

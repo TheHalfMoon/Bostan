@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { chatActions } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { chatActions } from "@bostan/db";
 import type {
   AskUserQuestionsAnswer,
   AskUserQuestionsInteraction,

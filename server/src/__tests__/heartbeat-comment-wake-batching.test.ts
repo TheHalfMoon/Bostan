@@ -30,7 +30,7 @@ import {
   nativeRunFinalizations,
   toolApplications,
   toolConnections,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { runningProcesses } from "../adapters/index.js";
 import { heartbeatService } from "../services/heartbeat.ts";
 import { issueThreadInteractionService } from "../services/issue-thread-interactions.js";

@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { probePluginRunnerEnvironment } from "./native-runtime/plugin-runner-probe.js";
 import { registerPluginTaskCredentialHandoff } from "./plugin-task-credential-writeback.js";
 import { randomUUID } from "node:crypto";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type { AdapterExecutionTarget } from "@bostan/adapter-utils/execution-target";
 import type { AdapterEnvironmentCheck } from "@bostan/adapter-utils";
 import { parseObject } from "@bostan/adapter-utils/server-utils";

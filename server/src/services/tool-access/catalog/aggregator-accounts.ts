@@ -9,8 +9,8 @@ import type { ComposioAppAccount, ComposioAppAccountInput, ComposioAppSetupInput
 import { composioAppAccounts, composioAppSetupResult } from "../../composio-app-setup.js";
 import { createHash, randomUUID } from "node:crypto";
 import { and, asc, desc, eq, inArray, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { companySecrets, toolAccessAuditEvents, toolCatalogEntries, toolConnectionAppSnapshots, toolConnectionAppSyncs, toolConnections } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { companySecrets, toolAccessAuditEvents, toolCatalogEntries, toolConnectionAppSnapshots, toolConnectionAppSyncs, toolConnections } from "@bostan/db";
 import { conflict, forbidden, HttpError, notFound, unprocessable } from "../../../errors.js";
 import { logActivity } from "../../activity-log.js";
 import { initializeMcpHttpSession, getMcpHttpSession, readMcpHttpResponse, mcpHttpRequestHeaders } from "../../mcp-http.js";

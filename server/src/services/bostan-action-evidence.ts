@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { toolInvocations, type Db } from "@paperclipai/db";
+import { toolInvocations, type Db } from "@bostan/db";
 
 /** A tool's upstream success is NOT an independent proof of external effects.
  * No provider readback exists in this first Action Fabric status wave. */

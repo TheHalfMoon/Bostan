@@ -4,8 +4,8 @@
  */
 
 import { and, eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { companySecretBindings } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { companySecretBindings } from "@bostan/db";
 import type { EnvSecretRefBinding, SecretProjectionClass, SecretVersionSelector } from "@bostan/shared";
 import { envBindingSecretRefSchema } from "@bostan/shared";
 import {

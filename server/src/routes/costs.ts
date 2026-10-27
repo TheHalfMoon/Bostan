@@ -11,7 +11,7 @@ import { billingReconciliationService } from "../services/billing-reconciliation
 import { adjustCostSchema, importBillingInvoiceSchema, repairAccountingSchema, retryAccountingSchema } from "@bostan/shared";
 import { Router } from "express";
 import { z } from "zod";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   createCostEventSchema,
   createFinanceEventSchema,

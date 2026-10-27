@@ -4,7 +4,7 @@ import { writeFile } from "node:fs/promises";
 import { cpus, platform, release, totalmem } from "node:os";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { companies, createDb, documents, issueComments, issueDocuments, issues, getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "@paperclipai/db";
+import { companies, createDb, documents, issueComments, issueDocuments, issues, getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "@bostan/db";
 import { companySearchQuerySchema } from "@bostan/shared";
 import { companySearchService } from "../services/company-search.js";
 import { parseTaskSearch, taskSearchCtes, taskSearchScore } from "../services/task-search.js";

@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { agents, companySkillPolicies, principalPermissionGrants } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { agents, companySkillPolicies, principalPermissionGrants } from "@bostan/db";
 import {
   normalizeSkillPolicySourceLocator,
   skillPolicyDocumentSchema,

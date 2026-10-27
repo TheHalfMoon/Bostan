@@ -1,7 +1,7 @@
 import { DELIVERY_QUEUES, notifyDeliveryWork } from "./delivery-work-notifications.js";
 import { agentObservabilityService } from "./agent-observability.js";
 import { withAccountHomeSecretMutationLock } from "@bostan/adapter-codex-local/server";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { eq, inArray } from "drizzle-orm";
 import { createAgentLifecycle, processAgentLifecycle } from "./agent-lifecycle.js";
 import { requestRestorePointDeletion } from "./git-restore-point-ledger.js";
@@ -44,7 +44,7 @@ import {
   routineTriggers,
   routineRevisions,
   routines,
-} from "@paperclipai/db";
+} from "@bostan/db";
 
 export async function deleteCompany(db: Db, id: string) {
   const lifecycle = createAgentLifecycle(db);

@@ -465,7 +465,7 @@ test("bundled package staging materializes workspace dependency versions", () =>
 
 test("bundled package staging installs only dependencies included in the tarball", () => {
   const publishManifest = {
-    name: "@paperclipai/db",
+    name: "@bostan/db",
     version: "2026.723.0-canary.8",
     dependencies: {
       "@bostan/shared": "2026.723.0-canary.8",

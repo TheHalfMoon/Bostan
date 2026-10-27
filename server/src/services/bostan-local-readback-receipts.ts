@@ -1,7 +1,7 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { executionWorkspaces, toolInvocations, workspaceOperations, type Db } from "@paperclipai/db";
+import { executionWorkspaces, toolInvocations, workspaceOperations, type Db } from "@bostan/db";
 import { resolveDecisionSigningSecret } from "./decision-signing.js";
 import { verifyBostanCompanyWorkspaceFile } from "./bostan-local-file-readback.js";
 

@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { agents, heartbeatRuns, projects } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { agents, heartbeatRuns, projects } from "@bostan/db";
 import {
   LOW_TRUST_REVIEW_PRESET,
   type SourceTrustMetadata,

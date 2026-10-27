@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray, isNull, ne, or } from "drizzle-orm";
-import { companySecrets, companySecretProposals, managedAgentProfiles, routineTriggers, userSecretDefinitions, type connectionGrants, type toolConnections } from "@paperclipai/db";
+import { companySecrets, companySecretProposals, managedAgentProfiles, routineTriggers, userSecretDefinitions, type connectionGrants, type toolConnections } from "@bostan/db";
 import type { ToolCredentialSecretRef } from "@bostan/shared";
 import { connectionCredentialConfigPath } from "@bostan/shared";
 import { unprocessable } from "../errors.js";

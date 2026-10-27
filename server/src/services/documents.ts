@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { documentRevisions, documents, issueDocuments, issues } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { documentRevisions, documents, issueDocuments, issues } from "@bostan/db";
 import { isSystemIssueDocumentKey, issueDocumentKeySchema } from "@bostan/shared";
 import { conflict, notFound, unprocessable } from "../errors.js";
 import { isUniqueViolation } from "../db-errors.js";

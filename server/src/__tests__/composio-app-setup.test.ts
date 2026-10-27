@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import express from "express";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { agents, companies, companyMemberships, connectionGrants, createDb, issues, toolApplications, toolCatalogEntries, toolConnections, toolConnectionAppSnapshots } from "@paperclipai/db";
+import { agents, companies, companyMemberships, connectionGrants, createDb, issues, toolApplications, toolCatalogEntries, toolConnections, toolConnectionAppSnapshots } from "@bostan/db";
 import { composioAppSetupSchema } from "@bostan/shared";
 import { composioAppAccounts, composioAppSetupResult } from "../services/composio-app-setup.js";
 import { toolAccessService } from "../services/tool-access.js";

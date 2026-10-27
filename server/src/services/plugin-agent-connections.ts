@@ -1,5 +1,5 @@
 import { and, eq, or } from "drizzle-orm";
-import { toolConnections, toolConnectionInstalls, toolProfiles, toolProfileBindings, type Db } from "@paperclipai/db";
+import { toolConnections, toolConnectionInstalls, toolProfiles, toolProfileBindings, type Db } from "@bostan/db";
 import type { PluginAgentConnectionAssignments } from "@bostan/plugin-sdk";
 import { unprocessable } from "../errors.js";
 

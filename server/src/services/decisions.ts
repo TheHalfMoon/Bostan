@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, count, desc, eq, gt, gte, inArray, lte, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { companyMemberships, decisionBundles, decisionEffectExecutions, decisionRetention, decisions, decisionTargetIssues, heartbeatRuns, issueRelations, issues } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { companyMemberships, decisionBundles, decisionEffectExecutions, decisionRetention, decisions, decisionTargetIssues, heartbeatRuns, issueRelations, issues } from "@bostan/db";
 import { ATTENTION_SOURCE_KINDS, decisionEffectTargetIssueIds } from "@bostan/shared";
 import type { AttentionArchiveManifestEntry, DecisionEffect, DecisionInput, DecisionOption, DecisionStatsCounts, DecisionStatsResponse } from "@bostan/shared";
 import { conflict, forbidden, notFound, tooManyRequests, unprocessable } from "../errors.js";

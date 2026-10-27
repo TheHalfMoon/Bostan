@@ -1,6 +1,6 @@
 import { createAgentLifecycle } from "./agent-lifecycle.js";
 import { and, eq, isNull, ne } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents,
   companies,
@@ -8,7 +8,7 @@ import {
   pluginManagedResources,
   plugins,
   activityLog,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   Agent,
   PaperclipPluginManifestV1,

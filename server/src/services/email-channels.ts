@@ -1,7 +1,7 @@
 import { createDeliveryWorkCoordinator } from "./delivery-work-coordinator.js";
 import { DELIVERY_QUEUES, notifyDeliveryWork } from "./delivery-work-notifications.js";
 import { fastResponseService, enqueueFastResponse, fastResponseSourceCurrent, fastResponseTurnQueued } from "./fast-responses.js";
-import { fastResponseRequests } from "@paperclipai/db";
+import { fastResponseRequests } from "@bostan/db";
 import { HttpError } from "../errors.js";
 import { createHash, randomUUID } from "node:crypto";
 import WebSocket from "ws";
@@ -30,7 +30,7 @@ import {
   toolProfileBindings,
   companyMemberships,
   instanceUserRoles,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { compareCents } from "@bostan/shared";
 import type {
   AgentPermissions,

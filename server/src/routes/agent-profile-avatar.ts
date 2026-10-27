@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { setAgentAvatarSchema } from "@bostan/shared";
 import { z } from "zod";
 import type { StorageService } from "../storage/types.js";

@@ -1,6 +1,6 @@
 import { and, asc, eq, max, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { companySkills, folders, routines } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { companySkills, folders, routines } from "@bostan/db";
 import type {
   CreateFolder,
   Folder,

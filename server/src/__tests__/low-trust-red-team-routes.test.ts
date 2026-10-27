@@ -37,7 +37,7 @@ import {
   issueWorkProducts,
   principalPermissionGrants,
   projects,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   ISSUE_CONTINUATION_SUMMARY_DOCUMENT_KEY,
   LOW_TRUST_REVIEW_PRESET,

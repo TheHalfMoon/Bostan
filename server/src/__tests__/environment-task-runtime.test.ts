@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PgDialect } from "drizzle-orm/pg-core";
-import { executionWorkspaces, type Db } from "@paperclipai/db";
+import { executionWorkspaces, type Db } from "@bostan/db";
 import { environmentTaskOperationSchema, parseEnvironmentTaskResult } from "@bostan/plugin-sdk";
 import { executeEnvironmentTask } from "../services/environment-task-runtime.js";
 

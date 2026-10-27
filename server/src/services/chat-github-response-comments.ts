@@ -4,7 +4,7 @@ import {
   chatEndpointResources, chatGitHubConfigurations, chatMessageLinks, heartbeatRuns, issues,
   fastResponseRequests, chatPublications,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { conflict, forbidden, HttpError } from "../errors.js";
 import { githubChatPrincipalAccess } from "./chat-github-access.js";
 import { githubAutomaticAdmission } from "./chat-github-events.js";

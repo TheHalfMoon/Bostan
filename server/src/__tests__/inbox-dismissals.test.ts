@@ -12,7 +12,7 @@ import {
   inboxDismissals,
   invites,
   joinRequests,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

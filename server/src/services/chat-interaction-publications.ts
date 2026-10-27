@@ -2,7 +2,7 @@ import { notifyChatPublicationWork } from "./chat-work-notifications.js";
 import { nativePhotonInteraction } from "./photon/interactions.js";
 import { randomBytes } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   chatActions,
   chatConversations,
@@ -10,7 +10,7 @@ import {
   chatPublications,
   heartbeatRuns,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   AskUserQuestionsInteraction,
   AskUserQuestionsQuestion,

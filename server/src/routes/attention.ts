@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type { AttentionSortMode } from "@bostan/shared";
 import { attentionService } from "../services/attention.js";
 import { badRequest } from "../errors.js";

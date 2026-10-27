@@ -1,8 +1,8 @@
 import { assertProfileEntryInputs } from "../../tool-profile-entry-validation.js";
 import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { agents, issues, projects, routines, toolApplications, toolCatalogEntries, toolConnections, toolMcpGateways, toolProfileBindings, toolProfileEntries, toolProfiles } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { agents, issues, projects, routines, toolApplications, toolCatalogEntries, toolConnections, toolMcpGateways, toolProfileBindings, toolProfileEntries, toolProfiles } from "@bostan/db";
 import type { CreateToolProfileBindingForProfile, CreateToolProfileEntryForProfile, CreateToolProfileWithEntries, DeleteToolProfile, DuplicateToolProfile, ToolProfile, ToolProfileBinding, ToolProfileEntry, ToolProfileNewToolReviewItem, ToolProfileNewToolsReview, ToolProfileNewToolsReviewResult, ToolProfileSummary, ToolProfileWithDetails, ReviewToolProfileNewTools, UpdateToolProfileEntry, UpdateToolProfileWithEntries, UnbindToolProfileBinding } from "@bostan/shared";
 import { badRequest, conflict, notFound, unprocessable } from "../../../errors.js";
 import type { ActorInfo, ToolAccessMutationDb } from "../types.js";

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { and, eq, gte, inArray, lt, sql } from "drizzle-orm";
-import { agents, costEvents, type Db } from "@paperclipai/db";
+import { agents, costEvents, type Db } from "@bostan/db";
 import {
   agentAppearanceSchema, resolveAgentAppearance, agentAvatarUrl,
   AGENT_DEFAULT_MAX_CONCURRENT_RUNS, agentRuntimeConfigSchema, getAgentWorkEligibility,

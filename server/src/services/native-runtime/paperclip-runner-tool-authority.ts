@@ -61,7 +61,7 @@ import { runnerApiCatalog, searchRunnerApi } from "./runner-api-catalog.js";
 import { executeRunnerApi, validateRunnerApiCall, RUNNER_API_MAX_BYTES, type RunnerApiFile, type RunnerApiIo } from "./runner-api-client.js";
 import { acquireRunnerApiResponseSlot, runnerApiCompanyCaptureMaxBytes, RUNNER_API_RESPONSE_MAX_BYTES, RUNNER_API_RESPONSE_RUN_MAX_BYTES, RunnerApiResponseLimitError } from "./runner-api-response-limits.js";
 import { and, desc, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   authUsers,
   companyMemberships,
@@ -83,7 +83,7 @@ import {
   issues,
   projects,
   issueThreadInteractions,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { CAPABILITY_SEMANTIC_TOOL_CATALOG, runnerCodexDynamicToolsFit, SemanticToolOutcomeUnknownError } from "../../vendor/paperclip-runner/index.js";
 import { agentService } from "../agents.js";
 import { approvalService } from "../approvals.js";

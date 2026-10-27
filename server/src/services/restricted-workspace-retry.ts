@@ -1,4 +1,4 @@
-import { heartbeatRuns, issues, projectWorkspaces, type Db } from "@paperclipai/db";
+import { heartbeatRuns, issues, projectWorkspaces, type Db } from "@bostan/db";
 import { isUuidLike, type IssueRecoveryAction, type TaskWorkspaceSelection } from "@bostan/shared";
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import { parseObject } from "../adapters/utils.js";

@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { skillSourceRetryAt } from './skill-source-retry.js';
 import { and, asc, eq, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm';
 import { activityLog, agents, authUsers, heartbeatRuns, companies, companyMemberships, companySkillSources, companySkillSourceEntries,
-  projectSkillSources, projectWorkspaces, projects, type Db } from '@paperclipai/db';
+  projectSkillSources, projectWorkspaces, projects, type Db } from '@bostan/db';
 import type { ProjectSkillRepository } from '@bostan/shared';
 import { authorizationService, type AuthorizationActor } from './authorization.js';
 import { skillSourceGitHubReader } from './skill-source-github-access.js';

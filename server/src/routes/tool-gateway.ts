@@ -1,8 +1,8 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { and, desc, eq, gte, ilike, inArray, lt, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { agents, toolApplications, toolCallEvents, toolConnections, toolInvocations } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { agents, toolApplications, toolCallEvents, toolConnections, toolInvocations } from "@bostan/db";
 import {
   humanizeConnectionDisplayName,
   type PermissionKey,

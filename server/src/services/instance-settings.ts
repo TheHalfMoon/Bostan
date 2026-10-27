@@ -1,6 +1,6 @@
 import { DELIVERY_QUEUES, notifyDeliveryWork } from "./delivery-work-notifications.js";
-import type { Db } from "@paperclipai/db";
-import { companies, instanceSettings } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { companies, instanceSettings } from "@bostan/db";
 
 /**
  * A `Db` or an open transaction handle — the subset of query builders the

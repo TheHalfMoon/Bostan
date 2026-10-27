@@ -13,7 +13,7 @@ import {
   issueTreeHoldMembers,
   issueTreeHolds,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

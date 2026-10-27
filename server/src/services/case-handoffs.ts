@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { agents, caseAccessSources, caseEvents, caseHandoffs, caseIssueLinks, cases, chatConversations, companies, heartbeatRuns, issues, projects } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { agents, caseAccessSources, caseEvents, caseHandoffs, caseIssueLinks, cases, chatConversations, companies, heartbeatRuns, issues, projects } from "@bostan/db";
 import { handoffCaseSchema, isUuidLike, type DoneCaseHandoffInput, type HandoffCaseInput, type HandoffCaseResult } from "@bostan/shared";
 import { conflict, forbidden, HttpError, notFound, unprocessable } from "../errors.js";
 import { assertAgentRunWriteAllowed } from "../agent-run-cancellation.js";

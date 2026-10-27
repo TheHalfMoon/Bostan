@@ -38,7 +38,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { isDeepStrictEqual, promisify } from "node:util";
 import { and, asc, desc, eq, gt, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   executionWorkspaces,
   agents,
@@ -52,7 +52,7 @@ import {
   projects,
   projectWorkspaces,
   workspaceRuntimeServices,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ExecutionWorkspace,
   ExecutionWorkspaceDeliveryState,

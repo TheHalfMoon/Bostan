@@ -1,14 +1,14 @@
-import { subscribeDatabaseWork } from "@paperclipai/db";
+import { subscribeDatabaseWork } from "@bostan/db";
 import { DELIVERY_QUEUES } from "../services/delivery-work-notifications.js";
 import express from "express";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { activityLog, agentCommentary, documents, issueDocuments } from "@paperclipai/db";
+import { activityLog, agentCommentary, documents, issueDocuments } from "@bostan/db";
 import request from "supertest";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { agents, agentWakeupRequests, authUsers, companies, companyMemberships, createDb, closeRegisteredClients, applyPendingMigrations, externalAgentHolds, heartbeatRuns, issueAccessGrants, issueComments, issues, projects, principalPermissionGrants, mcpOauthGrants, mcpOauthRequests, mcpOauthTokens, dotAgentBindings, dotRunnerAssignments, dotRunnerOperations, museIdleReceipts, museAgentBindings as bindings, museCredentials, museInputDeliveries, museReceiverContactBuckets, museMailboxItems as mailbox, museRunnerAssignments as assignments, museRunnerOperations as operations, nativeRunFinalizations } from "@paperclipai/db";
+import { agents, agentWakeupRequests, authUsers, companies, companyMemberships, createDb, closeRegisteredClients, applyPendingMigrations, externalAgentHolds, heartbeatRuns, issueAccessGrants, issueComments, issues, projects, principalPermissionGrants, mcpOauthGrants, mcpOauthRequests, mcpOauthTokens, dotAgentBindings, dotRunnerAssignments, dotRunnerOperations, museIdleReceipts, museAgentBindings as bindings, museCredentials, museInputDeliveries, museReceiverContactBuckets, museMailboxItems as mailbox, museRunnerAssignments as assignments, museRunnerOperations as operations, nativeRunFinalizations } from "@bostan/db";
 import { heartbeatService } from "../services/heartbeat.js";
 import { startAgentLifecycle } from "../services/agent-lifecycle.js";
 import { agentHarnessVerificationService } from "../services/agent-harness-verification.js";

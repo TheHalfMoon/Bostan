@@ -1,4 +1,4 @@
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 export type ActorInfo = {
   actorType?: "agent" | "user" | "system" | "plugin";

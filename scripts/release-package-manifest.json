@@ -10,11 +10,6 @@
     "publishFromCi": false
   },
   {
-    "dir": "packages/db",
-    "name": "@paperclipai/db",
-    "publishFromCi": false
-  },
-  {
     "dir": "packages/plugins/sdk",
     "name": "@bostan/plugin-sdk",
     "publishFromCi": false

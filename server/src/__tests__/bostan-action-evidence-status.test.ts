@@ -6,7 +6,7 @@ import express from "express";
 import request from "supertest";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { companies, createDb, executionWorkspaces, issues, toolInvocations, workspaceOperations } from "@paperclipai/db";
+import { companies, createDb, executionWorkspaces, issues, toolInvocations, workspaceOperations } from "@bostan/db";
 import { toolGatewayRoutes } from "../routes/tool-gateway.js";
 import { classifyBostanActionEvidence, readBostanActionEvidence } from "../services/bostan-action-evidence.js";
 import { verifyBostanLocalFileContent } from "../services/bostan-local-file-readback.js";

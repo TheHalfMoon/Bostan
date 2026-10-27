@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { and, asc, eq, gt, gte, inArray, lte, sql } from "drizzle-orm";
-import { agents, companies, companySkills, companySkillVersions, type Db } from "@paperclipai/db";
+import { agents, companies, companySkills, companySkillVersions, type Db } from "@bostan/db";
 import { readPaperclipSkillSyncPreference } from "@bostan/adapter-utils/server-utils";
 import { resolvePaperclipInstanceRoot } from "../home-paths.js";
 import { logger } from "../middleware/logger.js";

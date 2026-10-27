@@ -30,7 +30,7 @@ import {
   asc,
   eq,
 } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   type ExecutionWorkspace,
   type ExecutionWorkspaceConfig,
@@ -41,7 +41,7 @@ import {
   issues,
   projects,
   projectWorkspaces,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { logger } from "../../middleware/logger.js";
 import {
   createGitRemoteAuthProvider,

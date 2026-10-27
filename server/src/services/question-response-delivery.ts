@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agentWakeupRequests,
   agents,
@@ -10,7 +10,7 @@ import {
   issueQuestionResponseDeliveries,
   issues,
   issueThreadInteractions,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   AskUserQuestionsInteraction,
   PaperclipQuestionSetPayload,

@@ -1,7 +1,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
-import { heartbeatRuns, issueThreadInteractions } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { heartbeatRuns, issueThreadInteractions } from "@bostan/db";
 import type {
   AskUserQuestionsInteraction,
   RespondIssueThreadInteraction,

@@ -54,7 +54,7 @@ import { Router, type Request, type Response } from "express";
 import multer from "multer";
 import { z } from "zod";
 import { and, asc, desc, eq, inArray, isNull, notInArray, or, sql, type SQL } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type { ChatChannelService } from "../services/chat-channels.js";
 import {
   activityLog,
@@ -85,7 +85,7 @@ import {
   projectWorkspaces,
   projectAccessMembers,
   projects,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   addIssueCommentSchema,
   acceptIssueThreadInteractionSchema,

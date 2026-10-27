@@ -22,7 +22,7 @@ import type { buildExecutionContinuation } from "../execution-continuation.js";
 import type { agentInstructionWorkingCopyService } from "../agent-instruction-working-copies.js";
 import { createHash, randomUUID } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { agentHarnessType, CHAT_PROVIDERS } from "@bostan/shared";
 import {
   type agents,
@@ -30,7 +30,7 @@ import {
   heartbeatRunEvents,
   heartbeatRuns,
   nativeRunFinalizations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { getStartupTracer } from "../../instrumentation.js";
 import { documentService } from "../documents.js";
 import { managedAgentProfileService } from "../managed-agent-profiles.js";

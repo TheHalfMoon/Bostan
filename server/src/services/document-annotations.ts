@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   documentAnnotationAnchorSnapshots,
   documentAnnotationComments,
@@ -9,7 +9,7 @@ import {
   issueComments,
   issueDocuments,
   routineDocuments,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   anchorSnapshotToSelector,
   remapDocumentAnchor,

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
-import { agentWakeupRequests, chatActions, chatConversations, chatEndpoints, heartbeatRuns, issues, issueRecoveryActions, type Db } from "@paperclipai/db";
+import { agentWakeupRequests, chatActions, chatConversations, chatEndpoints, heartbeatRuns, issues, issueRecoveryActions, type Db } from "@bostan/db";
 import { conflict, forbidden, notFound } from "../errors.js";
 import { persistActivity } from "./activity-log.js";
 import { createSystemRecovery, readSystemRecovery } from "./system-recovery-state.js";

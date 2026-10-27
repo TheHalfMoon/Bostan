@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { and, eq, isNull, type SQL } from "drizzle-orm";
-import { documents, issueDocuments, issues, type Db } from "@paperclipai/db";
+import { documents, issueDocuments, issues, type Db } from "@bostan/db";
 import { resolveDecisionSigningSecret } from "./decision-signing.js";
 
 type DbTransaction = Parameters<Parameters<Db["transaction"]>[0]>[0];

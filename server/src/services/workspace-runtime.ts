@@ -16,8 +16,8 @@ import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import type { AdapterRuntimeServiceReport } from "@bostan/adapter-utils";
-import type { Db } from "@paperclipai/db";
-import { executionWorkspaces, issueComments, issues, projectWorkspaces, workspaceRuntimeServices } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { executionWorkspaces, issueComments, issues, projectWorkspaces, workspaceRuntimeServices } from "@bostan/db";
 import {
   DEFAULT_TAILSCALE_HTTPS_EXPOSURE,
   deriveViteHmrPort,

@@ -1,5 +1,5 @@
 import { and, eq, inArray, isNull, type SQL } from "drizzle-orm";
-import { issues, type Db } from "@paperclipai/db";
+import { issues, type Db } from "@bostan/db";
 import { ISSUE_SUMMARIES_MAX_IDS } from "@bostan/shared";
 import { externalConversationStateSql } from "./slack-conversation-state.js";
 

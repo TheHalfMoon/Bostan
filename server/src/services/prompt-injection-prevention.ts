@@ -2,7 +2,7 @@ import { DELIVERY_QUEUES, notifyDeliveryWork } from "./delivery-work-notificatio
 import { randomUUID } from "node:crypto";
 import { and, eq, lt, sql } from "drizzle-orm";
 import { agents, budgetReservations, companies, companyPromptInjectionPrevention,
-  promptInjectionInvocations, companySecrets, heartbeatRuns, runIdentityContexts, issues, projects, type Db } from "@paperclipai/db";
+  promptInjectionInvocations, companySecrets, heartbeatRuns, runIdentityContexts, issues, projects, type Db } from "@bostan/db";
 import { PROMPT_INJECTION_DEFAULT_MODEL, PROMPT_INJECTION_POLICY_VERSION, decisionProviderForConnection,
   updatePromptInjectionPreventionSchema, centsToUnits, unitsToCents,
   type PromptInjectionPreventionSettings, type UpdatePromptInjectionPrevention, type PromptInjectionModelOutcome,

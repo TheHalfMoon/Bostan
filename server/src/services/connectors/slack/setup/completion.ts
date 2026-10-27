@@ -1,6 +1,6 @@
 import { notifyChatVerificationWork } from "../../../chat-work-notifications.js";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { chatEndpoints, chatSlackRegistrations } from "@paperclipai/db";
+import { chatEndpoints, chatSlackRegistrations } from "@bostan/db";
 import { SLACK_CHAT_BOT_SCOPES, SLACK_BOT_TOOL_SCOPES, type SlackAccountState } from "@bostan/shared";
 import { conflict, forbidden } from "../../../../errors.js";
 import { logger } from "../../../../middleware/logger.js";

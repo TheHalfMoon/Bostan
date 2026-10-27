@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, notInArray, sql, type SQL } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents,
   approvals,
@@ -25,7 +25,7 @@ import {
   documents,
   projects,
   projectWorkspaces,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { deriveProjectUrlKey } from "@bostan/shared";
 import type {
   AttentionDecisionVerb,

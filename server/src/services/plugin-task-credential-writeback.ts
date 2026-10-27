@@ -1,6 +1,6 @@
 import { aiConnectionMetadataSchema } from "@bostan/shared";
 import { and, eq, sql } from "drizzle-orm";
-import { companySecrets, connectionGrants, environmentLeases, toolConnections, type Db } from "@paperclipai/db";
+import { companySecrets, connectionGrants, environmentLeases, toolConnections, type Db } from "@bostan/db";
 import { z, type PluginEnvironmentTaskCredential } from "@bostan/plugin-sdk";
 import { mkdtemp, writeFile, rm, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";

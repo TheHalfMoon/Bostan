@@ -16,8 +16,8 @@ import { mkdtemp, realpath, rm, access, readFile, writeFile, stat } from "node:f
 import os from "node:os";
 import path from "node:path";
 import { and, eq, sql } from "drizzle-orm";
-import { createDb, companies, agents, agentTaskSessions, heartbeatRuns, companyMemberships, connectionGrants, toolApplications, connectionGrantDelegations, connectionGrantMembers, toolConnections, toolConnectionInstalls, aiConnectionDefaults, aiProviderDefaults, adapterAuthSessions, environments, plugins, issues, issueThreadInteractions, issueRecoveryActions, connectionIntentDeliveries, agentWakeupRequests, companySecrets, companySecretVersions, userSecretDefinitions, principalPermissionGrants } from "@paperclipai/db";
-import { startEmbeddedPostgresTestDatabase } from "@paperclipai/db/test-embedded-postgres";
+import { createDb, companies, agents, agentTaskSessions, heartbeatRuns, companyMemberships, connectionGrants, toolApplications, connectionGrantDelegations, connectionGrantMembers, toolConnections, toolConnectionInstalls, aiConnectionDefaults, aiProviderDefaults, adapterAuthSessions, environments, plugins, issues, issueThreadInteractions, issueRecoveryActions, connectionIntentDeliveries, agentWakeupRequests, companySecrets, companySecretVersions, userSecretDefinitions, principalPermissionGrants } from "@bostan/db";
+import { startEmbeddedPostgresTestDatabase } from "@bostan/db/test-embedded-postgres";
 import { fetchCompanyQuotaWindows } from "../services/quota-windows.js";
 import { quotaCredentialRecoveryPath, quotaCredentialRecovery, quotaCredentialHash } from "../services/quota-credential-recovery.js";
 import { readAiConnectionConfigurationFailure } from "../services/ai-connection-configuration-failure.js";

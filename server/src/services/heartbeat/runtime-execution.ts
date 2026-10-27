@@ -42,7 +42,7 @@ import { remoteExecutionHasStopped } from "../remote-execution-termination.js";
 import { registerAdapterExecutionControl } from "../adapter-execution-control.js";
 import { resolveManagedOpenAiBilling } from "@bostan/adapter-utils";
 import { and, eq, isNull, sql } from "drizzle-orm";
-import { heartbeatRuns, nativeRunFinalizations, workspaceOperations } from "@paperclipai/db";
+import { heartbeatRuns, nativeRunFinalizations, workspaceOperations } from "@bostan/db";
 import { conflict } from "../../errors.js";
 import { getStartupTraceContext } from "../../instrumentation.js";
 import { logger } from "../../middleware/logger.js";
@@ -76,7 +76,7 @@ import {
   isRunnerGoalActionCompleted,
   settleLiveRunnerGoalBeforeInterrupt,
 } from "../runner-goals.js";
-import type { Db, agents, executionWorkspaces } from "@paperclipai/db";
+import type { Db, agents, executionWorkspaces } from "@bostan/db";
 import type { AdapterExecutionContext, ServerAdapterModule } from "../../adapters/index.js";
 import type { HeartbeatRuntimeSelectionInput, HeartbeatRuntimeSelectionResult } from "./runtime-selection.js";
 import type { createHeartbeatRunState } from "./run-state.js";

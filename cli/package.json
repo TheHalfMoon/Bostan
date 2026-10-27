@@ -47,7 +47,7 @@
     "@bostan/adapter-pi-local": "workspace:*",
     "@bostan/adapter-openclaw-gateway": "workspace:*",
     "@bostan/adapter-utils": "workspace:*",
-    "@paperclipai/db": "workspace:*",
+    "@bostan/db": "workspace:*",
     "@bostan/server": "workspace:*",
     "@bostan/shared": "workspace:*",
     "@bostan/adapter-hermes": "workspace:*",

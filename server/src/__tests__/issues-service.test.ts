@@ -33,7 +33,7 @@ import {
   toolApplications,
   toolConnections,
   toolOauthStates,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

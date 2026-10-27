@@ -9,7 +9,7 @@ import { aiConnectionService } from "./ai-connections.js";
 import { aiConnectionBindingSchema, aiConnectionRouterBindingSchema } from "@bostan/shared";
 import { aiBindingForAuthRecovery, isAiAuthenticationFailure, isAiAuthenticationRepairable } from "./ai-auth-failure.js";
 import { and, eq, desc, isNull, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents,
   aiConnectionTaskPins,
@@ -26,7 +26,7 @@ import {
   issueThreadInteractions,
   issueComments,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   APP_STORE_DEFINITIONS,
   isConnectorFeatureEnabled,

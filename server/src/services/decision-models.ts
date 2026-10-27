@@ -4,7 +4,7 @@ import { and, desc, eq, gte, lt, lte, or, sql } from "drizzle-orm";
 import {
   agents, authUsers, budgetReservations, companies, companyMemberships, companyDecisionModels, costEvents,
   decisionInvocations, heartbeatRuns, issues, projects, companySecrets, type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   DECISION_MODELS, decisionProviderForConnection, decisionRequestSchema, updateDecisionModelSchema,
   centsToUnits, unitsToCents, type DecisionAvailability, type DecisionConnectionChoice, type DecisionHistoryEntry,

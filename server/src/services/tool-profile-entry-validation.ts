@@ -1,4 +1,4 @@
-import { toolApplications, toolCatalogEntries, toolConnections, type Db } from "@paperclipai/db";
+import { toolApplications, toolCatalogEntries, toolConnections, type Db } from "@bostan/db";
 import type { CreateToolProfileEntryForProfile } from "@bostan/shared";
 import { and, eq, inArray, or } from "drizzle-orm";
 import { badRequest, notFound, unprocessable } from "../errors.js";

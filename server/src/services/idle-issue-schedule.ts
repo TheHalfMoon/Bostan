@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { AGENT_STATUSES, issueExecutionMonitorPolicySchema, PROVIDER_QUOTA_MONITOR_SERVICE_NAME } from "@bostan/shared";
 import type { ScheduledWake } from "./idle-scheduled-work.js";
 import { onboardingFirstTaskAwaitingUserSql } from "./recovery/onboarding-first-task-wait.js";

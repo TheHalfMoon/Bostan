@@ -9,7 +9,7 @@ import { z } from "zod";
 import type { Request } from "express";
 import {
   type Db, activityLog, agents, authUsers, companies, companyLogos, dotAgentBindings, museAgentBindings, mcpOauthClients, mcpOauthGrants, mcpOauthRequests, mcpOauthTokens, mcpOauthDeviceRequests, mcpOauthMetadataAdmissions,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { DOT_RUNNER_MCP_PATH, DOT_RUNNER_MCP_SCOPES, PUBLIC_MCP_PATH, PUBLIC_MCP_SCOPES, MUSE_RESOURCE_PATH, MUSE_OAUTH_PATH, MUSE_OAUTH_SCOPES, type McpConnectionRequest, type McpDotPairingPreview } from "@bostan/shared";
 import { HttpError } from "../../errors.js";
 import { withExternalAdmissionGuard } from "../../modules/external-agents/index.js";

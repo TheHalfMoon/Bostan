@@ -1,6 +1,6 @@
 import { and, eq, isNull, sql, type SQL } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { issues } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { issues } from "@bostan/db";
 
 export type TaskInsightWindow = 7 | 30 | 90;
 export function parseTaskInsightWindow(value: unknown): TaskInsightWindow {

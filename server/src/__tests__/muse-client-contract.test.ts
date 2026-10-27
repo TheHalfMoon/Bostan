@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, it, expect, vi } from "vitest";
 import express from "express";
 import request from "supertest";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { museTransportRoutes } from "../routes/muse.js";
 
 // Asset routing must not create a credential, touch a DB or start a receiver.

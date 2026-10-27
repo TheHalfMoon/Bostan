@@ -2,8 +2,8 @@ import { writeLoginCleanup } from "./login-cleanup-notifications.js";
 import { DELIVERY_QUEUES } from "./delivery-work-notifications.js";
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { adapterAuthSessions } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { adapterAuthSessions } from "@bostan/db";
 import type {
   AdapterAuthSessionFailure,
   AdapterAuthSessionInternalStatus,

@@ -7,7 +7,7 @@ import {
   chatMessageLinks,
   heartbeatRuns,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   parseGitHubReceiptIdentity,
   type GitHubReceiptIdentity,

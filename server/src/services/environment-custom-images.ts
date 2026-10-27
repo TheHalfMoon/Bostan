@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { withoutCleanupVerification } from "./cleanup-verification-proof.js";
 import { and, desc, eq, inArray, lte } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   environmentCustomImageSetupSessions,
   environmentCustomImageTemplates,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   ENVIRONMENT_CUSTOM_IMAGE_SETUP_CONNECTION_TYPES,
   ENVIRONMENT_CUSTOM_IMAGE_SETUP_SESSION_STATUSES,

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { and, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
-import { caseHandoffs, documentRevisions, documents, heartbeatRuns, issueDocuments, type cases, type issues, type Db } from "@paperclipai/db";
+import { caseHandoffs, documentRevisions, documents, heartbeatRuns, issueDocuments, type cases, type issues, type Db } from "@bostan/db";
 import { conflict } from "../errors.js";
 import { checkBostanIssueDocumentSnapshot } from "./bostan-knowledge-evidence.js";
 

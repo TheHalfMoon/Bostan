@@ -1,6 +1,6 @@
 import { redactedVercelGrant } from "../vercel-credentials.js";
 import { connectionPurposeTransportSchema } from "@bostan/shared";
-import { connectionGrants, toolConnectionInstalls, toolConnections } from "@paperclipai/db";
+import { connectionGrants, toolConnectionInstalls, toolConnections } from "@bostan/db";
 import type { ToolConnection, ToolConnectionInstall } from "@bostan/shared";
 import { isRetiredComposioConnection, RETIRED_COMPOSIO_MESSAGE } from "@bostan/shared";
 

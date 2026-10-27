@@ -1,4 +1,4 @@
-import { agents, heartbeatRuns, type Db } from "@paperclipai/db";
+import { agents, heartbeatRuns, type Db } from "@bostan/db";
 import { and, asc, desc, eq, lte, sql } from "drizzle-orm";
 import { trackAgentFirstHeartbeat } from "@bostan/shared/telemetry";
 import { getTelemetryClient } from "../../telemetry.js";

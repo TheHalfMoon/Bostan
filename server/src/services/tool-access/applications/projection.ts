@@ -1,4 +1,4 @@
-import { toolApplications } from "@paperclipai/db";
+import { toolApplications } from "@bostan/db";
 import type { ToolApplication } from "@bostan/shared";
 
 export function toApplication(

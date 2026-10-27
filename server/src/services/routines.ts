@@ -3,7 +3,7 @@ import { verifyAppWebhook } from "./app-webhook.js";
 import crypto from "node:crypto";
 import { verifyFirefliesWebhook } from "./fireflies-webhook.js";
 import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lte, ne, not, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents,
   activityLog,
@@ -28,7 +28,7 @@ import {
   routines,
   routineTriggers,
   routineWebhookTestReceipts,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   CreateRoutine,
   CreateRoutineTrigger,

@@ -11,13 +11,13 @@ import {
   eq,
 } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   chatEndpoints,
   companySecretBindings,
   toolConnections,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ChatEndpointSetupState,
   ToolCredentialSecretRef,

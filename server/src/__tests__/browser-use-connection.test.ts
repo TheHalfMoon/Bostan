@@ -36,7 +36,7 @@ import {
   financeEvents,
   budgetPolicies,
   budgetReservations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { toolAccessService } from "../services/tool-access.js";
 import { createToolGatewayService } from "../services/tool-gateway.js";
 import { browserUseViewports } from "../services/browser-use-viewport.js";

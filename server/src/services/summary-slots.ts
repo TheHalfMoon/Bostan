@@ -1,5 +1,5 @@
 import { and, desc, eq, gte, inArray, isNull } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   documentRevisions,
   documents,
@@ -8,7 +8,7 @@ import {
   projectWorkspaces,
   projects,
   summarySlots,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   type GenerateSummarySlotResponse,
   type GetSummarySlotResponse,

@@ -6,13 +6,13 @@ import {
   and,
   eq,
 } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   chatConversations,
   chatExternalPrincipals,
   chatPublications,
   issueThreadInteractions,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   SafeChatPublicationPayload,
   AskUserQuestionsInteraction,

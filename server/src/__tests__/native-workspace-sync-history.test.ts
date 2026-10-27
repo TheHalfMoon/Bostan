@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promis
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { heartbeatRuns, type Db } from "@paperclipai/db";
+import { heartbeatRuns, type Db } from "@bostan/db";
 import type { EnvironmentLease } from "@bostan/shared";
 import type { AdapterSandboxExecutionTarget } from "@bostan/adapter-utils/execution-target";
 import type { CommandManagedRuntimeRunner } from "@bostan/adapter-utils/command-managed-runtime";

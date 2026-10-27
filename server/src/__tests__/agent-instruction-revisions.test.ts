@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { and, eq, sql } from "drizzle-orm";
 import { agents, agentApiKeys, companies, authUsers, companyMemberships, principalPermissionGrants, heartbeatRuns,
-  agentInstructionRevisions, agentInstructionHeads, issueThreadInteractions, issues, createDb } from "@paperclipai/db";
+  agentInstructionRevisions, agentInstructionHeads, issueThreadInteractions, issues, createDb } from "@bostan/db";
 import { startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 import { agentInstructionRevisionService } from "../services/agent-instruction-revisions.js";
 import { agentInstructionWorkingCopyService } from "../services/agent-instruction-working-copies.js";

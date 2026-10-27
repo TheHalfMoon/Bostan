@@ -14,7 +14,7 @@ import {
   statusDecisions,
   issueComments,
   issueThreadInteractions,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   startEmbeddedPostgresTestDatabase,
   getEmbeddedPostgresTestSupport,

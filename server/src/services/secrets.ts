@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, like, ne, notInArray, notLike, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents,
   companies,
@@ -17,7 +17,7 @@ import {
   secretAccessEvents,
   userSecretDeclarations,
   userSecretDefinitions,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   AgentApiKeyScope,
   AgentEnvConfig,

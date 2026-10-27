@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { chatEndpoints, toolConnections, type Db } from "@paperclipai/db";
+import { chatEndpoints, toolConnections, type Db } from "@bostan/db";
 import {
   SLACK_TOOLS,
   SLACK_BOT_TOOL_SCOPES,

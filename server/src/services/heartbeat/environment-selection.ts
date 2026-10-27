@@ -1,5 +1,5 @@
 import { heartbeatExternalProvider, nativeExecutionUsesTaskWorkspace } from "./external-provider.js";
-import { heartbeatRuns, issues, type Db, type agents } from "@paperclipai/db";
+import { heartbeatRuns, issues, type Db, type agents } from "@bostan/db";
 import { and, eq } from "drizzle-orm";
 import { readGitCacheExpiration } from "../git-workspace-restoration.js";
 import type { ExecutionWorkspace, IssueExecutionWorkspaceSettings, ProjectExecutionWorkspacePolicy } from "@bostan/shared";

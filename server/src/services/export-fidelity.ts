@@ -5,7 +5,7 @@ import {
   type ExportFidelityCounts,
   type ExportFidelityReport,
 } from "@bostan/shared/portability-fidelity";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   activityLog,
   approvals,
@@ -17,7 +17,7 @@ import {
   issueWorkProducts,
   issues,
   labels,
-} from "@paperclipai/db";
+} from "@bostan/db";
 
 export async function collectExportFidelityCounts(db: Db, companyId: string): Promise<ExportFidelityCounts> {
   const [

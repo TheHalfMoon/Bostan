@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { agents, heartbeatRuns, type Db } from "@paperclipai/db";
+import { agents, heartbeatRuns, type Db } from "@bostan/db";
 import { trackAgentTaskRun } from "@bostan/shared/telemetry";
 import { parseObject } from "../adapters/utils.js";
 import { logger } from "../middleware/logger.js";

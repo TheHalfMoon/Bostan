@@ -1,5 +1,5 @@
 import { Router, urlencoded, type Request } from "express";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type { DeploymentExposure, DeploymentMode } from "@bostan/shared";
 import {
   createSmokeRunSchema,

@@ -10,7 +10,7 @@ import {
   agentInstructionHeads as heads,
   agentInstructionRevisions as revisions,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   AgentInstructionCommitReceipt,
   AgentInstructionDiff,

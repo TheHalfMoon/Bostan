@@ -53,7 +53,7 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   activityLog,
   chatActions,
@@ -100,7 +100,7 @@ import {
   projects,
   toolConnections,
   workspaceOperations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   AcceptedPlanDecomposition,
   IssueComment,

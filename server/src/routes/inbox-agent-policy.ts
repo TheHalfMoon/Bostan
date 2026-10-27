@@ -1,5 +1,5 @@
 import { Router, type Request } from "express";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { updateInboxAgentPolicySchema } from "@bostan/shared";
 import { forbidden, notFound, unauthorized } from "../errors.js";
 import { validate } from "../middleware/validate.js";
