@@ -14,6 +14,7 @@ test('all-in-one stage acceptance is read-only by default and fail-closed on oth
   assert.match(invoke(['--plan']).stdout,/--run-relocated/);
   assert.match(invoke(['--plan']).stdout,/--run-relocated-authz/);
   assert.match(invoke(['--plan']).stdout,/--run-relocated-authz-ui/);
+  assert.match(invoke(['--plan']).stdout,/--run-relocated-admin-race/);
   for(const args of [['--publish'],['--run','--deploy'],['--help']]){
     const r=invoke(args);assert.equal(r.status,2,r.stderr);assert.equal(r.stdout,'');
   }
@@ -39,6 +40,8 @@ test('real full-app private QA isolates provider credentials, offline deploy, te
   assert.match(source,/BOSTAN_PRIVATE_STAGED_RELOCATION_ACCEPTANCE_PASS/);
   assert.match(source,/--run-deployed-authz/);
   assert.match(source,/--run-deployed-authz-ui/);
+  assert.match(source,/--run-deployed-admin-race/);
+  assert.match(source,/BOSTAN_PRIVATE_RELOCATED_ADMIN_RACE_ACCEPTANCE_PASS/);
   assert.match(source,/BOSTAN_PRIVATE_RELOCATED_MEMBER_BROWSER_ACCEPTANCE_PASS/);
   assert.match(source,/BOSTAN_PRIVATE_RELOCATED_TWO_SESSION_AUTHZ_ACCEPTANCE_PASS/);
   assert.match(source,/4194304/);
