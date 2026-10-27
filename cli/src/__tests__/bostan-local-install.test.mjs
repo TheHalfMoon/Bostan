@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync, existsSync, copyFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, delimiter } from "node:path";
@@ -212,6 +212,37 @@ nativeTest("the installed CLI survives deletion of its temporary staging directo
     assert.equal(invoke(f.home, ["status"], "shim").status, 0);
   } finally { f.clean(); }
 });
+
+(process.platform === "win32" ? test : test.skip)(
+  "disposable native Windows install refuses broadened ACL before status read", () => {
+    const f=fixture();
+    try {
+      assert.equal(invoke(f.home, ["install","--local"]).status,0);
+      for(const folder of [join(f.home,".bostan"),join(f.home,".local")]){
+        const protectedAcl=execFileSync("icacls.exe",[folder],{encoding:"utf8"});
+        assert.doesNotMatch(protectedAcl,/Everyone|Authenticated Users|CodexSandboxUsers/i);
+      }
+      const local=join(f.home,".local");
+      execFileSync("icacls.exe",[local,"/grant","*S-1-5-11:(OI)(CI)RX"],{encoding:"utf8"});
+      const refused=invoke(f.home,["status"]);
+      assert.equal(refused.status,2,refused.stderr);
+      assert.match(refused.stderr,/private NTFS ACL admission failed/);
+      assert.ok(existsSync(join(f.home,".bostan","cli","install.json")));
+    } finally {f.clean();}
+  },
+);
+
+(process.platform === "win32" ? test : test.skip)(
+  "explicit Windows TEMP-QA flag never permits installing in the actual user home", () => {
+    const result=spawnSync(process.execPath,[source,"install","--local"],{
+      env:{...process.env,HOME:process.env.USERPROFILE ?? process.env.HOME,
+        BOSTAN_WINDOWS_TEMP_QA:"1"},
+      encoding:"utf8",timeout:4000,windowsHide:true,
+    });
+    assert.equal(result.status,2,result.stderr);
+    assert.match(result.stderr,/non-disposable HOME/);
+  },
+);
 
 nativeTest("quotes apostrophes and spaces in the installed command path safely", () => {
   const f = fixture();
