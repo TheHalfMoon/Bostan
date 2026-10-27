@@ -4,7 +4,7 @@ import {spawnSync} from 'node:child_process';
 import {existsSync,mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,symlinkSync,writeFileSync} from 'node:fs';
 import {dirname,join,relative,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {inspectLinks,repairOwnedSelfLink,verifyStage,portableStagingRoot,verifiedStagingRoot} from './bostan-private-staged-server-check.mjs';
+import {inspectLinks,repairOwnedSelfLink,verifyStage,auditProductionDependencyClosure,portableStagingRoot,verifiedStagingRoot} from './bostan-private-staged-server-check.mjs';
 const script=fileURLToPath(new URL('./bostan-private-staged-server-check.mjs',import.meta.url));
 const smoke=fileURLToPath(new URL('./bostan-local-http-postgres-smoke.sh',import.meta.url));
 function fixture(){
@@ -13,7 +13,7 @@ function fixture(){
   const source=join(parent,'bostan-source-fixture');
   mkdirSync(stage,{recursive:true});mkdirSync(join(source,'server'),{recursive:true});
   const file=(name,data='fixture')=>{let p=join(stage,name);mkdirSync(dirname(p),{recursive:true});writeFileSync(p,data)};
-  file('package.json',JSON.stringify({name:'@bostan/server',private:true,scripts:{start:'node --conditions=bostan-compiled dist/index.js'}}));
+  file('package.json',JSON.stringify({name:'@bostan/server',private:true,scripts:{start:'node --conditions=bostan-compiled dist/index.js'},dependencies:{'@anthropic-ai/sdk':'0.129.0'}}));
   return {parent,stage,source,file,cleanup:()=>rmSync(parent,{recursive:true,force:true})};
 }
 function fillValidStage(f){
@@ -26,8 +26,10 @@ function fillValidStage(f){
     'node_modules/@bostan/adapter-codex-local/dist/server/codex-auth-merge-extract.sh',
     'node_modules/@bostan/plugin-sdk/dist/index.js',
     'node_modules/@anthropic-ai/sdk/package.json',
+
     'node_modules/@bostan/skills-catalog/dist/src/index.js',
   ])f.file(path);
+  f.file('node_modules/@anthropic-ai/sdk/package.json',JSON.stringify({name:'@anthropic-ai/sdk',version:'0.129.0'}));
   for(let i=0;i<375;i++)f.file(`node_modules/@bostan/db/dist/migrations/${i}.sql`);
 }
 test('Linux and macOS use fixed safe system staging roots regardless of TMPDIR',()=>{
@@ -49,12 +51,50 @@ test('stage inspection is read-only and confirms package, migrations and interna
     fillValidStage(f);
     const result=verifyStage(f.stage);
     assert.equal(result.validated,true);assert.equal(result.releaseQualified,false);
-    assert.equal(result.sqlMigrationFiles,375);assert.equal(result.foreignLinks,0);
+    assert.equal(result.sqlMigrationFiles,375);assert.equal(result.foreignLinks,0);assert.equal(result.productionDependencies,1);assert.equal(result.requiredAcpSdkVersion,'0.129.0');
     const cli=spawnSync(process.execPath,[script,'--verify',f.stage],{encoding:'utf8',timeout:5000});
     assert.equal(cli.status,0,cli.stderr);
     assert.equal(JSON.parse(cli.stdout).browserUIIncluded,false);
     rmSync(join(f.stage,'node_modules/@anthropic-ai/sdk/package.json'));
     assert.throws(()=>verifyStage(f.stage),/anthropic-ai\/sdk/);
+  }finally{f.cleanup();}
+});
+test('production dependency closure refuses an undeployed or forged direct runtime dependency',()=>{
+  const f=fixture();try{
+    fillValidStage(f);
+    assert.equal(auditProductionDependencyClosure(f.stage).productionDependencies,1);
+    f.file('package.json',JSON.stringify({name:'@bostan/server',private:true,scripts:{start:'node --conditions=bostan-compiled dist/index.js'},dependencies:{'@anthropic-ai/sdk':'0.129.0','@bostan/mandatory-runtime':'1.2.3'}}));
+    assert.throws(()=>verifyStage(f.stage),/production dependency missing.*mandatory-runtime/);
+    f.file('node_modules/@bostan/mandatory-runtime/package.json',JSON.stringify({name:'@bostan/mandatory-runtime',version:'1.2.3'}));
+    assert.equal(verifyStage(f.stage).productionDependencies,2);
+    f.file('node_modules/@bostan/mandatory-runtime/package.json',JSON.stringify({name:'@another/forged',version:'1.2.3'}));
+    assert.throws(()=>verifyStage(f.stage),/identity mismatch/);
+  }finally{f.cleanup();}
+});
+test('optional UI and test peers are not falsely treated as mandatory production dependencies',()=>{
+  const f=fixture();try{
+    fillValidStage(f);
+    f.file('package.json',JSON.stringify({name:'@bostan/server',private:true,scripts:{start:'node --conditions=bostan-compiled dist/index.js'},dependencies:{'@anthropic-ai/sdk':'0.129.0'},peerDependencies:{'react':'>=18','vitest':'^4'},peerDependenciesMeta:{react:{optional:true},vitest:{optional:true}}}));
+    assert.equal(verifyStage(f.stage).productionDependencies,1);
+    assert.equal(verifyStage(f.stage).productionDependencyClosure,true);
+  }finally{f.cleanup();}
+});
+test('invalid dependency names and missing runtime dependency manifest are refused',()=>{
+  const f=fixture();try{
+    fillValidStage(f);
+    f.file('package.json',JSON.stringify({name:'@bostan/server',private:true,scripts:{start:'node --conditions=bostan-compiled dist/index.js'},dependencies:{'@anthropic-ai/sdk':'0.129.0','../malicious':'1.0.0'}}));
+    assert.throws(()=>auditProductionDependencyClosure(f.stage),/Invalid declared Bostan production dependency/);
+    f.file('package.json',JSON.stringify({name:'@bostan/server',private:true,scripts:{start:'node --conditions=bostan-compiled dist/index.js'}}));
+    assert.throws(()=>auditProductionDependencyClosure(f.stage),/Missing Bostan production dependency manifest/);
+  }finally{f.cleanup();}
+});
+test('production ACP SDK must be present at exact pinned version, not an optional peer or substitute',()=>{
+  const f=fixture();try{
+    fillValidStage(f);
+    f.file('node_modules/@anthropic-ai/sdk/package.json',JSON.stringify({name:'@anthropic-ai/sdk',version:'0.90.0'}));
+    assert.throws(()=>verifyStage(f.stage),/SDK version is not pinned/);
+    f.file('package.json',JSON.stringify({name:'@bostan/server',private:true,scripts:{start:'node --conditions=bostan-compiled dist/index.js'},dependencies:{'@anthropic-ai/sdk':'^0.129.0'}}));
+    assert.throws(()=>verifyStage(f.stage),/Expected locked Bostan ACP SDK/);
   }finally{f.cleanup();}
 });
 test('staging check refuses external, broken and symlinked stage roots',()=>{

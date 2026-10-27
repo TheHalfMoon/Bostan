@@ -60,6 +60,28 @@ export function inspectLinks(root){
   }
   return total;
 }
+/** Validate direct *production* dependencies from the actual staged manifest.
+ * Do not misclassify optional/test peer warnings as deploy failures. */
+export function auditProductionDependencyClosure(stage){
+  const root=ownedStage(stage);
+  const pkg=JSON.parse(readFileSync(join(root,'package.json'),'utf8'));
+  const dependencies=pkg.dependencies;
+  if(!dependencies || typeof dependencies!=='object' || Array.isArray(dependencies))throw Error('Missing Bostan production dependency manifest');
+  if(dependencies['@anthropic-ai/sdk']!=='0.129.0')throw Error('Expected locked Bostan ACP SDK production dependency version');
+  let checked=0;
+  for(const [name,declared] of Object.entries(dependencies)){
+    if(!/^(?:@[a-z0-9_.-]+\/)?[a-z0-9_.-]+$/.test(name) || typeof declared!=='string' || !declared.trim())throw Error('Invalid declared Bostan production dependency');
+    const location=join(root,'node_modules',name,'package.json');
+    if(!existsSync(location))throw Error(`Bostan production dependency missing from private stage: ${name}`);
+    let found;
+    try{found=JSON.parse(readFileSync(location,'utf8'));}catch{throw Error(`Bostan production dependency manifest unreadable: ${name}`);}
+    if(found.name!==name)throw Error(`Bostan staged dependency identity mismatch: ${name}`);
+    if(name==='@anthropic-ai/sdk' && found.version!==declared)throw Error('Bostan staged ACP SDK version is not pinned to the production manifest');
+    checked++;
+  }
+  return {productionDependencies:checked,requiredAcpSdkVersion:dependencies['@anthropic-ai/sdk'],productionDependencyClosure:true};
+}
+
 export function verifyStage(stage){
   const root=ownedStage(stage);
   for(const filename of required){
@@ -69,9 +91,10 @@ export function verifyStage(stage){
   const sql=readdirSync(join(root,'node_modules/@bostan/db/dist/migrations')).filter(name=>name.endsWith('.sql'));
   if(sql.length<375)throw Error('Incomplete Bostan packaged SQL migration history');
   const links=inspectLinks(root);
+  const closure=auditProductionDependencyClosure(root);
   return {schema:'bostan.private-staged-server.v1',validated:true,releaseQualified:false,
     private:true,compiledRuntime:true,macStandaloneServerCandidate:true,
-    sqlMigrationFiles:sql.length,internalLinks:links,foreignLinks:0,
+    sqlMigrationFiles:sql.length,internalLinks:links,foreignLinks:0,...closure,
     browserUIIncluded:existsSync(join(root,'ui-dist/index.html')),
     windowsQualified:false,linuxQualified:false,paidModelsUsed:false};
 }
