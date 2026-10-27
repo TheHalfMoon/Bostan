@@ -509,6 +509,9 @@ importers:
       '@agentclientprotocol/codex-acp':
         specifier: 1.6.2
         version: 1.6.2(patch_hash=2iynuypg76nxmydiylgtffhr7e)
+      '@anthropic-ai/sdk':
+        specifier: 0.129.0
+        version: 0.129.0(zod@4.6.5)
       '@openai/codex':
         specifier: 0.160.0
         version: 0.160.0
@@ -917,6 +920,9 @@ importers:
       '@ai-sdk/xai':
         specifier: 5.0.20
         version: 5.0.20(zod@4.4.3)
+      '@anthropic-ai/sdk':
+        specifier: 0.129.0
+        version: 0.129.0(zod@4.4.3)
       '@aws-sdk/client-s3':
         specifier: ^3.1141.0
         version: 3.1141.0

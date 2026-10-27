@@ -27,6 +27,9 @@ const required=[
   'node_modules/@bostan/adapter-codex-local/dist/server/index.js',
   'node_modules/@bostan/adapter-codex-local/dist/server/codex-auth-merge-extract.sh',
   'node_modules/@bostan/plugin-sdk/dist/index.js',
+  // ACP bridge's required SDK peer must ship in the *production* stage, not
+  // only in the developer pnpm store. This never initializes any provider.
+  'node_modules/@anthropic-ai/sdk/package.json',
   'node_modules/@bostan/skills-catalog/dist/src/index.js',
 ];
 function ownedStage(stage){

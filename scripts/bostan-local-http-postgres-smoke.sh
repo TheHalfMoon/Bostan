@@ -34,7 +34,19 @@ if [ "$MODE" = "--run-dist" ]; then
     fi
   done
 fi
-TMP=$(mktemp -d /private/tmp/bostan-live-http.XXXXXX)
+# Use the same strict platform system temp root as the staging checker.
+# Linux may not provide /private/tmp, and TMPDIR can point into HOME.
+TMP_ROOT="$(node "$REPO/scripts/bostan-private-staged-server-check.mjs" --stage-root)"
+if [ ! -d "$TMP_ROOT" ] || [ -L "$TMP_ROOT" ]; then
+  echo 'Bostan private HTTP smoke refused unexpected temp root' >&2
+  exit 2
+fi
+free_kib="$(df -Pk "$TMP_ROOT" | awk 'NR==2 {print $4}')"
+if ! [[ "$free_kib" =~ ^[0-9]+$ ]] || [ "$free_kib" -lt 524288 ]; then
+  echo 'Bostan private HTTP smoke refused: requires 512 MiB free on PostgreSQL temp filesystem' >&2
+  exit 2
+fi
+TMP="$(mktemp -d "$TMP_ROOT/bostan-live-http.XXXXXX")"
 PGDATA="$TMP/cluster"
 PGPORT=$(python3 - <<'PY'
 import socket
@@ -52,7 +64,11 @@ cleanup(){
  local result=$?
  if [ -n "$SPID" ]; then kill -TERM "$SPID" 2>/dev/null || true; wait "$SPID" 2>/dev/null || true;fi
  if [ "$STARTED" = 1 ]; then pg_ctl -D "$PGDATA" -m immediate -w stop >/dev/null 2>&1 || echo 'PG_STOP_FAILED';fi
- if [ -f "$TMP/BOSTAN_TEMP_OWNED" ]; then rm -rf -- "$TMP";fi
+ if [ -f "$TMP/BOSTAN_TEMP_OWNED" ] && [ -d "$TMP" ] && [ ! -L "$TMP" ]; then
+   case "$TMP" in "$TMP_ROOT"/bostan-live-http.??????) rm -rf -- "$TMP";;
+     *) echo 'BOSTAN_HTTP_UNEXPECTED_TEMP_NOT_DELETED' >&2;;
+   esac
+ fi
  echo "CLEANUP_COMPLETED exit=$result"
 }
 trap cleanup EXIT

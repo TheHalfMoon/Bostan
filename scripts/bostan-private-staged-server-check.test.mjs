@@ -25,6 +25,7 @@ function fillValidStage(f){
     'node_modules/@bostan/adapter-codex-local/dist/server/index.js',
     'node_modules/@bostan/adapter-codex-local/dist/server/codex-auth-merge-extract.sh',
     'node_modules/@bostan/plugin-sdk/dist/index.js',
+    'node_modules/@anthropic-ai/sdk/package.json',
     'node_modules/@bostan/skills-catalog/dist/src/index.js',
   ])f.file(path);
   for(let i=0;i<375;i++)f.file(`node_modules/@bostan/db/dist/migrations/${i}.sql`);
@@ -52,6 +53,8 @@ test('stage inspection is read-only and confirms package, migrations and interna
     const cli=spawnSync(process.execPath,[script,'--verify',f.stage],{encoding:'utf8',timeout:5000});
     assert.equal(cli.status,0,cli.stderr);
     assert.equal(JSON.parse(cli.stdout).browserUIIncluded,false);
+    rmSync(join(f.stage,'node_modules/@anthropic-ai/sdk/package.json'));
+    assert.throws(()=>verifyStage(f.stage),/anthropic-ai\/sdk/);
   }finally{f.cleanup();}
 });
 test('staging check refuses external, broken and symlinked stage roots',()=>{
