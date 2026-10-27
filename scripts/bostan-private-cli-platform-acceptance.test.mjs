@@ -29,3 +29,12 @@ test('node engine admission matches private Bostan manifest and fails old distro
   for(const version of ['22.22.1','24.10.9','18.20.0','banana',''])assert.throws(()=>qualifyNodeVersion(version),/Node.js >=24.11.0/);
   assert.throws(()=>verifyPrivateSource('/definitely-nonexistent-bostan-root'));
 });
+
+test('CLI cannot qualify a source checkout if the all-package registry quarantine is not green',()=>{
+  assert.throws(()=>verifyPrivateSource(undefined,{releaseGate:()=>({passed:false,registryPublicationDisabled:true,trackedManifestCount:48})}),/full private workspace registry quarantine/);
+  assert.throws(()=>verifyPrivateSource(undefined,{releaseGate:()=>({passed:true,registryPublicationDisabled:false,trackedManifestCount:48})}),/full private workspace registry quarantine/);
+  assert.throws(()=>verifyPrivateSource(undefined,{releaseGate:()=>({passed:true,registryPublicationDisabled:true,trackedManifestCount:2})}),/full private workspace registry quarantine/);
+  let consulted=0;
+  assert.equal(verifyPrivateSource(undefined,{releaseGate:({root})=>{consulted++;assert.match(root,/bostan-b067/);return{passed:true,registryPublicationDisabled:true,trackedManifestCount:48}}}),true);
+  assert.equal(consulted,1);
+});

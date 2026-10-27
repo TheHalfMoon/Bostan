@@ -4,6 +4,7 @@ import {spawnSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {verifyBostanPrivateWorkspace} from './bostan-private-workspace-registry-gate.mjs';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 const cliCases=[
@@ -26,11 +27,17 @@ export function qualifyNodeVersion(version) {
   return true;
 }
 
-export function verifyPrivateSource(repoRoot=root) {
+export function verifyPrivateSource(repoRoot=root,{releaseGate=verifyBostanPrivateWorkspace}={}) {
   const manifest=JSON.parse(readFileSync(resolve(repoRoot,'package.json'),'utf8'));
   const cli=JSON.parse(readFileSync(resolve(repoRoot,'cli/package.json'),'utf8'));
   if(manifest.name!=='bostan'||manifest.private!==true||cli.name!=='bostan'||cli.bin?.bostan!=='./dist/bostan.js')
     throw Error('Refusing to qualify a non-private or mismatched Bostan source tree');
+  // The CLI must not pass while another package in the same source checkout
+  // quietly regains public-registry eligibility. Check every tracked manifest.
+  const quarantine=releaseGate({root:repoRoot});
+  if(quarantine?.passed!==true||quarantine?.registryPublicationDisabled!==true
+    ||quarantine.trackedManifestCount<48)
+    throw Error('Refusing Bostan CLI qualification without full private workspace registry quarantine');
   return true;
 }
 
