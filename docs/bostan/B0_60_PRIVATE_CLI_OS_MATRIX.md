@@ -30,7 +30,14 @@ node scripts/bostan-private-cli-platform-acceptance.mjs --run
 node --test scripts/bostan-private-cli-platform-acceptance.test.mjs
 ```
 
-The Mac *new wrapper* was additionally executed: **2/2 unit tests PASS**, and the wrapped three-suite run **25/25 PASS, 1 SKIP**, with `BOSTAN_PRIVATE_CLI_PLATFORM_ACCEPTANCE_PASS` and process exit 0. Post-commit exact-head Windows/Linux wrapper evidence is recorded separately once rerun; original source-only matrix above does not pretend to cover changes not yet in the WSL/Windows checkout.
+### B0-60 wrapper branch verification (commit `66f9918`)
+
+- **macOS arm64:** wrapper unit tests **2/2 PASS**; `--run` **25 PASS, 1 SKIP, 0 FAIL**, explicit `BOSTAN_PRIVATE_CLI_PLATFORM_ACCEPTANCE_PASS`, exit 0.
+- **Native Windows 11:** independently checked out the **exact `66f9918` B0-60 branch** on D:. Unit tests **2/2 PASS**; `--run` **13 PASS, 13 SKIP, 0 FAIL**, native Windows refusal tested, acceptance marker emitted, exit 0. The skips remain unqualified native installer/symlink cases.
+- **Ubuntu WSL2 Linux x86_64:** unpacked the **same branch's exact sparse source archive** into WSL Linux filesystem and used official free Node v24.19.0. Unit tests **2/2 PASS**; `--run` **25 PASS, 1 SKIP, 0 FAIL**, native Linux CLI installed path exercised, acceptance marker emitted, exit 0.
+- No GitHub Actions were enabled; no deployment, model provider, real user, or release process was invoked.
+
+The final note update changes only this evidence document. The previously executed wrapper and test source is unchanged.
 
 ## Limits and follow-up
 
