@@ -15,7 +15,7 @@ export async function runPrivateStagedCrud(address,{request=fetch,uuid=randomUUI
   if(!/^[a-f0-9-]{16,64}$/i.test(trace))throw Error('Invalid disposable scenario identity');
   let requests=0;
   const json=async(method,route,body,expected)=>{
-    if(route!=='/api/companies/issues'&&!/^\/api\/(?:companies(?:\/[a-f0-9-]+(?:\/issues)?)?)$/.test(route))throw Error('Unexpected private CRUD endpoint');
+    if(route!=='/api/companies/issues'&&!/^\/api\/(?:companies(?:\/[a-f0-9-]+(?:\/issues)?)?|issues\/[a-f0-9-]+)$/.test(route))throw Error('Unexpected private CRUD endpoint');
     const response=await request(origin+route,{method,headers:{'content-type':'application/json','cache-control':'no-store'},...(body===undefined?{}:{body:JSON.stringify(body)}),redirect:'error',signal:AbortSignal.timeout(12000)});
     requests++;
     if(!expected.includes(response.status))throw Error(`Private Bostan CRUD unexpected HTTP ${response.status} for ${method} ${route}`);
@@ -39,11 +39,22 @@ export async function runPrivateStagedCrud(address,{request=fetch,uuid=randomUUI
   const issueA=await json('POST',`/api/companies/${createdA.id}/issues`,{title:firstTitle,status:'todo'},[201]);
   const issueB=await json('POST',`/api/companies/${createdB.id}/issues`,{title:secondTitle,status:'todo'},[201]);
   if(!issueA?.id||!issueB?.id||issueA.id===issueB.id||issueA.companyId!==createdA.id||issueB.companyId!==createdB.id||issueA.title!==firstTitle||issueB.title!==secondTitle)throw Error('Private Bostan issue creation crossed company boundaries');
+  // Real company-scoped issue list and independent issue detail reads.
+  // A local implicit board sees both companies: this proves row separation,
+  // not that another authenticated actor would be denied access.
+  for(const [company,own,foreign,title] of [[createdA,issueA,issueB,firstTitle],[createdB,issueB,issueA,secondTitle]]){
+    const list=await json('GET',`/api/companies/${company.id}/issues`,undefined,[200]);
+    const records=Array.isArray(list)?list:list?.issues;
+    if(!Array.isArray(records)||!records.some(record=>record.id===own.id&&record.companyId===company.id&&record.title===title)||
+      records.some(record=>record.id===foreign.id||record.companyId!==company.id))throw Error('Private staged task list leaked or omitted a company task');
+    const detail=await json('GET',`/api/issues/${own.id}`,undefined,[200]);
+    if(detail?.id!==own.id||detail.companyId!==company.id||detail.title!==title)throw Error('Private staged task detail did not match its company and title');
+  }
   const badName=await json('POST','/api/companies',{name:''},[400,422]);
   if(!badName||typeof badName!=='object')throw Error('Invalid company input not rejected with JSON error');
   const missingCompanyId=await json('GET','/api/companies/issues',undefined,[400]);
   if(!missingCompanyId?.error)throw Error('Missing-company task route was not rejected');
-  return {schema:'bostan.private-staged-crud.v1',qualified:true,releaseQualified:false,syntheticOnly:true,companyRecords:2,companyDetailReads:2,issueRecords:2,invalidInputsRejected:2,requests,remoteModelCalls:0,privateLocalhostOnly:true};
+  return {schema:'bostan.private-staged-crud.v1',qualified:true,releaseQualified:false,syntheticOnly:true,companyRecords:2,companyDetailReads:2,issueRecords:2,issueListReads:2,issueDetailReads:2,invalidInputsRejected:2,requests,remoteModelCalls:0,privateLocalhostOnly:true};
 }
 const direct=process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url);
 if(direct){
