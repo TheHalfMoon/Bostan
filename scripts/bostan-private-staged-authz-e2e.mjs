@@ -55,7 +55,23 @@ export async function runAuthenticatedIsolation(address,{request=fetch,env=proce
     if(!sessionCookie)throw Error('Actual Better Auth session cookie was not issued');
     return {id,cookie:sessionCookie};
   }
-  const a=await signUp('a');
+  // The browser acceptance path also validates an actual first-user signup.
+  // Its private cookie stays in-memory and never enters receipts or logs.
+  let firstSignupBrowser=null;
+  let a;
+  if(env.BOSTAN_AUTHZ_BROWSER_UI==='1'){
+    const {signupFirstUserWithBrowser}=await import('../ui/scripts/bostan-private-auth-signup-browser.mjs');
+    a=await signupFirstUserWithBrowser({
+      origin:origin+'/',
+      email:`bostan-qa-a-${trace}@example.invalid`,
+      name:'Bostan QA a',
+      password:`Test-only-${token()}!A2`,
+    });
+    quoteId(a.id);
+    firstSignupBrowser={signedUpThroughActualChromiumUi:1,realSessionCookieReturned:1,externalBrowserRequests:0};
+  }else{
+    a=await signUp('a');
+  }
   const b=await signUp('b');
   // On the full Chromium UI path, qualify the actual first-admin claim
   // rather than injecting the administrator role via SQL. Non-UI historical
@@ -159,7 +175,7 @@ export async function runAuthenticatedIsolation(address,{request=fetch,env=proce
       return {realChromiumInviteCreated:1,inviteAcceptedByThirdSession:1,viewerTaskWriteDenied:1,uiPromotionEnablesWrite:1,uiSuspensionDenials:2,memberUiUpdates:2};
     });
   }
-  return {schema:browserUi?'bostan.three-session-chromium-members-first-admin.v2':'bostan.two-authenticated-sessions.v2',passed:true,releaseQualified:false,authMode:'authenticated',sessionUsers:browserUi?3:2,independentMemberships:2,crossCompanyDetailDenials:2,crossCompanyListDenials:2,crossCompanyWriteDenials:2,foreignTask404MatchesNonexistence:2,viewerReadAllowed:1,viewerWriteDenied:1,revokedMembershipAccessDenied:2,inviteCreated:1,inviteAcceptedViaApi:1,inviteeViewerRead:1,inviteeViewerWriteDenied:1,unauthorizedInviteDenied:1,unauthorizedPromotionDenied:1,promotionEnablesOperatorWrite:1,suspensionDenialsSameSession:3,syntheticOnly:true,requests:count,providerCalls:0,...(firstAdminBrowser?{firstAdminBrowser,secondAdminClaimRejected:1,anonymousAdminClaimRejected:1}:{}),...(browserUi?{browserUi}:{} )};
+  return {schema:browserUi?'bostan.three-session-chromium-signup-first-admin.v3':'bostan.two-authenticated-sessions.v2',passed:true,releaseQualified:false,authMode:'authenticated',sessionUsers:browserUi?3:2,independentMemberships:2,crossCompanyDetailDenials:2,crossCompanyListDenials:2,crossCompanyWriteDenials:2,foreignTask404MatchesNonexistence:2,viewerReadAllowed:1,viewerWriteDenied:1,revokedMembershipAccessDenied:2,inviteCreated:1,inviteAcceptedViaApi:1,inviteeViewerRead:1,inviteeViewerWriteDenied:1,unauthorizedInviteDenied:1,unauthorizedPromotionDenied:1,promotionEnablesOperatorWrite:1,suspensionDenialsSameSession:3,syntheticOnly:true,requests:count,providerCalls:0,...(firstSignupBrowser?{firstSignupBrowser}:{}),...(firstAdminBrowser?{firstAdminBrowser,secondAdminClaimRejected:1,anonymousAdminClaimRejected:1}:{}),...(browserUi?{browserUi}:{} )};
 }
 const direct=process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url);
 if(direct){const args=process.argv.slice(2);if(args.length===0||(args.length===1&&args[0]==='--plan'))console.log('Bostan private authenticated multi-session test: --run --url http://127.0.0.1:<port>/; requires disposable PostgreSQL sentinel. No real accounts or model calls.');else if(args.length===3&&args[0]==='--run'&&args[1]==='--url'){try{console.log(JSON.stringify(await runAuthenticatedIsolation(args[2]),null,2));console.log('BOSTAN_AUTHENTICATED_TWO_SESSION_TENANT_ISOLATION_PASS')}catch(e){console.error('Bostan real authenticated QA failed:',e.message);process.exitCode=1}}else{console.error('Usage: --plan | --run --url http://127.0.0.1:<port>/');process.exitCode=2;}}
