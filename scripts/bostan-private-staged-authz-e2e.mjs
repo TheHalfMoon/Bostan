@@ -36,7 +36,7 @@ export async function runAuthenticatedIsolation(address,{request=fetch,env=proce
   });
   let count=0;
   async function call(path,{method='GET',body,cookie,expected=[200]}={}){
-    if(!/^\/api\/(auth\/(sign-up|sign-in)\/email|companies(?:\/[a-f0-9-]+(?:\/issues)?)?|issues\/[a-f0-9-]+)$/.test(path))throw Error('Unexpected authenticated Bostan QA route');
+    if(!/^\/api\/(auth\/(sign-up|sign-in)\/email|companies(?:\/[a-f0-9-]+(?:\/(?:issues|invites|members(?:\/[a-f0-9-]+)?))?)?|issues\/[a-f0-9-]+|invites\/pcp_invite_[a-zA-Z0-9_-]+\/accept)$/.test(path))throw Error('Unexpected authenticated Bostan QA route');
     const headers={'content-type':'application/json','origin':origin,'cache-control':'no-store'};
     if(cookie)headers.cookie=cookie;
     const res=await request(origin+path,{method,headers,redirect:'error',signal:AbortSignal.timeout(15000),...(body===undefined?{}:{body:JSON.stringify(body)})});
@@ -98,7 +98,34 @@ export async function runAuthenticatedIsolation(address,{request=fetch,env=proce
   await call(`/api/companies/${companyA.id}`,{cookie:b.cookie,expected:[403]});
   await call(`/api/companies/${companyA.id}/issues`,{cookie:b.cookie,expected:[403]});
   await call(`/api/companies/${companyA.id}`,{expected:[401,403]});
-  return {schema:'bostan.two-authenticated-sessions.v1',passed:true,releaseQualified:false,authMode:'authenticated',sessionUsers:2,independentMemberships:2,crossCompanyDetailDenials:2,crossCompanyListDenials:2,crossCompanyWriteDenials:2,foreignTask404MatchesNonexistence:2,viewerReadAllowed:1,viewerWriteDenied:1,revokedMembershipAccessDenied:2,syntheticOnly:true,requests:count,providerCalls:0};
+
+  // Distinct from the prior SQL-seeded viewer scenario: exercise Bostan's own
+  // real invitation and membership administration APIs, without writing any
+  // further human membership rows through SQL. An invite token is ephemeral
+  // and must never be printed or persisted in the receipt.
+  await call(`/api/companies/${companyA.id}/invites`,{method:'POST',cookie:b.cookie,body:{allowedJoinTypes:'human',humanRole:'viewer'},expected:[403]});
+  const {result:invitation}=await call(`/api/companies/${companyA.id}/invites`,{method:'POST',cookie:a.cookie,body:{allowedJoinTypes:'human',humanRole:'viewer'},expected:[201]});
+  if(typeof invitation?.token!=='string'||!/^pcp_invite_[a-zA-Z0-9_-]{16,}$/.test(invitation.token)||invitation.companyId!==companyA.id)throw Error('Bostan human invitation token is absent or improperly scoped');
+  const {result:joined}=await call(`/api/invites/${invitation.token}/accept`,{method:'POST',cookie:b.cookie,body:{requestType:'human'},expected:[202]});
+  if(joined?.status!=='approved'||joined?.companyId!==companyA.id||joined.requestingUserId!==b.id)throw Error('Bostan human invite was not approved into the expected company');
+  const {result:invitedView}=await call(`/api/companies/${companyA.id}`,{cookie:b.cookie});
+  if(invitedView.id!==companyA.id)throw Error('Accepted Bostan viewer invite did not grant read access');
+  await call(`/api/companies/${companyA.id}/issues`,{method:'POST',cookie:b.cookie,body:{title:'Invited viewer must not create task'},expected:[403]});
+  const {result:directory}=await call(`/api/companies/${companyA.id}/members`,{cookie:a.cookie});
+  const inviteeMember=directory?.members?.find(member=>member.principalType==='user'&&member.principalId===b.id);
+  if(!inviteeMember||inviteeMember.companyId!==companyA.id||inviteeMember.membershipRole!=='viewer'||inviteeMember.status!=='active')throw Error('Bostan member directory did not reflect invited viewer');
+  quoteUuid(inviteeMember.id);
+  await call(`/api/companies/${companyA.id}/members/${inviteeMember.id}`,{method:'PATCH',cookie:b.cookie,body:{membershipRole:'operator'},expected:[403]});
+  const {result:promoted}=await call(`/api/companies/${companyA.id}/members/${inviteeMember.id}`,{method:'PATCH',cookie:a.cookie,body:{membershipRole:'operator'},expected:[200]});
+  if(promoted?.membershipRole!=='operator'||promoted.principalId!==b.id)throw Error('Bostan member promotion did not persist through API');
+  const {result:operatorTask}=await call(`/api/companies/${companyA.id}/issues`,{method:'POST',cookie:b.cookie,body:{title:`Bostan invited operator task ${trace}`,status:'todo'},expected:[201]});
+  if(operatorTask?.companyId!==companyA.id)throw Error('Invited operator could not write in newly authorized company');
+  const {result:suspended}=await call(`/api/companies/${companyA.id}/members/${inviteeMember.id}`,{method:'PATCH',cookie:a.cookie,body:{status:'suspended'},expected:[200]});
+  if(suspended?.status!=='suspended')throw Error('Bostan membership suspension did not persist');
+  await call(`/api/companies/${companyA.id}`,{cookie:b.cookie,expected:[403]});
+  await call(`/api/companies/${companyA.id}/issues`,{cookie:b.cookie,expected:[403]});
+  await call(`/api/companies/${companyA.id}/issues`,{method:'POST',cookie:b.cookie,body:{title:'Suspended member cannot write'},expected:[403]});
+  return {schema:'bostan.two-authenticated-sessions.v2',passed:true,releaseQualified:false,authMode:'authenticated',sessionUsers:2,independentMemberships:2,crossCompanyDetailDenials:2,crossCompanyListDenials:2,crossCompanyWriteDenials:2,foreignTask404MatchesNonexistence:2,viewerReadAllowed:1,viewerWriteDenied:1,revokedMembershipAccessDenied:2,inviteCreated:1,inviteAcceptedViaApi:1,inviteeViewerRead:1,inviteeViewerWriteDenied:1,unauthorizedInviteDenied:1,unauthorizedPromotionDenied:1,promotionEnablesOperatorWrite:1,suspensionDenialsSameSession:3,syntheticOnly:true,requests:count,providerCalls:0};
 }
 const direct=process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url);
 if(direct){const args=process.argv.slice(2);if(args.length===0||(args.length===1&&args[0]==='--plan'))console.log('Bostan private authenticated multi-session test: --run --url http://127.0.0.1:<port>/; requires disposable PostgreSQL sentinel. No real accounts or model calls.');else if(args.length===3&&args[0]==='--run'&&args[1]==='--url'){try{console.log(JSON.stringify(await runAuthenticatedIsolation(args[2]),null,2));console.log('BOSTAN_AUTHENTICATED_TWO_SESSION_TENANT_ISOLATION_PASS')}catch(e){console.error('Bostan real authenticated QA failed:',e.message);process.exitCode=1}}else{console.error('Usage: --plan | --run --url http://127.0.0.1:<port>/');process.exitCode=2;}}
