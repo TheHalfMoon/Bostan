@@ -52,6 +52,10 @@ test('real full-app private QA isolates provider credentials, offline deploy, te
   assert.match(source,/BOSTAN_PRIVATE_RELOCATED_MEMBER_BROWSER_ACCEPTANCE_PASS/);
   assert.match(source,/BOSTAN_PRIVATE_RELOCATED_TWO_SESSION_AUTHZ_ACCEPTANCE_PASS/);
   assert.match(source,/4194304/);
+  assert.match(source,/BOSTAN_LINUX_PRIVATE_TMPFS_QA/);
+  assert.match(source,/bostan-private-linux-tmpfs-admission.mjs --check/);
+  assert.match(source,/BOSTAN_LINUX_TMPFS_EXPLICIT_RESOURCE_ADMISSION_PASS/);
+  assert.match(source,/MIN_STAGE_FREE_KIB=3670016/);
   assert.ok(source.includes('for disk in "$ROOT" "$STAGE_ROOT"; do'));
   assert.doesNotMatch(source,/npm publish|gh release create|cargo build --release/);
 });

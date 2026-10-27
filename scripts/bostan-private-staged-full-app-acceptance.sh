@@ -35,10 +35,22 @@ if [ ! -d "$STAGE_ROOT" ] || [ -L "$STAGE_ROOT" ]; then
   echo 'Bostan staged full-app QA refused: unexpected system temporary root' >&2
   exit 2
 fi
+# Standard disk gate stays >=4 GiB. A Linux /tmp *tmpfs* can be only 3.9 GiB
+# by design on a 7+ GiB WSL VM. The explicit, read-only Linux admission below
+# checks the real tmpfs magic, canonical /tmp, >=3.5 GiB tmpfs free and >=5 GiB
+# MemAvailable; it NEVER reduces the source-checkout 4 GiB requirement.
+MIN_STAGE_FREE_KIB=4194304
+if [ "$(uname -s)" = Linux ] && [ "$STAGE_ROOT" = /tmp ] && [ "${BOSTAN_LINUX_PRIVATE_TMPFS_QA:-0}" = 1 ]; then
+  node scripts/bostan-private-linux-tmpfs-admission.mjs --check
+  MIN_STAGE_FREE_KIB=3670016
+  echo BOSTAN_LINUX_TMPFS_EXPLICIT_RESOURCE_ADMISSION_PASS
+fi
 for disk in "$ROOT" "$STAGE_ROOT"; do
   free_kib="$(df -Pk "$disk" | awk 'NR==2 {print $4}')"
-  if ! [[ "$free_kib" =~ ^[0-9]+$ ]] || [ "$free_kib" -lt 4194304 ]; then
-    echo "Bostan staged full-app QA refused: less than 4 GiB free in $disk" >&2
+  min_kib=4194304
+  if [ "$disk" = "$STAGE_ROOT" ]; then min_kib="$MIN_STAGE_FREE_KIB"; fi
+  if ! [[ "$free_kib" =~ ^[0-9]+$ ]] || [ "$free_kib" -lt "$min_kib" ]; then
+    echo "Bostan staged full-app QA refused: insufficient safe disk headroom in $disk" >&2
     exit 2
   fi
 done
