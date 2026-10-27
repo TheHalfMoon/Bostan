@@ -102,12 +102,18 @@ function requireWindowsTempQa(home) {
   return true;
 }
 
-function protectWindowsTempQa(home) {
-  const checker = fileURLToPath(new URL("../../scripts/bostan-windows-acl.mjs", import.meta.url));
+function windowsAclHelperUrl() {
+  const source = new URL("../../scripts/bostan-windows-acl.mjs", import.meta.url);
+  return fs.existsSync(source) ? source : new URL("./bostan-windows-acl.mjs", import.meta.url);
+}
+
+function protectWindowsTempQa(home, verifyOnly = false) {
+  const checker = fileURLToPath(windowsAclHelperUrl());
   if (!fs.existsSync(checker)) {
-    throw new Error("Windows local CLI QA requires the original source checkout");
+    throw new Error("Windows local CLI QA requires its bundled NTFS verifier");
   }
-  for (const mode of ["apply-product", "apply-local"]) {
+  for (const mode of verifyOnly
+    ? ["verify-product", "verify-local"] : ["apply-product", "apply-local"]) {
     try {
       execFileSync(process.execPath, [checker, mode, home], {
         env: { ...process.env, BOSTAN_WINDOWS_TEMP_QA: "1" },
@@ -131,6 +137,7 @@ function sourcePayload() {
     ["dist/bostan.js", fs.readFileSync(preview)],
     ["dist/bostan-local-install.mjs", fs.readFileSync(new URL("./bostan-local-install.mjs", import.meta.url))],
     ["dist/bostan-company-export-inspect.mjs", fs.readFileSync(new URL("./bostan-company-export-inspect.mjs", import.meta.url))],
+    ["dist/bostan-windows-acl.mjs", fs.readFileSync(windowsAclHelperUrl())],
     ["package.json", Buffer.from(JSON.stringify({
       name: "bostan",
       version: packageVersion(),
@@ -159,7 +166,7 @@ function managedManifest(paths) {
   }
   const contents = [];
   for (const file of ["dist/bostan.js", "dist/bostan-local-install.mjs",
-    "dist/bostan-company-export-inspect.mjs", "package.json"]) {
+    "dist/bostan-company-export-inspect.mjs", "dist/bostan-windows-acl.mjs", "package.json"]) {
     const item = path.join(value.directory, file);
     if (!inspect(item, "file")) throw new Error("Bostan installed file missing");
     contents.push(fs.readFileSync(item));
@@ -176,6 +183,7 @@ export function statusLocal(home) {
   const paths = localPaths(home);
   existingPathSafety(paths);
   const manifest = managedManifest(paths);
+  if (manifest && process.platform === "win32") protectWindowsTempQa(paths.home, true);
   if (!manifest) {
     if (inspect(paths.shim, "file") || inspect(paths.lock, "file")) {
       throw new Error("Unmanaged or incomplete Bostan installation detected; no changes made");

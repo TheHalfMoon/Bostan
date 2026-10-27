@@ -6,3 +6,4 @@ copyFileSync(new URL("../src/bostan-preview.mjs", import.meta.url), output);
 copyFileSync(new URL("../src/bostan-local-install.mjs", import.meta.url), new URL("../dist/bostan-local-install.mjs", import.meta.url));
 copyFileSync(new URL("../src/bostan-company-export-inspect.mjs", import.meta.url), new URL("../dist/bostan-company-export-inspect.mjs", import.meta.url));
 chmodSync(output, 0o755);
+copyFileSync(new URL("../../scripts/bostan-windows-acl.mjs", import.meta.url), new URL("../dist/bostan-windows-acl.mjs", import.meta.url));

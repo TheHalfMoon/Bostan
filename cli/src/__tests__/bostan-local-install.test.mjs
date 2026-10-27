@@ -196,11 +196,7 @@ nativeTest("release and legacy operations remain disabled after local installati
 });
 
 
-nativeTest("the installed CLI survives deletion of its temporary staging directory", (t) => {
-  if(process.platform==="win32"){
-    t.skip("Windows native CLI QA requires original source checkout for ACL verification");
-    return;
-  }
+nativeTest("the installed CLI survives deletion of its temporary staging directory", () => {
   const f = fixture();
   try {
     const staging = join(f.dir, "staging");
@@ -208,6 +204,7 @@ nativeTest("the installed CLI survives deletion of its temporary staging directo
     copyFileSync(source, join(staging, "dist", "bostan.js"));
     copyFileSync(new URL("../bostan-local-install.mjs", import.meta.url), join(staging, "dist", "bostan-local-install.mjs"));
     copyFileSync(new URL("../bostan-company-export-inspect.mjs", import.meta.url), join(staging, "dist", "bostan-company-export-inspect.mjs"));
+    copyFileSync(new URL("../../../scripts/bostan-windows-acl.mjs", import.meta.url), join(staging, "dist", "bostan-windows-acl.mjs"));
     copyFileSync(new URL("../../package.json", import.meta.url), join(staging, "package.json"));
     assert.equal(invoke(f.home, ["install", "--local"], join(staging, "dist", "bostan.js")).status, 0);
     rmSync(staging, { recursive: true, force: true });
