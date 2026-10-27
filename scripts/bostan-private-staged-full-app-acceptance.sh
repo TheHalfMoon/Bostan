@@ -9,10 +9,11 @@ if [ "$#" -eq 0 ] || { [ "$#" -eq 1 ] && [ "$1" = --plan ]; }; then
   echo 'isolated PostgreSQL+HTTP+Chromium and delete ONLY the owned temporary stage.'
   echo 'No native end-user installer, cloud model, public release, or deployment.'
   echo 'Use --run-relocated to test moving an intact private deployment to a fresh staging path before Postgres/browser.'
+  echo 'Use --run-relocated-authz to test two real signed-in users and isolated companies on an authenticated private stage.'
   exit 0
 fi
-if [ "$#" -ne 1 ] || { [ "$1" != --run ] && [ "$1" != --run-relocated ]; }; then
-  echo 'Usage: bash scripts/bostan-private-staged-full-app-acceptance.sh [--plan|--run|--run-relocated]' >&2
+if [ "$#" -ne 1 ] || { [ "$1" != --run ] && [ "$1" != --run-relocated ] && [ "$1" != --run-relocated-authz ]; }; then
+  echo 'Usage: bash scripts/bostan-private-staged-full-app-acceptance.sh [--plan|--run|--run-relocated|--run-relocated-authz]' >&2
   exit 2
 fi
 MODE="$1"
@@ -64,7 +65,7 @@ pnpm --filter @bostan/server deploy --prod --offline --ignore-scripts "$STAGE"
 node scripts/bostan-private-staged-server-check.mjs --repair-owned-self-link "$STAGE" --source-checkout "$ROOT"
 node scripts/bostan-private-staged-server-check.mjs --verify "$STAGE"
 test -f "$STAGE/ui-dist/index.html" || { echo 'Bostan private staged UI bundle missing' >&2;exit 1; }
-if [ "$MODE" = --run-relocated ]; then
+if [ "$MODE" = --run-relocated ] || [ "$MODE" = --run-relocated-authz ]; then
   # Create the destination using the trusted OS temp root; reclaim only the
   # empty directory created by mktemp and move on the same filesystem.
   # The normal EXIT trap follows STAGE so the relocated package is cleaned.
@@ -78,6 +79,11 @@ if [ "$MODE" = --run-relocated ]; then
   test -f "$STAGE/ui-dist/index.html" || { echo 'BOSTAN_STAGE_RELOCATION_UI_MISSING' >&2;exit 1; }
   echo BOSTAN_PRIVATE_STAGED_RELOCATION_VERIFIED
 fi
-BOSTAN_STAGE_BROWSER_E2E=1 BOSTAN_STAGE_CRUD_E2E=1 bash scripts/bostan-local-http-postgres-smoke.sh --run-deployed "$STAGE"
-if [ "$MODE" = --run-relocated ]; then echo BOSTAN_PRIVATE_STAGED_RELOCATION_ACCEPTANCE_PASS; fi
+if [ "$MODE" = --run-relocated-authz ]; then
+  bash scripts/bostan-local-http-postgres-smoke.sh --run-deployed-authz "$STAGE"
+  echo BOSTAN_PRIVATE_RELOCATED_TWO_SESSION_AUTHZ_ACCEPTANCE_PASS
+else
+  BOSTAN_STAGE_BROWSER_E2E=1 BOSTAN_STAGE_CRUD_E2E=1 bash scripts/bostan-local-http-postgres-smoke.sh --run-deployed "$STAGE"
+fi
+if [ "$MODE" = --run-relocated ] || [ "$MODE" = --run-relocated-authz ]; then echo BOSTAN_PRIVATE_STAGED_RELOCATION_ACCEPTANCE_PASS; fi
 echo BOSTAN_PRIVATE_STAGED_FULL_APP_ACCEPTANCE_PASS
