@@ -6,7 +6,10 @@ import {fileURLToPath} from 'node:url';
 const path=fileURLToPath(new URL('./bostan-private-staged-full-app-acceptance.sh',import.meta.url));
 const source=readFileSync(path,'utf8');
 const invoke=args=>spawnSync('bash',[path,...args],{encoding:'utf8',timeout:4000});
-test('all-in-one stage acceptance is read-only by default and fail-closed on other commands',()=>{
+// This is an actual macOS/Linux Bash entrypoint; Windows is source-only QA.
+// Avoid invoking WSL's bash.exe as if it were a native Windows stage.
+const bashOnly=process.platform==='win32'?test.skip:test;
+bashOnly('all-in-one stage acceptance is read-only by default and fail-closed on other commands',()=>{
   for(const args of [[],['--plan']]){
     const r=invoke(args);assert.equal(r.status,0,r.stderr);
     assert.match(r.stdout,/No native end-user installer/);
