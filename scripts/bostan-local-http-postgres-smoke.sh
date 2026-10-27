@@ -167,4 +167,8 @@ if [ "$MODE" = "--run-deployed" ] && [ -f "$STAGE/ui-dist/index.html" ]; then
     echo BOSTAN_PORTABLE_STAGED_BROWSER_QUALIFIED
   fi
 fi
+if [ "$MODE" = "--run-deployed" ] && [ "${BOSTAN_STAGE_CRUD_E2E:-0}" = 1 ]; then
+  (cd "$REPO" && node scripts/bostan-private-staged-crud.mjs --run --url "http://127.0.0.1:$HTTPPORT/")
+  echo BOSTAN_PORTABLE_STAGED_COMPANY_TASK_API_QUALIFIED
+fi
 if [ "$MODE" = "--run-deployed" ]; then echo BOSTAN_PORTABLE_STAGED_SERVER_HTTP_QUALIFIED; fi

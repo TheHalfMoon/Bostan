@@ -78,6 +78,6 @@ if [ "$MODE" = --run-relocated ]; then
   test -f "$STAGE/ui-dist/index.html" || { echo 'BOSTAN_STAGE_RELOCATION_UI_MISSING' >&2;exit 1; }
   echo BOSTAN_PRIVATE_STAGED_RELOCATION_VERIFIED
 fi
-BOSTAN_STAGE_BROWSER_E2E=1 bash scripts/bostan-local-http-postgres-smoke.sh --run-deployed "$STAGE"
+BOSTAN_STAGE_BROWSER_E2E=1 BOSTAN_STAGE_CRUD_E2E=1 bash scripts/bostan-local-http-postgres-smoke.sh --run-deployed "$STAGE"
 if [ "$MODE" = --run-relocated ]; then echo BOSTAN_PRIVATE_STAGED_RELOCATION_ACCEPTANCE_PASS; fi
 echo BOSTAN_PRIVATE_STAGED_FULL_APP_ACCEPTANCE_PASS

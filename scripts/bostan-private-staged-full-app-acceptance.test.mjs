@@ -24,7 +24,7 @@ test('real full-app private QA isolates provider credentials, offline deploy, te
     'pnpm --filter @bostan/ui build','prepare-server-ui-dist.sh',
     'bostan-private-staged-server-check.mjs --repair-owned-self-link',
     'bostan-private-staged-server-check.mjs --verify',
-    'BOSTAN_STAGE_BROWSER_E2E=1','--run-deployed "$STAGE"',
+    'BOSTAN_STAGE_BROWSER_E2E=1','BOSTAN_STAGE_CRUD_E2E=1','--run-deployed "$STAGE"',
     'BOSTAN_PRIVATE_STAGED_FULL_APP_ACCEPTANCE_PASS',
   ])assert.ok(source.includes(required),required);
   assert.match(source,/mktemp -d \"\$STAGE_ROOT\/bostan-staged-server-/);
