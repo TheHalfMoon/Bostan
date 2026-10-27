@@ -485,7 +485,7 @@ function scanForBrokenExecForm(): string[] {
   return offenders;
 }
 
-describe("paperclipai CLI invocation safety", () => {
+describe("Bostan CLI and retained compatibility invocation safety", () => {
   it("excludes generated runner evidence while preserving authored runner guidance", () => {
     const root = mkdtempSync(path.join(os.tmpdir(), "paperclip-cli-guidance-"));
     const sourcePaths = [
@@ -801,7 +801,7 @@ describe("paperclipai CLI invocation safety", () => {
     // can paste the guidance into a shell, and that outer shell evaluates a
     // metacharacter span in the host before any CLI receives argv. A direct-exec
     // form does not stop the outer shell. Emit a static `<host>` placeholder only.
-    expect(source).toContain("run npx paperclipai allowed-hostname <host>");
+    expect(source).toContain("BOSTAN_ALLOWED_HOSTNAMES=<host>");
     expect(source).not.toContain("allowed-hostname ${hostname}");
     expect(source).not.toContain("pnpm paperclipai allowed-hostname");
     expect(source).not.toContain("pnpm exec paperclipai allowed-hostname");
@@ -811,7 +811,7 @@ describe("paperclipai CLI invocation safety", () => {
     const source = read("server/src/routes/access.ts");
     expect(source).not.toMatch(/pnpm paperclipai allowed-hostname/);
     expect(source).not.toContain("pnpm exec paperclipai allowed-hostname");
-    expect(source).toContain("npx paperclipai allowed-hostname <host>");
+    expect(source).toContain("BOSTAN_ALLOWED_HOSTNAMES=<host>");
     // The onboarding host comes from the request base URL, so a requester
     // controls it. The emitted command must carry a static `<host>` placeholder
     // and never interpolate that value.
@@ -822,7 +822,7 @@ describe("paperclipai CLI invocation safety", () => {
     const source = read("ui/src/lib/agent-onboarding-prompt.ts");
     expect(source).not.toContain("pnpm paperclipai allowed-hostname");
     expect(source).not.toContain("pnpm exec paperclipai allowed-hostname");
-    expect(source).toContain("npx paperclipai allowed-hostname <host>");
+    expect(source).toContain("BOSTAN_ALLOWED_HOSTNAMES=<host>");
   });
 
   it("emits the safe form in the generated company-export README", () => {
@@ -830,7 +830,7 @@ describe("paperclipai CLI invocation safety", () => {
       { agents: [], projects: [], skills: [], issues: [] } as never,
       { companyName: "Acme", companyDescription: null },
     );
-    expect(readme).toContain("npx paperclipai company import this-github-url-or-folder");
+    expect(readme).toContain("bostan company inspect <local-export.zip>");
     expect(readme).not.toContain("pnpm paperclipai company import");
     expect(readme).not.toContain("pnpm exec paperclipai company import");
   });
@@ -863,7 +863,7 @@ describe("paperclipai CLI invocation safety", () => {
 
   it("emits the safe run form from the client connection-error hint", () => {
     const source = read("cli/src/client/http.ts");
-    expect(source).toContain("npx paperclipai run");
+    expect(source).toContain("bostan app run --local");
     expect(source).not.toContain("pnpm paperclipai run");
   });
 
@@ -899,7 +899,7 @@ describe("paperclipai CLI invocation safety", () => {
 
   it("emits the setup form from the board skill", () => {
     const source = read("skills/paperclip-board/SKILL.md");
-    expect(source).toContain("npx paperclipai board setup");
+    expect(source).toContain("private CLI does not support board setup");
     expect(source).not.toContain("pnpm paperclipai board setup");
     expect(source).not.toContain("pnpm exec paperclipai board setup");
   });

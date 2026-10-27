@@ -20,13 +20,13 @@ export function buildAgentOnboardingPrompt(input: AgentOnboardingPromptInput) {
       ? `No candidate URLs are available. Ask the operator to configure a reachable Bostan hostname, then retry.
 Suggested steps for the operator:
 - choose a hostname that resolves to the Bostan host from your runtime
-- run: npx paperclipai allowed-hostname <host>
+- configure BOSTAN_ALLOWED_HOSTNAMES=<host> on the Bostan server, then restart
 - restart Bostan
 - verify with: curl -fsS http://<host>:3100/api/health
 - regenerate this agent onboarding prompt`
       : `If none are reachable, ask the operator to add a reachable Bostan hostname, restart, and retry.
 Suggested command for the operator:
-- npx paperclipai allowed-hostname <host>
+- BOSTAN_ALLOWED_HOSTNAMES=<host> (server environment; restart required)
 Then verify with: curl -fsS <base-url>/api/health`;
 
   const resolutionLine = resolutionTestUrl
