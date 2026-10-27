@@ -664,7 +664,7 @@ export interface PluginLoader {
  */
 export function isPluginPackageName(name: string): boolean {
   if (name.startsWith(NPM_PLUGIN_PACKAGE_PREFIX)) return true;
-  // Also accept scoped packages like @acme/plugin-linear or @paperclipai/plugin-*
+  // Also accept scoped packages like @acme/plugin-linear or @bostan/plugin-*
   if (name.includes("/")) {
     const localPart = name.split("/")[1] ?? "";
     return localPart.startsWith("plugin-");

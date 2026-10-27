@@ -54,11 +54,11 @@ test("company export truthfully advertises the functional offline preview CLI on
   assert.equal(cliManifest.bin.bostan, "./dist/bostan.js");
 });
 
-test("technical/provenance identifiers remain intact where compatibility requires them", () => {
+test("versioned provenance identifiers remain, but first-party imports use native Bostan packages", () => {
   assert.match(source("ui/src/pages/CompanySkills.tsx"), /case "paperclip"/);
   assert.match(source("ui/src/pages/CompanyExport.tsx"), /paperclipExtensionPath/);
   assert.match(source("ui/src/components/GrokBotConnection.tsx"),
-    /import type \{ DotPairing \} from "@paperclipai\/shared"/);
+    /import type \{ DotPairing \} from "@bostan\/shared"/);
 });
 
 test("first-admin setup never suggests an unshipped donor npm bootstrap executable", () => {

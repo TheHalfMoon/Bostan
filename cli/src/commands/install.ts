@@ -72,7 +72,7 @@ export function resolveGitInstallWorkspacePackages(checkoutPath: string): Releas
       const dependencies = packageJson[section];
       if (!dependencies || typeof dependencies !== "object") continue;
       for (const dependencyName of Object.keys(dependencies)) {
-        if (dependencyName.startsWith("@paperclipai/")) visit(dependencyName);
+        if (dependencyName.startsWith("@bostan/") || dependencyName.startsWith("@paperclipai/")) visit(dependencyName);
       }
     }
     visiting.delete(packageName);
@@ -86,7 +86,7 @@ export function resolveGitInstallWorkspacePackages(checkoutPath: string): Releas
 
 export function assertSupportedNodeVersion(): void {
   if (!isSupportedNodeVersion(process.versions.node)) {
-    throw new Error(`Installing or updating Paperclip requires Node.js ${MINIMUM_NODE_VERSION} or newer (found ${process.version} at ${process.execPath}). Put a supported Node bin directory first on PATH and run 'npx paperclipai@latest install --yes' to re-pin an existing managed install.`);
+    throw new Error(`Bostan requires Node.js ${MINIMUM_NODE_VERSION} or newer (found ${process.version} at ${process.execPath}). Update Node.js and verify the private source runtime with 'bostan app doctor'; inherited public npm installers are disabled.`);
   }
 }
 
