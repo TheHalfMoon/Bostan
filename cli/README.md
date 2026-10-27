@@ -13,7 +13,18 @@ bostan install --local
 
 `status` is read-only and reports whether a verified Bostan CLI preview is installed. `install --local` installs **only the Bostan preview CLI** from the current source/package: an isolated payload under `~/.bostan/cli` and a new command at `~/.local/bin/bostan`. It refuses existing commands, unexpected file types, symlinks and changed managed files. It never downloads binaries or accesses the former product's state. The caller must invoke it explicitly.
 
-This does **not** install or start the Bostan server, database, AI agents or system services. Update, uninstall, onboard, run, remote installation and all release commands remain disabled pending safety qualification. Windows CLI installation is not qualified.
+This does **not** install or start the Bostan server, database, AI agents or system services. Update, uninstall, onboard, run, remote installation and all release commands remain disabled pending safety qualification.
+
+**Native Windows remains development QA only, not a consumer installer.** Windows
+`install --local` is permitted solely in the explicit, disposable test harness
+(`BOSTAN_WINDOWS_TEMP_QA=1`, a normalized synthetic `bostan-native-install-test-*`
+home inside the operating system TEMP directory). The installer writes
+`.local/bin/bostan.cmd`, ships a source-independent NTFS ACL verifier, and
+protects both `.bostan` and `.local` with restricted DACLs. Every managed
+`status` re-verifies the protections; unsafe permissions fail closed.
+Normal Windows user HOME and all other destinations are still rejected.
+macOS/Linux use `~/.local/bin/bostan` as above; **no Windows end-user installation
+or native full-app distribution is qualified**.
 
 Project: https://github.com/TheHalfMoon/Bostan
 
