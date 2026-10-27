@@ -125,7 +125,29 @@ export async function runAuthenticatedIsolation(address,{request=fetch,env=proce
   await call(`/api/companies/${companyA.id}`,{cookie:b.cookie,expected:[403]});
   await call(`/api/companies/${companyA.id}/issues`,{cookie:b.cookie,expected:[403]});
   await call(`/api/companies/${companyA.id}/issues`,{method:'POST',cookie:b.cookie,body:{title:'Suspended member cannot write'},expected:[403]});
-  return {schema:'bostan.two-authenticated-sessions.v2',passed:true,releaseQualified:false,authMode:'authenticated',sessionUsers:2,independentMemberships:2,crossCompanyDetailDenials:2,crossCompanyListDenials:2,crossCompanyWriteDenials:2,foreignTask404MatchesNonexistence:2,viewerReadAllowed:1,viewerWriteDenied:1,revokedMembershipAccessDenied:2,inviteCreated:1,inviteAcceptedViaApi:1,inviteeViewerRead:1,inviteeViewerWriteDenied:1,unauthorizedInviteDenied:1,unauthorizedPromotionDenied:1,promotionEnablesOperatorWrite:1,suspensionDenialsSameSession:3,syntheticOnly:true,requests:count,providerCalls:0};
+  let browserUi=null;
+  if(env.BOSTAN_AUTHZ_BROWSER_UI==='1'){
+    // Run ONLY as a continuation of the already verified disposable fixture,
+    // with real Better Auth user cookies and production Chromium interactions.
+    const {withPrivateMemberBrowser}=await import('../ui/scripts/bostan-private-members-browser.mjs');
+    const c=await signUp('c');
+    const invitedEmail=`bostan-qa-c-${trace}@example.invalid`;
+    browserUi=await withPrivateMemberBrowser({origin:origin+'/',cookie:a.cookie,companyId:companyA.id,companyPrefix:companyA.issuePrefix},async(browser)=>{
+      const invite=await browser.createInvite();
+      const {result:joinedC}=await call(`/api/invites/${invite.token}/accept`,{method:'POST',cookie:c.cookie,body:{requestType:'human'},expected:[202]});
+      if(joinedC.status!=='approved'||joinedC.companyId!==companyA.id||joinedC.requestingUserId!==c.id)throw Error('Real Chromium generated invite was not accepted by third session');
+      await call(`/api/companies/${companyA.id}/issues`,{method:'POST',cookie:c.cookie,body:{title:'Invited viewer forbidden'},expected:[403]});
+      const promotion=await browser.updateMember(invitedEmail,{role:'operator'});
+      const {result:task}=await call(`/api/companies/${companyA.id}/issues`,{method:'POST',cookie:c.cookie,body:{title:`UI-promoted operator task ${trace}`,status:'todo'},expected:[201]});
+      if(task.companyId!==companyA.id)throw Error('UI-promoted operator cannot write to company');
+      const suspension=await browser.updateMember(invitedEmail,{status:'suspended'});
+      if(suspension.memberId!==promotion.memberId)throw Error('Member UI changed target identity across updates');
+      await call(`/api/companies/${companyA.id}`,{cookie:c.cookie,expected:[403]});
+      await call(`/api/companies/${companyA.id}/issues`,{method:'POST',cookie:c.cookie,body:{title:'Suspended UI member forbidden'},expected:[403]});
+      return {realChromiumInviteCreated:1,inviteAcceptedByThirdSession:1,viewerTaskWriteDenied:1,uiPromotionEnablesWrite:1,uiSuspensionDenials:2,memberUiUpdates:2};
+    });
+  }
+  return {schema:browserUi?'bostan.three-session-chromium-members.v1':'bostan.two-authenticated-sessions.v2',passed:true,releaseQualified:false,authMode:'authenticated',sessionUsers:browserUi?3:2,independentMemberships:2,crossCompanyDetailDenials:2,crossCompanyListDenials:2,crossCompanyWriteDenials:2,foreignTask404MatchesNonexistence:2,viewerReadAllowed:1,viewerWriteDenied:1,revokedMembershipAccessDenied:2,inviteCreated:1,inviteAcceptedViaApi:1,inviteeViewerRead:1,inviteeViewerWriteDenied:1,unauthorizedInviteDenied:1,unauthorizedPromotionDenied:1,promotionEnablesOperatorWrite:1,suspensionDenialsSameSession:3,syntheticOnly:true,requests:count,providerCalls:0,...(browserUi?{browserUi}:{} )};
 }
 const direct=process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url);
 if(direct){const args=process.argv.slice(2);if(args.length===0||(args.length===1&&args[0]==='--plan'))console.log('Bostan private authenticated multi-session test: --run --url http://127.0.0.1:<port>/; requires disposable PostgreSQL sentinel. No real accounts or model calls.');else if(args.length===3&&args[0]==='--run'&&args[1]==='--url'){try{console.log(JSON.stringify(await runAuthenticatedIsolation(args[2]),null,2));console.log('BOSTAN_AUTHENTICATED_TWO_SESSION_TENANT_ISOLATION_PASS')}catch(e){console.error('Bostan real authenticated QA failed:',e.message);process.exitCode=1}}else{console.error('Usage: --plan | --run --url http://127.0.0.1:<port>/');process.exitCode=2;}}

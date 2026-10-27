@@ -19,6 +19,8 @@ test('HTTP smoke uses disposable localhost postgres and isolated Bostan instance
   assert.match(contents,/BOSTAN_PORTABLE_STAGED_BROWSER_QUALIFIED/);
   assert.match(contents,/BOSTAN_PORTABLE_STAGED_COMPANY_TASK_API_QUALIFIED/);
   assert.match(contents,/--run-deployed-authz/);
+  assert.match(contents,/--run-deployed-authz-ui/);
+  assert.match(contents,/BOSTAN_AUTHZ_BROWSER_UI=1/);
   assert.match(contents,/BOSTAN_PORTABLE_STAGED_AUTHENTICATED_TWO_SESSION_QUALIFIED/);
   assert.match(contents,/bootstrap_pending/);
   assert.match(contents,/BOSTAN_TEST_ONLY_SENTINEL/);
