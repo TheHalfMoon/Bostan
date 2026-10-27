@@ -15,6 +15,7 @@ Added an unconditional fail-closed Bostan refusal immediately after the generato
 - `node --test scripts/__tests__/bostan-legacy-manifest-generator-denied.test.mjs scripts/__tests__/bostan-direct-public-release-escape-gates.test.mjs scripts/bootstrap-npm-package.test.mjs`: **19/19 PASS**.
 - Guard test executes generator with default, `--help` and an explicit scratch output path, asserts exit `2`, no output produced and the real private `cli/package.json` remains **byte-identical** before/after each attempt. `private=true`, name `bostan`, and the disabled prepack guard are verified.
 - Direct B0-42 inherited-shell guard unit suite also made portable to native Windows using Git-for-Windows Bash (never WSL bash.exe), while preserving strict fail-closed behavior. macOS **19/19 PASS** after the portability change.
+- On authorized native Windows device `Abdulaziz`, from the exact same private PR branch, `node --test scripts/__tests__/bostan-inherited-public-entrypoints-disabled.test.mjs scripts/__tests__/bostan-direct-public-release-escape-gates.test.mjs scripts/__tests__/bostan-legacy-manifest-generator-denied.test.mjs scripts/bootstrap-npm-package.test.mjs`: **24/24 PASS, 0 SKIP, 0 FAIL**, including real Git-for-Windows Bash default/`--help`/`--dry-run` denials. `git status --porcelain` empty after tests, so the private CLI package was not mutated.
 - `git diff --check`: PASS; no registry access, local npm pack/publish or external model calls.
 
 ## Not release approval
