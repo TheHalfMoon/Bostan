@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# Bostan private source: inherited public installation, release and GitHub
+# publication flows are not qualified. Refuse execution before any shell eval,
+# network request, global install, npm operation or git/GitHub mutation.
+# Supported source QA: node scripts/bostan-no-model-acceptance.mjs --plan
+printf '%s\n' 'Bostan: inherited public install/release entrypoint disabled; use private source qualification only.' >&2
+exit 2
+
 # End-to-end proof of the paperclipai managed install lifecycle on a CLEAN machine.
 #
 # Exercises the real user journey against real GitHub + real npm:
