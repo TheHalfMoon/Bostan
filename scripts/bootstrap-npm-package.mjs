@@ -439,10 +439,8 @@ async function main(argv) {
 const isDirectRun = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
 if (isDirectRun) {
-  try {
-    await main(process.argv.slice(2));
-  } catch (error) {
-    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-    process.exit(1);
-  }
+  // Private Bostan has no authorized public package-registration workflow.
+  // Keep the pure legacy exports importable for compatibility-unit tests.
+  process.stderr.write('Bostan: inherited public npm/release workflow disabled; use the private Bostan source QA only.\n');
+  process.exitCode = 2;
 }

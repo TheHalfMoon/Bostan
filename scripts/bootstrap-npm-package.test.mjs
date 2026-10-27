@@ -35,9 +35,12 @@ test("parseArgs rejects unknown options", () => {
   assert.throws(() => parseArgs(["@paperclipai/a", "--otp", "123456"]), /unknown option/);
 });
 
-test("validatePackageName accepts @paperclipai scoped names", () => {
-  validatePackageName("@bostan/adapter-kimi-local");
-  validatePackageName("@bostan/plugin-workspace-diff");
+test("legacy validation remains donor-scoped and cannot accidentally publish Bostan package names", () => {
+  // Pure compatibility helper; the executable entrypoint is denied in Bostan.
+  validatePackageName("@paperclipai/adapter-kimi-local");
+  validatePackageName("@paperclipai/plugin-workspace-diff");
+  assert.throws(() => validatePackageName("@bostan/adapter-kimi-local"), /@paperclipai scope/);
+  assert.throws(() => validatePackageName("@bostan/plugin-workspace-diff"), /@paperclipai scope/);
 });
 
 test("validatePackageName rejects names outside the @paperclipai scope", () => {

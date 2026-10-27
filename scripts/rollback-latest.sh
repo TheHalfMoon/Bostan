@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# Bostan: inherited public registry/managed installer is retired and unqualified.
+# Refuse before any command/network action, even under --help or --dry-run.
+printf '%s\n' 'Bostan: inherited public npm/release workflow disabled; use the private Bostan source QA only.' >&2
+exit 2
+
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
