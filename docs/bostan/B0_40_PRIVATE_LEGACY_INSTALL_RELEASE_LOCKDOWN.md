@@ -1,4 +1,4 @@
-﻿# B0-40 — Fail-closed Bostan public install/release entrypoints and Windows source preflight
+# B0-40 — Fail-closed Bostan public install/release entrypoints and Windows source preflight
 
 Date: 2026-10-27. Private Draft PR stacked on B0-39. No merge into `main`, no public release, no inherited Actions enablement, no deployment, no paid models, no existing user-data mutations.
 
@@ -16,6 +16,8 @@ Added an unconditional Bostan-specific denial **immediately below the shebang** 
 - Native Rust `cargo fmt --manifest-path packages/paperclip-runner/runner/Cargo.toml --all -- --check`: **PASS**. Static Cargo workspace `cargo metadata --locked --offline --no-deps`: **PASS**. Neither result counts as Rust compilation.
 - `git diff --check`: **PASS**.
 - Windows host-readiness inspection correctly returned **NOT ready**: Node and total 15.7-GiB memory pass, but free memory (~2.7 GiB), C: temporary disk (~5.8 GiB), and D: staging disk (~8.2 GiB) remain below the conservative **6 GiB free RAM / 12 GiB per disk volume** qualification thresholds. The resource gate was not bypassed. No compilation or installed Windows E2E was attempted because doing so would violate the measured resource constraints.
+
+- Additional six real Windows source-runtime, recovery, process ownership, agent-policy and governed-case regression files: **59 PASS, 7 platform-specific SKIP, 0 FAIL** (66 collected). The skips are reported as skips, not passes.
 
 ## Remaining gates
 
