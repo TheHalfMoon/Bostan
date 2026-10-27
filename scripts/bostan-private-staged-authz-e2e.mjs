@@ -36,7 +36,7 @@ export async function runAuthenticatedIsolation(address,{request=fetch,env=proce
   });
   let count=0;
   async function call(path,{method='GET',body,cookie,expected=[200]}={}){
-    if(!/^\/api\/(auth\/(sign-up|sign-in)\/email|companies(?:\/[a-f0-9-]+(?:\/(?:issues|invites|members(?:\/[a-f0-9-]+)?))?)?|issues\/[a-f0-9-]+|invites\/pcp_invite_[a-zA-Z0-9_-]+\/accept)$/.test(path))throw Error('Unexpected authenticated Bostan QA route');
+    if(!/^\/api\/(auth\/(sign-up|sign-in)\/email|bootstrap\/claim|companies(?:\/[a-f0-9-]+(?:\/(?:issues|invites|members(?:\/[a-f0-9-]+)?))?)?|issues\/[a-f0-9-]+|invites\/pcp_invite_[a-zA-Z0-9_-]+\/accept)$/.test(path))throw Error('Unexpected authenticated Bostan QA route');
     const headers={'content-type':'application/json','origin':origin,'cache-control':'no-store'};
     if(cookie)headers.cookie=cookie;
     const res=await request(origin+path,{method,headers,redirect:'error',signal:AbortSignal.timeout(15000),...(body===undefined?{}:{body:JSON.stringify(body)})});
@@ -57,9 +57,21 @@ export async function runAuthenticatedIsolation(address,{request=fetch,env=proce
   }
   const a=await signUp('a');
   const b=await signUp('b');
-  // This authorization bootstrap is limited to an already proven, disposable
-  // database; authenticated users must otherwise not get instance admin rights.
-  executeSql(`insert into instance_user_roles(user_id,role) values(${quoteId(a.id)},'instance_admin') on conflict (user_id,role) do nothing`);
+  // On the full Chromium UI path, qualify the actual first-admin claim
+  // rather than injecting the administrator role via SQL. Non-UI historical
+  // authz mode keeps its disposable fixture unchanged.
+  let firstAdminBrowser=null;
+  if(env.BOSTAN_AUTHZ_BROWSER_UI==='1'){
+    await call('/api/bootstrap/claim',{method:'POST',expected:[401]});
+    const {claimFirstAdminWithBrowser}=await import('../ui/scripts/bostan-private-first-admin-browser.mjs');
+    firstAdminBrowser=await claimFirstAdminWithBrowser({origin:origin+'/',cookie:a.cookie,expectedUserId:a.id});
+    await call('/api/bootstrap/claim',{method:'POST',cookie:b.cookie,expected:[409]});
+    const check=await request(origin+'/api/health',{redirect:'error',signal:AbortSignal.timeout(15000)});
+    if(check.status!==200||(await check.json())?.bootstrapStatus!=='ready')throw Error('First-admin browser claim did not close bootstrap state');
+  }else{
+    // Strictly scoped to the prior API-only synthetic authz fixture.
+    executeSql(`insert into instance_user_roles(user_id,role) values(${quoteId(a.id)},'instance_admin') on conflict (user_id,role) do nothing`);
+  }
   const companyA=(await call('/api/companies',{method:'POST',cookie:a.cookie,body:{name:`Bostan authz A ${trace}`},expected:[201]})).result;
   const companyB=(await call('/api/companies',{method:'POST',cookie:a.cookie,body:{name:`Bostan authz B ${trace}`},expected:[201]})).result;
   quoteUuid(companyA.id);quoteUuid(companyB.id);
@@ -147,7 +159,7 @@ export async function runAuthenticatedIsolation(address,{request=fetch,env=proce
       return {realChromiumInviteCreated:1,inviteAcceptedByThirdSession:1,viewerTaskWriteDenied:1,uiPromotionEnablesWrite:1,uiSuspensionDenials:2,memberUiUpdates:2};
     });
   }
-  return {schema:browserUi?'bostan.three-session-chromium-members.v1':'bostan.two-authenticated-sessions.v2',passed:true,releaseQualified:false,authMode:'authenticated',sessionUsers:browserUi?3:2,independentMemberships:2,crossCompanyDetailDenials:2,crossCompanyListDenials:2,crossCompanyWriteDenials:2,foreignTask404MatchesNonexistence:2,viewerReadAllowed:1,viewerWriteDenied:1,revokedMembershipAccessDenied:2,inviteCreated:1,inviteAcceptedViaApi:1,inviteeViewerRead:1,inviteeViewerWriteDenied:1,unauthorizedInviteDenied:1,unauthorizedPromotionDenied:1,promotionEnablesOperatorWrite:1,suspensionDenialsSameSession:3,syntheticOnly:true,requests:count,providerCalls:0,...(browserUi?{browserUi}:{} )};
+  return {schema:browserUi?'bostan.three-session-chromium-members-first-admin.v2':'bostan.two-authenticated-sessions.v2',passed:true,releaseQualified:false,authMode:'authenticated',sessionUsers:browserUi?3:2,independentMemberships:2,crossCompanyDetailDenials:2,crossCompanyListDenials:2,crossCompanyWriteDenials:2,foreignTask404MatchesNonexistence:2,viewerReadAllowed:1,viewerWriteDenied:1,revokedMembershipAccessDenied:2,inviteCreated:1,inviteAcceptedViaApi:1,inviteeViewerRead:1,inviteeViewerWriteDenied:1,unauthorizedInviteDenied:1,unauthorizedPromotionDenied:1,promotionEnablesOperatorWrite:1,suspensionDenialsSameSession:3,syntheticOnly:true,requests:count,providerCalls:0,...(firstAdminBrowser?{firstAdminBrowser,secondAdminClaimRejected:1,anonymousAdminClaimRejected:1}:{}),...(browserUi?{browserUi}:{} )};
 }
 const direct=process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url);
 if(direct){const args=process.argv.slice(2);if(args.length===0||(args.length===1&&args[0]==='--plan'))console.log('Bostan private authenticated multi-session test: --run --url http://127.0.0.1:<port>/; requires disposable PostgreSQL sentinel. No real accounts or model calls.');else if(args.length===3&&args[0]==='--run'&&args[1]==='--url'){try{console.log(JSON.stringify(await runAuthenticatedIsolation(args[2]),null,2));console.log('BOSTAN_AUTHENTICATED_TWO_SESSION_TENANT_ISOLATION_PASS')}catch(e){console.error('Bostan real authenticated QA failed:',e.message);process.exitCode=1}}else{console.error('Usage: --plan | --run --url http://127.0.0.1:<port>/');process.exitCode=2;}}
