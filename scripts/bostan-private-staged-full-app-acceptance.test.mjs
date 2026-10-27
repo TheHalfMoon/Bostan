@@ -11,6 +11,7 @@ test('all-in-one stage acceptance is read-only by default and fail-closed on oth
     const r=invoke(args);assert.equal(r.status,0,r.stderr);
     assert.match(r.stdout,/No native end-user installer/);
   }
+  assert.match(invoke(['--plan']).stdout,/--run-relocated/);
   for(const args of [['--publish'],['--run','--deploy'],['--help']]){
     const r=invoke(args);assert.equal(r.status,2,r.stderr);assert.equal(r.stdout,'');
   }
@@ -28,6 +29,12 @@ test('real full-app private QA isolates provider credentials, offline deploy, te
   ])assert.ok(source.includes(required),required);
   assert.match(source,/mktemp -d \"\$STAGE_ROOT\/bostan-staged-server-/);
   assert.match(source,/rm -rf -- "\$STAGE"/);
+  assert.match(source,/--run-relocated/);
+  assert.match(source,/RELOCATED_STAGE=\"\$\(mktemp -d/);
+  assert.match(source,/rmdir \"\$RELOCATED_STAGE\"/);
+  assert.match(source,/mv \"\$STAGE\" \"\$RELOCATED_STAGE\"/);
+  assert.match(source,/node scripts\/bostan-private-staged-server-check\.mjs --verify \"\$STAGE\"/);
+  assert.match(source,/BOSTAN_PRIVATE_STAGED_RELOCATION_ACCEPTANCE_PASS/);
   assert.match(source,/4194304/);
   assert.ok(source.includes('for disk in "$ROOT" "$STAGE_ROOT"; do'));
   assert.doesNotMatch(source,/npm publish|gh release create|cargo build --release/);

@@ -8,12 +8,14 @@ if [ "$#" -eq 0 ] || { [ "$#" -eq 1 ] && [ "$1" = --plan ]; }; then
   echo 'repair only generated pnpm self-link, check all symlinks internal, run'
   echo 'isolated PostgreSQL+HTTP+Chromium and delete ONLY the owned temporary stage.'
   echo 'No native end-user installer, cloud model, public release, or deployment.'
+  echo 'Use --run-relocated to test moving an intact private deployment to a fresh staging path before Postgres/browser.'
   exit 0
 fi
-if [ "$#" -ne 1 ] || [ "$1" != --run ]; then
-  echo 'Usage: bash scripts/bostan-private-staged-full-app-acceptance.sh [--plan|--run]' >&2
+if [ "$#" -ne 1 ] || { [ "$1" != --run ] && [ "$1" != --run-relocated ]; }; then
+  echo 'Usage: bash scripts/bostan-private-staged-full-app-acceptance.sh [--plan|--run|--run-relocated]' >&2
   exit 2
 fi
+MODE="$1"
 case "$(uname -s)" in Darwin|Linux) ;; *) echo 'Private staged native acceptance requires macOS/Linux' >&2;exit 2;; esac
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "$ROOT"
@@ -62,5 +64,20 @@ pnpm --filter @bostan/server deploy --prod --offline --ignore-scripts "$STAGE"
 node scripts/bostan-private-staged-server-check.mjs --repair-owned-self-link "$STAGE" --source-checkout "$ROOT"
 node scripts/bostan-private-staged-server-check.mjs --verify "$STAGE"
 test -f "$STAGE/ui-dist/index.html" || { echo 'Bostan private staged UI bundle missing' >&2;exit 1; }
+if [ "$MODE" = --run-relocated ]; then
+  # Create the destination using the trusted OS temp root; reclaim only the
+  # empty directory created by mktemp and move on the same filesystem.
+  # The normal EXIT trap follows STAGE so the relocated package is cleaned.
+  RELOCATED_STAGE="$(mktemp -d "$STAGE_ROOT/bostan-staged-server-XXXXXXXX")"
+  rmdir "$RELOCATED_STAGE"
+  ORIGINAL_STAGE="$STAGE"
+  mv "$STAGE" "$RELOCATED_STAGE"
+  STAGE="$RELOCATED_STAGE"
+  test ! -e "$ORIGINAL_STAGE" || { echo 'BOSTAN_STAGE_RELOCATION_ORIGINAL_PATH_STILL_EXISTS' >&2;exit 1; }
+  node scripts/bostan-private-staged-server-check.mjs --verify "$STAGE"
+  test -f "$STAGE/ui-dist/index.html" || { echo 'BOSTAN_STAGE_RELOCATION_UI_MISSING' >&2;exit 1; }
+  echo BOSTAN_PRIVATE_STAGED_RELOCATION_VERIFIED
+fi
 BOSTAN_STAGE_BROWSER_E2E=1 bash scripts/bostan-local-http-postgres-smoke.sh --run-deployed "$STAGE"
+if [ "$MODE" = --run-relocated ]; then echo BOSTAN_PRIVATE_STAGED_RELOCATION_ACCEPTANCE_PASS; fi
 echo BOSTAN_PRIVATE_STAGED_FULL_APP_ACCEPTANCE_PASS
