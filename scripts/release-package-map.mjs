@@ -143,6 +143,8 @@ function buildReleasePackagePlan() {
       // cannot be implicitly turned into inherited public CI release jobs.
       const expectedPrivateNames = {
         cli: "bostan", ui: "@bostan/ui", server: "@bostan/server",
+        "packages/skills-catalog": "@bostan/skills-catalog",
+        "packages/teams-catalog": "@bostan/teams-catalog",
         "packages/mcp-server": "@bostan/mcp-server",
         "packages/kv-demo-mcp-server": "@bostan/kv-demo-mcp-server",
         "packages/google-sheets-mcp-server": "@bostan/google-sheets-mcp-server",

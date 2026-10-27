@@ -16,20 +16,12 @@ function pkg(name, { publishFromCi, ...deps } = {}) {
 
 test("Bostan release inventory uses portable slash-separated package identifiers", () => {
   const packages = discoverPublicPackages();
-  assert.ok(packages.length > 0, "public release inventory still has explicit legacy entries but no private sandbox providers");
-  for (const pkg of packages) {
-    assert.equal(pkg.dir.split(String.fromCharCode(92)).length, 1, "non-portable workspace package ID: " + pkg.dir);
-  }
-  assert.ok(packages.some(pkg => pkg.dir === "packages/skills-catalog" &&
-    pkg.name === "@bostan/skills-catalog"));
-  assert.ok(packages.some(pkg => pkg.dir === "packages/teams-catalog" &&
-    pkg.name === "@bostan/teams-catalog"));
+  assert.deepEqual(packages, [], "no Bostan source package should be eligible for public registry publishing");
 });
 
 test("release package manifest covers all public packages with explicit CI enrollment", () => {
   const packages = buildReleasePackagePlan();
-  assert.ok(packages.length > 0);
-  assert.ok(packages.every((pkg) => typeof pkg.publishFromCi === "boolean"));
+  assert.deepEqual(packages, [], "private Bostan release plan should have no public packages");
 });
 
 test("Bostan legacy release list refuses all publishing while the product is private", () => {
@@ -38,15 +30,21 @@ test("Bostan legacy release list refuses all publishing while the product is pri
 
 test("Bostan CLI is private and the inherited release manifest enables no packages", () => {
   const plan = buildReleasePackagePlan();
-  assert.ok(plan.length > 0);
-  assert.ok(plan.every((pkg) => pkg.publishFromCi === false));
+  assert.deepEqual(plan, [], "Bostan must have zero registry-release candidates");
 });
 
 test("all package manifest entries are explicitly disabled for inherited release", () => {
   const plan = buildReleasePackagePlan();
-  assert.ok(plan.every((pkg) => !pkg.publishFromCi));
-  assert.ok(plan.some((pkg) => pkg.name === "@bostan/skills-catalog"));
-  assert.ok(plan.some((pkg) => pkg.name === "@bostan/teams-catalog"));
+  assert.deepEqual(plan, []);
+  const manifest = JSON.parse(readFileSync(new URL("./release-package-manifest.json", import.meta.url), "utf8"));
+  assert.ok(manifest.every((entry) => entry.publishFromCi === false));
+  for (const category of ["skills", "teams"]) {
+    const packagePath = new URL(`../packages/${category}-catalog/package.json`, import.meta.url);
+    const pkg = JSON.parse(readFileSync(packagePath, "utf8"));
+    assert.equal(pkg.private, true);
+    assert.equal(pkg.publishConfig, undefined);
+    assert.ok(manifest.some((entry) => entry.dir === `packages/${category}-catalog` && entry.publishFromCi === false));
+  }
 });
 
 test("Bostan Hermes and its compatibility shim are private and absent from public release inventory", () => {
