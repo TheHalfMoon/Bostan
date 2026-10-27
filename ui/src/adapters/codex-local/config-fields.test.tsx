@@ -11,9 +11,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { CodexLocalConfigFields } from "./config-fields";
 import { buildCodexRunnerConfig } from "./config-fields";
-import { buildPaperclipRunnerConfig } from "@paperclipai/adapter-codex-local/ui";
+import { buildPaperclipRunnerConfig } from "@bostan/adapter-codex-local/ui";
 import { defaultCreateValues } from "@/components/agent-config-defaults";
-import { resolveCodexLocalCliPolicy } from "@paperclipai/adapter-codex-local";
+import { resolveCodexLocalCliPolicy } from "@bostan/adapter-codex-local";
 
 beforeAll(() => { Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true }); });
 

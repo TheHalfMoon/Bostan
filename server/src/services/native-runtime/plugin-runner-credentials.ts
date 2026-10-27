@@ -1,6 +1,6 @@
 import { realpath } from "node:fs/promises";
 import { join } from "node:path";
-import { copyBackCodexAuth } from "@paperclipai/adapter-codex-local/server";
+import { copyBackCodexAuth } from "@bostan/adapter-codex-local/server";
 import { environmentTaskCredentialSchema, type PluginEnvironmentTaskCredential } from "@bostan/plugin-sdk";
 import { readLocalAiCredentialFile } from "../local-ai-credential-file.js";
 

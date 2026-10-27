@@ -27,13 +27,13 @@ import type { AdapterEnvironmentTestResult, Agent } from "@paperclipai/shared";
 import { storybookAgents, storybookHiredAgent } from "../fixtures/paperclipData";
 import { PREVIEW_AGENT_ID, PREVIEW_COMPANY_ID, runtimeTestResult, useNewAgentFixtures, type TestOutcome, type TestState } from "./new-agent-fixtures";
 import { stepMotion } from "@/components/onboarding/onboarding-motion";
-import { models as claudeModels } from "@paperclipai/adapter-claude-local";
-import { models as codexModels } from "@paperclipai/adapter-codex-local";
-import { models as openCodeModels } from "@paperclipai/adapter-opencode-local";
-import { models as cursorModels } from "@paperclipai/adapter-cursor-local";
-import { models as geminiModels } from "@paperclipai/adapter-gemini-local";
-import { models as grokModels } from "@paperclipai/adapter-grok-local";
-import { models as kimiModels } from "@paperclipai/adapter-kimi-local";
+import { models as claudeModels } from "@bostan/adapter-claude-local";
+import { models as codexModels } from "@bostan/adapter-codex-local";
+import { models as openCodeModels } from "@bostan/adapter-opencode-local";
+import { models as cursorModels } from "@bostan/adapter-cursor-local";
+import { models as geminiModels } from "@bostan/adapter-gemini-local";
+import { models as grokModels } from "@bostan/adapter-grok-local";
+import { models as kimiModels } from "@bostan/adapter-kimi-local";
 
 const modelLists = {
   claude_local: claudeModels, codex_local: codexModels, opencode_local: openCodeModels,

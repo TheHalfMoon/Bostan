@@ -4,7 +4,7 @@ import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { eq, sql } from "drizzle-orm";
-import * as codexServer from "@paperclipai/adapter-codex-local/server";
+import * as codexServer from "@bostan/adapter-codex-local/server";
 import express from "express";
 import request from "supertest";
 import { createDb, companies, companyMemberships, companyObservability, companySecrets, companySecretBindings, activityLog } from "@paperclipai/db";

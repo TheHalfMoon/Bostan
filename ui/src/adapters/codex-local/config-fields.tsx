@@ -6,7 +6,7 @@ import { DotRunnerConnection } from "../../components/DotRunnerConnection";
 import { configFieldsForSection } from "../config-sections";
 import type { AdapterConfigFieldsProps } from "../types";
 import type { CreateConfigValues } from "@paperclipai/adapter-utils";
-import { buildCodexLocalConfig } from "@paperclipai/adapter-codex-local/ui";
+import { buildCodexLocalConfig } from "@bostan/adapter-codex-local/ui";
 import {
   Field,
   ToggleField,
@@ -22,7 +22,7 @@ import {
   isCodexLocalFastModeSupported,
   isCodexLocalManualModel,
   resolveCodexLocalCliPolicy,
-} from "@paperclipai/adapter-codex-local";
+} from "@bostan/adapter-codex-local";
 import {
   PAPERCLIP_RUNNER_IDLE_TIMEOUT_DEFAULT_MS,
   PAPERCLIP_RUNNER_IDLE_TIMEOUT_MAX_MS,

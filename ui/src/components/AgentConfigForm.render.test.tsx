@@ -18,8 +18,8 @@ import { ApiError } from "../api/client";
 import { aiConnectionsApi } from "../api/ai-connections";
 import { CodexLocalConfigFields } from "../adapters/codex-local/config-fields";
 import type { AdapterConfigFieldsProps } from "../adapters/types";
-import { buildClaudeLocalConfig } from "@paperclipai/adapter-claude-local/ui";
-import { DEFAULT_CODEX_LOCAL_MODEL } from "@paperclipai/adapter-codex-local";
+import { buildClaudeLocalConfig } from "@bostan/adapter-claude-local/ui";
+import { DEFAULT_CODEX_LOCAL_MODEL } from "@bostan/adapter-codex-local";
 
 const mockAgentsApi = vi.hoisted(() => ({
   get: vi.fn(),

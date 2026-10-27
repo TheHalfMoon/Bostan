@@ -15,11 +15,11 @@ vi.mock("@paperclipai/adapter-utils/execution-target", async (importOriginal) =>
   return { ...actual, runAdapterExecutionTargetProcess: vi.fn() };
 });
 import { runAdapterExecutionTargetProcess } from "@paperclipai/adapter-utils/execution-target";
-import { execute as gemini } from "@paperclipai/adapter-gemini-local/server";
-import { execute as kimi } from "@paperclipai/adapter-kimi-local/server";
-import { execute as cursor } from "@paperclipai/adapter-cursor-local/server";
-import { execute as opencode } from "@paperclipai/adapter-opencode-local/server";
-import { execute as pi } from "@paperclipai/adapter-pi-local/server";
+import { execute as gemini } from "@bostan/adapter-gemini-local/server";
+import { execute as kimi } from "@bostan/adapter-kimi-local/server";
+import { execute as cursor } from "@bostan/adapter-cursor-local/server";
+import { execute as opencode } from "@bostan/adapter-opencode-local/server";
+import { execute as pi } from "@bostan/adapter-pi-local/server";
 
 const roots: string[] = [];
 afterEach(async () => { vi.clearAllMocks(); await Promise.all(roots.splice(0).map(root => fs.rm(root, { recursive: true, force: true }))); });

@@ -1,21 +1,21 @@
 {
-  "name": "@paperclipai/hermes-paperclip-adapter",
+  "name": "@bostan/adapter-hermes",
   "version": "0.3.1",
-  "description": "Paperclip adapters for Hermes Agent local CLI and Hermes Gateway HTTP/SSE runs",
+  "description": "Bostan adapters for Hermes Agent local CLI and Hermes Gateway HTTP/SSE runs",
   "type": "module",
   "license": "MIT",
-  "author": "Paperclip",
+  "author": "Bostan contributors",
   "repository": {
     "type": "git",
-    "url": "https://github.com/paperclipai/paperclip",
+    "url": "https://github.com/TheHalfMoon/Bostan",
     "directory": "packages/adapters/hermes"
   },
   "bugs": {
-    "url": "https://github.com/paperclipai/paperclip/issues"
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
   },
-  "homepage": "https://github.com/paperclipai/paperclip/tree/master/packages/adapters/hermes#readme",
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
   "keywords": [
-    "paperclip",
+    "bostan",
     "hermes",
     "hermes-agent",
     "ai-agent",
@@ -37,48 +37,6 @@
   "paperclip": {
     "adapterUiParser": "1.0.0"
   },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js"
-      },
-      "./server": {
-        "types": "./dist/server/index.d.ts",
-        "import": "./dist/server/index.js"
-      },
-      "./ui": {
-        "types": "./dist/ui/index.d.ts",
-        "import": "./dist/ui/index.js"
-      },
-      "./cli": {
-        "types": "./dist/cli/index.d.ts",
-        "import": "./dist/cli/index.js"
-      },
-      "./ui-parser": "./ui-parser.cjs",
-      "./gateway": {
-        "types": "./dist/gateway/index.d.ts",
-        "import": "./dist/gateway/index.js"
-      },
-      "./gateway/server": {
-        "types": "./dist/gateway/server/index.d.ts",
-        "import": "./dist/gateway/server/index.js"
-      },
-      "./gateway/ui": {
-        "types": "./dist/gateway/ui/index.d.ts",
-        "import": "./dist/gateway/ui/index.js"
-      },
-      "./gateway/cli": {
-        "types": "./dist/gateway/cli/index.d.ts",
-        "import": "./dist/gateway/cli/index.js"
-      },
-      "./gateway/ui-parser": "./gateway-ui-parser.cjs"
-    },
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
-    "provenance": true
-  },
   "files": [
     "dist",
     "skills",
@@ -94,9 +52,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:command-resolution": "vitest run src/server/command-resolution.test.ts",
-    "prepack": "node scripts/prepare-publish-package.mjs",
-    "postpack": "node scripts/restore-dev-package.mjs",
-    "clean": "rm -rf dist"
+    "prepack": "node ../../../scripts/bostan-release-disabled.mjs",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "node ../../../scripts/bostan-release-disabled.mjs"
   },
   "dependencies": {
     "@paperclipai/adapter-utils": "workspace:*",
@@ -109,5 +67,6 @@
   },
   "engines": {
     "node": ">=24.11.0"
-  }
+  },
+  "private": true
 }

@@ -1,14 +1,14 @@
 {
-  "name": "@paperclipai/adapter-claude-local",
+  "name": "@bostan/adapter-claude-local",
   "version": "0.3.1",
   "license": "MIT",
-  "homepage": "https://github.com/paperclipai/paperclip",
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
   "bugs": {
-    "url": "https://github.com/paperclipai/paperclip/issues"
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/paperclipai/paperclip",
+    "url": "https://github.com/TheHalfMoon/Bostan",
     "directory": "packages/adapters/claude-local"
   },
   "type": "module",
@@ -17,29 +17,6 @@
     "./server": "./src/server/index.ts",
     "./ui": "./src/ui/index.ts",
     "./cli": "./src/cli/index.ts"
-  },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js"
-      },
-      "./server": {
-        "types": "./dist/server/index.d.ts",
-        "import": "./dist/server/index.js"
-      },
-      "./ui": {
-        "types": "./dist/ui/index.d.ts",
-        "import": "./dist/ui/index.js"
-      },
-      "./cli": {
-        "types": "./dist/cli/index.d.ts",
-        "import": "./dist/cli/index.js"
-      }
-    },
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts"
   },
   "files": [
     "dist",
@@ -50,7 +27,9 @@
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
     "probe:quota": "pnpm exec tsx src/cli/quota-probe.ts --json",
-    "probe:quota:raw": "pnpm exec tsx src/cli/quota-probe.ts --json --raw-cli"
+    "probe:quota:raw": "pnpm exec tsx src/cli/quota-probe.ts --json --raw-cli",
+    "prepack": "node ../../../scripts/bostan-release-disabled.mjs",
+    "prepublishOnly": "node ../../../scripts/bostan-release-disabled.mjs"
   },
   "dependencies": {
     "@agentclientprotocol/claude-agent-acp": "^0.73.0",
@@ -65,5 +44,7 @@
   },
   "engines": {
     "node": ">=24.11.0"
-  }
+  },
+  "private": true,
+  "keywords": []
 }

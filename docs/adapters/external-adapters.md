@@ -20,14 +20,14 @@ Paperclip supports external adapter plugins that can be installed from npm packa
 Hermes is built in with two stable adapter type keys:
 
 - `hermes_local` starts the local Hermes CLI from
-  `@paperclipai/hermes-paperclip-adapter`.
+  `@bostan/adapter-hermes`.
 - `hermes_gateway` calls an already-running Hermes API server through
-  `@paperclipai/hermes-paperclip-adapter/gateway`.
+  `@bostan/adapter-hermes/gateway`.
 
-The legacy `@paperclipai/adapter-hermes-gateway` package is a deprecated
+The legacy `@bostan/adapter-hermes-gateway` package is a deprecated
 compatibility shim for one release. It preserves the old gateway exports while
 forwarding to the unified Hermes package. New external override packages should
-depend on or link `@paperclipai/hermes-paperclip-adapter` and declare the type
+depend on or link `@bostan/adapter-hermes` and declare the type
 they override (`hermes_local` or `hermes_gateway`); the type keys did not
 change.
 

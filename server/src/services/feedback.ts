@@ -20,9 +20,9 @@ import {
   issues,
 } from "@paperclipai/db";
 import { readPaperclipSkillSyncPreference } from "@paperclipai/adapter-utils/server-utils";
-import { claudeConfigDir, parseClaudeStreamJson } from "@paperclipai/adapter-claude-local/server";
-import { codexHomeDir, parseCodexJsonl } from "@paperclipai/adapter-codex-local/server";
-import { parseOpenCodeJsonl } from "@paperclipai/adapter-opencode-local/server";
+import { claudeConfigDir, parseClaudeStreamJson } from "@bostan/adapter-claude-local/server";
+import { codexHomeDir, parseCodexJsonl } from "@bostan/adapter-codex-local/server";
+import { parseOpenCodeJsonl } from "@bostan/adapter-opencode-local/server";
 import {
   DEFAULT_FEEDBACK_DATA_SHARING_PREFERENCE,
   DEFAULT_FEEDBACK_DATA_SHARING_TERMS_VERSION,

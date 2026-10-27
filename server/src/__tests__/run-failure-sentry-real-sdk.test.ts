@@ -89,7 +89,7 @@ describe.skipIf(!sentryPackage)("run failure context with the real Sentry SDK", 
     }));
     vi.resetModules();
     try {
-      const { execute } = await import("@paperclipai/adapter-opencode-local/server");
+      const { execute } = await import("@bostan/adapter-opencode-local/server");
       const { sentryReady, captureRunFailure, captureException } = await import("../sentry.js");
       await sentryReady;
       const result = await execute({

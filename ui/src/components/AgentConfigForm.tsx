@@ -37,12 +37,12 @@ import { assetsApi } from "../api/assets";
 import {
   DEFAULT_CODEX_LOCAL_BYPASS_APPROVALS_AND_SANDBOX,
   DEFAULT_CODEX_LOCAL_MODEL,
-} from "@paperclipai/adapter-codex-local";
-import { DEFAULT_CLAUDE_LOCAL_MODEL } from "@paperclipai/adapter-claude-local";
-import { DEFAULT_CURSOR_LOCAL_MODEL } from "@paperclipai/adapter-cursor-local";
-import { DEFAULT_GEMINI_LOCAL_MODEL } from "@paperclipai/adapter-gemini-local";
-import { DEFAULT_KIMI_LOCAL_MODEL } from "@paperclipai/adapter-kimi-local";
-import { DEFAULT_OPENCODE_LOCAL_MODEL } from "@paperclipai/adapter-opencode-local";
+} from "@bostan/adapter-codex-local";
+import { DEFAULT_CLAUDE_LOCAL_MODEL } from "@bostan/adapter-claude-local";
+import { DEFAULT_CURSOR_LOCAL_MODEL } from "@bostan/adapter-cursor-local";
+import { DEFAULT_GEMINI_LOCAL_MODEL } from "@bostan/adapter-gemini-local";
+import { DEFAULT_KIMI_LOCAL_MODEL } from "@bostan/adapter-kimi-local";
+import { DEFAULT_OPENCODE_LOCAL_MODEL } from "@bostan/adapter-opencode-local";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, SelectPopover } from "@/components/ui/select";

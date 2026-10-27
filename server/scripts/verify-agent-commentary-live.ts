@@ -10,7 +10,7 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { eq } from "drizzle-orm";
 import { activityLog, agentCommentary, agents, heartbeatRuns, issues, nativeRunFinalizations } from "@paperclipai/db";
-import { execute as executeLegacy } from "@paperclipai/adapter-codex-local/server";
+import { execute as executeLegacy } from "@bostan/adapter-codex-local/server";
 import { startRunnerApiTestServer } from "../src/__tests__/helpers/runner-api-server.js";
 import { createLocalAgentJwt } from "../src/agent-auth-jwt.js";
 import { prepareNativeHeartbeatRun } from "../src/services/native-runtime/prepare-native-run.js";

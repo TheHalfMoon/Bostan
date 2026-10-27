@@ -241,8 +241,8 @@ vi.mock("./paperclip-control-plane-port.js", async importOriginal => {
 });
 
 const grokCopyBack = vi.hoisted(() => vi.fn(async (_input: { readSandboxAuth: () => Promise<Buffer>; hostHomeDir: string }) => undefined));
-vi.mock("@paperclipai/adapter-grok-local/server", async importOriginal => ({
-  ...await importOriginal<typeof import("@paperclipai/adapter-grok-local/server")>(),
+vi.mock("@bostan/adapter-grok-local/server", async importOriginal => ({
+  ...await importOriginal<typeof import("@bostan/adapter-grok-local/server")>(),
   copyBackGrokAuth: grokCopyBack,
 }));
 
@@ -264,9 +264,9 @@ vi.mock("../../vendor/paperclip-runner/index.js", async (importOriginal) => {
   };
 });
 
-vi.mock("@paperclipai/adapter-codex-local/server", async (importOriginal) => ({
+vi.mock("@bostan/adapter-codex-local/server", async (importOriginal) => ({
   ...(await importOriginal<
-    typeof import("@paperclipai/adapter-codex-local/server")
+    typeof import("@bostan/adapter-codex-local/server")
   >()),
   copyBackCodexAuth: state.copyBackCodexAuth,
 }));

@@ -10,7 +10,7 @@ import { localEncryptedProvider } from "../secrets/local-encrypted-provider.js";
 import { createLifecycleDriver } from "../services/agent-lifecycle-driver.js";
 import { createLifecycleStore } from "../modules/agent-lifecycle/adapters/postgres.js";
 import { logger } from "../middleware/logger.js";
-import { resolveCodexAuthCacheDir } from "@paperclipai/adapter-codex-local/server";
+import { resolveCodexAuthCacheDir } from "@bostan/adapter-codex-local/server";
 import path from "node:path";
 import { mkdir, rm } from "node:fs/promises";
 import { awsSecretsManagerProvider } from "../secrets/aws-secrets-manager-provider.js";

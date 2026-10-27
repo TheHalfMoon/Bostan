@@ -117,11 +117,11 @@ import {
 import { buildNewAgentRuntimeConfig } from "../lib/new-agent-runtime-config";
 import { canDeferModelConnection, isPersistedDeferredAgent, ONBOARDING_STORAGE_KEY } from "../lib/onboarding-defer";
 export { ONBOARDING_STORAGE_KEY } from "../lib/onboarding-defer";
-import { DEFAULT_CODEX_LOCAL_BYPASS_APPROVALS_AND_SANDBOX } from "@paperclipai/adapter-codex-local";
-import { DEFAULT_CURSOR_LOCAL_MODEL } from "@paperclipai/adapter-cursor-local";
-import { DEFAULT_GEMINI_LOCAL_MODEL } from "@paperclipai/adapter-gemini-local";
-import { DEFAULT_KIMI_LOCAL_MODEL } from "@paperclipai/adapter-kimi-local";
-import { DEFAULT_OPENCODE_LOCAL_MODEL, isValidOpenCodeModelId } from "@paperclipai/adapter-opencode-local";
+import { DEFAULT_CODEX_LOCAL_BYPASS_APPROVALS_AND_SANDBOX } from "@bostan/adapter-codex-local";
+import { DEFAULT_CURSOR_LOCAL_MODEL } from "@bostan/adapter-cursor-local";
+import { DEFAULT_GEMINI_LOCAL_MODEL } from "@bostan/adapter-gemini-local";
+import { DEFAULT_KIMI_LOCAL_MODEL } from "@bostan/adapter-kimi-local";
+import { DEFAULT_OPENCODE_LOCAL_MODEL, isValidOpenCodeModelId } from "@bostan/adapter-opencode-local";
 import {
   canGoBackFromOnboardingStep,
   canJumpToOnboardingStep,

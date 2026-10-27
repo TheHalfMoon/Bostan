@@ -46,7 +46,7 @@ import {
 import {
   runSetupTokenLogin,
   CLAUDE_SETUP_TOKEN_COMMAND,
-} from "@paperclipai/adapter-claude-local/server";
+} from "@bostan/adapter-claude-local/server";
 import { randomUUID } from "node:crypto";
 import {
   deriveLoginSessionHome,

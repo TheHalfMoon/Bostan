@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 
 import {
   buildReleasePackagePlan,
@@ -48,15 +49,15 @@ test("all package manifest entries are explicitly disabled for inherited release
   assert.ok(plan.some((pkg) => pkg.name === "@bostan/teams-catalog"));
 });
 
-test("Hermes release surface publishes the unified built-in package and keeps gateway as a shim", () => {
+test("Bostan Hermes and its compatibility shim are private and absent from public release inventory", () => {
   const packages = buildReleasePackagePlan();
-  const hermes = packages.find((pkg) => pkg.name === "@paperclipai/hermes-paperclip-adapter");
-  const gatewayShim = packages.find((pkg) => pkg.name === "@paperclipai/adapter-hermes-gateway");
-
-  assert.equal(hermes?.dir, "packages/adapters/hermes");
-  assert.equal(hermes?.publishFromCi, false);
-  assert.equal(gatewayShim?.dir, "packages/adapters/hermes-gateway");
-  assert.equal(gatewayShim?.publishFromCi, false);
+  for (const [dir, name] of [["hermes", "@bostan/adapter-hermes"], ["hermes-gateway", "@bostan/adapter-hermes-gateway"]]) {
+    assert.equal(packages.find((pkg) => pkg.name === name), undefined);
+    const manifest = JSON.parse(readFileSync(new URL(`../packages/adapters/${dir}/package.json`, import.meta.url), "utf8"));
+    assert.equal(manifest.name, name);
+    assert.equal(manifest.private, true);
+    assert.match(manifest.scripts.prepack, /bostan-release-disabled/);
+  }
 });
 
 test("release package configuration validates successfully", () => {

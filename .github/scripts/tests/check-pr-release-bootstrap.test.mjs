@@ -107,7 +107,7 @@ test('notices a publishFromCi:false package that published packages newly depend
     {
       filename: 'server/package.json',
       status: 'modified',
-      patch: '@@ -1 +1 @@\n+    "@paperclipai/adapter-kimi-local": "workspace:*",',
+      patch: '@@ -1 +1 @@\n+    "@bostan/adapter-kimi-local": "workspace:*",',
     },
   ];
 
@@ -120,7 +120,7 @@ test('notices a publishFromCi:false package that published packages newly depend
     {
       fetchFromGitHub: stubGitHub({
         base: [],
-        head: [{ dir: 'b', name: '@paperclipai/adapter-kimi-local', publishFromCi: false }],
+        head: [{ dir: 'b', name: '@bostan/adapter-kimi-local', publishFromCi: false }],
       }),
       registryPackageExists: async () => false,
     }
@@ -137,11 +137,11 @@ test('notices a newly added dependency on an existing unpublished package even w
     {
       filename: 'server/package.json',
       status: 'modified',
-      patch: '@@ -1 +1 @@\n+    "@paperclipai/adapter-hermes-gateway": "workspace:*",',
+      patch: '@@ -1 +1 @@\n+    "@bostan/adapter-hermes-gateway": "workspace:*",',
     },
   ];
 
-  const manifest = [{ dir: 'g', name: '@paperclipai/adapter-hermes-gateway', publishFromCi: false }];
+  const manifest = [{ dir: 'g', name: '@bostan/adapter-hermes-gateway', publishFromCi: false }];
   const result = await checkReleaseBootstrap(
     files,
     'token',

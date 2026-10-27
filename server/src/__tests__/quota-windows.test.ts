@@ -11,7 +11,7 @@ import {
   parseClaudeCliUsageText,
   readClaudeToken,
   claudeConfigDir,
-} from "@paperclipai/adapter-claude-local/server";
+} from "@bostan/adapter-claude-local/server";
 
 import {
   secondsToWindowLabel,
@@ -20,7 +20,7 @@ import {
   fetchCodexQuota,
   mapCodexRpcQuota,
   codexHomeDir,
-} from "@paperclipai/adapter-codex-local/server";
+} from "@bostan/adapter-codex-local/server";
 
 // ---------------------------------------------------------------------------
 // toPercent

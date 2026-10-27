@@ -11,7 +11,7 @@ import {
   execute,
   resetClaudeCliCapabilitiesCacheForTests,
   sessionCodec,
-} from "@paperclipai/adapter-claude-local/server";
+} from "@bostan/adapter-claude-local/server";
 
 async function writeFailingClaudeCommand(
   commandPath: string,
