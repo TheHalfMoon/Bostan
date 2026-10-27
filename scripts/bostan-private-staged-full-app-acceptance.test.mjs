@@ -27,6 +27,8 @@ test('real full-app private QA isolates provider credentials, offline deploy, te
     'pnpm --filter @bostan/ui build','prepare-server-ui-dist.sh',
     'bostan-private-staged-server-check.mjs --repair-owned-self-link',
     'bostan-private-staged-server-check.mjs --verify',
+    'bostan-private-bundled-font-license-gate.mjs --check',
+    'bostan-private-bundled-font-license-gate.mjs --verify-stage "$STAGE/ui-dist"',
     'BOSTAN_STAGE_BROWSER_E2E=1','BOSTAN_STAGE_CRUD_E2E=1','--run-deployed "$STAGE"',
     'BOSTAN_PRIVATE_STAGED_FULL_APP_ACCEPTANCE_PASS',
   ])assert.ok(source.includes(required),required);
@@ -37,6 +39,8 @@ test('real full-app private QA isolates provider credentials, offline deploy, te
   assert.match(source,/rmdir \"\$RELOCATED_STAGE\"/);
   assert.match(source,/mv \"\$STAGE\" \"\$RELOCATED_STAGE\"/);
   assert.match(source,/node scripts\/bostan-private-staged-server-check\.mjs --verify \"\$STAGE\"/);
+  assert.equal(source.split('--verify-stage "$STAGE/ui-dist"').length-1,2,
+    'packed UI fonts must be verified both before and after relocation');
   assert.match(source,/BOSTAN_PRIVATE_STAGED_RELOCATION_ACCEPTANCE_PASS/);
   assert.match(source,/--run-deployed-authz/);
   assert.match(source,/--run-deployed-authz-ui/);

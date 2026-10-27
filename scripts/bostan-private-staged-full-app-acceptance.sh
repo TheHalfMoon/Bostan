@@ -22,6 +22,9 @@ MODE="$1"
 case "$(uname -s)" in Darwin|Linux) ;; *) echo 'Private staged native acceptance requires macOS/Linux' >&2;exit 2;; esac
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "$ROOT"
+# A passed source audit alone cannot guarantee identical fonts/NOTICE files
+# after Vite build, offline pnpm deploy and stage relocation.
+node scripts/bostan-private-bundled-font-license-gate.mjs --check
 for prerequisite in node pnpm initdb pg_ctl createdb curl; do
   command -v "$prerequisite" >/dev/null 2>&1 || { echo "Missing local Bostan QA tool: $prerequisite" >&2; exit 2; }
 done
@@ -67,6 +70,7 @@ pnpm --filter @bostan/server deploy --prod --offline --ignore-scripts "$STAGE"
 node scripts/bostan-private-staged-server-check.mjs --repair-owned-self-link "$STAGE" --source-checkout "$ROOT"
 node scripts/bostan-private-staged-server-check.mjs --verify "$STAGE"
 test -f "$STAGE/ui-dist/index.html" || { echo 'Bostan private staged UI bundle missing' >&2;exit 1; }
+node scripts/bostan-private-bundled-font-license-gate.mjs --verify-stage "$STAGE/ui-dist"
 if [ "$MODE" = --run-relocated ] || [ "$MODE" = --run-relocated-authz ] || [ "$MODE" = --run-relocated-authz-ui ] || [ "$MODE" = --run-relocated-admin-race ]; then
   # Create the destination using the trusted OS temp root; reclaim only the
   # empty directory created by mktemp and move on the same filesystem.
@@ -79,6 +83,7 @@ if [ "$MODE" = --run-relocated ] || [ "$MODE" = --run-relocated-authz ] || [ "$M
   test ! -e "$ORIGINAL_STAGE" || { echo 'BOSTAN_STAGE_RELOCATION_ORIGINAL_PATH_STILL_EXISTS' >&2;exit 1; }
   node scripts/bostan-private-staged-server-check.mjs --verify "$STAGE"
   test -f "$STAGE/ui-dist/index.html" || { echo 'BOSTAN_STAGE_RELOCATION_UI_MISSING' >&2;exit 1; }
+  node scripts/bostan-private-bundled-font-license-gate.mjs --verify-stage "$STAGE/ui-dist"
   echo BOSTAN_PRIVATE_STAGED_RELOCATION_VERIFIED
 fi
 if [ "$MODE" = --run-relocated-authz ] || [ "$MODE" = --run-relocated-authz-ui ] || [ "$MODE" = --run-relocated-admin-race ]; then

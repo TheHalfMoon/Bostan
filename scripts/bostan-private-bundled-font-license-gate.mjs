@@ -4,7 +4,7 @@
  */
 import {createHash} from 'node:crypto';
 import {readFileSync,readdirSync,lstatSync} from 'node:fs';
-import {dirname,resolve} from 'node:path';
+import {basename,dirname,isAbsolute,join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const inventoryPath='scripts/bostan-private-bundled-font-inventory.json';
@@ -86,6 +86,52 @@ export function verifyBundledFontNotices({
     noticesPreserved:2,sourceCopyrightPreserved:true,
     fullDependencyLicenseAuditComplete:false,paidProvidersUsed:false};
 }
+/**
+ * Validate the actual relocated UI static asset package, not just the source.
+ * The staged server uses ui-dist/ as a static root. This is read-only and
+ * refuses a symlinked stage, asset substitution, or a dropped font license.
+ */
+export function verifyStagedBoardFonts(uiDist,{rootDir=root}={}){
+  if(typeof uiDist!=='string'||!isAbsolute(uiDist)||basename(uiDist)!=='ui-dist')
+    throw Error('Expected absolute Bostan private staged ui-dist');
+  const stageStat=lstatSync(uiDist);
+  if(!stageStat.isDirectory()||stageStat.isSymbolicLink())
+    throw Error('Unsafe private staged Bostan UI root');
+  const source=verifyBundledFontNotices({rootDir});
+  if(!source.passed)throw Error('Bundled source font NOTICE audit did not pass');
+  const fontDir=join(uiDist,'fonts');
+  const dirStat=lstatSync(fontDir);
+  if(!dirStat.isDirectory()||dirStat.isSymbolicLink())
+    throw Error('Staged Bostan fonts directory is not a safe real directory');
+  const manifest=JSON.parse(readFileSync(resolve(rootDir,inventoryPath),'utf8'));
+  const sourceFonts=manifest.assets.filter(x=>x.path.startsWith('ui/public/fonts/'));
+  if(sourceFonts.length!==3)throw Error('Expected three Bostan board fonts');
+  const stagedEntries=readdirSync(fontDir).filter(name=>name.endsWith('.woff2')).sort();
+  const expected=sourceFonts.map(item=>basename(item.path)).sort();
+  if(JSON.stringify(stagedEntries)!==JSON.stringify(expected))
+    throw Error('Unreviewed or missing WOFF2 in staged Bostan UI');
+  for(const item of sourceFonts){
+    const stagePath=join(fontDir,basename(item.path));
+    const stat=lstatSync(stagePath);
+    if(!stat.isFile()||stat.isSymbolicLink()||stat.nlink!==1)
+      throw Error('Unsafe staged Bostan font payload');
+    if(createHash('sha256').update(readFileSync(stagePath)).digest('hex')!==item.sha256)
+      throw Error('Staged Bostan font does not match pinned source asset');
+  }
+  for(const legal of ['NOTICE.md','PaperMono-OFL.txt']){
+    const packaged=join(fontDir,legal);
+    const stat=lstatSync(packaged);
+    if(!stat.isFile()||stat.isSymbolicLink()||stat.nlink!==1)
+      throw Error('Staged Bostan font legal NOTICE missing or unsafe');
+    const original=readFileSync(resolve(rootDir,'ui/public/fonts',legal));
+    if(!readFileSync(packaged).equals(original))
+      throw Error('Staged Bostan font legal NOTICE differs from vetted source');
+  }
+  return {schema:'bostan.private-staged-ui-font-license.v1',passed:true,
+    releaseQualified:false,stagedBoardFonts:sourceFonts.length,
+    stagedLegalFiles:2,byteIdenticalAssets:true,sourceCopyrightPreserved:true,
+    fullDependencyLicenseAuditComplete:false,paidProvidersUsed:false};
+}
 const entry=process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url);
 if(entry){
   const args=process.argv.slice(2);
@@ -94,8 +140,11 @@ if(entry){
   else if(args.length===1&&args[0]==='--check'){
     try{console.log(JSON.stringify(verifyBundledFontNotices(),null,2))}
     catch(err){console.error('Bostan bundled font/NOTICE integrity gate failed:',err.message);process.exitCode=1}
+  }else if(args.length===2&&args[0]==='--verify-stage'){
+    try{console.log(JSON.stringify(verifyStagedBoardFonts(args[1]),null,2))}
+    catch(err){console.error('Bostan staged UI font/NOTICE gate failed:',err.message);process.exitCode=1}
   }else{
-    console.error('Usage: node scripts/bostan-private-bundled-font-license-gate.mjs [--plan|--check]');
+    console.error('Usage: node scripts/bostan-private-bundled-font-license-gate.mjs [--plan|--check|--verify-stage <absolute-ui-dist>]');
     process.exitCode=2;
   }
 }
