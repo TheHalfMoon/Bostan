@@ -18,7 +18,7 @@ New `scripts/bostan-root-command-targets.test.mjs` derives the expected package 
 ## Scoped verification
 
 - Mac ARM64 Node26: native source tests **3/3 PASS**. `pnpm --filter @bostan/db list --depth -1`, `@bostan/runner`, `@bostan/eval-kernel` all select the actual private workspace package successfully.
-- Windows 11 Node24.19 / pnpm9.12.0: native package-selection and new source tests require a separate actual run, with no PostgreSQL schema changes.
+- Windows 11 `Abdulaziz`, native PowerShell, Node **24.19.0**, pnpm **9.12.0**: checked out **exact B0-81 head** and ran **3/3 PASS** native source tests, followed by `pnpm --filter @bostan/db list --depth -1`, `pnpm --filter @bostan/runner list --depth -1`, and `pnpm --filter @bostan/eval-kernel list --depth -1`. All three resolved actual private Windows workspace manifests; final `B081_WINDOWS_ROOT_COMMAND_TARGETS_PASS`, exit 0. D: ~17.4 GiB free. No DB migration was executed.
 - A native Windows UI/typecheck and real PostgreSQL acceptance is **not implied by package metadata checks**; full Windows installed-application qualification remains open.
 
 ## Broader assessment
