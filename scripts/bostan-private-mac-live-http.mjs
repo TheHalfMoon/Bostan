@@ -9,6 +9,7 @@ import {existsSync, readFileSync, lstatSync, realpathSync, statfsSync, mkdtempSy
 import {createServer} from "node:net";
 import {basename, join} from "node:path";
 import {fileURLToPath} from "node:url";
+import {evaluateMacHttpEvidence,MAC_HTTP_LOG_LIMIT} from "./bostan-private-mac-http-evidence.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const ownedText="BOSTAN_PRIVATE_SYNTHETIC_ONLY\n";
@@ -93,31 +94,35 @@ if(args.length===0||(args.length===1&&args[0]==="--plan")){
         stdio:["ignore",fd,fd],
       });
     }finally{closeSync(fd);}
-    const withinBudget=statSync(logPath).size<=2*1024*1024;
-    const output=withinBudget?readFileSync(logPath,"utf8"):"";
-    const check=[
-      "BOSTAN_MAC_HTTP_POSTGRES_MIGRATED",
-      "BOSTAN_MAC_HTTP_PRIVATE_HEALTH_PASS",
-      "BOSTAN_MAC_HTTP_SYNTHETIC_SIGNUP_PASS",
-      "BOSTAN_MAC_HTTP_FIRST_ADMIN_CLAIM_PASS",
-      "BOSTAN_MAC_HTTP_POST_CLAIM_HEALTH_PASS",
-      "BOSTAN_MAC_HTTP_SERVER_SHUTDOWN_PASS",
-      "BOSTAN_MAC_HTTP_POSTGRES_CLEANUP_PASS",
-    ];
-    const flags=check.map(x=>output.includes(x+"\n"));
-    const qualified=result.status===0&&!result.error&&!result.signal&&
-      withinBudget&&flags.every(Boolean);
-    // Do not delete a data directory unless the test database was confirmed
-    // stopped. An uncertain fixture must be inspected, not silently removed.
-    if(flags[6])rmSync(home,{recursive:true,force:true});
+    const logBytes=statSync(logPath).size;
+    const evidence=evaluateMacHttpEvidence({
+      status:result.status,signal:result.signal,errorCode:result.error?.code,
+      logBytes,logText:logBytes<=MAC_HTTP_LOG_LIMIT?readFileSync(logPath,"utf8"):"",
+    });
+    // Keep uncertain fixtures intact for future owned-process inspection.
+    // Delete only after every marker, clean child exit and PostgreSQL teardown
+    // are jointly proven. Cleanup itself is part of qualification.
+    let homeCleaned=false;
+    if(evidence.macAuthenticatedHttpQualified){
+      try{rmSync(home,{recursive:true,force:true});homeCleaned=true;}
+      catch{homeCleaned=false;}
+    }
+    const qualified=evidence.macAuthenticatedHttpQualified&&homeCleaned;
+    const stages=evidence.stages;
     console.log(JSON.stringify({...spec,run:true,
       macAuthenticatedHttpQualified:qualified,
-      postgresMigrated:flags[0],privateHealth:flags[1],
-      syntheticSignup:flags[2],firstAdminClaim:flags[3],
-      postClaimHealthy:flags[4],serverShutdown:flags[5],
-      postgresCleanup:flags[6],elapsedSeconds:Math.round((Date.now()-t)/1000),
+      postgresMigrated:stages.BOSTAN_MAC_HTTP_POSTGRES_MIGRATED,
+      privateHealth:stages.BOSTAN_MAC_HTTP_PRIVATE_HEALTH_PASS,
+      syntheticSignup:stages.BOSTAN_MAC_HTTP_SYNTHETIC_SIGNUP_PASS,
+      firstAdminClaim:stages.BOSTAN_MAC_HTTP_FIRST_ADMIN_CLAIM_PASS,
+      postClaimHealthy:stages.BOSTAN_MAC_HTTP_POST_CLAIM_HEALTH_PASS,
+      serverShutdown:stages.BOSTAN_MAC_HTTP_SERVER_SHUTDOWN_PASS,
+      postgresCleanup:stages.BOSTAN_MAC_HTTP_POSTGRES_CLEANUP_PASS,
+      ownedFixtureCleaned:homeCleaned,
+      elapsedSeconds:Math.round((Date.now()-t)/1000),
       timeout:result.error?.code==="ETIMEDOUT",
-      outcome:qualified?"pass":"failed_or_incomplete"}));
+      outcome:qualified?"pass":
+        evidence.outcome==="pass"?"owned_fixture_cleanup_failed":evidence.outcome}));
     if(!qualified)process.exitCode=1;
   }
 }else if(args.length===1&&args[0]==="--child"){
