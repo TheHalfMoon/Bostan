@@ -60,3 +60,17 @@ test("fail-closed evidence includes termination and real post-claim health",()=>
   assert.match(source,/process\.exit\(process\.exitCode\|\|0\)/);
   assert.doesNotMatch(source,/\.\.\.process\.env|console\.error\(error\)|JSON\.stringify\(process\.env\)/);
 });
+
+test("native auth flow rejects anonymous/duplicate claims and verifies matching board user",()=>{
+ assert.match(source,/anonymousClaim\.status!==401/);
+ assert.match(source,/sessionResponse\.status!==200/);
+ assert.match(source,/sessionBody\?\.user\?\.id!==payload\.user\.id/);
+ assert.match(source,/sessionBody\?\.user\?\.email!==email/);
+ assert.match(source,/sessionBody\?\.session\?\.userId!==payload\.user\.id/);
+ assert.match(source,/repeated\.status!==409/);
+ for(const stage of [
+  "BOSTAN_MAC_HTTP_ANONYMOUS_CLAIM_DENIED",
+  "BOSTAN_MAC_HTTP_SIGNED_IN_SESSION_PASS",
+  "BOSTAN_MAC_HTTP_REPEAT_CLAIM_DENIED",
+ ])assert.ok(source.includes(stage));
+});
