@@ -68,4 +68,6 @@ test('offline Chromium verification blocks service-worker bypass and external or
   assert.match(browserSource,/url\.origin!==origin/);
   assert.match(browserSource,/route\.abort\('blockedbyclient'\)/);
   assert.match(browserSource,/assert\.equal\(nonlocalRequests,0/);
+  assert.ok(browserSource.includes('waitForFunction(()=>/Bostan/i.test(document.body.innerText)'));
+
 });

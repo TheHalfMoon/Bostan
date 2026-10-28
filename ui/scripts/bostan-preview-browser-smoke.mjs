@@ -63,7 +63,7 @@ async function main(){
     });
     const response=await page.goto(origin,{waitUntil:'domcontentloaded',timeout:20000});
     assert.equal(response?.status(),200,'Bostan static preview must serve HTTP 200');
-    await page.waitForFunction(()=>document.body.innerText.trim().length>0,null,{timeout:15000});
+    await page.waitForFunction(()=>/Bostan/i.test(document.body.innerText),null,{timeout:15000});
     const title=await page.title();const visible=await page.locator('body').innerText();
     assert.equal(title,'Bostan');
     assert.match(visible,/Bostan/i,'first paint must display Bostan identity');
