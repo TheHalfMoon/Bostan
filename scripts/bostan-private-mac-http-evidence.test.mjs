@@ -5,11 +5,11 @@ import {evaluateMacHttpEvidence as audit,MAC_HTTP_REQUIRED_STAGES as STAGES, MAC
 const log=(lines=STAGES)=>[...lines,""].join("\n");
 const receipt=(text=log(), extra={})=>({status:0,signal:null,errorCode:null,logBytes:Buffer.byteLength(text),logText:text,...extra});
 
-test("exactly fifteen ordered real stage markers and clean child exit qualify",()=>{
+test("exactly sixteen ordered real stage markers and clean child exit qualify",()=>{
  const p=audit(receipt());
  assert.equal(p.macAuthenticatedHttpQualified,true);
  assert.equal(p.outcome,"pass");
- assert.equal(Object.values(p.stages).filter(Boolean).length,15);
+ assert.equal(Object.values(p.stages).filter(Boolean).length,16);
 });
 test("missing, duplicate, and reordered stages are never qualified",()=>{
  for(const ls of [STAGES.slice(0,-1),[...STAGES,STAGES[3]],[STAGES[1],STAGES[0],...STAGES.slice(2)]]){
@@ -55,7 +55,7 @@ test("anonymous denial, bound board session and replay conflict are mandatory",(
   "BOSTAN_MAC_HTTP_SIGNED_IN_SESSION_PASS",
   "BOSTAN_MAC_HTTP_REPEAT_CLAIM_DENIED",
  ];
- assert.equal(STAGES.length,15);
+ assert.equal(STAGES.length,16);
  for(const stage of authStages){
   assert.equal(STAGES.filter(x=>x===stage).length,1);
   const without=STAGES.filter(x=>x!==stage);
@@ -70,11 +70,12 @@ test("cross-origin, missing-origin and unchanged bootstrap state are mandatory o
  const csrfStages=[
   "BOSTAN_MAC_HTTP_CROSS_ORIGIN_CLAIM_DENIED",
   "BOSTAN_MAC_HTTP_SPOOFED_REFERER_CLAIM_DENIED",
+  "BOSTAN_MAC_HTTP_CROSS_SCHEME_CLAIM_DENIED",
   "BOSTAN_MAC_HTTP_NONCANONICAL_ORIGIN_DENIED",
   "BOSTAN_MAC_HTTP_MISSING_ORIGIN_CLAIM_DENIED",
   "BOSTAN_MAC_HTTP_DENIED_CLAIMS_PRESERVE_PENDING",
  ];
- assert.equal(STAGES.length,15);
+ assert.equal(STAGES.length,16);
  for(const stage of csrfStages){
   assert.equal(STAGES.filter(x=>x===stage).length,1);
   const p=audit(receipt(log(STAGES.filter(x=>x!==stage))));
