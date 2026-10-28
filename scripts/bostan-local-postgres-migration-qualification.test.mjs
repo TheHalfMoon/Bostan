@@ -30,3 +30,14 @@ test('live PostgreSQL qualification must isolate cluster and always stop it befo
   assert.match(source,/pg_ctl', \['-D', cluster, '-m', 'immediate', '-w', 'stop'/);
   assert.match(source,/releaseQualified:false/);
 });
+
+test('Windows PostgreSQL smoke is portable and does not rely on Unix which',()=>{
+  assert.doesNotMatch(source, /exec\('which'/);
+  assert.match(source, /exec\(bin, \['--version'\]/);
+  assert.match(source, /process\.platform === 'win32'/);
+  assert.match(source, /'pnpm\.cmd'/);
+  assert.match(source, /'cmd\.exe'/);
+  assert.match(source, /migrateDatabase\(restoreEnv, 120_000\)/);
+  assert.match(source, /bostan-private-local-cloud-isolation\.mjs/);
+  assert.match(source, /process\.platform === 'win32' \? '' : ' -c unix_socket_directories='/);
+});

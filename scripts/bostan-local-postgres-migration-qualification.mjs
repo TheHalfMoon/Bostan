@@ -38,8 +38,22 @@ async function availablePort() {
   } finally { await new Promise(resolve => socket.close(resolve)); }
 }
 
+// On Windows, pnpm is a .cmd shim, which spawnSync cannot invoke as a native
+// executable. Keep shell tokens fixed; never embed private paths in commands.
+function migrateDatabase(env, timeout) {
+  const args = ['--filter', '@bostan/db', 'migrate'];
+  return process.platform === 'win32'
+    ? exec(process.env.ComSpec || 'cmd.exe', ['/d', '/c', 'pnpm.cmd', ...args], {env, timeout})
+    : exec('pnpm', args, {env, timeout});
+}
+
 async function run() {
-  for (const bin of ['initdb', 'pg_ctl', 'createdb', 'psql', 'pg_dump', 'pg_restore']) exec('which', [bin]);
+  // Probe PostgreSQL CLI directly; POSIX path lookup is unavailable on Windows.
+  for (const bin of ['initdb', 'pg_ctl', 'createdb', 'psql', 'pg_dump', 'pg_restore']) {
+    exec(bin, ['--version'], { timeout: 10_000 });
+  }
+  // Refuse managed Cloud signals before any scratch database creation.
+  exec(process.execPath, [join(root, 'scripts/bostan-private-local-cloud-isolation.mjs'), '--check']);
   const ephemeral = mkdtempSync(join(tmpdir(), 'bostan-pg-qualification-'));
   const cluster = join(ephemeral, 'cluster');
   const socketDir = join(ephemeral, 'sockets');
@@ -58,20 +72,24 @@ async function run() {
   try {
     console.log('Preparing fresh isolated PostgreSQL cluster (loopback only, no existing data).');
     exec('initdb', ['--no-instructions', '--no-sync', '--encoding=UTF8', '--locale=C', `--username=${identity}`, '--auth-local=trust', '--auth-host=trust', '-D', cluster], {timeout:60_000});
-    exec('pg_ctl', ['-D', cluster, '-l', join(ephemeral, 'postgres.log'), '-o', `-c listen_addresses=127.0.0.1 -c port=${port} -c unix_socket_directories=${socketDir} -c fsync=off`, '-w', 'start'], {timeout:45_000});
+    const postgresArgs = '-c listen_addresses=127.0.0.1 -c port=' + port +
+      (process.platform === 'win32' ? '' : ' -c unix_socket_directories=' + socketDir) +
+      ' -c fsync=off';
+    exec('pg_ctl', ['-D', cluster, '-l', join(ephemeral, 'postgres.log'), '-o',
+      postgresArgs, '-w', 'start'], {timeout:45_000});
     started = true;
     exec('createdb', ['-h', '127.0.0.1', '-p', String(port), '-U', identity, database], {env:isolatedEnv});
     const psql = statement => exec('psql', ['-X', '-A', '-t', '-v', 'ON_ERROR_STOP=1', '-c', statement], {env:isolatedEnv, timeout:30_000});
     assert.equal(psql('select current_database()'), database, 'must operate only on the newly created scratch DB');
     const initialTables = Number(psql("select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE'"));
     assert.equal(initialTables, 0, 'fresh DB must not have preexisting public tables');
-    const first = exec('pnpm', ['--filter', '@bostan/db', 'migrate'], {env:isolatedEnv, timeout:240_000});
+    const first = migrateDatabase(isolatedEnv, 240_000);
     assert.match(first, /Migrations complete/, 'initial migration must finish completely');
     const tableCount = Number(psql("select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE'"));
     const migrationCount = Number(psql('select count(*) from drizzle.__drizzle_migrations'));
     assert.ok(tableCount > 0, 'Bostan must create application schema tables');
     assert.ok(migrationCount > 0, 'the migration journal must record migration history');
-    const second = exec('pnpm', ['--filter', '@bostan/db', 'migrate'], {env:isolatedEnv, timeout:120_000});
+    const second = migrateDatabase(isolatedEnv, 120_000);
     assert.match(second, /No pending migrations/, 'repeated application must be idempotent');
     assert.equal(Number(psql('select count(*) from drizzle.__drizzle_migrations')), migrationCount);
     assert.equal(Number(psql("select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE'")), tableCount);
@@ -89,7 +107,7 @@ async function run() {
     assert.equal(restoredSql('select evidence from bostan_qualification_probe.roundtrip where id=1'),'bostan-restored-data');
     assert.equal(Number(restoredSql('select count(*) from drizzle.__drizzle_migrations')), migrationCount);
     assert.equal(Number(restoredSql("select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE'")), tableCount);
-    const restoredMigration = exec('pnpm', ['--filter','@bostan/db','migrate'], {env:restoreEnv, timeout:120_000});
+    const restoredMigration = migrateDatabase(restoreEnv, 120_000);
     assert.match(restoredMigration, /No pending migrations/, 'a restored database must preserve migration state');
     console.log(JSON.stringify({kind:'bostan.local-postgres-migration.v1',releaseQualified:false,postgresVersion:exec('psql', ['--version']),isolated:true,localhostOnly:true,initialTables,tableCount,migrationJournalEntries:migrationCount,repeatedMigration:'no-op',backupRestore:'verified',restoredMigration:'no-op',roundTripData:'verified',externalServices:false},null,2));
   } finally {
