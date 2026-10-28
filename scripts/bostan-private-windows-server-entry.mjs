@@ -8,6 +8,7 @@ import {existsSync,readFileSync,lstatSync} from "node:fs";
 import {basename,isAbsolute} from "node:path";
 import {fileURLToPath} from "node:url";
 import {parsePrivateWindowsQaWave} from "./bostan-private-windows-qa-wave.mjs";
+import {safeWindowsStartupSite,safeWindowsStartupCode,safeWindowsMissingPackage,safeWindowsMissingLocalModule} from "./bostan-private-windows-failure-site.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const marker=process.env.BOSTAN_PRIVATE_QA_MARKER;
@@ -49,5 +50,11 @@ run().catch(error=>{
     ?error.name:"other";
   stage("runtime_failed");
   process.stderr.write("BOSTAN_WIN_SERVER_ERROR_TYPE="+kind+"\n");
+  // Emit ONLY a verified repo-relative source frame. Never echo thrown text.
+  process.stderr.write("BOSTAN_WIN_SERVER_ERROR_SITE="+
+    safeWindowsStartupSite(error instanceof Error ? error.stack : null,root)+"\n");
+  process.stderr.write("BOSTAN_WIN_SERVER_ERROR_CODE="+safeWindowsStartupCode(error)+"\n");
+  process.stderr.write("BOSTAN_WIN_SERVER_MISSING_PACKAGE="+safeWindowsMissingPackage(error)+"\n");
+  process.stderr.write("BOSTAN_WIN_SERVER_MISSING_LOCAL="+safeWindowsMissingLocalModule(error,root)+"\n");
   process.exitCode=1;
 });

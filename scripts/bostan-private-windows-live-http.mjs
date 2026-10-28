@@ -277,6 +277,16 @@ try{
     /SyntaxError/.test(serverOutput)?"syntax_error":
     /Error/.test(serverOutput)?"server_startup_error":"no_server_diagnostic";
   console.error("BOSTAN_WINDOWS_LIVE_SERVER_DIAGNOSTIC="+diagnostic);
+  // The child emits only a whitelisted repository-relative TypeScript frame.
+  // Reject any unrecognized value instead of printing raw backend stderr.
+  const sites=[...serverOutput.matchAll(/(?:^|\n)BOSTAN_WIN_SERVER_ERROR_SITE=(unknown|(?:server\/src|packages)\/[a-zA-Z0-9_/-]+\.(?:ts|tsx|js|mjs):[1-9][0-9]{0,5})(?:\r?\n|$)/g)];
+  console.error("BOSTAN_WINDOWS_LIVE_SERVER_SOURCE_SITE="+(sites.at(-1)?.[1]||"unknown"));
+  const codes=[...serverOutput.matchAll(/(?:^|\n)BOSTAN_WIN_SERVER_ERROR_CODE=(ENOENT|EACCES|EPERM|EADDRINUSE|ECONNREFUSED|ERR_MODULE_NOT_FOUND|MODULE_NOT_FOUND|ERR_PACKAGE_PATH_NOT_EXPORTED|42P01|42703|28P01|23505|unknown)(?:\r?\n|$)/g)];
+  console.error("BOSTAN_WINDOWS_LIVE_SERVER_ERROR_CODE="+(codes.at(-1)?.[1]||"unknown"));
+  const misses=[...serverOutput.matchAll(/(?:^|\n)BOSTAN_WIN_SERVER_MISSING_PACKAGE=(unknown|package:(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*)(?:\r?\n|$)/gi)];
+  console.error("BOSTAN_WINDOWS_LIVE_MISSING_PACKAGE="+(misses.at(-1)?.[1]||"unknown"));
+  const locals=[...serverOutput.matchAll(/(?:^|\n)BOSTAN_WIN_SERVER_MISSING_LOCAL=(unknown|repo:(?:packages|server)\/[a-zA-Z0-9_./-]+\.(?:ts|tsx|js|mjs|json))(?:\r?\n|$)/g)];
+  console.error("BOSTAN_WINDOWS_LIVE_MISSING_LOCAL="+(locals.at(-1)?.[1]||"unknown"));
   // Loader/migration errors can include operator file paths, environment
   // values or connection strings. Never echo a raw exception message.
   const errorKind=error instanceof Error &&
