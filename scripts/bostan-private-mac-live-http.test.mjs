@@ -67,6 +67,8 @@ test("native auth flow rejects anonymous/duplicate claims and verifies matching 
  assert.match(source,/sessionBody\?\.user\?\.id!==payload\.user\.id/);
  assert.match(source,/sessionBody\?\.user\?\.email!==email/);
  assert.match(source,/sessionBody\?\.session\?\.userId!==payload\.user\.id/);
+ assert.match(source,/claimBody\?\.claimed!==true/);
+ assert.match(source,/claimBody\?\.userId!==payload\.user\.id/);
  assert.match(source,/repeated\.status!==409/);
  for(const stage of [
   "BOSTAN_MAC_HTTP_ANONYMOUS_CLAIM_DENIED",
