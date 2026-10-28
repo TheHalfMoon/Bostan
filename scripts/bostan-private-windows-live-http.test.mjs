@@ -1,0 +1,53 @@
+import {test} from "node:test";
+import assert from "node:assert/strict";
+import {spawnSync} from "node:child_process";
+import {readFileSync} from "node:fs";
+import {fileURLToPath} from "node:url";
+
+const file=fileURLToPath(new URL("./bostan-private-windows-live-http.mjs",import.meta.url));
+const source=readFileSync(file,"utf8");
+
+test("default plan is inert and does not claim Windows HTTP qualification",()=>{
+  const p=spawnSync(process.execPath,[file,"--plan"],{encoding:"utf8",timeout:8000});
+  assert.equal(p.status,0);
+  const receipt=JSON.parse(p.stdout);
+  assert.equal(receipt.run,false);
+  assert.equal(receipt.releaseQualified,false);
+  assert.equal(receipt.authenticatedBrowserQualified,false);
+  assert.equal(receipt.publishes,false);
+});
+test("unknown deploy and publish options are rejected",()=>{
+  for(const arg of ["--publish","--deploy","--cleanup"]){
+    const r=spawnSync(process.execPath,[file,arg],{encoding:"utf8",timeout:8000});
+    assert.equal(r.status,2);
+  }
+});
+test("the real app child receives only isolated environment keys",()=>{
+  assert.match(source,/buildPrivateWindowsHttpQaEnvironment\(\{/);
+  assert.match(source,/inherited:process\.env,home,origin,connectionString:db\.connectionString/);
+  assert.match(source,/mkdirSync\(env\.APPDATA/);
+  assert.match(source,/mkdirSync\(env\.LOCALAPPDATA/);
+  assert.doesNotMatch(source,/const env=\{\.\.\.process\.env/);
+  assert.doesNotMatch(source,/stdio:\["inherit"/);
+});
+test("success is reported only after real server exit and owned database cleanup",()=>{
+  const success=source.indexOf("windowsAuthenticatedHttpQualified:true");
+  const final=source.indexOf("}finally{");
+  const pg=source.indexOf("await db.cleanup()",final);
+  const home=source.indexOf("rmSync(home,",final);
+  const qualified=source.indexOf("const qualified=completedHttpChecks&&!failed&&serverClosed&&dbCleaned&&ownedHomeCleaned;");
+  assert.ok(final>0&&pg>final&&home>pg&&qualified>home&&success>qualified);
+  assert.match(source,/server\.exitCode!==null\|\|server\.signalCode!==null/);
+  assert.match(source,/readFileSync\(marker,"utf8"\)==="BOSTAN_PRIVATE_SYNTHETIC_ONLY"\+String\.fromCharCode\(10\)/);
+  assert.match(source,/manualOwnedFixtureInspectionRequired:!ownedHomeCleaned/);
+  assert.match(source,/noOrphanPostgresProcessVerified:false/);
+  assert.doesNotMatch(source,/if\(existsSync\(join\(home,"BOSTAN_QA_OWNED"\)\)&&lstatSync\(home\)/);
+});
+test("native Windows heavy work remains gated by disk and disposable ownership",()=>{
+  const resourceGate=source.indexOf("checkBostanWindowsDisk({workspace:root,tempDir:temp})");
+  const home=source.indexOf('const home=mkdtempSync(');
+  const database=source.indexOf("startEmbeddedPostgresTestDatabase");
+  assert.ok(resourceGate>0&&resourceGate<home&&resourceGate<database);
+  assert.match(source,/^if\(process\.platform!=="win32"/m);
+  assert.match(source,/BOSTAN_WINDOWS_LIVE_STORAGE_REFUSED/);
+});
