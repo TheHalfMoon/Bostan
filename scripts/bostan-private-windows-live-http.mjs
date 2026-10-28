@@ -208,7 +208,7 @@ try{
   if(serverClosed&&dbCleaned&&existsSync(marker)&&
      lstatSync(home).isDirectory()&&!lstatSync(home).isSymbolicLink()&&
      lstatSync(marker).isFile()&&!lstatSync(marker).isSymbolicLink()&&
-     readFileSync(marker,"utf8")==="BOSTAN_PRIVATE_SYNTHETIC_ONLY\\n"){
+     readFileSync(marker,"utf8")==="BOSTAN_PRIVATE_SYNTHETIC_ONLY"+String.fromCharCode(10)){
     try{rmSync(home,{recursive:true,force:true});ownedHomeCleaned=true;}
     catch{failed=true;console.error("Bostan QA owned fixture cleanup failed");}
   }
@@ -217,7 +217,8 @@ try{
     console.log(JSON.stringify({...spec,run:true,livePostgres:true,
       realHttpStatus:200,realSession:true,firstAdmin:true,
       serverClosed:true,postgresCleaned:true,ownedFixtureCleaned:true,
-      windowsAuthenticatedHttpQualified:true},null,2));
+      windowsAuthenticatedHttpQualified:true,
+      noOrphanPostgresProcessVerified:false},null,2));
   }else{
     failed=true;
     console.log(JSON.stringify({...spec,run:true,
