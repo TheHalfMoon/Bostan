@@ -7,15 +7,16 @@ import {
 
 const pass=({events=STAGES,...rest}={})=>evaluate({
   events, httpComplete:true,childClosed:true,spawnError:false,forceUsed:false,
-  postgresCleaned:true,ownedFixtureCleaned:true,priorFailure:false,...rest,
+  postgresCleaned:true,ownedFixtureCleaned:true,
+  postgresProcessTreeVerified:true,priorFailure:false,...rest,
 });
 
-test("all fifteen exact ordered stages and clean lifecycle qualify only HTTP",()=>{
+test("all sixteen exact ordered stages and clean lifecycle qualify only HTTP",()=>{
   const result=pass();
-  assert.equal(STAGES.length,15);
+  assert.equal(STAGES.length,16);
   assert.equal(result.outcome,"pass");
   assert.equal(result.windowsAuthenticatedHttpQualified,true);
-  assert.equal(result.noOrphanPostgresProcessVerified,false);
+  assert.equal(result.noOrphanPostgresProcessVerified,true);
   assert.equal(result.releaseQualified,false);
 });
 test("each missing stage refuses a green receipt",()=>{
@@ -39,7 +40,8 @@ test("duplicates and adjacent reorderings fail closed",()=>{
 test("each teardown or completion gate denies qualification when missing",()=>{
   for(const options of [
     {httpComplete:false},{childClosed:false},{spawnError:true},{forceUsed:true},
-    {postgresCleaned:false},{ownedFixtureCleaned:false},{priorFailure:true},
+    {postgresCleaned:false},{postgresProcessTreeVerified:false},
+    {ownedFixtureCleaned:false},{priorFailure:true},
     {httpComplete:1},{childClosed:"true"},{postgresCleaned:1},
   ]) {
     const proof=pass(options);
@@ -82,4 +84,12 @@ test("sparse event arrays cannot claim a clean receipt",()=>{
   const proof=pass({events:sparse});
   assert.equal(proof.windowsAuthenticatedHttpQualified,false);
   assert.equal(proof.outcome,"invalid_events");
+});
+
+test("a clean but unverified Windows PostgreSQL process tree cannot qualify",()=>{
+  const unverified=pass({postgresProcessTreeVerified:false});
+  assert.equal(unverified.windowsAuthenticatedHttpQualified,false);
+  assert.equal(unverified.noOrphanPostgresProcessVerified,false);
+  const stageMissing=pass({events:STAGES.filter(stage=>stage!=="BOSTAN_WINDOWS_LIVE_NO_POSTGRES_ORPHANS_PASS")});
+  assert.equal(stageMissing.windowsAuthenticatedHttpQualified,false);
 });
