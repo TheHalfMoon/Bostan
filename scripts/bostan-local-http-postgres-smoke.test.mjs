@@ -30,6 +30,9 @@ test('HTTP smoke uses disposable localhost postgres and isolated Bostan instance
   assert.match(contents,/bostan-private-staged-crud\.mjs --run --url/);
   assert.match(contents,/node_modules\/@bostan\/db\/dist\/migrate\.js/);
   assert.match(contents,/bootstrapStatus==="ready"/);
+  assert.match(contents,/bostan-private-local-cloud-isolation.mjs" --check/);
+  assert.match(contents,/Object.hasOwn\(data, 'cloud'\)/);
+  assert.match(contents,/externalCloudConfigured:false/);
   assert.match(contents,/HEALTH_ATTEMPTS=90/);
   assert.match(contents,/HEALTH_ATTEMPTS=300/);
   assert.match(contents,/BOSTAN_LINUX_PRIVATE_COLD_BOOT_QA/);
@@ -45,4 +48,16 @@ test('HTTP smoke uses disposable localhost postgres and isolated Bostan instance
   assert.match(contents,/pg_ctl -D "\$PGDATA" -m immediate -w stop/);
   assert.match(contents,/kill -TERM "\$SPID"/);
   assert.doesNotMatch(contents,/\b(?:publish|deploy|release)\s+\S+\s*$/m);
+});
+
+
+test('actual local PostgreSQL HTTP runner refuses inherited Cloud keys before making a QA database',()=>{
+  const result=spawnSync('bash',[script,'--run'],{
+    encoding:'utf8',timeout:5000,
+    env:{...process.env,PAPERCLIP_CLOUD_TENANT_SERVER_TOKEN:'fixture-secret-must-not-print'},
+  });
+  assert.equal(result.status,2,result.stderr);
+  assert.match(result.stderr,/PAPERCLIP_CLOUD_TENANT_SERVER_TOKEN/);
+  assert.ok(!result.stderr.includes('fixture-secret-must-not-print'));
+  assert.doesNotMatch(result.stdout,/MIGRATED|CLEANUP_COMPLETED|BOSTAN_BOOT_BANNER_QUALIFIED/);
 });

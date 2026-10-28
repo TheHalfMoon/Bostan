@@ -18,6 +18,10 @@ if ! { [ "$#" -eq 1 ] && { [ "$1" = "--run" ] || [ "$1" = "--run-dist" ]; }; } &
 fi
 umask 077
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+# Before creating any temporary DB/stage artifacts, refuse inherited managed
+# upstream Cloud settings rather than silently changing deployment semantics.
+# This QA runner is localhost/self-hosted only. No actual Cloud mode is tested.
+node "$REPO/scripts/bostan-private-local-cloud-isolation.mjs" --check
 # A built artifact must already exist; never fall back to TypeScript in dist mode.
 MODE="$1"
 STAGE=""
@@ -145,6 +149,7 @@ const data=JSON.parse(readFileSync(process.argv[2], 'utf8'));
 assert.equal(data.status, 'ok');
 assert.equal(data.deploymentMode, process.env.BOSTAN_AUTHZ_EXPECTED_MODE === '1' ? 'authenticated' : 'local_trusted');
 assert.equal(data.deploymentExposure, 'private');
+assert.equal(Object.hasOwn(data, 'cloud'), false, 'Private localhost QA must not advertise managed Cloud metadata');
 if (process.env.BOSTAN_AUTHZ_EXPECTED_MODE === '1') {
   // Anonymous health intentionally REDACTS authReady and reports the clean,
   // unclaimed instance until a first admin user is bootstrapped.
@@ -154,7 +159,7 @@ if (process.env.BOSTAN_AUTHZ_EXPECTED_MODE === '1') {
   assert.equal(data.authReady, true);
   assert.equal(data.bootstrapStatus, 'ready');
 }
-console.log(JSON.stringify({kind:'bostan.local-postgres-http-smoke.v1',releaseQualified:false,livePostgres:true,httpStatus:200,health:data.status,mode:data.deploymentMode,exposure:data.deploymentExposure,authReady:data.authReady,bootstrapStatus:data.bootstrapStatus,externalModelsUsed:false},null,2));
+console.log(JSON.stringify({kind:'bostan.local-postgres-http-smoke.v1',releaseQualified:false,livePostgres:true,httpStatus:200,health:data.status,mode:data.deploymentMode,exposure:data.deploymentExposure,authReady:data.authReady,bootstrapStatus:data.bootstrapStatus,externalCloudConfigured:false,externalModelsUsed:false},null,2));
 NODE
 else
   echo "HEALTH_FAILED status=$status attempts=$HEALTH_ATTEMPTS"
