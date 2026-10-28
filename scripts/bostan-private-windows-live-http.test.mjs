@@ -37,7 +37,11 @@ test("success is reported only after real server exit and owned database cleanup
   const home=source.indexOf("rmSync(home,",final);
   const qualified=source.indexOf("const qualified=completedHttpChecks&&!failed&&serverClosed&&dbCleaned&&ownedHomeCleaned;");
   assert.ok(final>0&&pg>final&&home>pg&&qualified>home&&success>qualified);
-  assert.match(source,/server\.exitCode!==null\|\|server\.signalCode!==null/);
+  assert.match(source,/serverObserver=observeOwnedQaChild\(server\)/);
+  assert.match(source,/const childState=await serverObserver\.stop\(\)/);
+  assert.match(source,/serverClosed=childState\.closed&&!childState\.spawnError/);
+  assert.match(source,/if\(childState\.forceUsed\)/);
+  assert.doesNotMatch(source,/const stopped=\(\)=>server\.exitCode/);
   assert.match(source,/readFileSync\(marker,"utf8"\)==="BOSTAN_PRIVATE_SYNTHETIC_ONLY"\+String\.fromCharCode\(10\)/);
   assert.match(source,/manualOwnedFixtureInspectionRequired:!ownedHomeCleaned/);
   assert.match(source,/noOrphanPostgresProcessVerified:false/);
@@ -50,4 +54,15 @@ test("native Windows heavy work remains gated by disk and disposable ownership",
   assert.ok(resourceGate>0&&resourceGate<home&&resourceGate<database);
   assert.match(source,/^if\(process\.platform!=="win32"/m);
   assert.match(source,/BOSTAN_WINDOWS_LIVE_STORAGE_REFUSED/);
+});
+
+test("failed child spawn cannot produce a green HTTP or cleanup receipt",()=>{
+  assert.match(source,/if\(serverObserver\.exitedOrFailed\)break/);
+  assert.match(source,/BOSTAN_WINDOWS_LIVE_SERVER_SPAWN_FAILED/);
+  assert.match(source,/BOSTAN_WINDOWS_LIVE_SERVER_TEARDOWN_UNCERTAIN/);
+  assert.match(source,/BOSTAN_WINDOWS_LIVE_SERVER_FORCE_TERMINATION/);
+  assert.match(source,/if\(serverClosed\)\{/);
+  const observer=source.indexOf("serverObserver=observeOwnedQaChild(server)");
+  const streams=source.indexOf("for(const stream of [server.stdout,server.stderr])");
+  assert.ok(observer>0&&observer<streams);
 });
