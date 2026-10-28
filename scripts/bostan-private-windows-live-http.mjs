@@ -48,6 +48,8 @@ const sleep=ms=>new Promise(ok=>setTimeout(ok,ms));
 let db=null,server=null;
 let failed=false;
 let serverOutput="";
+let lastHealthStatus="no_response";
+let serverStartedAt=0;
 const home=mkdtempSync(join(temp,"bostan-private-auth-http-"));
 writeFileSync(join(home,"BOSTAN_QA_OWNED"),"BOSTAN_PRIVATE_SYNTHETIC_ONLY\n");
 let started=false;
@@ -72,7 +74,7 @@ try{
   for(const key of Object.keys(env)){
     if(/^(OPENAI|ANTHROPIC|OPENROUTER|GEMINI|GOOGLE|XAI|AWS_|AZURE_|SENTRY|OTEL_EXPORTER|NODE_OPTIONS)/i.test(key))delete env[key];
   }
-  server=spawn(process.execPath,["--import","tsx","src/index.ts"],{
+  server=spawn(process.execPath,["--import","tsx","../scripts/bostan-private-windows-server-entry.mjs"],{
     cwd:join(root,"server"),env,windowsHide:true,stdio:["ignore","pipe","pipe"],
   });
   for(const stream of [server.stdout,server.stderr])stream?.on("data",part=>{
@@ -80,12 +82,19 @@ try{
   });
   started=true;
   let healthy=false;
-  for(let i=0;i<100;i++){
+  serverStartedAt=Date.now();
+  for(let i=0;i<180;i++){
     if(server.exitCode!==null)break;
     try{
       const r=await fetch(origin+"/api/health",{signal:AbortSignal.timeout(1500)});
+      lastHealthStatus="http_"+r.status;
       if(r.status===200){
         const j=await r.json();
+        if(j&&typeof j==="object"){
+          lastHealthStatus="health_"+(j.status==="ok"?"ok":"non_ok")+"_"+
+            (j.deploymentMode==="authenticated"?"authenticated":"other_mode")+"_"+
+            (j.bootstrapStatus==="bootstrap_pending"?"pending":"other_bootstrap");
+        }
         if(j.status==="ok"&&j.deploymentMode==="authenticated"&&
            j.deploymentExposure==="private"&&j.bootstrapStatus==="bootstrap_pending"&&
            !Object.hasOwn(j,"cloud")){
@@ -123,6 +132,11 @@ try{
     realHttpStatus:200,realSession:true,firstAdmin:true},null,2));
 }catch(error){
   failed=true;
+  const stages=[...serverOutput.matchAll(/BOSTAN_WIN_SERVER_STAGE=(static_import_start|static_import_complete|runtime_start|runtime_ready|runtime_failed)/g)];
+  const stage=stages.at(-1)?.[1]||"not_observed";
+  console.error("BOSTAN_WINDOWS_LIVE_IMPORT_STAGE="+stage);
+  console.error("BOSTAN_WINDOWS_LIVE_HTTP_OBSERVATION="+lastHealthStatus);
+  console.error("BOSTAN_WINDOWS_LIVE_SERVER_SECONDS="+Math.round((Date.now()-serverStartedAt)/1000));
   const pkg=serverOutput.match(/Cannot find package ['"](@bostan\/[a-z0-9_-]+)['"]/i);
   const diagnostic=pkg?"missing_bostan_package:"+pkg[1]:
     /ERR_MODULE_NOT_FOUND|Cannot find module/.test(serverOutput)?"missing_module":

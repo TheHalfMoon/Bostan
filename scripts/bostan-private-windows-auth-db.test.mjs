@@ -56,3 +56,19 @@ test("live server QA rejects publication and non-Windows execution",()=>{
     assert.match(got.stderr,/isolated Bostan/);
   }
 });
+
+test("Windows live probe separates static imports from runtime startup",()=>{
+  const stage=fileURLToPath(new URL("./bostan-private-windows-server-entry.mjs",import.meta.url));
+  const source=readFileSync(stage,"utf8");
+  assert.match(source,/BOSTAN_WIN_SERVER_STAGE=/);
+  assert.match(source,/static_import_start/);
+  assert.match(source,/static_import_complete/);
+  assert.match(source,/runtime_start/);
+  assert.match(source,/runtime_ready/);
+  assert.match(source,/runtime_failed/);
+  assert.match(liveSource,/BOSTAN_WINDOWS_LIVE_IMPORT_STAGE/);
+  assert.match(liveSource,/BOSTAN_WINDOWS_LIVE_HTTP_OBSERVATION/);
+  assert.match(liveSource,/BOSTAN_WINDOWS_LIVE_SERVER_SECONDS/);
+  assert.match(liveSource,/if\(failed\)process\.exit\(1\)/);
+  assert.doesNotMatch(source,/console\.error\(error\)|JSON\.stringify\(process\.env\)/);
+});
