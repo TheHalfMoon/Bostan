@@ -110,8 +110,18 @@ else
   node --import tsx src/index.ts > "$TMP/server.log" 2>&1 & SPID=$!
   fi
 fi
+# The compiled Linux server on a slow mounted WSL workspace may need longer
+# to cold-import its dependency graph than a native ext4/Mac build. A narrow
+# opt-in allows only an already built disposable Linux compiled-dist process
+# extra bounded readiness probes; it never skips PG, auth, or health validation.
+HEALTH_ATTEMPTS=90
+if [ "$(uname -s)" = Linux ] && [ "$MODE" = --run-dist ] &&   [ "${BOSTAN_LINUX_PRIVATE_COLD_BOOT_QA:-0}" = 1 ] &&   [ "${BOSTAN_LINUX_PRIVATE_TMPFS_QA:-0}" = 1 ]; then
+  node "$REPO/scripts/bostan-private-linux-tmpfs-admission.mjs" --check >/dev/null
+  HEALTH_ATTEMPTS=300
+  echo BOSTAN_LINUX_COLD_BOOT_BOUNDED_QA_ADMITTED
+fi
 status=0
-for i in $(seq 1 90);do
+for i in $(seq 1 "$HEALTH_ATTEMPTS");do
   if ! kill -0 "$SPID" 2>/dev/null; then status=1;break;fi
   if curl -fsS --connect-timeout 1 --max-time 2 "http://127.0.0.1:$HTTPPORT/api/health" >"$TMP/health.json" 2>/dev/null; then
     # HTTP can be available before asynchronous startup recovery reaches ready.
@@ -120,6 +130,9 @@ for i in $(seq 1 90);do
     else
       if node --input-type=module -e 'import{readFileSync}from"node:fs";const j=JSON.parse(readFileSync(process.argv[1],"utf8"));process.exit(j.status==="ok"&&j.bootstrapStatus==="ready"?0:1)' "$TMP/health.json";then status=2;break;fi
     fi
+  fi
+  if [ $((i % 30)) -eq 0 ]; then
+    printf 'BOSTAN_HTTP_BOOT_PENDING attempt=%s/%s process_alive=1\n' "$i" "$HEALTH_ATTEMPTS"
   fi
   sleep 1
 done
@@ -144,7 +157,15 @@ if (process.env.BOSTAN_AUTHZ_EXPECTED_MODE === '1') {
 console.log(JSON.stringify({kind:'bostan.local-postgres-http-smoke.v1',releaseQualified:false,livePostgres:true,httpStatus:200,health:data.status,mode:data.deploymentMode,exposure:data.deploymentExposure,authReady:data.authReady,bootstrapStatus:data.bootstrapStatus,externalModelsUsed:false},null,2));
 NODE
 else
-  echo "HEALTH_FAILED status=$status";tail -40 "$TMP/server.log";exit 1
+  echo "HEALTH_FAILED status=$status attempts=$HEALTH_ATTEMPTS"
+  if [ -s "$TMP/server.log" ]; then
+    # Synthetic localhost-only diagnostics. No credentials or full env.
+    echo BOSTAN_HTTP_STARTUP_DIAGNOSTIC_LOG_PRESENT
+    tail -40 "$TMP/server.log"
+  else
+    echo BOSTAN_HTTP_STARTUP_DIAGNOSTIC_LOG_EMPTY
+  fi
+  exit 1
 fi
 # Verify the actual terminal-facing identity on the booted server, not just TS source.
 if ! grep -Fq 'bostan' "$TMP/server.log"; then echo 'BOSTAN_BANNER_MISSING'; exit 1; fi

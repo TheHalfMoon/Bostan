@@ -30,6 +30,13 @@ test('HTTP smoke uses disposable localhost postgres and isolated Bostan instance
   assert.match(contents,/bostan-private-staged-crud\.mjs --run --url/);
   assert.match(contents,/node_modules\/@bostan\/db\/dist\/migrate\.js/);
   assert.match(contents,/bootstrapStatus==="ready"/);
+  assert.match(contents,/HEALTH_ATTEMPTS=90/);
+  assert.match(contents,/HEALTH_ATTEMPTS=300/);
+  assert.match(contents,/BOSTAN_LINUX_PRIVATE_COLD_BOOT_QA/);
+  assert.match(contents,/BOSTAN_LINUX_PRIVATE_TMPFS_QA/);
+  assert.match(contents,/bostan-private-linux-tmpfs-admission.mjs.*--check/);
+  assert.match(contents,/BOSTAN_HTTP_BOOT_PENDING/);
+  assert.match(contents,/BOSTAN_HTTP_STARTUP_DIAGNOSTIC_LOG_EMPTY/);
   assert.match(contents,/bostan-private-staged-server-check\.mjs.*--stage-root/);
   assert.match(contents,/TMP_ROOT.*bostan-live-http/);
   assert.match(contents,/case \"\$TMP\" in \"\$TMP_ROOT\"/);
