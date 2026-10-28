@@ -71,14 +71,14 @@ test("foreign manifests cannot qualify",()=>{
     assert.equal(fs.existsSync(path.join(root,"server/dist")),false);
   });
 });
-test("refuses symbolic input and output escapes",()=>{
+test("refuses symbolic input and output escapes",(t)=>{
   fixture((root,put)=>{
     const outside=fs.mkdtempSync(path.join(os.tmpdir(),"bostan-server-outside-"));
     try{
       put("server/dist/index.js","unrelated");
       const link=path.join(root,"server/src/onboarding-assets/link");
       try{fs.symlinkSync(outside,link,"dir");}
-      catch(e){if(["EPERM","EACCES"].includes(e.code))return;throw e;}
+      catch(e){if(["EPERM","EACCES"].includes(e.code)){t.skip("OS denies symlink creation");return;}throw e;}
       assert.throws(()=>copyServerBuildAssets(root),/linked build input or output/);
       assert.equal(fs.existsSync(path.join(root,"server/dist/onboarding-assets")),false);
     }finally{fs.rmSync(outside,{recursive:true,force:true});}
@@ -93,12 +93,12 @@ test("build command calls portable asset copier with no shell cp or mkdir",()=>{
   assert.doesNotMatch(pkg.scripts.build,/\b(?:mkdir|cp)\s+-/);
 });
 
-test("refuses dangling destination symlink before any copy",()=>{
+test("refuses dangling destination symlink before any copy",(t)=>{
   fixture((root)=>{
     const link=path.join(root,"server/dist/onboarding-assets");
     fs.mkdirSync(path.dirname(link),{recursive:true});
     try{fs.symlinkSync(path.join(root,"nonexistent-target"),link,"dir");}
-    catch(e){if(["EPERM","EACCES"].includes(e.code))return;throw e;}
+    catch(e){if(["EPERM","EACCES"].includes(e.code)){t.skip("OS denies symlink creation");return;}throw e;}
     assert.throws(()=>copyServerBuildAssets(root),/symlinked build destination/);
     assert.equal(fs.existsSync(path.join(root,"server/dist/built-ins")),false);
   });
