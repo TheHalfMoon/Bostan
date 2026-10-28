@@ -126,8 +126,23 @@ function protectWindowsTempQa(home, verifyOnly = false) {
   }
 }
 
-function sha256(value) {
-  return createHash("sha256").update(value).digest("hex");
+// B1-14: a hash of Buffer.concat(fileBytes) is NOT a file integrity proof.
+// Moving bytes across a file boundary preserves that hash. Bind each file's
+// relative name and exact byte length to its bytes, with a versioned domain.
+function payloadDigest(files) {
+  const hash = createHash("sha256");
+  hash.update("bostan-native-local-payload-v2\0");
+  for (const [name, bytes] of files) {
+    if (!Buffer.isBuffer(bytes) || typeof name !== "string") {
+      throw new Error("Invalid Bostan local payload input");
+    }
+    const nameBytes = Buffer.from(name, "utf8");
+    hash.update(String(nameBytes.length) + ":");
+    hash.update(nameBytes);
+    hash.update(":" + String(bytes.length) + ":");
+    hash.update(bytes);
+  }
+  return hash.digest("hex");
 }
 
 function sourcePayload() {
@@ -146,13 +161,18 @@ function sourcePayload() {
       bin: { bostan: "dist/bostan.js" },
     }, null, 2) + "\n")],
   ]);
-  return { files, digest: sha256(Buffer.concat([...files.values()])) };
+  return { files, digest: payloadDigest(files) };
 }
 
 function managedManifest(paths) {
   if (!inspect(paths.manifest, "file")) return null;
   const value = JSON.parse(fs.readFileSync(paths.manifest, "utf8"));
-  if (value?.schema !== 1 || value?.marker !== INSTALL_MARKER
+  if (value?.schema === 1 && value?.marker === INSTALL_MARKER) {
+    // Legacy v1 concatenated hashes do not bind file names or boundaries.
+    // Never auto-migrate, overwrite, or delete an existing v1 installation.
+    throw new Error("Legacy Bostan local CLI manifest is unverifiable; installed files retained");
+  }
+  if (value?.schema !== 2 || value?.marker !== INSTALL_MARKER
     || typeof value.version !== "string" || !/^[0-9A-Za-z.+-]+$/.test(value.version)
     || !/^[a-f0-9]{64}$/.test(value.digest)) {
     throw new Error("Unrecognized Bostan install manifest");
@@ -164,14 +184,14 @@ function managedManifest(paths) {
   if (!inspect(value.directory, "directory") || !inspect(path.join(value.directory, "dist"), "directory")) {
     throw new Error("Bostan installed payload is missing");
   }
-  const contents = [];
+  const contents = new Map();
   for (const file of ["dist/bostan.js", "dist/bostan-local-install.mjs",
     "dist/bostan-company-export-inspect.mjs", "dist/bostan-windows-acl.mjs", "package.json"]) {
     const item = path.join(value.directory, file);
     if (!inspect(item, "file")) throw new Error("Bostan installed file missing");
-    contents.push(fs.readFileSync(item));
+    contents.set(file, fs.readFileSync(item));
   }
-  if (sha256(Buffer.concat(contents)) !== value.digest) throw new Error("Bostan installed files were modified");
+  if (payloadDigest(contents) !== value.digest) throw new Error("Bostan installed file integrity was modified");
   const binContent = shimText(value.entry);
   if (!inspect(paths.shim, "file") || fs.readFileSync(paths.shim, "utf8") !== binContent) {
     throw new Error("Bostan managed shim is missing or changed");
@@ -238,7 +258,7 @@ export function installLocal(home) {
     exclusiveFile(paths.shim, shimText(entry), SHIM_MODE);
     installedShim = true;
     const manifest = {
-      schema: 1, marker: INSTALL_MARKER, version, digest: payload.digest,
+      schema: 2, marker: INSTALL_MARKER, version, digest: payload.digest,
       directory, entry,
     };
     wroteManifest = true;

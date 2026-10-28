@@ -30,7 +30,7 @@
     "build": "node scripts/build-bostan-preview.mjs",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
-    "bostan:smoke": "node --test src/__tests__/bostan-preview.test.mjs src/__tests__/bostan-local-install.test.mjs",
+    "bostan:smoke": "node --test src/__tests__/bostan-preview.test.mjs src/__tests__/bostan-local-install.test.mjs src/__tests__/bostan-local-install-integrity.test.mjs",
     "prepack": "node ../scripts/bostan-release-disabled.mjs",
     "prepublishOnly": "node ../scripts/bostan-release-disabled.mjs"
   },
