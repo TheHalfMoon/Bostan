@@ -7,6 +7,7 @@ import {readFileSync,statSync,statfsSync,readdirSync,realpathSync,existsSync} fr
 import {join,resolve,sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
+import {createRequire} from 'node:module';
 import {platform} from 'node:os';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
@@ -90,6 +91,26 @@ for(const [pkgPath,expected] of [
       '. Install --filter @bostan/ui... --filter @bostan/runner... with a frozen lockfile.');
     process.exit(2);
   }
+}
+if(withBrowser){
+  // A version-mismatched cached Chromium must fail BEFORE rebuilding the
+  // entire frontend. Probe the exact Playwright launch mode used by the smoke.
+  let chromium;
+  try {
+    ({chromium}=createRequire(join(root,'ui','package.json'))('@playwright/test'));
+  } catch {
+    console.error('Bostan Windows browser gate requires installed UI Playwright dependencies');
+    process.exit(2);
+  }
+  try {
+    const browser=await chromium.launch({headless:true,timeout:15000,env:inherited});
+    await browser.close();
+  } catch {
+    // Do not print browser paths or inherited user environment variables.
+    console.error('Bostan Windows browser gate requires its pinned local Chromium headless shell. Install the matching Playwright browser into a private local cache.');
+    process.exit(2);
+  }
+  console.log('BOSTAN_WINDOWS_OFFLINE_CHROMIUM_DEPENDENCY_ADMITTED');
 }
 run('pnpm --filter @bostan/plugin-sdk build');
 console.log('BOSTAN_WINDOWS_PRIVATE_PLUGIN_SDK_BUILT');

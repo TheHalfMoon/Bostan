@@ -52,6 +52,8 @@ test('real qualification is fixed to official UI typecheck, build, output owners
     "realpathSync(dist)", "npm_config_offline:'true'",
     "externalModelCalls:0",
     "Node >=24.11.0",
+    "chromium.launch({headless:true,timeout:15000,env:inherited})",
+    "BOSTAN_WINDOWS_OFFLINE_CHROMIUM_DEPENDENCY_ADMITTED",
     "'--run-browser'",
     "pnpm --filter @bostan/ui exec node scripts/bostan-preview-browser-smoke.mjs",
     "BOSTAN_WINDOWS_OFFLINE_CHROMIUM_FIRST_PAINT_PASS",
