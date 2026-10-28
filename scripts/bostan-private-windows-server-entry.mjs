@@ -7,6 +7,7 @@
 import {existsSync,readFileSync,lstatSync} from "node:fs";
 import {basename,isAbsolute} from "node:path";
 import {fileURLToPath} from "node:url";
+import {parsePrivateWindowsQaWave} from "./bostan-private-windows-qa-wave.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const marker=process.env.BOSTAN_PRIVATE_QA_MARKER;
@@ -15,7 +16,7 @@ try{database=new URL(process.env.DATABASE_URL);}catch{}
 const allowed =
   process.platform==="win32" &&
   process.env.BOSTAN_PRIVATE_QA_ENTRY==="B087_TEST_ONLY" &&
-  /^Bostan-B0[0-9]+-qa$/i.test(basename(root.replace(/[\\/]+$/,""))) &&
+  Boolean(parsePrivateWindowsQaWave(basename(root.replace(/[\\/]+$/,"")),"qa")) &&
   typeof marker==="string" && isAbsolute(marker) &&
   existsSync(marker) && !lstatSync(marker).isSymbolicLink() &&
   basename(marker)==="BOSTAN_QA_OWNED" &&
