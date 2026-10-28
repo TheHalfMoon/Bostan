@@ -81,11 +81,14 @@ test("real signed-in browser session cannot claim from untrusted or absent origi
  assert.match(source,/origin:"https:\/\/attacker\.example\.invalid"/);
  assert.match(source,/forgedOriginClaim\.status!==403/);
  assert.match(source,/spoofedRefererClaim\.status!==403/);
+ assert.match(source,/malformedOriginClaim\.status!==403/);
+ assert.match(source,/origin:origin\+"\/private\/path"/);
  assert.match(source,/referer:origin\+"\/dashboard"/);
  assert.match(source,/missingOriginClaim\.status!==403/);
  assert.match(source,/pendingBody\?\.bootstrapStatus!=="bootstrap_pending"/);
  assert.match(source,/BOSTAN_MAC_HTTP_CROSS_ORIGIN_CLAIM_DENIED/);
  assert.match(source,/BOSTAN_MAC_HTTP_SPOOFED_REFERER_CLAIM_DENIED/);
+ assert.match(source,/BOSTAN_MAC_HTTP_NONCANONICAL_ORIGIN_DENIED/);
  assert.match(source,/BOSTAN_MAC_HTTP_MISSING_ORIGIN_CLAIM_DENIED/);
  assert.match(source,/BOSTAN_MAC_HTTP_DENIED_CLAIMS_PRESERVE_PENDING/);
  // The missing-origin request cannot add a Referer or another trusted origin.
