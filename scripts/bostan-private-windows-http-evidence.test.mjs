@@ -11,9 +11,9 @@ const pass=({events=STAGES,...rest}={})=>evaluate({
   postgresProcessTreeVerified:true,priorFailure:false,...rest,
 });
 
-test("all sixteen exact ordered stages and clean lifecycle qualify only HTTP",()=>{
+test("all eighteen exact ordered stages and clean lifecycle qualify only HTTP",()=>{
   const result=pass();
-  assert.equal(STAGES.length,16);
+  assert.equal(STAGES.length,18);
   assert.equal(result.outcome,"pass");
   assert.equal(result.windowsAuthenticatedHttpQualified,true);
   assert.equal(result.noOrphanPostgresProcessVerified,true);
@@ -72,6 +72,8 @@ test("missing authenticated, anonymous and replay gates never qualify",()=>{
     "BOSTAN_WINDOWS_LIVE_ANONYMOUS_CLAIM_DENIED",
     "BOSTAN_WINDOWS_LIVE_SIGNED_IN_SESSION_PASS",
     "BOSTAN_WINDOWS_LIVE_CROSS_ORIGIN_CLAIM_DENIED",
+    "BOSTAN_WINDOWS_LIVE_CROSS_SCHEME_CLAIM_DENIED",
+    "BOSTAN_WINDOWS_LIVE_NONCANONICAL_ORIGIN_DENIED",
     "BOSTAN_WINDOWS_LIVE_REPEAT_CLAIM_DENIED",
     "BOSTAN_WINDOWS_LIVE_FIRST_ADMIN_CLAIM_PASS",
   ]) assert.equal(pass({events:STAGES.filter(s=>s!==stage)}).windowsAuthenticatedHttpQualified,false);
@@ -92,4 +94,15 @@ test("a clean but unverified Windows PostgreSQL process tree cannot qualify",()=
   assert.equal(unverified.noOrphanPostgresProcessVerified,false);
   const stageMissing=pass({events:STAGES.filter(stage=>stage!=="BOSTAN_WINDOWS_LIVE_NO_POSTGRES_ORPHANS_PASS")});
   assert.equal(stageMissing.windowsAuthenticatedHttpQualified,false);
+});
+
+test("scheme and Origin serialization denials are mandatory even with valid HTTP lifecycle",()=>{
+  for(const stage of [
+    "BOSTAN_WINDOWS_LIVE_CROSS_SCHEME_CLAIM_DENIED",
+    "BOSTAN_WINDOWS_LIVE_NONCANONICAL_ORIGIN_DENIED",
+  ]) {
+    const proof=pass({events:STAGES.filter(s=>s!==stage)});
+    assert.equal(proof.windowsAuthenticatedHttpQualified,false);
+    assert.equal(proof.outcome,"missing_duplicate_or_out_of_order_stage");
+  }
 });
