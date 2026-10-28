@@ -182,6 +182,28 @@ try{
     throw Error("Hostile Origin with trusted Referer was not forbidden");
   markHttpStage("BOSTAN_WINDOWS_LIVE_SPOOFED_REFERER_CLAIM_DENIED");
 
+  // Real browser Origins include the scheme. Matching host and port do not
+  // make an HTTPS Origin trusted for this HTTP-only loopback test server.
+  const crossScheme=await fetch(origin+"/api/bootstrap/claim",{
+    method:"POST",headers:{cookie,origin:origin.replace(/^http:/,"https:"),
+      "content-type":"application/json"},
+    body:"{}",redirect:"error",signal:AbortSignal.timeout(12000),
+  });
+  if(crossScheme.status!==403)
+    throw Error("Cross-scheme session claim was not forbidden");
+  markHttpStage("BOSTAN_WINDOWS_LIVE_CROSS_SCHEME_CLAIM_DENIED");
+
+  // A serialized browser Origin is only scheme + authority. A path is
+  // noncanonical even when it names the trusted host and Referer looks valid.
+  const noncanonicalOrigin=await fetch(origin+"/api/bootstrap/claim",{
+    method:"POST",headers:{cookie,origin:origin+"/private/path",
+      referer:origin+"/dashboard","content-type":"application/json"},
+    body:"{}",redirect:"error",signal:AbortSignal.timeout(12000),
+  });
+  if(noncanonicalOrigin.status!==403)
+    throw Error("Noncanonical Origin was accepted for session claim");
+  markHttpStage("BOSTAN_WINDOWS_LIVE_NONCANONICAL_ORIGIN_DENIED");
+
   const noOrigin=await fetch(origin+"/api/bootstrap/claim",{
     method:"POST",headers:{cookie,"content-type":"application/json"},
     body:"{}",redirect:"error",signal:AbortSignal.timeout(12000),
