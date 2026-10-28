@@ -17,7 +17,10 @@ try {
   foreach ($proc in (Get-CimInstance Win32_Process -Filter "Name = 'postgres.exe'")) {
     $exe = [string]$proc.ExecutablePath
     if ([string]::IsNullOrWhiteSpace($exe)) {
-      if ([string]$proc.CommandLine -like "*$rootPrefix*") { $uninspected++ }
+      # A process without an inspectable executable cannot be proven unrelated
+      # to this QA checkout. Never claim zero owned workers while it exists.
+      # Read-only: do not terminate or inspect unrelated process secrets.
+      $uninspected++
       continue
     }
     $full = [System.IO.Path]::GetFullPath($exe)
