@@ -25,7 +25,7 @@ On the B0-89 branch, a macOS source-only run reported:
 
 Branch reach counts **overlap**; they cannot be added. The count of bare package imports is for the entire scanned directory, not necessarily the entry-point closure. This is a **conservative lexical estimate**, not a complete TypeScript/Node runtime dependency graph: it omits dynamic imports, require(), package-level transitive imports, condition resolution and runtime initialization cost. Type-only import handling is best effort. Do not diagnose app.ts as the bottleneck merely because it has the largest reach.
 
-Mac Node test suite: 4/4 PASS, including multiline import/reexport, type-only and dynamic exclusion, cyclic imports, shared dependency deduplication, foreign entry refusal and default inert invocation. Native Windows retake outcome to be recorded after the exact branch is checked.
+Mac Node test suite: **4/4 PASS, 0 fail, 0 skipped**. Native Windows 11 Node 24.19.0, an isolated Bostan B0-89 branch checkout with no dependency installation: **4/4 PASS, 0 fail, 0 skipped**, read-only CLI **exit 0**. Mac and Windows independently reported the exact same source metrics (1,814 files scanned, 76 direct local imports, 1,390 reachable local modules). Tests cover multiline import/reexport, type-only and dynamic exclusion, cyclic imports, shared dependency deduplication, foreign entry refusal and default inert invocation.
 
 ## Next action
 
