@@ -7,6 +7,7 @@ import {createServer} from "node:net";
 import {basename,join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {checkBostanWindowsDisk} from "./bostan-private-windows-disk-admission.mjs";
+import {checkBostanWindowsMemory} from "./bostan-private-windows-memory-admission.mjs";
 import {buildPrivateWindowsHttpQaEnvironment} from "./bostan-private-windows-qa-env.mjs";
 import {parsePrivateWindowsQaWave,matchingPrivateWindowsQaWave} from "./bostan-private-windows-qa-wave.mjs";
 import {observeOwnedQaChild} from "./bostan-private-windows-child-lifecycle.mjs";
@@ -50,6 +51,11 @@ if(!admission.allowed){
   console.error(JSON.stringify(admission));
   process.exit(2);
 }
+const memoryAdmission=checkBostanWindowsMemory();
+if(!memoryAdmission.allowed){
+  console.error("BOSTAN_WINDOWS_LIVE_MEMORY_REFUSED="+memoryAdmission.reason);
+  process.exit(2);
+}
 async function availablePort(){
   const server=createServer();
   await new Promise((ok,fail)=>{server.once("error",fail);server.listen(0,"127.0.0.1",ok);});
@@ -82,6 +88,13 @@ try{
   const {startEmbeddedPostgresTestDatabase}=await import("../packages/db/src/test-embedded-postgres.js");
   db=await startEmbeddedPostgresTestDatabase("bostan-private-auth-http-db-");
   markHttpStage("BOSTAN_WINDOWS_LIVE_POSTGRES_MIGRATED");
+  // Recheck after the real migration, before starting the memory-heavy
+  // TypeScript server. A failure enters owned PostgreSQL teardown below.
+  const afterDbMemory=checkBostanWindowsMemory();
+  if(!afterDbMemory.allowed){
+    console.error("BOSTAN_WINDOWS_LIVE_MEMORY_POSTGRES_REFUSED="+afterDbMemory.reason);
+    throw Error("Native Windows memory admission failed after PostgreSQL migration");
+  }
   const port=await availablePort();
   const origin="http://127.0.0.1:"+port;
   // The app child must never inherit unrelated operator tokens, DSNs or
@@ -230,7 +243,8 @@ try{
   console.error("BOSTAN_WINDOWS_LIVE_HTTP_OBSERVATION="+lastHealthStatus);
   console.error("BOSTAN_WINDOWS_LIVE_STARTUP_OUTCOME="+lastHealthOutcome);
   console.error("BOSTAN_WINDOWS_LIVE_STARTUP_PROBES="+lastHealthProbes);
-  console.error("BOSTAN_WINDOWS_LIVE_SERVER_SECONDS="+Math.round((Date.now()-serverStartedAt)/1000));
+  console.error("BOSTAN_WINDOWS_LIVE_SERVER_SECONDS="+
+    (serverStartedAt>0?Math.round((Date.now()-serverStartedAt)/1000):"not_started"));
   const pkg=serverOutput.match(/Cannot find package ['"](@bostan\/[a-z0-9_-]+)['"]/i);
   const diagnostic=pkg?"missing_bostan_package:"+pkg[1]:
     /ERR_MODULE_NOT_FOUND|Cannot find module/.test(serverOutput)?"missing_module":
@@ -288,7 +302,7 @@ try{
   // the native postgres.exe io_worker children may outlive their parent.
   // Run only the existing read-only, repository-owned process scanner AFTER
   // database cleanup. Never terminate/inspect other processes ourselves.
-  if(serverClosed&&dbCleaned){
+  if(db&&serverClosed&&dbCleaned){
     const pgEnv={
       SystemRoot:process.env.SystemRoot||process.env.WINDIR||"",
       PATH:process.env.Path||process.env.PATH||"",
