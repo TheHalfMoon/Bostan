@@ -75,7 +75,9 @@ try{
   for(const key of Object.keys(env)){
     if(/^(OPENAI|ANTHROPIC|OPENROUTER|GEMINI|GOOGLE|XAI|AWS_|AZURE_|SENTRY|OTEL_EXPORTER|NODE_OPTIONS)/i.test(key))delete env[key];
   }
-  server=spawn(process.execPath,["--import","tsx","../scripts/bostan-private-windows-server-entry.mjs"],{
+  server=spawn(process.execPath,["--import","tsx","--import",
+    "../scripts/bostan-private-windows-import-profiler.mjs",
+    "../scripts/bostan-private-windows-server-entry.mjs"],{
     cwd:join(root,"server"),env,windowsHide:true,stdio:["ignore","pipe","pipe"],
   });
   for(const stream of [server.stdout,server.stderr])stream?.on("data",part=>{
@@ -136,6 +138,24 @@ try{
   const stages=[...serverOutput.matchAll(/BOSTAN_WIN_SERVER_STAGE=(static_import_start|static_import_complete|runtime_start|runtime_ready|runtime_failed)/g)];
   const stage=stages.at(-1)?.[1]||"not_observed";
   console.error("BOSTAN_WINDOWS_LIVE_IMPORT_STAGE="+stage);
+  const profiles=serverOutput.split(String.fromCharCode(10)).filter(line=>line.startsWith("BOSTAN_WIN_IMPORT_PROFILE="));
+  const latestProfile=profiles.at(-1)?.slice("BOSTAN_WIN_IMPORT_PROFILE=".length);
+  if(latestProfile){
+    try{
+      const value=JSON.parse(latestProfile);
+      if(value.schema==="bostan.private-module-load-profile.v1"){
+        console.error("BOSTAN_WINDOWS_LIVE_MODULE_LOAD_COUNT="+Number(value.loadCount||0));
+        console.error("BOSTAN_WINDOWS_LIVE_MODULE_LOAD_MS="+Number(value.loadMs||0));
+        console.error("BOSTAN_WINDOWS_LIVE_MODULE_ERRORS="+Number(value.errorCount||0));
+        const safe=(value.topLoads||[]).filter(item=>
+          typeof item.module==="string" &&
+          (item.module.startsWith("server/src/") || item.module.startsWith("packages/") ||
+           ["third_party","external_file","virtual_or_builtin","other_repo_file"].includes(item.module)))
+          .slice(0,5).map(item=>({module:item.module,loadMs:Number(item.loadMs||0)}));
+        console.error("BOSTAN_WINDOWS_LIVE_SLOW_MODULES="+JSON.stringify(safe));
+      }
+    }catch{console.error("BOSTAN_WINDOWS_LIVE_MODULE_PROFILE=unparseable");}
+  }
   console.error("BOSTAN_WINDOWS_LIVE_HTTP_OBSERVATION="+lastHealthStatus);
   console.error("BOSTAN_WINDOWS_LIVE_SERVER_SECONDS="+Math.round((Date.now()-serverStartedAt)/1000));
   const pkg=serverOutput.match(/Cannot find package ['"](@bostan\/[a-z0-9_-]+)['"]/i);
