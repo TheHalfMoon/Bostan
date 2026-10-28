@@ -3,7 +3,7 @@
  * Real native Windows frontend verification, explicit opt-in and no publishing.
  * This never runs an installer, background agent or production server.
  */
-import {readFileSync,statSync,statfsSync,readdirSync,realpathSync} from 'node:fs';
+import {readFileSync,statSync,statfsSync,readdirSync,realpathSync,existsSync} from 'node:fs';
 import {join,resolve,sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
@@ -13,7 +13,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 const readJSON=(p)=>JSON.parse(readFileSync(join(root,p),'utf8'));
 const plan={schema:'bostan.private-windows-ui-qualification.v1',
   releaseQualified:false,explicitOptIn:true,requiresNativeWindows:true,
-  runs:['@bostan/ui typecheck','@bostan/ui build'],runsAgents:false,
+  runs:['@bostan/plugin-sdk build','@bostan/ui typecheck','@bostan/ui build'],runsAgents:false,
   invokesProviders:false,publishes:false};
 const args=process.argv.slice(2);
 if(args.length===0||(args.length===1&&args[0]==='--plan')){
@@ -74,6 +74,21 @@ function run(command){
     process.exit(1);
   }
 }
+// The UI typechecks runner source and consumes the plugin SDK's compiled
+// ./ui export. A UI-only install can leave both absent; refuse to misclassify
+// those missing build inputs as product TypeScript defects.
+for(const [pkgPath,expected] of [
+  ['packages/paperclip-runner/node_modules/ajv/dist/2020.js','Runner AJV 2020'],
+  ['packages/paperclip-runner/node_modules/json-schema-to-ts/package.json','Runner json-schema-to-ts'],
+]){
+  if(!existsSync(join(root,pkgPath))){
+    console.error('Windows UI QA missing required build dependency: '+expected+
+      '. Install --filter @bostan/ui... --filter @bostan/runner... with a frozen lockfile.');
+    process.exit(2);
+  }
+}
+run('pnpm --filter @bostan/plugin-sdk build');
+console.log('BOSTAN_WINDOWS_PRIVATE_PLUGIN_SDK_BUILT');
 run('pnpm --filter @bostan/ui typecheck');
 console.log('BOSTAN_WINDOWS_PRIVATE_UI_TYPECHECK_PASS');
 run('pnpm --filter @bostan/ui build');
