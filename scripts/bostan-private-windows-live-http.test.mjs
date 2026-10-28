@@ -31,7 +31,7 @@ test("the real app child receives only isolated environment keys",()=>{
   assert.doesNotMatch(source,/stdio:\["inherit"/);
 });
 test("success is reported only after real server exit and owned database cleanup",()=>{
-  const success=source.indexOf("windowsAuthenticatedHttpQualified:true");
+  const success=source.indexOf("if(qualified){",source.indexOf("const qualified=proof.windowsAuthenticatedHttpQualified;"));
   const final=source.indexOf("}finally{");
   const pg=source.indexOf("await db.cleanup()",final);
   const home=source.indexOf("rmSync(home,",final);
@@ -44,7 +44,7 @@ test("success is reported only after real server exit and owned database cleanup
   assert.doesNotMatch(source,/const stopped=\(\)=>server\.exitCode/);
   assert.match(source,/readFileSync\(marker,"utf8"\)==="BOSTAN_PRIVATE_SYNTHETIC_ONLY"\+String\.fromCharCode\(10\)/);
   assert.match(source,/manualOwnedFixtureInspectionRequired:!ownedHomeCleaned/);
-  assert.match(source,/noOrphanPostgresProcessVerified:false/);
+  assert.match(source,/postgresProcessTreeVerified=pgProof.noOrphanPostgresProcessVerified/);
   assert.doesNotMatch(source,/if\(existsSync\(join\(home,"BOSTAN_QA_OWNED"\)\)&&lstatSync\(home\)/);
 });
 test("native Windows heavy work remains gated by disk and disposable ownership",()=>{
@@ -57,7 +57,7 @@ test("native Windows heavy work remains gated by disk and disposable ownership",
 });
 
 test("failed child spawn cannot produce a green HTTP or cleanup receipt",()=>{
-  assert.match(source,/if\(serverObserver\.exitedOrFailed\)break/);
+  assert.match(source,/childExited:\(\)=>serverObserver\.exitedOrFailed/);
   assert.match(source,/BOSTAN_WINDOWS_LIVE_SERVER_SPAWN_FAILED/);
   assert.match(source,/BOSTAN_WINDOWS_LIVE_SERVER_TEARDOWN_UNCERTAIN/);
   assert.match(source,/BOSTAN_WINDOWS_LIVE_SERVER_FORCE_TERMINATION/);
@@ -86,7 +86,7 @@ test("real Windows first-admin steps bind synthetic user and refuse anonymous or
 test("the complete Windows proof is exact ordered and required for the green receipt",async()=>{
   const {WINDOWS_HTTP_REQUIRED_STAGES:stages}=
     await import("./bostan-private-windows-http-evidence.mjs");
-  assert.equal(stages.length,15);
+  assert.equal(stages.length,16);
   for(const stage of stages) assert.ok(source.includes('markHttpStage("'+stage+'")'),stage);
   assert.match(source,/evaluateWindowsPrivateHttpEvidence\(\{/);
   assert.match(source,/events:httpEvents,httpComplete:completedHttpChecks,childClosed:serverClosed/);
@@ -103,4 +103,19 @@ test("native Windows startup uses one bounded localhost deadline rather than 180
   assert.match(source,/BOSTAN_WINDOWS_LIVE_STARTUP_PROBES/);
   assert.doesNotMatch(source,/for\(let i=0;i<180;i\+\+\)/);
   assert.doesNotMatch(source,/const sleep=ms=>/);
+});
+
+test("native owned PostgreSQL scan is required after database cleanup and before receipt",()=>{
+  const db=source.indexOf("await db.cleanup();");
+  const pg=source.indexOf("const pgProof=evaluateWindowsPgOrphanCheck({");
+  const fixture=source.indexOf("rmSync(home,");
+  const receipt=source.indexOf("const qualified=proof.windowsAuthenticatedHttpQualified;");
+  assert.ok(db>0&&pg>db&&fixture>pg&&receipt>fixture);
+  assert.match(source,/spawnSync\("powershell.exe",\[/);
+  assert.match(source,/bostan-native-windows-postgres-no-orphans\.ps1/);
+  assert.match(source,/timeout:20000,maxBuffer:8192/);
+  assert.match(source,/if\(serverClosed&&dbCleaned&&postgresProcessTreeVerified&&existsSync\(marker\)/);
+  assert.match(source,/markHttpStage\("BOSTAN_WINDOWS_LIVE_NO_POSTGRES_ORPHANS_PASS"\)/);
+  assert.match(source,/postgresCleaned:dbCleaned,postgresProcessTreeVerified/);
+  assert.match(source,/BOSTAN_WINDOWS_LIVE_POSTGRES_PROCESS_PROOF/);
 });
