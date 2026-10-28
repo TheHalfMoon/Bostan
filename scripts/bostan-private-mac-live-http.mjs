@@ -116,6 +116,9 @@ if(args.length===0||(args.length===1&&args[0]==="--plan")){
       anonymousClaimDenied:stages.BOSTAN_MAC_HTTP_ANONYMOUS_CLAIM_DENIED,
       syntheticSignup:stages.BOSTAN_MAC_HTTP_SYNTHETIC_SIGNUP_PASS,
       signedInSession:stages.BOSTAN_MAC_HTTP_SIGNED_IN_SESSION_PASS,
+      crossOriginClaimDenied:stages.BOSTAN_MAC_HTTP_CROSS_ORIGIN_CLAIM_DENIED,
+      missingOriginClaimDenied:stages.BOSTAN_MAC_HTTP_MISSING_ORIGIN_CLAIM_DENIED,
+      deniedClaimsPreservePending:stages.BOSTAN_MAC_HTTP_DENIED_CLAIMS_PRESERVE_PENDING,
       firstAdminClaim:stages.BOSTAN_MAC_HTTP_FIRST_ADMIN_CLAIM_PASS,
       repeatClaimDenied:stages.BOSTAN_MAC_HTTP_REPEAT_CLAIM_DENIED,
       postClaimHealthy:stages.BOSTAN_MAC_HTTP_POST_CLAIM_HEALTH_PASS,
@@ -205,6 +208,35 @@ if(args.length===0||(args.length===1&&args[0]==="--plan")){
          sessionBody?.session?.userId!==payload.user.id)
         throw Error("Synthetic authenticated board session mismatch");
       console.log("BOSTAN_MAC_HTTP_SIGNED_IN_SESSION_PASS");
+      // Session authentication is insufficient for browser mutations: an
+      // untrusted Origin must not claim the instance even with a valid cookie.
+      // Do not set Referer: this must exercise the request Origin guard.
+      const forgedOriginClaim=await fetch(origin+"/api/bootstrap/claim",{
+        method:"POST",
+        headers:{cookie,origin:"https://attacker.example.invalid",
+          "content-type":"application/json"},
+        body:"{}",redirect:"error",signal:AbortSignal.timeout(12000),
+      });
+      if(forgedOriginClaim.status!==403)
+        throw Error("Cross-origin session claim was not forbidden");
+      console.log("BOSTAN_MAC_HTTP_CROSS_ORIGIN_CLAIM_DENIED");
+      // A session-bearing mutation without Origin AND Referer must also fail.
+      const missingOriginClaim=await fetch(origin+"/api/bootstrap/claim",{
+        method:"POST",headers:{cookie,"content-type":"application/json"},
+        body:"{}",redirect:"error",signal:AbortSignal.timeout(12000),
+      });
+      if(missingOriginClaim.status!==403)
+        throw Error("Originless session claim was not forbidden");
+      console.log("BOSTAN_MAC_HTTP_MISSING_ORIGIN_CLAIM_DENIED");
+      // Both forbidden attempts must leave the instance unclaimed, not
+      // merely return a 403 after a mutation has committed.
+      const stillPending=await fetch(origin+"/api/health",{
+        signal:AbortSignal.timeout(12000),redirect:"error",
+      });
+      const pendingBody=await stillPending.json().catch(()=>null);
+      if(stillPending.status!==200||pendingBody?.bootstrapStatus!=="bootstrap_pending")
+        throw Error("Denied claims unexpectedly changed bootstrap state");
+      console.log("BOSTAN_MAC_HTTP_DENIED_CLAIMS_PRESERVE_PENDING");
       const claim=await fetch(origin+"/api/bootstrap/claim",{
         method:"POST",
         headers:{cookie,origin,"content-type":"application/json"},
