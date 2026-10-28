@@ -97,9 +97,18 @@ if (args.length === 0 || (args.length === 1 && args[0] === "--plan")) {
         "--import", "tsx", fileURLToPath(import.meta.url), "--child",
       ], {
         cwd: join(root, "server"), env, timeout: 110000,
-        stdio: ["ignore", fd, fd],
+        detached: true, stdio: ["ignore", fd, fd],
       });
     } finally { closeSync(fd); }
+    // Child is the leader of an owned process group. Signal only that group
+    // to stop lingering tsx/esbuild helpers; never touch other processes.
+    let ownedGroupCleanupOk = true;
+    if (Number.isInteger(child.pid) && child.pid > 0) {
+      try { process.kill(-child.pid, "SIGTERM"); }
+      catch (error) {
+        if (error?.code !== "ESRCH") ownedGroupCleanupOk = false;
+      }
+    } else ownedGroupCleanupOk = false;
     const boundedLog = statSync(logPath).size <= 2 * 1024 * 1024;
     const output = boundedLog ? readFileSync(logPath, "utf8") : "";
     const stages = [
@@ -113,7 +122,7 @@ if (args.length === 0 || (args.length === 1 && args[0] === "--plan")) {
     ];
     const flags = stages.map(stage => output.includes(stage + "\n"));
     const passed = child.status === 0 && !child.error && !child.signal &&
-      boundedLog && flags.every(Boolean);
+      ownedGroupCleanupOk && boundedLog && flags.every(Boolean);
     // Preserve a failed, possibly still-live DB cluster instead of deleting
     // data files under it. Never touch unrelated PostgreSQL processes.
     if (flags[6] || !flags[0]) rmSync(home, { recursive: true, force: true });
@@ -124,6 +133,7 @@ if (args.length === 0 || (args.length === 1 && args[0] === "--plan")) {
       postClaimHealthy: flags[4], serverShutdown: flags[5],
       postgresCleanup: flags[6],
       timeout: child.error?.code === "ETIMEDOUT",
+      ownedGroupCleanupOk,
       elapsedSeconds: Math.round((Date.now() - started) / 1000),
       outcome: passed ? "pass" : "failed_or_incomplete",
     }));
