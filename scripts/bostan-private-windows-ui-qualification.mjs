@@ -14,22 +14,26 @@ const readJSON=(p)=>JSON.parse(readFileSync(join(root,p),'utf8'));
 const plan={schema:'bostan.private-windows-ui-qualification.v1',
   releaseQualified:false,explicitOptIn:true,requiresNativeWindows:true,
   runs:['@bostan/plugin-sdk build','@bostan/ui typecheck','@bostan/ui build'],runsAgents:false,
+  optionalBrowser:'offline Playwright Chromium first paint (no server or database)',
   invokesProviders:false,publishes:false};
 const args=process.argv.slice(2);
 if(args.length===0||(args.length===1&&args[0]==='--plan')){
   console.log(JSON.stringify({...plan,run:false},null,2));
   process.exit(0);
 }
-if(args.length!==1||args[0]!=='--run'){
-  console.error('Usage: node scripts/bostan-private-windows-ui-qualification.mjs [--plan|--run]');
+if(args.length!==1||!['--run','--run-browser'].includes(args[0])){
+  console.error('Usage: node scripts/bostan-private-windows-ui-qualification.mjs [--plan|--run|--run-browser]');
   process.exit(2);
 }
+const withBrowser=args[0]==='--run-browser';
 if(platform()!=='win32'){
   console.error('Bostan native Windows UI gate refuses non-Windows hosts');
   process.exit(2);
 }
-if(Number(process.versions.node.split('.')[0])<24){
-  console.error('Bostan Windows UI gate requires Node >=24');
+const nodeParts=/^(\d+)\.(\d+)\.(\d+)$/.exec(process.versions.node)?.slice(1).map(Number);
+if(!nodeParts||nodeParts.some(v=>!Number.isSafeInteger(v))||
+   nodeParts[0]<24||(nodeParts[0]===24&&nodeParts[1]<11)){
+  console.error('Bostan Windows UI gate requires Node >=24.11.0');
   process.exit(2);
 }
 const pkg=readJSON('package.json'),ui=readJSON('ui/package.json');
@@ -108,3 +112,10 @@ console.log(JSON.stringify({...plan,run:true,os:'win32',privateUI:true,
   cssAssets:names.filter(n=>n.endsWith('.css')).length,
   externalModelCalls:0},null,2));
 console.log('BOSTAN_WINDOWS_PRIVATE_UI_ASSETS_VERIFIED');
+if(withBrowser){
+  // Playwright runs only against the local Vite production preview; the
+  // existing smoke refuses external requests and never launches an agent.
+  // Browser dependencies must be preinstalled; no download or provider call.
+  run('pnpm --filter @bostan/ui exec node scripts/bostan-preview-browser-smoke.mjs');
+  console.log('BOSTAN_WINDOWS_OFFLINE_CHROMIUM_FIRST_PAINT_PASS');
+}

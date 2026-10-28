@@ -49,10 +49,14 @@ async function main(){
     }
     assert.ok(ready,`local preview failed to become ready: ${serverLog.slice(-1200)}`);
     browser=await chromium.launch({headless:true});
-    const page=await browser.newPage();
+    // Service workers can bypass page-level interception. A fresh context
+    // with service workers disabled and context-level routing makes the
+    // offline assertion cover subresources as well as the navigation.
+    const context=await browser.newContext({serviceWorkers:'block'});
+    const page=await context.newPage();
     const pageErrors=[];let nonlocalRequests=0;
     page.on('pageerror',err=>pageErrors.push(err.message));
-    await page.route('**/*',route=>{
+    await context.route('**/*',route=>{
       const url=new URL(route.request().url());
       if(url.origin!==origin){nonlocalRequests++;return route.abort('blockedbyclient')}
       return route.continue();
