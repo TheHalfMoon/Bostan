@@ -14,6 +14,7 @@ import {observeOwnedQaChild} from "./bostan-private-windows-child-lifecycle.mjs"
 import {evaluateWindowsPrivateHttpEvidence} from "./bostan-private-windows-http-evidence.mjs";
 import {waitForWindowsPrivateHealth} from "./bostan-private-windows-health-wait.mjs";
 import {evaluateWindowsPgOrphanCheck} from "./bostan-private-windows-pg-orphan-proof.mjs";
+import {resolvePrivateWindowsPowerShellBinary} from "./bostan-private-windows-powershell-binary.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const spec={schema:"bostan.private-windows-auth-server.v1",run:false,
@@ -305,20 +306,29 @@ try{
   if(db&&serverClosed&&dbCleaned){
     const pgEnv={
       SystemRoot:process.env.SystemRoot||process.env.WINDIR||"",
-      PATH:process.env.Path||process.env.PATH||"",
       TEMP:home,TMP:home,USERPROFILE:home,HOME:home,
     };
-    const result=spawnSync("powershell.exe",[
+    let result=null;
+    try{
+      // Never resolve powershell.exe through the operator-controlled PATH.
+      // A missing or unexpected OS binary must fail closed without skipping
+      // the final teardown receipt or deleting the owned fixture.
+      const powershellBinary=resolvePrivateWindowsPowerShellBinary({systemRoot:pgEnv.SystemRoot});
+      result=spawnSync(powershellBinary,[
       "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass",
       "-File",join(root,"scripts","bostan-native-windows-postgres-no-orphans.ps1"),
       "-Run",
     ],{
       cwd:root,env:pgEnv,windowsHide:true,encoding:"utf8",
       timeout:20000,maxBuffer:8192,
-    });
+      });
+    }catch{
+      failed=true;
+      console.error("BOSTAN_WINDOWS_LIVE_POWERSHELL_UNAVAILABLE");
+    }
     const pgProof=evaluateWindowsPgOrphanCheck({
-      status:result.status,signal:result.signal,errorCode:result.error?.code,
-      stdout:result.stdout,stderr:result.stderr,
+      status:result?.status,signal:result?.signal,errorCode:result?.error?.code,
+      stdout:result?.stdout,stderr:result?.stderr,
     });
     postgresProcessTreeVerified=pgProof.noOrphanPostgresProcessVerified;
     if(postgresProcessTreeVerified){
