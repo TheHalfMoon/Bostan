@@ -74,3 +74,12 @@ test("missing authenticated, anonymous and replay gates never qualify",()=>{
     "BOSTAN_WINDOWS_LIVE_FIRST_ADMIN_CLAIM_PASS",
   ]) assert.equal(pass({events:STAGES.filter(s=>s!==stage)}).windowsAuthenticatedHttpQualified,false);
 });
+
+test("sparse event arrays cannot claim a clean receipt",()=>{
+  const sparse=Array.from(STAGES);
+  delete sparse[5];
+  assert.equal(sparse.length,STAGES.length);
+  const proof=pass({events:sparse});
+  assert.equal(proof.windowsAuthenticatedHttpQualified,false);
+  assert.equal(proof.outcome,"invalid_events");
+});
