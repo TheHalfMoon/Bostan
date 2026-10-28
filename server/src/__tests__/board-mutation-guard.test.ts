@@ -90,6 +90,39 @@ describe("boardMutationGuard", () => {
     expect([200, 204]).toContain(res.status);
   });
 
+  it("rejects an untrusted Origin even with a trusted Referer", async () => {
+    const app = createApp("board");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Origin", "https://attacker.example.invalid")
+      .set("Referer", "http://localhost:3100/issues/abc")
+      .send({ ok: true });
+    expect(res.status).toBe(403);
+  });
+
+  it.each(["null", "not a valid origin", ""])(
+    "rejects invalid or opaque Origin %s despite a trusted Referer",
+    async (origin) => {
+      const app = createApp("board");
+      const res = await request(app)
+        .post("/mutate")
+        .set("Origin", origin)
+        .set("Referer", "http://localhost:3100/issues/abc")
+        .send({ ok: true });
+      expect(res.status).toBe(403);
+    },
+  );
+
+  it("prefers valid Origin over an unrelated Referer", async () => {
+    const app = createApp("board");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Origin", "http://localhost:3100")
+      .set("Referer", "https://attacker.example.invalid/trap")
+      .send({ ok: true });
+    expect([200, 204]).toContain(res.status);
+  });
+
   it("allows HTTPS branch-runtime mutations when forwarded MagicDNS host and non-standard port match", async () => {
     const app = createApp("board");
     app.set("trust proxy", "loopback");
