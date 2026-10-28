@@ -67,9 +67,13 @@ function requestHost(req: Request): string | undefined {
 function trustedOriginsForRequest(req: Request) {
   const origins = new Set(DEFAULT_DEV_ORIGINS.map((value) => value.toLowerCase()));
   const host = requestHost(req);
-  if (host) {
-    origins.add(`http://${host}`.toLowerCase());
-    origins.add(`https://${host}`.toLowerCase());
+  // Host alone is not a same-origin identity. An HTTPS request must not
+  // automatically trust an HTTP Origin for the same host (or vice versa).
+  // Express derives req.protocol from the actual socket, or from a forwarded
+  // protocol ONLY when the immediate proxy is trusted by its configuration.
+  const protocol = req.protocol;
+  if (host && (protocol === "http" || protocol === "https")) {
+    origins.add(`${protocol}://${host}`.toLowerCase());
   }
   // Behind some reverse proxies the Host / X-Forwarded-Host header may
   // not match the public URL (for example when TLS terminates at the
