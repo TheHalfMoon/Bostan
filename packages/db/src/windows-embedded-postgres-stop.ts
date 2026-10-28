@@ -14,6 +14,8 @@ export async function stopOwnedWindowsEmbeddedPostgres(
   dataDir:string,pgCtlExe:string,run:Runner=actualRun,
 ):Promise<"stopped"|"already-stopped"> {
   if(process.platform!=="win32"&&run===actualRun)throw Error("Windows-only native database test teardown");
+  // A failed initdb can leave no data directory; there is no cluster to stop.
+  if(!fs.existsSync(dataDir))return "already-stopped";
   const temp=fs.realpathSync(os.tmpdir());
   const data=fs.realpathSync(dataDir);
   const rel=path.relative(temp,data);
