@@ -1,7 +1,8 @@
 /**
- * Bostan private Windows QA: pin the read-only PostgreSQL scan to the OS
- * PowerShell executable. Never search the operator-controlled PATH for it.
- * No process is started here; callers still own their bounded subprocess.
+ * Bostan private Windows QA: pin the read-only PostgreSQL scan to the
+ * conventional OS PowerShell path, not an operator PATH or nested lookalike.
+ * Inspect every directory component with lstat before returning a binary.
+ * No subprocess is started here and no inspected path is echoed on failure.
  */
 import {lstatSync} from 'node:fs';
 import {win32} from 'node:path';
@@ -9,20 +10,30 @@ import {win32} from 'node:path';
 export function resolvePrivateWindowsPowerShellBinary({
   platform = process.platform,
   systemRoot = process.env.SystemRoot,
-  statBinary = lstatSync,
+  statPath = lstatSync,
 } = {}) {
   const refused = () => { throw Error('Private Windows QA PowerShell executable unavailable'); };
+  // B1-08 accepted C:\\Untrusted\\Windows because basename() was "Windows".
+  // Require the direct drive-root Windows directory; no nested lookalikes,
+  // relative/UNC/device paths, alternate streams, dot segments or slashes.
   if (platform !== 'win32' || typeof systemRoot !== 'string' ||
-      systemRoot.length > 260 || !/^[A-Za-z]:\\/.test(systemRoot) ||
-      /[\x00\r\n*?<>|]/.test(systemRoot) ||
-      /[\\/]\.{1,2}(?:[\\/]|$)/.test(systemRoot) ||
-      systemRoot.slice(2).includes(':') || typeof statBinary !== 'function') refused();
-  const root = win32.normalize(systemRoot);
-  if (win32.basename(root.replace(/[\\/]+$/, '')).toLowerCase() !== 'windows') refused();
-  const binary = win32.join(root, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+      !/^[A-Za-z]:\\Windows\\?$/i.test(systemRoot) ||
+      typeof statPath !== 'function') refused();
+  const root = systemRoot.replace(/\\$/, '');
+  const components = [
+    root,
+    win32.join(root, 'System32'),
+    win32.join(root, 'System32', 'WindowsPowerShell'),
+    win32.join(root, 'System32', 'WindowsPowerShell', 'v1.0'),
+  ];
+  const binary = win32.join(components[3], 'powershell.exe');
   try {
-    const stat = statBinary(binary);
-    if (!stat?.isFile?.() || stat?.isSymbolicLink?.() !== false) refused();
+    for (const dir of components) {
+      const stat = statPath(dir);
+      if (stat?.isDirectory?.() !== true || stat?.isSymbolicLink?.() !== false) refused();
+    }
+    const stat = statPath(binary);
+    if (stat?.isFile?.() !== true || stat?.isSymbolicLink?.() !== false) refused();
   } catch { refused(); }
   return binary;
 }
