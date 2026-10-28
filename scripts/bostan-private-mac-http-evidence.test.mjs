@@ -5,11 +5,11 @@ import {evaluateMacHttpEvidence as audit,MAC_HTTP_REQUIRED_STAGES as STAGES, MAC
 const log=(lines=STAGES)=>[...lines,""].join("\n");
 const receipt=(text=log(), extra={})=>({status:0,signal:null,errorCode:null,logBytes:Buffer.byteLength(text),logText:text,...extra});
 
-test("exactly ten ordered real stage markers and clean child exit qualify",()=>{
+test("exactly thirteen ordered real stage markers and clean child exit qualify",()=>{
  const p=audit(receipt());
  assert.equal(p.macAuthenticatedHttpQualified,true);
  assert.equal(p.outcome,"pass");
- assert.equal(Object.values(p.stages).filter(Boolean).length,10);
+ assert.equal(Object.values(p.stages).filter(Boolean).length,13);
 });
 test("missing, duplicate, and reordered stages are never qualified",()=>{
  for(const ls of [STAGES.slice(0,-1),[...STAGES,STAGES[3]],[STAGES[1],STAGES[0],...STAGES.slice(2)]]){
@@ -63,5 +63,28 @@ test("anonymous denial, bound board session and replay conflict are mandatory",(
   assert.equal(result.macAuthenticatedHttpQualified,false);
   assert.equal(result.outcome,"missing_or_duplicate_stage");
   assert.equal(result.stages[stage],false);
+ }
+});
+
+test("cross-origin, missing-origin and unchanged bootstrap state are mandatory ordered stages",()=>{
+ const csrfStages=[
+  "BOSTAN_MAC_HTTP_CROSS_ORIGIN_CLAIM_DENIED",
+  "BOSTAN_MAC_HTTP_MISSING_ORIGIN_CLAIM_DENIED",
+  "BOSTAN_MAC_HTTP_DENIED_CLAIMS_PRESERVE_PENDING",
+ ];
+ assert.equal(STAGES.length,13);
+ for(const stage of csrfStages){
+  assert.equal(STAGES.filter(x=>x===stage).length,1);
+  const p=audit(receipt(log(STAGES.filter(x=>x!==stage))));
+  assert.equal(p.macAuthenticatedHttpQualified,false);
+  assert.equal(p.outcome,"missing_or_duplicate_stage");
+  assert.equal(p.stages[stage],false);
+ }
+ for(const stage of csrfStages){
+  const i=STAGES.indexOf(stage), before=[...STAGES];
+  [before[i],before[i-1]]=[before[i-1],before[i]];
+  const p=audit(receipt(log(before)));
+  assert.equal(p.macAuthenticatedHttpQualified,false);
+  assert.equal(p.outcome,"out_of_order_stage");
  }
 });
