@@ -27,7 +27,9 @@ export function evaluateWindowsPrivateHttpEvidence({
   ownedFixtureCleaned = false, priorFailure = false,
 } = {}) {
   const validEvents = Array.isArray(events) && events.length <= 64 &&
-    events.every(e => typeof e === "string" && e.length <= 128);
+    Array.from({length:events.length},(_,i)=>i).every(i =>
+      Object.hasOwn(events,i) && typeof events[i] === "string" &&
+      events[i].length <= 128);
   const exactEvents = validEvents &&
     events.length === WINDOWS_HTTP_REQUIRED_STAGES.length &&
     events.every((event, i) => event === WINDOWS_HTTP_REQUIRED_STAGES[i]);
