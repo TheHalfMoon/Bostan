@@ -1,0 +1,48 @@
+import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
+import {test} from 'node:test';
+import {fileURLToPath} from 'node:url';
+
+const script=fileURLToPath(new URL('./bostan-private-windows-ui-qualification.mjs',import.meta.url));
+const source=readFileSync(script,'utf8');
+const run=(...args)=>spawnSync(process.execPath,[script,...args],{
+  encoding:'utf8',timeout:5000,
+});
+
+test('Windows UI gate is inert by default and exposes a scoped plan',()=>{
+  for(const args of [[],['--plan']]){
+    const response=run(...args);
+    assert.equal(response.status,0,response.stderr);
+    const plan=JSON.parse(response.stdout);
+    assert.equal(plan.run,false);
+    assert.equal(plan.releaseQualified,false);
+    assert.equal(plan.invokesProviders,false);
+    assert.equal(plan.publishes,false);
+  }
+});
+test('unknown and publish flags rejected, non-Windows execution refused',()=>{
+  for(const args of [['--publish'],['--install'],['--run','--publish']]){
+    assert.equal(run(...args).status,2);
+  }
+  if(process.platform!=='win32'){
+    const response=run('--run');
+    assert.equal(response.status,2);
+    assert.match(response.stderr,/refuses non-Windows/);
+  }
+});
+test('real qualification is fixed to official UI typecheck, build, output ownership and no models',()=>{
+  for(const token of [
+    "pkg.private!==true", "ui.private!==true",
+    "bostan-release-disabled.mjs", "requires >=3 GiB",
+    "PAPERCLIP_CLOUD_", "BOSTAN_CLOUD_",
+    "pnpm --filter @bostan/ui typecheck",
+    "pnpm --filter @bostan/ui build",
+    "BOSTAN_WINDOWS_PRIVATE_UI_TYPECHECK_PASS",
+    "BOSTAN_WINDOWS_PRIVATE_UI_BUILD_PASS",
+    "BOSTAN_WINDOWS_PRIVATE_UI_ASSETS_VERIFIED",
+    "realpathSync(dist)", "npm_config_offline:'true'",
+    "externalModelCalls:0",
+  ])assert.ok(source.includes(token),token);
+  assert.doesNotMatch(source,/pnpm\s+(?:publish|deploy)/);
+});
