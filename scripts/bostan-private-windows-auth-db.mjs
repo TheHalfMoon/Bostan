@@ -4,6 +4,7 @@ import {readFileSync, existsSync, lstatSync, realpathSync, statfsSync} from "nod
 import {basename, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {spawnSync} from "node:child_process";
+import {checkBostanWindowsDisk} from "./bostan-private-windows-disk-admission.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const plan={
@@ -52,6 +53,12 @@ const forbidden=Object.keys(process.env).filter(k=>k.toUpperCase()==="PAPERCLIP_
   /^PAPERCLIP_CLOUD_|^BOSTAN_CLOUD_/i.test(k));
 if(forbidden.length){
   console.error("Bostan Windows auth/DB QA refuses managed Cloud keys: "+forbidden.sort().join(","));
+  process.exit(2);
+}
+const admission=checkBostanWindowsDisk({workspace:root,tempDir:tmp});
+if(!admission.allowed){
+  console.error("BOSTAN_WINDOWS_AUTH_DB_STORAGE_REFUSED="+admission.reason);
+  console.error(JSON.stringify(admission));
   process.exit(2);
 }
 const stat=statfsSync(root,{bigint:true});

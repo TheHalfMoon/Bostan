@@ -6,6 +6,7 @@ import {existsSync,lstatSync,mkdtempSync,rmSync,writeFileSync} from "node:fs";
 import {createServer} from "node:net";
 import {basename,join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
+import {checkBostanWindowsDisk} from "./bostan-private-windows-disk-admission.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const spec={schema:"bostan.private-windows-auth-server.v1",run:false,
@@ -35,6 +36,12 @@ const temp=process.env.TEMP||"";
 if(!existsSync(temp)||lstatSync(temp).isSymbolicLink()||
    !/^Bostan-B0\d+-temp$/i.test(basename(temp))){
   console.error("Bostan native QA requires an owned test-only TEMP directory");
+  process.exit(2);
+}
+const admission=checkBostanWindowsDisk({workspace:root,tempDir:temp});
+if(!admission.allowed){
+  console.error("BOSTAN_WINDOWS_LIVE_STORAGE_REFUSED="+admission.reason);
+  console.error(JSON.stringify(admission));
   process.exit(2);
 }
 async function availablePort(){
