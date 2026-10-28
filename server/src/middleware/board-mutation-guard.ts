@@ -64,9 +64,28 @@ function requestHost(req: Request): string | undefined {
   return host;
 }
 
+function isLoopbackRequestHost(host: string | undefined): boolean {
+  if (!host) return false;
+  try {
+    // Parse the authority, not a substring such as "localhost.evil.test".
+    const hostname = new URL(`http://${host}`).hostname.toLowerCase();
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
 function trustedOriginsForRequest(req: Request) {
-  const origins = new Set(DEFAULT_DEV_ORIGINS.map((value) => value.toLowerCase()));
   const host = requestHost(req);
+  // The convenience Vite development origins are trusted only for a local
+  // Bostan server. They must not silently authorize browser-session mutations
+  // on remote deployments merely because a user runs a local development UI.
+  // Operators can still explicitly configure PAPERCLIP_PUBLIC_URL below.
+  const origins = new Set(
+    isLoopbackRequestHost(host)
+      ? DEFAULT_DEV_ORIGINS.map((value) => value.toLowerCase())
+      : [],
+  );
   // Host alone is not a same-origin identity. An HTTPS request must not
   // automatically trust an HTTP Origin for the same host (or vice versa).
   // Express derives req.protocol from the actual socket, or from a forwarded
