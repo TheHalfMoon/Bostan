@@ -25,6 +25,21 @@ function healthObservation(json) {
     (json.bootstrapStatus === 'bootstrap_pending' ? 'pending' : 'other_bootstrap');
 }
 
+// A fetch implementation can return HTTP headers while leaving response.json()
+// pending indefinitely. The same owned, ref'd timer bounds BOTH phases even if
+// an injected fetch ignores AbortSignal. Late promise rejection is observed.
+function awaitAbortable(promise, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) { reject(Error('Health request timed out')); return; }
+    const abort = () => { signal.removeEventListener('abort', abort); reject(Error('Health request timed out')); };
+    signal.addEventListener('abort', abort, {once:true});
+    Promise.resolve(promise).then(
+      value => { signal.removeEventListener('abort', abort); resolve(value); },
+      error => { signal.removeEventListener('abort', abort); reject(error); },
+    );
+  });
+}
+
 export async function waitForWindowsPrivateHealth({
   endpoint, childExited, fetchResponse = fetch,
   now = () => performance.now(),
@@ -57,17 +72,26 @@ export async function waitForWindowsPrivateHealth({
     if (remaining <= 0) return receipt('deadline_exceeded');
     if (probes >= maxProbes) return receipt('probe_limit');
     probes += 1;
+    const controller = new AbortController();
+    // One ref'd timeout covers headers AND the complete JSON body. Clearing it
+    // after both phases prevents a late abort from affecting another probe.
+    const timer = setTimeout(() => controller.abort(),
+      Math.max(1, Math.min(requestTimeoutMs, remaining)));
     try {
-      const response = await fetchResponse(endpoint, {
-        redirect: 'error',
-        signal: AbortSignal.timeout(Math.max(1, Math.min(requestTimeoutMs, remaining))),
-      });
+      const response = await awaitAbortable(fetchResponse(endpoint, {
+        redirect: 'error', signal: controller.signal,
+      }), controller.signal);
       if (response.status === 200) {
         let json;
-        try { json = await response.json(); }
+        try { json = await awaitAbortable(response.json(), controller.signal); }
         catch { observation = 'health_invalid_json'; }
         if (json !== undefined) {
           observation = healthObservation(json);
+          // A valid body arriving AFTER the deadline, or after the owned child
+          // exited, must never produce a green Windows startup receipt.
+          if (childExited()) return receipt('child_exited');
+          if (controller.signal.aborted || now() >= deadline)
+            return receipt('deadline_exceeded');
           if (json && json.status === 'ok' &&
             json.deploymentMode === 'authenticated' &&
             json.deploymentExposure === 'private' &&
@@ -80,6 +104,7 @@ export async function waitForWindowsPrivateHealth({
           ? 'http_'+status : 'http_invalid_status';
       }
     } catch { observation = 'no_response'; }
+    finally { clearTimeout(timer); }
     if (childExited()) return receipt('child_exited');
     const rest = Math.floor(deadline - now());
     if (rest <= 0) return receipt('deadline_exceeded');
