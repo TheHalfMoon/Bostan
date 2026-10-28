@@ -113,8 +113,11 @@ if(args.length===0||(args.length===1&&args[0]==="--plan")){
       macAuthenticatedHttpQualified:qualified,
       postgresMigrated:stages.BOSTAN_MAC_HTTP_POSTGRES_MIGRATED,
       privateHealth:stages.BOSTAN_MAC_HTTP_PRIVATE_HEALTH_PASS,
+      anonymousClaimDenied:stages.BOSTAN_MAC_HTTP_ANONYMOUS_CLAIM_DENIED,
       syntheticSignup:stages.BOSTAN_MAC_HTTP_SYNTHETIC_SIGNUP_PASS,
+      signedInSession:stages.BOSTAN_MAC_HTTP_SIGNED_IN_SESSION_PASS,
       firstAdminClaim:stages.BOSTAN_MAC_HTTP_FIRST_ADMIN_CLAIM_PASS,
+      repeatClaimDenied:stages.BOSTAN_MAC_HTTP_REPEAT_CLAIM_DENIED,
       postClaimHealthy:stages.BOSTAN_MAC_HTTP_POST_CLAIM_HEALTH_PASS,
       serverShutdown:stages.BOSTAN_MAC_HTTP_SERVER_SHUTDOWN_PASS,
       postgresCleanup:stages.BOSTAN_MAC_HTTP_POSTGRES_CLEANUP_PASS,
@@ -167,6 +170,14 @@ if(args.length===0||(args.length===1&&args[0]==="--plan")){
          Object.hasOwn(health,"cloud"))
         throw Error("Unexpected private health");
       console.log("BOSTAN_MAC_HTTP_PRIVATE_HEALTH_PASS");
+      // Supply a legitimate same-origin browser request without a session.
+      const anonymousClaim=await fetch(origin+"/api/bootstrap/claim",{
+        method:"POST",headers:{"content-type":"application/json",origin},
+        body:"{}",redirect:"error",signal:AbortSignal.timeout(12000),
+      });
+      if(anonymousClaim.status!==401)
+        throw Error("Anonymous first-admin claim was not denied");
+      console.log("BOSTAN_MAC_HTTP_ANONYMOUS_CLAIM_DENIED");
       const email="bostan-b093-"+randomUUID()+"@example.invalid";
       const password="Qa-Only-"+randomBytes(18).toString("hex")+"A!2";
       const signup=await fetch(origin+"/api/auth/sign-up/email",{
@@ -182,6 +193,18 @@ if(args.length===0||(args.length===1&&args[0]==="--plan")){
         .find(v=>v.includes("session_token="));
       if(!cookie)throw Error("Synthetic session missing");
       console.log("BOSTAN_MAC_HTTP_SYNTHETIC_SIGNUP_PASS");
+      // A session cookie alone is not proof: verify this exact synthetic user.
+      const sessionResponse=await fetch(origin+"/api/auth/get-session",{
+        method:"GET",headers:{cookie},redirect:"error",
+        signal:AbortSignal.timeout(12000),
+      });
+      const sessionBody=await sessionResponse.json().catch(()=>null);
+      if(sessionResponse.status!==200||
+         sessionBody?.user?.id!==payload.user.id||
+         sessionBody?.user?.email!==email||
+         sessionBody?.session?.userId!==payload.user.id)
+        throw Error("Synthetic authenticated board session mismatch");
+      console.log("BOSTAN_MAC_HTTP_SIGNED_IN_SESSION_PASS");
       const claim=await fetch(origin+"/api/bootstrap/claim",{
         method:"POST",
         headers:{cookie,origin,"content-type":"application/json"},
@@ -189,6 +212,14 @@ if(args.length===0||(args.length===1&&args[0]==="--plan")){
       });
       if(claim.status!==200)throw Error("First-admin claim failed");
       console.log("BOSTAN_MAC_HTTP_FIRST_ADMIN_CLAIM_PASS");
+      // After first claim, replay must conflict rather than upgrade a caller.
+      const repeated=await fetch(origin+"/api/bootstrap/claim",{
+        method:"POST",headers:{cookie,origin,"content-type":"application/json"},
+        body:"{}",signal:AbortSignal.timeout(12000),redirect:"error",
+      });
+      if(repeated.status!==409)
+        throw Error("Repeated first-admin claim was not rejected");
+      console.log("BOSTAN_MAC_HTTP_REPEAT_CLAIM_DENIED");
       const ready=await fetch(origin+"/api/health",{
         signal:AbortSignal.timeout(12000)});
       const readyBody=await ready.json();
