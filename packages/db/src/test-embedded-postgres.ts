@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
+import { stopOwnedWindowsEmbeddedPostgres } from "./windows-embedded-postgres-stop.js";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -67,7 +69,31 @@ type EmbeddedPostgresCtorProvider = () => Promise<EmbeddedPostgresCtor>;
 async function loadEmbeddedPostgresCtor(): Promise<EmbeddedPostgresCtor> {
   const mod = await import("embedded-postgres");
   await prepareEmbeddedPostgresNativeRuntime();
-  return mod.default as EmbeddedPostgresCtor;
+  const ctor = mod.default as EmbeddedPostgresCtor;
+  if (process.platform !== "win32") return ctor;
+  // Resolve the native binary supplied by embedded-postgres, not system PG.
+  const require = createRequire(import.meta.url);
+  const embeddedRequire = createRequire(require.resolve("embedded-postgres"));
+  const nativeEntry = embeddedRequire.resolve("@embedded-postgres/windows-x64");
+  const native = await import(pathToFileURL(nativeEntry).href) as { postgres: string };
+  const pgCtl = path.join(path.dirname(native.postgres), "pg_ctl.exe");
+  if (!fs.existsSync(pgCtl)) throw Error("Pinned PostgreSQL pg_ctl missing");
+  // The pinned library does not await its Windows process-tree termination.
+  // Override stop ONLY in synthetic test instances to wait for graceful pg_ctl.
+  return class WindowsBostanTestPg extends ctor {
+    private readonly dbDir: string;
+    private stopping: Promise<void> | null = null;
+    constructor(options: ConstructorParameters<EmbeddedPostgresCtor>[0]) {
+      super(options);
+      this.dbDir = options.databaseDir;
+    }
+    override stop(): Promise<void> {
+      if (!this.stopping) {
+        this.stopping = stopOwnedWindowsEmbeddedPostgres(this.dbDir, pgCtl).then(() => {});
+      }
+      return this.stopping;
+    }
+  };
 }
 
 let embeddedPostgresCtorProvider: EmbeddedPostgresCtorProvider = loadEmbeddedPostgresCtor;
@@ -189,6 +215,22 @@ async function stopEmbeddedPostgresBounded(
 ): Promise<void> {
   if (!instance) {
     cleanupFn?.();
+    return;
+  }
+  if (process.platform === "win32") {
+    // Do not claim cleanup or delete data when native Windows stop failed.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        instance.stop(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(Error("Windows Bostan PostgreSQL stop timeout")), 50_000);
+        }),
+      ]);
+      cleanupFn?.();
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
     return;
   }
   let timer: ReturnType<typeof setTimeout> | undefined;
