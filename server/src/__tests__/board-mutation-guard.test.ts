@@ -123,6 +123,35 @@ describe("boardMutationGuard", () => {
     expect([200, 204]).toContain(res.status);
   });
 
+  it.each([
+    "http://localhost:3100/private",
+    "http://localhost:3100/?next=/private",
+    "http://localhost:3100#private",
+    "http://user@localhost:3100",
+    "http://localhost:3100/",
+    "ftp://localhost:3100",
+    "http://localhost:80@localhost:3100",
+  ])("rejects noncanonical Origin %s even when Referer is trusted", async (badOrigin) => {
+    const app = createApp("board");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Origin", badOrigin)
+      .set("Referer", "http://localhost:3100/legitimate")
+      .send({ ok: true });
+    expect(res.status).toBe(403);
+  });
+
+  it("accepts a canonical mixed-case HTTPS Origin with a trusted Host", async () => {
+    const app = createApp("board");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Host", "private.example.invalid:42000")
+      .set("Origin", "HTTPS://PRIVATE.EXAMPLE.INVALID:42000")
+      .set("Referer", "https://attacker.example.invalid/bait")
+      .send({ ok: true });
+    expect([200, 204]).toContain(res.status);
+  });
+
   it("allows HTTPS branch-runtime mutations when forwarded MagicDNS host and non-standard port match", async () => {
     const app = createApp("board");
     app.set("trust proxy", "loopback");
