@@ -76,6 +76,8 @@ test("real Windows first-admin steps bind synthetic user and refuse anonymous or
     /sessionBody\?\.session\?\.userId!==body\.user\.id/,
     /hostileOrigin\.status!==403/,
     /forgedReferer\.status!==403/,
+    /crossScheme\.status!==403/,
+    /noncanonicalOrigin\.status!==403/,
     /noOrigin\.status!==403/,
     /pendingBody\?\.bootstrapStatus!=="bootstrap_pending"/,
     /claimedBody\?\.claimed!==true/,
@@ -87,7 +89,7 @@ test("real Windows first-admin steps bind synthetic user and refuse anonymous or
 test("the complete Windows proof is exact ordered and required for the green receipt",async()=>{
   const {WINDOWS_HTTP_REQUIRED_STAGES:stages}=
     await import("./bostan-private-windows-http-evidence.mjs");
-  assert.equal(stages.length,16);
+  assert.equal(stages.length,18);
   for(const stage of stages) assert.ok(source.includes('markHttpStage("'+stage+'")'),stage);
   assert.match(source,/evaluateWindowsPrivateHttpEvidence\(\{/);
   assert.match(source,/events:httpEvents,httpComplete:completedHttpChecks,childClosed:serverClosed/);
@@ -146,4 +148,17 @@ test("native PowerShell process scanner cannot be hijacked through PATH",()=>{
   assert.match(source,/status:result\?\.status,signal:result\?\.signal/);
   assert.match(source,/stdout:result\?\.stdout,stderr:result\?\.stderr/);
   assert.match(source,/if\(serverClosed&&dbCleaned&&postgresProcessTreeVerified&&existsSync\(marker\)/);
+});
+
+test("native Windows cross-scheme and noncanonical Origin checks run before first admin claim",()=>{
+  const crossScheme=source.indexOf('const crossScheme=await fetch(');
+  const noncanonical=source.indexOf('const noncanonicalOrigin=await fetch(');
+  const denied=source.indexOf('markHttpStage("BOSTAN_WINDOWS_LIVE_MISSING_ORIGIN_CLAIM_DENIED")');
+  const claim=source.indexOf('const claim=await fetch(');
+  assert.ok(crossScheme>0&&noncanonical>crossScheme&&denied>noncanonical&&claim>denied);
+  assert.match(source,/origin:origin\.replace\(\/\^http:\/,"https:"\)/);
+  assert.match(source,/origin:origin\+"\/private\/path"/);
+  assert.match(source,/referer:origin\+"\/dashboard"/);
+  assert.match(source,/markHttpStage\("BOSTAN_WINDOWS_LIVE_CROSS_SCHEME_CLAIM_DENIED"\)/);
+  assert.match(source,/markHttpStage\("BOSTAN_WINDOWS_LIVE_NONCANONICAL_ORIGIN_DENIED"\)/);
 });
