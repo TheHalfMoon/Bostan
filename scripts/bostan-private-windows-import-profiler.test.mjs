@@ -55,7 +55,7 @@ function subprocess(allow){
       DATABASE_URL:"postgresql://synthetic:token@127.0.0.1:54321/fixture",
     };
     return spawnSync(process.execPath,[
-      "--import",profiler,"--input-type=module","-e",
+      "--import",pathToFileURL(profiler).href,"--input-type=module","-e",
       "await import('node:fs/promises'); await import('node:crypto');"],
       {cwd:root,env,encoding:"utf8",timeout:12000});
   }finally{fs.rmSync(directory,{recursive:true,force:true});}
