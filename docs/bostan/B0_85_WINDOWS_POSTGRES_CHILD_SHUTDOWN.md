@@ -22,7 +22,7 @@ B0-84 had genuine Windows PostgreSQL 18.1 database tests that returned success b
 - First actual B0-85 test: selected database connection-pool test **1 PASS, 22 deliberately unselected, exit 0** and **0 owned PostgreSQL processes remaining** after Vitest exit.
 - Second actual B0-85 test: database connection pool, reset (stale tables removed), fresh historical migration **3 PASS, 20 deliberately unselected, exit 0**, and again **0 owned PostgreSQL processes remaining**.
 - Mac ARM64 Node 26: Windows shutdown unit tests **4/4 PASS**, database TypeScript typecheck and migration safety checks PASS; other focused retry/denial tests 3 PASS and 16 intentionally unselected.
-- Live PowerShell no-orphan gate result and final repository/cleanup checks: to be appended after native execution.
+- Exact B0-85 source retake on Windows: read-only PowerShell orphan gate without -Run was inert/exit 0; with explicit -Run, BOSTAN_WINDOWS_PG_OWNED_PROCESSES=0, BOSTAN_WINDOWS_PG_UNINSPECTABLE=0, BOSTAN_WINDOWS_POSTGRES_NO_ORPHANS_PASS, exit 0. This gate does not kill or alter any process. Mac TypeScript and migration policy checks also returned exit 0 after the final fixture changes.
 
 ## Open
 
