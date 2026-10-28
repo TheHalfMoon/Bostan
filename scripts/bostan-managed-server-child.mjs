@@ -5,18 +5,38 @@ import path from "node:path";
  * Windows process.kill(SIGTERM) is not a portable substitute for a signal
  * handler: on Windows it may terminate the process without service cleanup.
  */
-export function superviseManagedServer(startServer, ipc = process) {
+// The parent may disconnect while startup or shutdown is indefinitely pending.
+// A bounded stop deadline prevents a detached backend from keeping DB sockets
+// and an HTTP listener alive indefinitely. Test-only injection is internal.
+export function superviseManagedServer(startServer, ipc = process, { stopTimeoutMs = 30_000 } = {}) {
+  const deadlineMs = Number.isSafeInteger(stopTimeoutMs) && stopTimeoutMs >= 1 &&
+    stopTimeoutMs <= 60_000 ? stopTimeoutMs : 30_000;
   let pending = false;
   let closing = false;
   let ready = null;
   let resolveReady;
+  let stopTimer = null;
+  let reported = false;
   const started = new Promise((resolve) => { resolveReady = resolve; });
   const onMessage = (value) => {
     if (value?.type !== "bostan:managed:stop") return;
-    pending = true;
-    if (!closing) void orderlyStop();
+    requestStop();
   };
+  function requestStop() {
+    if (reported) return;
+    pending = true;
+    // Start the clock at the first stop request, not after startup settles:
+    // startup itself can hang after the parent disappears.
+    if (stopTimer === null) {
+      stopTimer = setTimeout(() => reportAndExit("bostan:managed:stop-failed", 1), deadlineMs);
+      stopTimer.unref?.();
+    }
+    if (!closing) void orderlyStop();
+  }
   function reportAndExit(type, code) {
+    if (reported) return;
+    reported = true;
+    if (stopTimer !== null) clearTimeout(stopTimer);
     // An orphaned Windows child has a disconnected IPC pipe. Reporting is
     // best effort; failure to send an acknowledgement must never leave the
     // completed server alive with an unowned database connection.
@@ -41,7 +61,7 @@ export function superviseManagedServer(startServer, ipc = process) {
   // orphaned PostgreSQL cluster. Shutdown remains best effort, and recovery
   // still requires the separately verified stopped-database lock protocol.
   ipc.on("message", onMessage);
-  ipc.on("disconnect", () => { pending = true; if (!closing) void orderlyStop(); });
+  ipc.on("disconnect", requestStop);
   ready = Promise.resolve().then(startServer);
   ready.then((instance) => {
     resolveReady(instance);
