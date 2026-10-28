@@ -90,3 +90,15 @@ test("real Windows auth/DB and localhost QA runners enforce disk admission befor
   assert.match(auth,/BOSTAN_WINDOWS_AUTH_DB_STORAGE_REFUSED/);
   assert.match(live,/BOSTAN_WINDOWS_LIVE_STORAGE_REFUSED/);
 });
+
+test("fractional low-disk headroom is reported accurately without path disclosure",()=>{
+  const options=params({"D:\\":10},{
+    statfs:vol=>vol.toUpperCase()==="C:\\"
+      ?{bavail:(1024n**3n)/10n,bsize:1n}
+      :{bavail:10n,bsize:gib},
+  });
+  const result=checkBostanWindowsDisk(options);
+  assert.equal(result.allowed,false);
+  assert.equal(result.checks[0].freeGiB,0.09);
+  assert.equal(JSON.stringify(result).includes("Bostan-B091-qa"),false);
+});

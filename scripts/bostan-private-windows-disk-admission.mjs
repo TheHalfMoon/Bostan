@@ -52,7 +52,7 @@ export function checkBostanWindowsDisk({
     const checks=[...volumes.values()].map(item=>{
       const free=availableBytes(statfs,item.volume);
       return {purpose:item.labels.join("+"),
-        freeGiB:Math.floor(Number(free/GIB)*100)/100,
+        freeGiB:Number(free*100n/GIB)/100,
         requiredGiB:Number(item.minimumBytes/GIB),
         sufficient:free>=item.minimumBytes};
     });
