@@ -46,6 +46,8 @@ async function availablePort(){
 }
 const sleep=ms=>new Promise(ok=>setTimeout(ok,ms));
 let db=null,server=null;
+let failed=false;
+let serverOutput="";
 const home=mkdtempSync(join(temp,"bostan-private-auth-http-"));
 writeFileSync(join(home,"BOSTAN_QA_OWNED"),"BOSTAN_PRIVATE_SYNTHETIC_ONLY\n");
 let started=false;
@@ -71,7 +73,10 @@ try{
     if(/^(OPENAI|ANTHROPIC|OPENROUTER|GEMINI|GOOGLE|XAI|AWS_|AZURE_|SENTRY|OTEL_EXPORTER|NODE_OPTIONS)/i.test(key))delete env[key];
   }
   server=spawn(process.execPath,["--import","tsx","src/index.ts"],{
-    cwd:join(root,"server"),env,windowsHide:true,stdio:"ignore",
+    cwd:join(root,"server"),env,windowsHide:true,stdio:["ignore","pipe","pipe"],
+  });
+  for(const stream of [server.stdout,server.stderr])stream?.on("data",part=>{
+    serverOutput=(serverOutput+String(part)).slice(-65536);
   });
   started=true;
   let healthy=false;
@@ -117,9 +122,18 @@ try{
   console.log(JSON.stringify({...spec,run:true,livePostgres:true,localhostOnly:true,
     realHttpStatus:200,realSession:true,firstAdmin:true},null,2));
 }catch(error){
+  failed=true;
+  const pkg=serverOutput.match(/Cannot find package ['"](@bostan\/[a-z0-9_-]+)['"]/i);
+  const diagnostic=pkg?"missing_bostan_package:"+pkg[1]:
+    /ERR_MODULE_NOT_FOUND|Cannot find module/.test(serverOutput)?"missing_module":
+    /ERR_PACKAGE_PATH_NOT_EXPORTED/.test(serverOutput)?"package_exports":
+    /MODULE_NOT_FOUND/.test(serverOutput)?"module_resolution":
+    /EADDRINUSE/.test(serverOutput)?"address_in_use":
+    /SyntaxError/.test(serverOutput)?"syntax_error":
+    /Error/.test(serverOutput)?"server_startup_error":"no_server_diagnostic";
+  console.error("BOSTAN_WINDOWS_LIVE_SERVER_DIAGNOSTIC="+diagnostic);
   console.error("Bostan Windows live authenticated QA FAILED: "+
     (error instanceof Error?error.message.replace(/(?:postgres(?:ql)?:\/\/)[^\s]+/g,"[redacted]"):"unknown error"));
-  process.exitCode=1;
 }finally{
   if(server){
     if(server.exitCode===null){
@@ -132,9 +146,12 @@ try{
     }
   }
   if(db){
-    try{await db.cleanup();}catch{process.exitCode=1;console.error("Bostan QA PostgreSQL cleanup failed");}
+    try{await db.cleanup();}catch{failed=true;console.error("Bostan QA PostgreSQL cleanup failed");}
   }
   if(existsSync(join(home,"BOSTAN_QA_OWNED"))&&lstatSync(home).isDirectory())
     rmSync(home,{recursive:true,force:true});
   console.log("BOSTAN_WINDOWS_LIVE_HTTP_TEST_TEARDOWN_COMPLETE");
 }
+// Embedded PostgreSQL registers an async exit hook; explicit nonzero exit is
+// required so a failed live server can never be reported as a PASS by pnpm.
+if(failed)process.exit(1);
