@@ -114,3 +114,40 @@ test("disconnected parent cannot prevent child from exiting after service drain"
   assert.equal(closed, 1);
   assert.deepEqual(proc.exits, [0]);
 });
+
+test("real isolated backend startup does not print a secret carried in a thrown error", { timeout: 15_000 }, async () => {
+  const fs = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-managed-child-secret-"));
+  const secret = "BOSTAN_SYNTHETIC_DATABASE_PASSWORD_NEVER_LOG_9173";
+  try {
+    fs.mkdirSync(path.join(dir, "scripts"), { recursive: true });
+    fs.mkdirSync(path.join(dir, "server", "src"), { recursive: true });
+    fs.copyFileSync(fileURLToPath(new URL("./bostan-managed-server-child.mjs", import.meta.url)),
+      path.join(dir, "scripts", "bostan-managed-server-child.mjs"));
+    fs.writeFileSync(path.join(dir, "server", "src", "index.ts"),
+      'export async function startServer(){setInterval(()=>{},1000);throw new Error(' +
+      JSON.stringify("postgres://bostan:" + secret + "@127.0.0.1:5432/bostan") + ')}\n');
+    const child = spawn(process.execPath, [path.join(dir, "scripts", "bostan-managed-server-child.mjs")], {
+      env: { ...process.env, BOSTAN_WINDOWS_TEMP_QA: "1" },
+      stdio: ["ignore", "pipe", "pipe", "ipc"],
+      windowsHide: true,
+    });
+    let stderr = "";
+    child.stderr.on("data", value => { stderr += value.toString(); });
+    const watchdog = setTimeout(() => child.kill(), 5000);
+    try {
+      const [code] = await once(child, "close");
+      assert.doesNotMatch(stderr, /BOSTAN_SYNTHETIC_DATABASE_PASSWORD_NEVER_LOG_9173|postgres:\/\//,
+        "private Windows QA logs must never contain thrown error values");
+      assert.equal(code, 1, "startup failure must exit nonzero without parent disconnection");
+      assert.match(stderr, /Bostan managed Windows backend startup failed/);
+    } finally {
+      clearTimeout(watchdog);
+      if (child.exitCode === null) child.kill();
+    }
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

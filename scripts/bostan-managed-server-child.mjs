@@ -72,8 +72,15 @@ async function main() {
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch((error) => {
-    process.stderr.write("Bostan managed Windows backend startup failed: " +
-      (error?.message || "unknown error") + "\n");
-    process.exitCode = 1;
+    // A backend exception can contain DATABASE_URL credentials, OAuth tokens,
+    // customer data or full filesystem paths. Windows QA logs must not emit it.
+    const name = error instanceof Error ? error.name : "";
+    const kind = ["Error", "TypeError", "SyntaxError", "ReferenceError", "RangeError"]
+      .includes(name) ? name : "other";
+    // With an IPC listener (and potentially opened DB sockets), exitCode=1
+    // does NOT guarantee termination. On failed startup, the launcher must
+    // observe a nonzero child exit and retain the database recovery lock.
+    process.stderr.write("Bostan managed Windows backend startup failed (" +
+      kind + "); private details suppressed.\n", () => process.exit(1));
   });
 }
