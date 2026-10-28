@@ -10,6 +10,7 @@ import {checkBostanWindowsDisk} from "./bostan-private-windows-disk-admission.mj
 import {buildPrivateWindowsHttpQaEnvironment} from "./bostan-private-windows-qa-env.mjs";
 import {parsePrivateWindowsQaWave,matchingPrivateWindowsQaWave} from "./bostan-private-windows-qa-wave.mjs";
 import {observeOwnedQaChild} from "./bostan-private-windows-child-lifecycle.mjs";
+import {evaluateWindowsPrivateHttpEvidence} from "./bostan-private-windows-http-evidence.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const spec={schema:"bostan.private-windows-auth-server.v1",run:false,
@@ -62,15 +63,21 @@ let lastHealthStatus="no_response";
 let serverStartedAt=0;
 const home=mkdtempSync(join(temp,"bostan-private-auth-http-"));
 writeFileSync(join(home,"BOSTAN_QA_OWNED"),"BOSTAN_PRIVATE_SYNTHETIC_ONLY\n");
+const httpEvents=[];
+function markHttpStage(name){
+  httpEvents.push(name);
+  console.log(name);
+}
 let completedHttpChecks=false;
 let serverClosed=true;
 let dbCleaned=true;
 let ownedHomeCleaned=false;
+let childStateForceUsed=false;
 try{
   process.env.PAPERCLIP_TEST_POSTGRES_TEMPLATE="0";
   const {startEmbeddedPostgresTestDatabase}=await import("../packages/db/src/test-embedded-postgres.js");
   db=await startEmbeddedPostgresTestDatabase("bostan-private-auth-http-db-");
-  console.log("BOSTAN_WINDOWS_LIVE_POSTGRES_MIGRATED");
+  markHttpStage("BOSTAN_WINDOWS_LIVE_POSTGRES_MIGRATED");
   const port=await availablePort();
   const origin="http://127.0.0.1:"+port;
   // The app child must never inherit unrelated operator tokens, DSNs or
@@ -118,7 +125,15 @@ try{
     await sleep(1000);
   }
   if(!healthy)throw Error("Real Bostan native Windows authenticated server did not reach expected private ready state");
-  console.log("BOSTAN_WINDOWS_LIVE_HTTP_AUTH_HEALTH_PASS");
+  markHttpStage("BOSTAN_WINDOWS_LIVE_HTTP_AUTH_HEALTH_PASS");
+  // Same-origin without a browser session must not claim first admin.
+  const anonymousClaim=await fetch(origin+"/api/bootstrap/claim",{
+    method:"POST",headers:{origin,"content-type":"application/json"},
+    body:"{}",redirect:"error",signal:AbortSignal.timeout(12000),
+  });
+  if(anonymousClaim.status!==401)
+    throw Error("Anonymous first-admin claim was not denied");
+  markHttpStage("BOSTAN_WINDOWS_LIVE_ANONYMOUS_CLAIM_DENIED");
   const email="bostan-b086-"+randomUUID()+"@example.invalid";
   const password="Test-only-"+randomBytes(18).toString("hex")+"!A2";
   const response=await fetch(origin+"/api/auth/sign-up/email",{
@@ -131,16 +146,70 @@ try{
   if(typeof body?.user?.id!=="string"||!body.user.id)throw Error("Real session user id missing");
   const cookie=response.headers.getSetCookie?.().map(x=>x.split(";")[0]).find(x=>x.includes("session_token="));
   if(!cookie)throw Error("Real Bostan Better Auth session cookie absent");
-  console.log("BOSTAN_WINDOWS_LIVE_AUTH_SIGNUP_PASS");
+  markHttpStage("BOSTAN_WINDOWS_LIVE_AUTH_SIGNUP_PASS");
+  // Session cookie presence is insufficient: bind it to this synthetic user.
+  const session=await fetch(origin+"/api/auth/get-session",{
+    headers:{cookie},redirect:"error",signal:AbortSignal.timeout(12000),
+  });
+  const sessionBody=await session.json().catch(()=>null);
+  if(session.status!==200||sessionBody?.user?.id!==body.user.id||
+     sessionBody?.user?.email!==email||
+     sessionBody?.session?.userId!==body.user.id)
+    throw Error("Signed-in session does not match synthetic user");
+  markHttpStage("BOSTAN_WINDOWS_LIVE_SIGNED_IN_SESSION_PASS");
+
+  const hostileOrigin=await fetch(origin+"/api/bootstrap/claim",{
+    method:"POST",headers:{cookie,origin:"https://attacker.example.invalid",
+      "content-type":"application/json"},
+    body:"{}",redirect:"error",signal:AbortSignal.timeout(12000),
+  });
+  if(hostileOrigin.status!==403)throw Error("Cross-origin claim not forbidden");
+  markHttpStage("BOSTAN_WINDOWS_LIVE_CROSS_ORIGIN_CLAIM_DENIED");
+
+  const forgedReferer=await fetch(origin+"/api/bootstrap/claim",{
+    method:"POST",headers:{cookie,origin:"https://attacker.example.invalid",
+      referer:origin+"/dashboard","content-type":"application/json"},
+    body:"{}",redirect:"error",signal:AbortSignal.timeout(12000),
+  });
+  if(forgedReferer.status!==403)
+    throw Error("Hostile Origin with trusted Referer was not forbidden");
+  markHttpStage("BOSTAN_WINDOWS_LIVE_SPOOFED_REFERER_CLAIM_DENIED");
+
+  const noOrigin=await fetch(origin+"/api/bootstrap/claim",{
+    method:"POST",headers:{cookie,"content-type":"application/json"},
+    body:"{}",redirect:"error",signal:AbortSignal.timeout(12000),
+  });
+  if(noOrigin.status!==403)throw Error("Originless session claim not forbidden");
+  markHttpStage("BOSTAN_WINDOWS_LIVE_MISSING_ORIGIN_CLAIM_DENIED");
+
+  const pending=await fetch(origin+"/api/health",{
+    signal:AbortSignal.timeout(12000),redirect:"error",
+  });
+  const pendingBody=await pending.json().catch(()=>null);
+  if(pending.status!==200||pendingBody?.bootstrapStatus!=="bootstrap_pending")
+    throw Error("Rejected claims changed first-admin bootstrap state");
+  markHttpStage("BOSTAN_WINDOWS_LIVE_DENIALS_PRESERVE_PENDING");
   const claim=await fetch(origin+"/api/bootstrap/claim",{
     method:"POST",headers:{"cookie":cookie,"origin":origin,"content-type":"application/json"},
     signal:AbortSignal.timeout(15000),redirect:"error",
   });
-  if(claim.status!==200)throw Error("Native Windows first-admin claim HTTP mismatch");
-  const status=await fetch(origin+"/api/health",{signal:AbortSignal.timeout(5000)});
+  const claimedBody=await claim.json().catch(()=>null);
+  if(claim.status!==200||claimedBody?.claimed!==true||
+     claimedBody?.userId!==body.user.id)
+    throw Error("First-admin claim did not bind signed-in synthetic user");
+  markHttpStage("BOSTAN_WINDOWS_LIVE_FIRST_ADMIN_CLAIM_PASS");
+  const repeat=await fetch(origin+"/api/bootstrap/claim",{
+    method:"POST",headers:{cookie,origin,"content-type":"application/json"},
+    body:"{}",redirect:"error",signal:AbortSignal.timeout(12000),
+  });
+  if(repeat.status!==409)throw Error("Repeat first-admin claim was not refused");
+  markHttpStage("BOSTAN_WINDOWS_LIVE_REPEAT_CLAIM_DENIED");
+  const status=await fetch(origin+"/api/health",{
+    signal:AbortSignal.timeout(12000),redirect:"error",
+  });
   if(status.status!==200||(await status.json())?.bootstrapStatus!=="ready")
     throw Error("Real first-admin claim did not close bootstrap state");
-  console.log("BOSTAN_WINDOWS_LIVE_FIRST_ADMIN_CLAIM_PASS");
+  markHttpStage("BOSTAN_WINDOWS_LIVE_POST_CLAIM_HEALTH_PASS");
   completedHttpChecks=true;
 }catch(error){
   failed=true;
@@ -189,10 +258,12 @@ try{
     // until that event has been observed for THIS child.
     const childState=await serverObserver.stop();
     serverClosed=childState.closed&&!childState.spawnError;
+    if(serverClosed)markHttpStage("BOSTAN_WINDOWS_LIVE_SERVER_CLOSED");
     if(childState.spawnError){
       failed=true;
       console.error("BOSTAN_WINDOWS_LIVE_SERVER_SPAWN_FAILED");
     }
+    childStateForceUsed=childState.forceUsed;
     if(childState.forceUsed){
       failed=true;
       console.error("BOSTAN_WINDOWS_LIVE_SERVER_FORCE_TERMINATION");
@@ -207,7 +278,11 @@ try{
   if(db){
     dbCleaned=false;
     if(serverClosed){
-      try{await db.cleanup();dbCleaned=true;}
+      try{
+        await db.cleanup();
+        dbCleaned=true;
+        markHttpStage("BOSTAN_WINDOWS_LIVE_POSTGRES_CLEANED");
+      }
       catch{failed=true;console.error("Bostan QA PostgreSQL cleanup failed");}
     }else{
       failed=true;
@@ -219,22 +294,27 @@ try{
      lstatSync(home).isDirectory()&&!lstatSync(home).isSymbolicLink()&&
      lstatSync(marker).isFile()&&!lstatSync(marker).isSymbolicLink()&&
      readFileSync(marker,"utf8")==="BOSTAN_PRIVATE_SYNTHETIC_ONLY"+String.fromCharCode(10)){
-    try{rmSync(home,{recursive:true,force:true});ownedHomeCleaned=true;}
+    try{
+      rmSync(home,{recursive:true,force:true});
+      ownedHomeCleaned=true;
+      markHttpStage("BOSTAN_WINDOWS_LIVE_OWNED_FIXTURE_CLEANED");
+    }
     catch{failed=true;console.error("Bostan QA owned fixture cleanup failed");}
   }
-  const qualified=completedHttpChecks&&!failed&&serverClosed&&dbCleaned&&ownedHomeCleaned;
+  const proof=evaluateWindowsPrivateHttpEvidence({
+    events:httpEvents,httpComplete:completedHttpChecks,childClosed:serverClosed,
+    spawnError:serverObserver?.spawnError??false,
+    forceUsed:typeof childStateForceUsed==="boolean"?childStateForceUsed:false,
+    postgresCleaned:dbCleaned,ownedFixtureCleaned:ownedHomeCleaned,
+    priorFailure:failed,
+  });
+  const qualified=proof.windowsAuthenticatedHttpQualified;
   if(qualified){
-    console.log(JSON.stringify({...spec,run:true,livePostgres:true,
-      realHttpStatus:200,realSession:true,firstAdmin:true,
-      serverClosed:true,postgresCleaned:true,ownedFixtureCleaned:true,
-      windowsAuthenticatedHttpQualified:true,
-      noOrphanPostgresProcessVerified:false},null,2));
+    console.log(JSON.stringify({...spec,...proof,run:true,livePostgres:true,
+      realHttpStatus:200,realSession:true,firstAdmin:true},null,2));
   }else{
     failed=true;
-    console.log(JSON.stringify({...spec,run:true,
-      windowsAuthenticatedHttpQualified:false,
-      serverClosed,postgresCleaned:dbCleaned,
-      ownedFixtureCleaned:ownedHomeCleaned,
+    console.log(JSON.stringify({...spec,...proof,run:true,
       manualOwnedFixtureInspectionRequired:!ownedHomeCleaned},null,2));
   }
   console.log("BOSTAN_WINDOWS_LIVE_HTTP_TEST_TEARDOWN_COMPLETE");
