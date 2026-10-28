@@ -8,6 +8,7 @@ import {basename,join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {checkBostanWindowsDisk} from "./bostan-private-windows-disk-admission.mjs";
 import {buildPrivateWindowsHttpQaEnvironment} from "./bostan-private-windows-qa-env.mjs";
+import {parsePrivateWindowsQaWave,matchingPrivateWindowsQaWave} from "./bostan-private-windows-qa-wave.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const spec={schema:"bostan.private-windows-auth-server.v1",run:false,
@@ -23,7 +24,7 @@ if(args.length!==1||args[0]!=="--run"){
   console.error("Usage: node --import tsx scripts/bostan-private-windows-live-http.mjs [--plan|--run]");
   process.exit(2);
 }
-if(process.platform!=="win32"||!/^Bostan-B0\d+-qa$/i.test(basename(resolve(root)))){
+if(process.platform!=="win32"||!parsePrivateWindowsQaWave(basename(resolve(root)),"qa")){
   console.error("Native Windows live HTTP QA requires an isolated Bostan B0xx QA checkout");
   process.exit(2);
 }
@@ -35,7 +36,7 @@ for(const key of Object.keys(process.env)){
 }
 const temp=process.env.TEMP||"";
 if(!existsSync(temp)||lstatSync(temp).isSymbolicLink()||
-   !/^Bostan-B0\d+-temp$/i.test(basename(temp))){
+   !matchingPrivateWindowsQaWave(basename(resolve(root)),basename(temp))){
   console.error("Bostan native QA requires an owned test-only TEMP directory");
   process.exit(2);
 }
