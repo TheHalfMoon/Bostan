@@ -3,16 +3,17 @@
 # deployed into a real Linux tmpfs. Not an installer or a release qualification.
 set -euo pipefail
 if [ "$#" -eq 0 ] || { [ "$#" -eq 1 ] && [ "$1" = --plan ]; }; then
-  echo 'Bostan native Linux private prebuilt-stage qualification: --run-authz is explicit.'
+  echo 'Bostan native Linux private prebuilt-stage qualification: --run-authz or --run-admin-race is explicit.'
   echo 'Requires matching compiled JS build, official native dependencies,'
   echo 'isolated /tmp tmpfs, real PostgreSQL, production UI and two signed-in users.'
   echo 'Never deploy to users or publish; no paid providers or production data.'
   exit 0
 fi
-if [ "$#" -ne 1 ] || [ "$1" != --run-authz ]; then
-  echo 'Usage: bash scripts/bostan-private-linux-native-prebuilt-stage-authz.sh [--plan|--run-authz]' >&2
+if [ "$#" -ne 1 ] || { [ "$1" != --run-authz ] && [ "$1" != --run-admin-race ]; }; then
+  echo 'Usage: bash scripts/bostan-private-linux-native-prebuilt-stage-authz.sh [--plan|--run-authz|--run-admin-race]' >&2
   exit 2
 fi
+MODE="$1"
 if [ "$(uname -s)" != Linux ] || [ "${BOSTAN_LINUX_PRIVATE_TMPFS_QA:-0}" != 1 ]; then
   echo 'Bostan native Linux staged QA must be explicitly admitted on Linux' >&2
   exit 2
@@ -73,5 +74,12 @@ node scripts/bostan-private-staged-server-check.mjs --verify "$STAGE"
 test -f "$STAGE/ui-dist/index.html" || { echo 'Bostan QA staged UI missing' >&2;exit 1; }
 node scripts/bostan-private-bundled-font-license-gate.mjs --verify-stage "$STAGE/ui-dist"
 echo BOSTAN_LINUX_NATIVE_TMPFS_STAGE_VERIFIED
-bash scripts/bostan-local-http-postgres-smoke.sh --run-deployed-authz "$STAGE"
-echo BOSTAN_LINUX_NATIVE_STAGED_POSTGRES_AUTHZ_PASS
+if [ "$MODE" = --run-admin-race ]; then
+  # Eight independent real signed-in HTTP claimants; exactly one committed
+  # administrator, seven conflict responses, eight replay conflicts.
+  bash scripts/bostan-local-http-postgres-smoke.sh --run-deployed-admin-race "$STAGE"
+  echo BOSTAN_LINUX_NATIVE_STAGED_POSTGRES_FIRST_ADMIN_RACE_PASS
+else
+  bash scripts/bostan-local-http-postgres-smoke.sh --run-deployed-authz "$STAGE"
+  echo BOSTAN_LINUX_NATIVE_STAGED_POSTGRES_AUTHZ_PASS
+fi
