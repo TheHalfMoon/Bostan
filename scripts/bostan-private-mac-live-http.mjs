@@ -118,6 +118,7 @@ if(args.length===0||(args.length===1&&args[0]==="--plan")){
       signedInSession:stages.BOSTAN_MAC_HTTP_SIGNED_IN_SESSION_PASS,
       crossOriginClaimDenied:stages.BOSTAN_MAC_HTTP_CROSS_ORIGIN_CLAIM_DENIED,
       spoofedRefererClaimDenied:stages.BOSTAN_MAC_HTTP_SPOOFED_REFERER_CLAIM_DENIED,
+      crossSchemeClaimDenied:stages.BOSTAN_MAC_HTTP_CROSS_SCHEME_CLAIM_DENIED,
       noncanonicalOriginDenied:stages.BOSTAN_MAC_HTTP_NONCANONICAL_ORIGIN_DENIED,
       missingOriginClaimDenied:stages.BOSTAN_MAC_HTTP_MISSING_ORIGIN_CLAIM_DENIED,
       deniedClaimsPreservePending:stages.BOSTAN_MAC_HTTP_DENIED_CLAIMS_PRESERVE_PENDING,
@@ -233,6 +234,17 @@ if(args.length===0||(args.length===1&&args[0]==="--plan")){
       if(spoofedRefererClaim.status!==403)
         throw Error("Spoofed trusted Referer overrode a hostile Origin");
       console.log("BOSTAN_MAC_HTTP_SPOOFED_REFERER_CLAIM_DENIED");
+      // The app is bound to HTTP on loopback. An HTTPS browser Origin to the
+      // same host+port is cross-origin, despite matching the host authority.
+      const crossSchemeClaim=await fetch(origin+"/api/bootstrap/claim",{
+        method:"POST",headers:{cookie,
+          origin:origin.replace(/^http:/,"https:"),
+          "content-type":"application/json"},
+        body:"{}",redirect:"error",signal:AbortSignal.timeout(12000),
+      });
+      if(crossSchemeClaim.status!==403)
+        throw Error("Cross-scheme first-admin claim was not forbidden");
+      console.log("BOSTAN_MAC_HTTP_CROSS_SCHEME_CLAIM_DENIED");
       // Serialized browser Origin is a bare scheme + authority: even with
       // a valid host, a forged path and trusted Referer must be rejected.
       const malformedOriginClaim=await fetch(origin+"/api/bootstrap/claim",{
