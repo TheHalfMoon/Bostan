@@ -112,7 +112,7 @@ test("native owned PostgreSQL scan is required after database cleanup and before
   const fixture=source.indexOf("rmSync(home,");
   const receipt=source.indexOf("const qualified=proof.windowsAuthenticatedHttpQualified;");
   assert.ok(db>0&&pg>db&&fixture>pg&&receipt>fixture);
-  assert.match(source,/spawnSync\("powershell.exe",\[/);
+  assert.match(source,/spawnSync\(powershellBinary,\[/);
   assert.match(source,/bostan-native-windows-postgres-no-orphans\.ps1/);
   assert.match(source,/timeout:20000,maxBuffer:8192/);
   assert.match(source,/if\(serverClosed&&dbCleaned&&postgresProcessTreeVerified&&existsSync\(marker\)/);
@@ -132,4 +132,18 @@ test("native Windows RAM is checked again after PG and before server spawn",()=>
   assert.match(source,/if\(db&&serverClosed&&dbCleaned\)\{/);
   assert.match(source,/serverStartedAt>0\?Math\.round/);
   assert.match(source,/serverStartedAt>0\?Math\.round\(\(Date\.now\(\)-serverStartedAt\)\/1000\):"not_started"/);
+});
+
+test("native PowerShell process scanner cannot be hijacked through PATH",()=>{
+  const resolveBinary=source.indexOf("const powershellBinary=resolvePrivateWindowsPowerShellBinary({systemRoot:pgEnv.SystemRoot})");
+  const spawn=source.indexOf("result=spawnSync(powershellBinary,[");
+  const proof=source.indexOf("const pgProof=evaluateWindowsPgOrphanCheck({");
+  assert.ok(resolveBinary>0&&spawn>resolveBinary&&proof>spawn);
+  assert.match(source,/import \{resolvePrivateWindowsPowerShellBinary\} from "\.\/bostan-private-windows-powershell-binary\.mjs"/);
+  assert.doesNotMatch(source,/spawnSync\(["']powershell(?:\.exe)?["']/i);
+  assert.doesNotMatch(source,/PATH:process\.env\.Path\|\|process\.env\.PATH/);
+  assert.match(source,/BOSTAN_WINDOWS_LIVE_POWERSHELL_UNAVAILABLE/);
+  assert.match(source,/status:result\?\.status,signal:result\?\.signal/);
+  assert.match(source,/stdout:result\?\.stdout,stderr:result\?\.stderr/);
+  assert.match(source,/if\(serverClosed&&dbCleaned&&postgresProcessTreeVerified&&existsSync\(marker\)/);
 });
