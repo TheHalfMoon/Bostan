@@ -7,6 +7,7 @@ const file=fileURLToPath(new URL("./bostan-private-windows-auth-db.mjs",import.m
 const src=readFileSync(file,"utf8");
 const live=fileURLToPath(new URL("./bostan-private-windows-live-http.mjs",import.meta.url));
 const liveSource=readFileSync(live,"utf8");
+const envSource=readFileSync(fileURLToPath(new URL("./bostan-private-windows-qa-env.mjs",import.meta.url)),"utf8");
 const invoke=(...args)=>spawnSync(process.execPath,[file,...args],{encoding:"utf8"});
 test("default is read-only, private and explicitly opted in",()=>{
   const out=invoke();
@@ -34,7 +35,8 @@ test("script keeps real HTTP/DB tests and process ownership boundaries",()=>{
   assert.match(src,/auth-routes\.test\.ts/);
   assert.match(src,/src\/client\.test\.ts/);
   assert.match(src,/bostan-native-windows-postgres-no-orphans\.ps1/);
-  assert.match(src,/Bostan-B0/);
+  assert.match(src,/parsePrivateWindowsQaWave/);
+  assert.match(src,/matchingPrivateWindowsQaWave/);
   assert.match(src,/PAPERCLIP_CLOUD_/);
   assert.match(src,/BOSTAN_WIN_AUTH_DB_REAL_POSTGRES_PASS/);
   assert.match(src,/npm_config_offline/);
@@ -79,8 +81,9 @@ test("Windows staged server entry refuses any direct or unsentinelized invocatio
     env:{...process.env,BOSTAN_PRIVATE_QA_ENTRY:""}});
   assert.equal(direct.status,2);
   assert.match(direct.stderr,/unsafe synthetic test fixture/);
-  assert.match(liveSource,/BOSTAN_PRIVATE_QA_ENTRY/);
-  assert.match(liveSource,/BOSTAN_PRIVATE_QA_MARKER/);
+  assert.match(liveSource,/buildPrivateWindowsHttpQaEnvironment/);
+  assert.match(envSource,/BOSTAN_PRIVATE_QA_ENTRY/);
+  assert.match(envSource,/BOSTAN_PRIVATE_QA_MARKER/);
 });
 
 test("private Windows live HTTP fixture imports the module profiler without enabling it in other workflows",()=>{
@@ -88,5 +91,7 @@ test("private Windows live HTTP fixture imports the module profiler without enab
   assert.match(liveSource,/BOSTAN_WINDOWS_LIVE_MODULE_LOAD_COUNT/);
   assert.match(liveSource,/BOSTAN_WINDOWS_LIVE_SLOW_MODULES/);
   assert.match(liveSource,/BOSTAN_WIN_IMPORT_PROFILE=/);
-  assert.match(liveSource,/BOSTAN_PRIVATE_QA_ENTRY:"B087_TEST_ONLY"/);
+  assert.match(envSource,/BOSTAN_PRIVATE_QA_ENTRY:"B087_TEST_ONLY"/);
+  const entrySource=readFileSync(fileURLToPath(new URL("./bostan-private-windows-server-entry.mjs",import.meta.url)),"utf8");
+  assert.match(entrySource,/BOSTAN_PRIVATE_QA_ENTRY==="B087_TEST_ONLY"/);
 });

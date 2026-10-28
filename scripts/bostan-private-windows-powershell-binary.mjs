@@ -7,11 +7,12 @@
 import {lstatSync} from 'node:fs';
 import {win32} from 'node:path';
 
-export function resolvePrivateWindowsPowerShellBinary({
-  platform = process.platform,
-  systemRoot = process.env.SystemRoot,
-  statPath = lstatSync,
-} = {}) {
+export function resolvePrivateWindowsPowerShellBinary(options = {}) {
+  const {platform = process.platform, statPath = lstatSync} = options;
+  // An explicitly supplied undefined root is an invalid caller input, not
+  // permission to silently fall back to the operator's ambient SystemRoot.
+  const systemRoot = Object.hasOwn(options, 'systemRoot')
+    ? options.systemRoot : process.env.SystemRoot;
   const refused = () => { throw Error('Private Windows QA PowerShell executable unavailable'); };
   // B1-08 accepted C:\\Untrusted\\Windows because basename() was "Windows".
   // Require the direct drive-root Windows directory; no nested lookalikes,

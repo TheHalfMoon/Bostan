@@ -76,8 +76,11 @@ test('never leaks malicious path or metadata error in rejection',()=>{
     error=>!String(error).includes('password'));
 });
 
-test('real zero-exit subprocess cannot bypass absent native Windows system tree',()=>{
+test('real zero-exit subprocess cannot bypass an unavailable native Windows system tree',()=>{
   const child=spawnSync(process.execPath,['-e','process.exit(0)'],{encoding:'utf8',timeout:5000});
   assert.equal(child.status,0);
-  assert.throws(()=>resolve({platform:'win32',systemRoot:'C:\\Windows'}),/unavailable/);
+  // On real Windows, C:\\Windows exists. Simulate a missing filesystem
+  // independently of the host so the fail-closed check is portable.
+  assert.throws(()=>resolve({platform:'win32',systemRoot:'C:\\Windows',
+    statPath:()=>{throw Error('synthetic filesystem unavailable');}}),/unavailable/);
 });
