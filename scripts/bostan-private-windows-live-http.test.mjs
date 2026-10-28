@@ -49,9 +49,10 @@ test("success is reported only after real server exit and owned database cleanup
 });
 test("native Windows heavy work remains gated by disk and disposable ownership",()=>{
   const resourceGate=source.indexOf("checkBostanWindowsDisk({workspace:root,tempDir:temp})");
+  const memoryGate=source.indexOf("const memoryAdmission=checkBostanWindowsMemory()");
   const home=source.indexOf('const home=mkdtempSync(');
   const database=source.indexOf("startEmbeddedPostgresTestDatabase");
-  assert.ok(resourceGate>0&&resourceGate<home&&resourceGate<database);
+  assert.ok(resourceGate>0&&resourceGate<memoryGate&&memoryGate<home&&home<database);
   assert.match(source,/^if\(process\.platform!=="win32"/m);
   assert.match(source,/BOSTAN_WINDOWS_LIVE_STORAGE_REFUSED/);
 });
@@ -118,4 +119,17 @@ test("native owned PostgreSQL scan is required after database cleanup and before
   assert.match(source,/markHttpStage\("BOSTAN_WINDOWS_LIVE_NO_POSTGRES_ORPHANS_PASS"\)/);
   assert.match(source,/postgresCleaned:dbCleaned,postgresProcessTreeVerified/);
   assert.match(source,/BOSTAN_WINDOWS_LIVE_POSTGRES_PROCESS_PROOF/);
+});
+
+test("native Windows RAM is checked again after PG and before server spawn",()=>{
+  const db=source.indexOf('db=await startEmbeddedPostgresTestDatabase(');
+  const postDb=source.indexOf("const afterDbMemory=checkBostanWindowsMemory()");
+  const spawn=source.indexOf("server=spawn(process.execPath,");
+  const final=source.indexOf("}finally{");
+  assert.ok(db>0&&postDb>db&&spawn>postDb&&final>spawn);
+  assert.match(source,/BOSTAN_WINDOWS_LIVE_MEMORY_REFUSED/);
+  assert.match(source,/BOSTAN_WINDOWS_LIVE_MEMORY_POSTGRES_REFUSED/);
+  assert.match(source,/if\(db&&serverClosed&&dbCleaned\)\{/);
+  assert.match(source,/serverStartedAt>0\?Math\.round/);
+  assert.match(source,/serverStartedAt>0\?Math\.round\(\(Date\.now\(\)-serverStartedAt\)\/1000\):"not_started"/);
 });
