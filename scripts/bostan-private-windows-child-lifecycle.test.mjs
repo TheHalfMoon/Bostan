@@ -48,3 +48,25 @@ test('invalid timeouts and non-child inputs refuse',async()=>{
   const receipt=await observer.stop({graceMs:1000,forceMs:1000});
   assert.equal(receipt.closed,true);
 });
+import {EventEmitter} from 'node:events';
+
+test('exitCode alone never permits cleanup without close event',async()=>{
+  const fake=new EventEmitter();
+  fake.exitCode=0;
+  fake.signalCode=null;
+  const signals=[];
+  fake.kill=signal=>{signals.push(signal);return true;};
+  const observer=observeOwnedQaChild(fake);
+  const receipt=await observer.stop({graceMs:10,forceMs:10});
+  assert.deepEqual(receipt,{closed:false,spawnError:false,forceUsed:true});
+  assert.deepEqual(signals,['SIGTERM','SIGKILL']);
+});
+test('spawn error then close is never a successful teardown',async()=>{
+  const fake=new EventEmitter();
+  fake.kill=()=>{throw Error('must not kill spawn failure');};
+  const observer=observeOwnedQaChild(fake);
+  fake.emit('error',Error('synthetic path missing'));
+  setImmediate(()=>fake.emit('close',-2,null));
+  const receipt=await observer.stop({graceMs:100,forceMs:100});
+  assert.deepEqual(receipt,{closed:true,spawnError:true,forceUsed:false});
+});
