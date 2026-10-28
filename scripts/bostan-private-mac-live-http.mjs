@@ -117,6 +117,7 @@ if(args.length===0||(args.length===1&&args[0]==="--plan")){
       syntheticSignup:stages.BOSTAN_MAC_HTTP_SYNTHETIC_SIGNUP_PASS,
       signedInSession:stages.BOSTAN_MAC_HTTP_SIGNED_IN_SESSION_PASS,
       crossOriginClaimDenied:stages.BOSTAN_MAC_HTTP_CROSS_ORIGIN_CLAIM_DENIED,
+      spoofedRefererClaimDenied:stages.BOSTAN_MAC_HTTP_SPOOFED_REFERER_CLAIM_DENIED,
       missingOriginClaimDenied:stages.BOSTAN_MAC_HTTP_MISSING_ORIGIN_CLAIM_DENIED,
       deniedClaimsPreservePending:stages.BOSTAN_MAC_HTTP_DENIED_CLAIMS_PRESERVE_PENDING,
       firstAdminClaim:stages.BOSTAN_MAC_HTTP_FIRST_ADMIN_CLAIM_PASS,
@@ -220,6 +221,17 @@ if(args.length===0||(args.length===1&&args[0]==="--plan")){
       if(forgedOriginClaim.status!==403)
         throw Error("Cross-origin session claim was not forbidden");
       console.log("BOSTAN_MAC_HTTP_CROSS_ORIGIN_CLAIM_DENIED");
+      // An attacker-supplied Referer that looks trusted cannot override an
+      // explicitly hostile Origin. This was a real guard precedence defect.
+      const spoofedRefererClaim=await fetch(origin+"/api/bootstrap/claim",{
+        method:"POST",headers:{cookie,
+          origin:"https://attacker.example.invalid",
+          referer:origin+"/dashboard","content-type":"application/json"},
+        body:"{}",redirect:"error",signal:AbortSignal.timeout(12000),
+      });
+      if(spoofedRefererClaim.status!==403)
+        throw Error("Spoofed trusted Referer overrode a hostile Origin");
+      console.log("BOSTAN_MAC_HTTP_SPOOFED_REFERER_CLAIM_DENIED");
       // A session-bearing mutation without Origin AND Referer must also fail.
       const missingOriginClaim=await fetch(origin+"/api/bootstrap/claim",{
         method:"POST",headers:{cookie,"content-type":"application/json"},
