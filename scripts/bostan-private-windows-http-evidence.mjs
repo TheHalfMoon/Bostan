@@ -18,13 +18,15 @@ export const WINDOWS_HTTP_REQUIRED_STAGES = Object.freeze([
   "BOSTAN_WINDOWS_LIVE_POST_CLAIM_HEALTH_PASS",
   "BOSTAN_WINDOWS_LIVE_SERVER_CLOSED",
   "BOSTAN_WINDOWS_LIVE_POSTGRES_CLEANED",
+  "BOSTAN_WINDOWS_LIVE_NO_POSTGRES_ORPHANS_PASS",
   "BOSTAN_WINDOWS_LIVE_OWNED_FIXTURE_CLEANED",
 ]);
 
 export function evaluateWindowsPrivateHttpEvidence({
   events = [], httpComplete = false, childClosed = false,
   spawnError = false, forceUsed = false, postgresCleaned = false,
-  ownedFixtureCleaned = false, priorFailure = false,
+  ownedFixtureCleaned = false, postgresProcessTreeVerified = false,
+  priorFailure = false,
 } = {}) {
   const validEvents = Array.isArray(events) && events.length <= 64 &&
     Array.from({length:events.length},(_,i)=>i).every(i =>
@@ -37,7 +39,8 @@ export function evaluateWindowsPrivateHttpEvidence({
     [stage, validEvents && events.filter(event => event === stage).length === 1]));
   const lifecycle = httpComplete === true && childClosed === true &&
     spawnError === false && forceUsed === false &&
-    postgresCleaned === true && ownedFixtureCleaned === true &&
+    postgresCleaned === true && postgresProcessTreeVerified === true &&
+    ownedFixtureCleaned === true &&
     priorFailure === false;
   const qualified = exactEvents && lifecycle;
   return {
@@ -49,7 +52,7 @@ export function evaluateWindowsPrivateHttpEvidence({
     childClosed:childClosed===true,
     postgresCleaned:postgresCleaned===true,
     ownedFixtureCleaned:ownedFixtureCleaned===true,
-    noOrphanPostgresProcessVerified:false,
+    noOrphanPostgresProcessVerified:postgresProcessTreeVerified === true,
     releaseQualified:false,
   };
 }
