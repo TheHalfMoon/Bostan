@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /** Explicit native-Windows, disposable localhost Bostan authenticated server QA. */
 import {randomBytes,randomUUID} from "node:crypto";
-import {spawn} from "node:child_process";
+import {spawn,spawnSync} from "node:child_process";
 import {existsSync,lstatSync,mkdtempSync,mkdirSync,readFileSync,rmSync,writeFileSync} from "node:fs";
 import {createServer} from "node:net";
 import {basename,join,resolve} from "node:path";
@@ -12,6 +12,7 @@ import {parsePrivateWindowsQaWave,matchingPrivateWindowsQaWave} from "./bostan-p
 import {observeOwnedQaChild} from "./bostan-private-windows-child-lifecycle.mjs";
 import {evaluateWindowsPrivateHttpEvidence} from "./bostan-private-windows-http-evidence.mjs";
 import {waitForWindowsPrivateHealth} from "./bostan-private-windows-health-wait.mjs";
+import {evaluateWindowsPgOrphanCheck} from "./bostan-private-windows-pg-orphan-proof.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const spec={schema:"bostan.private-windows-auth-server.v1",run:false,
@@ -75,6 +76,7 @@ let serverClosed=true;
 let dbCleaned=true;
 let ownedHomeCleaned=false;
 let childStateForceUsed=false;
+let postgresProcessTreeVerified=false;
 try{
   process.env.PAPERCLIP_TEST_POSTGRES_TEMPLATE="0";
   const {startEmbeddedPostgresTestDatabase}=await import("../packages/db/src/test-embedded-postgres.js");
@@ -282,8 +284,38 @@ try{
       console.error("BOSTAN_WINDOWS_LIVE_POSTGRES_CLEANUP_DEFERRED");
     }
   }
+  // An embedded DB cleanup promise is not a process-tree proof on Windows:
+  // the native postgres.exe io_worker children may outlive their parent.
+  // Run only the existing read-only, repository-owned process scanner AFTER
+  // database cleanup. Never terminate/inspect other processes ourselves.
+  if(serverClosed&&dbCleaned){
+    const pgEnv={
+      SystemRoot:process.env.SystemRoot||process.env.WINDIR||"",
+      PATH:process.env.Path||process.env.PATH||"",
+      TEMP:home,TMP:home,USERPROFILE:home,HOME:home,
+    };
+    const result=spawnSync("powershell.exe",[
+      "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass",
+      "-File",join(root,"scripts","bostan-native-windows-postgres-no-orphans.ps1"),
+      "-Run",
+    ],{
+      cwd:root,env:pgEnv,windowsHide:true,encoding:"utf8",
+      timeout:20000,maxBuffer:8192,
+    });
+    const pgProof=evaluateWindowsPgOrphanCheck({
+      status:result.status,signal:result.signal,errorCode:result.error?.code,
+      stdout:result.stdout,stderr:result.stderr,
+    });
+    postgresProcessTreeVerified=pgProof.noOrphanPostgresProcessVerified;
+    if(postgresProcessTreeVerified){
+      markHttpStage("BOSTAN_WINDOWS_LIVE_NO_POSTGRES_ORPHANS_PASS");
+    }else{
+      failed=true;
+      console.error("BOSTAN_WINDOWS_LIVE_POSTGRES_PROCESS_PROOF="+pgProof.outcome);
+    }
+  }
   const marker=join(home,"BOSTAN_QA_OWNED");
-  if(serverClosed&&dbCleaned&&existsSync(marker)&&
+  if(serverClosed&&dbCleaned&&postgresProcessTreeVerified&&existsSync(marker)&&
      lstatSync(home).isDirectory()&&!lstatSync(home).isSymbolicLink()&&
      lstatSync(marker).isFile()&&!lstatSync(marker).isSymbolicLink()&&
      readFileSync(marker,"utf8")==="BOSTAN_PRIVATE_SYNTHETIC_ONLY"+String.fromCharCode(10)){
@@ -298,7 +330,8 @@ try{
     events:httpEvents,httpComplete:completedHttpChecks,childClosed:serverClosed,
     spawnError:serverObserver?.spawnError??false,
     forceUsed:typeof childStateForceUsed==="boolean"?childStateForceUsed:false,
-    postgresCleaned:dbCleaned,ownedFixtureCleaned:ownedHomeCleaned,
+    postgresCleaned:dbCleaned,postgresProcessTreeVerified,
+    ownedFixtureCleaned:ownedHomeCleaned,
     priorFailure:failed,
   });
   const qualified=proof.windowsAuthenticatedHttpQualified;
