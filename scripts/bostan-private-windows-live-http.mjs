@@ -171,8 +171,12 @@ try{
     /SyntaxError/.test(serverOutput)?"syntax_error":
     /Error/.test(serverOutput)?"server_startup_error":"no_server_diagnostic";
   console.error("BOSTAN_WINDOWS_LIVE_SERVER_DIAGNOSTIC="+diagnostic);
-  console.error("Bostan Windows live authenticated QA FAILED: "+
-    (error instanceof Error?error.message.replace(/(?:postgres(?:ql)?:\/\/)[^\s]+/g,"[redacted]"):"unknown error"));
+  // Loader/migration errors can include operator file paths, environment
+  // values or connection strings. Never echo a raw exception message.
+  const errorKind=error instanceof Error &&
+    ["Error","TypeError","SyntaxError","ReferenceError","RangeError"].includes(error.name)
+      ?error.name:"other";
+  console.error("BOSTAN_WINDOWS_LIVE_ERROR_TYPE="+errorKind);
 }finally{
   if(server){
     // signalCode, not just exitCode, is set when Node terminates a process by
