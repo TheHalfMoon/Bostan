@@ -210,7 +210,10 @@ if(args.length===0||(args.length===1&&args[0]==="--plan")){
         headers:{cookie,origin,"content-type":"application/json"},
         signal:AbortSignal.timeout(12000),redirect:"error",
       });
-      if(claim.status!==200)throw Error("First-admin claim failed");
+      const claimBody=await claim.json().catch(()=>null);
+      if(claim.status!==200||claimBody?.claimed!==true||
+         claimBody?.userId!==payload.user.id)
+        throw Error("First-admin claim did not bind the synthetic signed-in user");
       console.log("BOSTAN_MAC_HTTP_FIRST_ADMIN_CLAIM_PASS");
       // After first claim, replay must conflict rather than upgrade a caller.
       const repeated=await fetch(origin+"/api/bootstrap/claim",{
