@@ -1,7 +1,7 @@
 /**
  * Bostan private native Windows PG process-tree evidence.
- * Interpret the existing read-only PowerShell owned-process scan without
- * exposing paths, command lines or secrets in receipts.
+ * Interpret the read-only PowerShell process scan without exposing process
+ * paths, command lines or secrets. A zero exit without exact evidence fails.
  */
 export const PG_ORPHAN_CHECK_OUTPUT_LIMIT = 8192;
 export const WINDOWS_PG_ORPHAN_CHECK_LINES = Object.freeze([
@@ -19,12 +19,14 @@ export function evaluateWindowsPgOrphanCheck({
     stderr.length <= PG_ORPHAN_CHECK_OUTPUT_LIMIT;
   const childClean = status === 0 && (signal === null || signal === undefined) &&
     (errorCode === null || errorCode === undefined);
-  const lines = validText ? stdout.replace(/\r\n/g,"\n").trimEnd().split("\n") : [];
-  // The helper must never accept prefixes/suffixes, duplicate PASS markers
-  // or unexpected output from an untrusted child.
+  // PowerShell Write-Output emits exactly one newline per record. Do not use
+  // trimEnd(): it silently accepts extra blank lines and trailing whitespace,
+  // contradicting the strict three-record proof contract.
+  const lines = validText ? stdout.replace(/\r\n/g,"\n").split("\n") : [];
   const exactProof = validText && stderr.length === 0 &&
-    lines.length === WINDOWS_PG_ORPHAN_CHECK_LINES.length &&
-    lines.every((line,i)=>line===WINDOWS_PG_ORPHAN_CHECK_LINES[i]);
+    lines.length === WINDOWS_PG_ORPHAN_CHECK_LINES.length + 1 &&
+    lines.at(-1) === "" &&
+    WINDOWS_PG_ORPHAN_CHECK_LINES.every((line,i)=>lines[i]===line);
   const verified = childClean && exactProof;
   return Object.freeze({
     schema:"bostan.private-windows-pg-orphan-check.v1",
