@@ -55,7 +55,7 @@ test("anonymous denial, bound board session and replay conflict are mandatory",(
   "BOSTAN_MAC_HTTP_SIGNED_IN_SESSION_PASS",
   "BOSTAN_MAC_HTTP_REPEAT_CLAIM_DENIED",
  ];
- assert.equal(STAGES.length,10);
+ assert.equal(STAGES.length,13);
  for(const stage of authStages){
   assert.equal(STAGES.filter(x=>x===stage).length,1);
   const without=STAGES.filter(x=>x!==stage);
