@@ -12,8 +12,9 @@ test('private Linux native prebuilt stage is inert by default, no publication',(
     assert.equal(result.status,0,result.stderr);
     assert.match(result.stdout,/prebuilt-stage qualification/);
     assert.match(result.stdout,/--run-admin-race/);
+    assert.match(result.stdout,/--run-authz-ui/);
   }
-  for(const args of [['--publish'],['--run'],['--run-authz','--publish'],['--run-admin-race','--publish']]){
+  for(const args of [['--publish'],['--run'],['--run-authz','--publish'],['--run-admin-race','--publish'],['--run-authz-ui','--publish']]){
     const result=run(...args);
     assert.equal(result.status,2,result.stderr);
   }
@@ -23,6 +24,7 @@ test('refuses non-Linux host and without explicit private tmpfs admission',()=>{
   if(process.platform!=='linux'){
     assert.equal(run('--run-authz').status,2);
     assert.equal(run('--run-admin-race').status,2);
+    assert.equal(run('--run-authz-ui').status,2);
   }else{
     const noOptIn=spawnSync('bash',[script,'--run-authz'],{
       env:{...process.env,BOSTAN_LINUX_PRIVATE_TMPFS_QA:'0'},
@@ -65,6 +67,9 @@ test('no bypass of actual compiled UI, deploy, SQL authz or safe stage ownership
   ])assert.ok(source.includes(marker),marker);
   assert.doesNotMatch(source,/\b(?:rm -rf|rm -r|rmdir)\s+["']?\$ROOT\b/);
   assert.match(source,/--run-deployed-admin-race/);
+  assert.match(source,/--run-deployed-authz-ui/);
+  assert.match(source,/BOSTAN_LINUX_NATIVE_STAGED_CHROMIUM_AUTHZ_UI_PASS/);
+  assert.match(source,/import\('@playwright\/test'\)/);
   assert.match(source,/BOSTAN_LINUX_NATIVE_STAGED_POSTGRES_FIRST_ADMIN_RACE_PASS/);
   assert.match(source,/\[ "\$MODE" = --run-admin-race \]/);
   assert.match(source,/unset OPENAI_API_KEY/);

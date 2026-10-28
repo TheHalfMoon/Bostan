@@ -3,14 +3,14 @@
 # deployed into a real Linux tmpfs. Not an installer or a release qualification.
 set -euo pipefail
 if [ "$#" -eq 0 ] || { [ "$#" -eq 1 ] && [ "$1" = --plan ]; }; then
-  echo 'Bostan native Linux private prebuilt-stage qualification: --run-authz or --run-admin-race is explicit.'
+  echo 'Bostan native Linux private prebuilt-stage qualification: --run-authz, --run-admin-race or --run-authz-ui is explicit.'
   echo 'Requires matching compiled JS build, official native dependencies,'
   echo 'isolated /tmp tmpfs, real PostgreSQL, production UI and two signed-in users.'
   echo 'Never deploy to users or publish; no paid providers or production data.'
   exit 0
 fi
-if [ "$#" -ne 1 ] || { [ "$1" != --run-authz ] && [ "$1" != --run-admin-race ]; }; then
-  echo 'Usage: bash scripts/bostan-private-linux-native-prebuilt-stage-authz.sh [--plan|--run-authz|--run-admin-race]' >&2
+if [ "$#" -ne 1 ] || { [ "$1" != --run-authz ] && [ "$1" != --run-admin-race ] && [ "$1" != --run-authz-ui ]; }; then
+  echo 'Usage: bash scripts/bostan-private-linux-native-prebuilt-stage-authz.sh [--plan|--run-authz|--run-admin-race|--run-authz-ui]' >&2
   exit 2
 fi
 MODE="$1"
@@ -79,6 +79,13 @@ if [ "$MODE" = --run-admin-race ]; then
   # administrator, seven conflict responses, eight replay conflicts.
   bash scripts/bostan-local-http-postgres-smoke.sh --run-deployed-admin-race "$STAGE"
   echo BOSTAN_LINUX_NATIVE_STAGED_POSTGRES_FIRST_ADMIN_RACE_PASS
+elif [ "$MODE" = --run-authz-ui ]; then
+  # The same private authenticated PostgreSQL HTTP gate also exercises actual
+  # Chromium first-user signup, first-admin claim and Members/Invites UI.
+  # Playwright must be available already; no browser download or install here.
+  node --input-type=module -e "import('@playwright/test').then(m=>{if(!m.chromium)process.exitCode=2})" >/dev/null
+  bash scripts/bostan-local-http-postgres-smoke.sh --run-deployed-authz-ui "$STAGE"
+  echo BOSTAN_LINUX_NATIVE_STAGED_CHROMIUM_AUTHZ_UI_PASS
 else
   bash scripts/bostan-local-http-postgres-smoke.sh --run-deployed-authz "$STAGE"
   echo BOSTAN_LINUX_NATIVE_STAGED_POSTGRES_AUTHZ_PASS
