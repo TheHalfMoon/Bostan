@@ -1,5 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
+import {spawnSync} from "node:child_process";
 import {buildPrivateWindowsHttpQaEnvironment as build} from "./bostan-private-windows-qa-env.mjs";
 
 const params={home:"D:\\Bostan-B100-temp\\bostan-private-auth-http-test",origin:"http://127.0.0.1:43001",port:43001,connectionString:"postgres://synthetic:temporary@127.0.0.1:54329/paperclip",marker:"D:\\Bostan-B100-temp\\bostan-private-auth-http-test\\BOSTAN_QA_OWNED",secret:"synthetic-only-long-random-secret"};
@@ -25,5 +26,18 @@ test("allowed environment has no unrecognized inherited operator variable",()=>{
 test("refuse production or remote HTTP/DB even when inherited env is valid",()=>{
   for(const update of [{origin:"https://127.0.0.1:43001"},{origin:"http://localhost:43001"},{port:0},{port:65536},{connectionString:"postgres://user:pw@db.production:5432/production"},{connectionString:"postgres://user:pw@localhost:5432/dev"},{connectionString:"https://127.0.0.1:5432"},{connectionString:"garbage"},{home:""},{marker:""},{secret:""}]){
     assert.throws(()=>build({...params,...update}),/private QA|Private Windows QA|Invalid private QA|Missing isolated/);
+  }
+});
+
+test("real child process cannot observe inherited operator tokens",()=>{
+  const env=build({...params,inherited:{Path:"C:\\Windows\\System32",GITHUB_TOKEN:"secret",OPENAI_API_KEY:"secret",NODE_OPTIONS:"--trace-warnings",PAPERCLIP_PUBLIC_URL:"https://production.example.invalid"}});
+  const result=spawnSync(process.execPath,["-e",'process.stdout.write(JSON.stringify({keys:Object.keys(process.env),home:process.env.HOME,path:process.env.PATH,db:process.env.DATABASE_URL?.includes("127.0.0.1")}))'],{env,encoding:"utf8",timeout:5000});
+  assert.equal(result.status,0);
+  const output=JSON.parse(result.stdout);
+  assert.equal(output.home,params.home);
+  assert.equal(output.db,true);
+  assert.equal(output.path,"C:\\Windows\\System32");
+  for(const key of ["GITHUB_TOKEN","OPENAI_API_KEY","NODE_OPTIONS","PAPERCLIP_PUBLIC_URL"]){
+    assert.equal(output.keys.some(k=>k.toUpperCase()===key),false,key);
   }
 });
