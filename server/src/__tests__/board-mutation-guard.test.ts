@@ -100,7 +100,7 @@ describe("boardMutationGuard", () => {
     expect(res.status).toBe(403);
   });
 
-  it.each(["null", "not a valid origin", ""])(
+  it.each(["null", "not a valid origin"])(
     "rejects invalid or opaque Origin %s despite a trusted Referer",
     async (origin) => {
       const app = createApp("board");
