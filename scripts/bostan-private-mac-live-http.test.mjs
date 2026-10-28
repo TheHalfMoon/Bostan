@@ -70,5 +70,8 @@ test("timeout and process errors must not be interpreted as success", () => {
   assert.match(source, /timeout: child\.error\?\.code === "ETIMEDOUT"/);
   assert.match(source, /if \(!passed\) process\.exitCode = 1/);
   assert.match(source, /stdio: \["ignore", fd, fd\]/);
+  assert.match(source, /detached: true/);
+  assert.match(source, /process\.kill\(-child\.pid, "SIGTERM"\)/);
+  assert.match(source, /ownedGroupCleanupOk && boundedLog/);
   assert.match(source, /process\.exit\(process\.exitCode \|\| 0\)/);
 });
