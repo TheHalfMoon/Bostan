@@ -2,11 +2,12 @@
 /** Explicit native-Windows, disposable localhost Bostan authenticated server QA. */
 import {randomBytes,randomUUID} from "node:crypto";
 import {spawn} from "node:child_process";
-import {existsSync,lstatSync,mkdtempSync,rmSync,writeFileSync} from "node:fs";
+import {existsSync,lstatSync,mkdtempSync,mkdirSync,readFileSync,rmSync,writeFileSync} from "node:fs";
 import {createServer} from "node:net";
 import {basename,join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {checkBostanWindowsDisk} from "./bostan-private-windows-disk-admission.mjs";
+import {buildPrivateWindowsHttpQaEnvironment} from "./bostan-private-windows-qa-env.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const spec={schema:"bostan.private-windows-auth-server.v1",run:false,
@@ -59,7 +60,10 @@ let lastHealthStatus="no_response";
 let serverStartedAt=0;
 const home=mkdtempSync(join(temp,"bostan-private-auth-http-"));
 writeFileSync(join(home,"BOSTAN_QA_OWNED"),"BOSTAN_PRIVATE_SYNTHETIC_ONLY\n");
-let started=false;
+let completedHttpChecks=false;
+let serverClosed=true;
+let dbCleaned=true;
+let ownedHomeCleaned=false;
 try{
   process.env.PAPERCLIP_TEST_POSTGRES_TEMPLATE="0";
   const {startEmbeddedPostgresTestDatabase}=await import("../packages/db/src/test-embedded-postgres.js");
@@ -67,21 +71,15 @@ try{
   console.log("BOSTAN_WINDOWS_LIVE_POSTGRES_MIGRATED");
   const port=await availablePort();
   const origin="http://127.0.0.1:"+port;
-  const env={...process.env,HOME:home,USERPROFILE:home,PAPERCLIP_HOME:home,
-    PAPERCLIP_CONFIG:join(home,"never-created-config.json"),DATABASE_URL:db.connectionString,
-    PAPERCLIP_MIGRATION_PROMPT:"never",PAPERCLIP_MIGRATION_AUTO_APPLY:"true",
-    PAPERCLIP_DEPLOYMENT_MODE:"authenticated",PAPERCLIP_DEPLOYMENT_EXPOSURE:"private",
-    PAPERCLIP_AUTH_PUBLIC_BASE_URL:origin,PAPERCLIP_AUTH_BASE_URL_MODE:"explicit",
-    PAPERCLIP_AUTH_DISABLE_SIGN_UP:"false",PAPERCLIP_AUTH_RATE_LIMIT_ENABLED:"false",
-    BETTER_AUTH_SECRET:randomBytes(32).toString("hex"),
-    BOSTAN_PRIVATE_QA_ENTRY:"B087_TEST_ONLY",BOSTAN_PRIVATE_QA_MARKER:join(home,"BOSTAN_QA_OWNED"),
-    HOST:"127.0.0.1",PORT:String(port),PAPERCLIP_OPEN_ON_LISTEN:"false",
-    SERVE_UI:"false",HEARTBEAT_SCHEDULER_ENABLED:"false",
-    BOSTAN_FEEDBACK_EXPORT_ENABLED:"0",OTEL_SDK_DISABLED:"true",
-    DO_NOT_TRACK:"1",CI:"1",PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD:"1"};
-  for(const key of Object.keys(env)){
-    if(/^(OPENAI|ANTHROPIC|OPENROUTER|GEMINI|GOOGLE|XAI|AWS_|AZURE_|SENTRY|OTEL_EXPORTER|NODE_OPTIONS)/i.test(key))delete env[key];
-  }
+  // The app child must never inherit unrelated operator tokens, DSNs or
+  // writable profile paths. Only the system loader keys are copied.
+  const env=buildPrivateWindowsHttpQaEnvironment({
+    inherited:process.env,home,origin,connectionString:db.connectionString,
+    port,marker:join(home,"BOSTAN_QA_OWNED"),
+    secret:randomBytes(32).toString("hex"),
+  });
+  mkdirSync(env.APPDATA,{recursive:true,mode:0o700});
+  mkdirSync(env.LOCALAPPDATA,{recursive:true,mode:0o700});
   server=spawn(process.execPath,["--import","tsx","--import",
     "../scripts/bostan-private-windows-import-profiler.mjs",
     "../scripts/bostan-private-windows-server-entry.mjs"],{
@@ -90,7 +88,7 @@ try{
   for(const stream of [server.stdout,server.stderr])stream?.on("data",part=>{
     serverOutput=(serverOutput+String(part)).slice(-65536);
   });
-  started=true;
+  serverClosed=false;
   let healthy=false;
   serverStartedAt=Date.now();
   for(let i=0;i<180;i++){
@@ -138,8 +136,7 @@ try{
   if(status.status!==200||(await status.json())?.bootstrapStatus!=="ready")
     throw Error("Real first-admin claim did not close bootstrap state");
   console.log("BOSTAN_WINDOWS_LIVE_FIRST_ADMIN_CLAIM_PASS");
-  console.log(JSON.stringify({...spec,run:true,livePostgres:true,localhostOnly:true,
-    realHttpStatus:200,realSession:true,firstAdmin:true},null,2));
+  completedHttpChecks=true;
 }catch(error){
   failed=true;
   const stages=[...serverOutput.matchAll(/BOSTAN_WIN_SERVER_STAGE=(static_import_start|static_import_complete|runtime_start|runtime_ready|runtime_failed)/g)];
@@ -178,22 +175,60 @@ try{
     (error instanceof Error?error.message.replace(/(?:postgres(?:ql)?:\/\/)[^\s]+/g,"[redacted]"):"unknown error"));
 }finally{
   if(server){
-    if(server.exitCode===null){
+    // signalCode, not just exitCode, is set when Node terminates a process by
+    // signal. Wait for a real exit before touching a database used by the child.
+    const stopped=()=>server.exitCode!==null||server.signalCode!==null;
+    if(!stopped()){
       server.kill("SIGTERM");
       await Promise.race([new Promise(ok=>server.once("close",ok)),sleep(10000)]);
-      if(server.exitCode===null){
+      if(!stopped()){
         server.kill("SIGKILL");
         await Promise.race([new Promise(ok=>server.once("close",ok)),sleep(5000)]);
       }
     }
+    serverClosed=stopped();
+    if(!serverClosed){
+      failed=true;
+      console.error("BOSTAN_WINDOWS_LIVE_SERVER_TEARDOWN_UNCERTAIN");
+    }
   }
+  // Never delete a fixture or claim cleanup if a live child might still be
+  // using its PostgreSQL database or the DB stop itself has failed.
   if(db){
-    try{await db.cleanup();}catch{failed=true;console.error("Bostan QA PostgreSQL cleanup failed");}
+    dbCleaned=false;
+    if(serverClosed){
+      try{await db.cleanup();dbCleaned=true;}
+      catch{failed=true;console.error("Bostan QA PostgreSQL cleanup failed");}
+    }else{
+      failed=true;
+      console.error("BOSTAN_WINDOWS_LIVE_POSTGRES_CLEANUP_DEFERRED");
+    }
   }
-  if(existsSync(join(home,"BOSTAN_QA_OWNED"))&&lstatSync(home).isDirectory())
-    rmSync(home,{recursive:true,force:true});
+  const marker=join(home,"BOSTAN_QA_OWNED");
+  if(serverClosed&&dbCleaned&&existsSync(marker)&&
+     lstatSync(home).isDirectory()&&!lstatSync(home).isSymbolicLink()&&
+     lstatSync(marker).isFile()&&!lstatSync(marker).isSymbolicLink()&&
+     readFileSync(marker,"utf8")==="BOSTAN_PRIVATE_SYNTHETIC_ONLY\\n"){
+    try{rmSync(home,{recursive:true,force:true});ownedHomeCleaned=true;}
+    catch{failed=true;console.error("Bostan QA owned fixture cleanup failed");}
+  }
+  const qualified=completedHttpChecks&&!failed&&serverClosed&&dbCleaned&&ownedHomeCleaned;
+  if(qualified){
+    console.log(JSON.stringify({...spec,run:true,livePostgres:true,
+      realHttpStatus:200,realSession:true,firstAdmin:true,
+      serverClosed:true,postgresCleaned:true,ownedFixtureCleaned:true,
+      windowsAuthenticatedHttpQualified:true},null,2));
+  }else{
+    failed=true;
+    console.log(JSON.stringify({...spec,run:true,
+      windowsAuthenticatedHttpQualified:false,
+      serverClosed,postgresCleaned:dbCleaned,
+      ownedFixtureCleaned:ownedHomeCleaned,
+      manualOwnedFixtureInspectionRequired:!ownedHomeCleaned},null,2));
+  }
   console.log("BOSTAN_WINDOWS_LIVE_HTTP_TEST_TEARDOWN_COMPLETE");
 }
+
 // Embedded PostgreSQL registers an async exit hook; explicit nonzero exit is
 // required so a failed live server can never be reported as a PASS by pnpm.
 if(failed)process.exit(1);
