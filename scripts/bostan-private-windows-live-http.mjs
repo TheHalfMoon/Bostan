@@ -9,6 +9,7 @@ import {fileURLToPath} from "node:url";
 import {checkBostanWindowsDisk} from "./bostan-private-windows-disk-admission.mjs";
 import {buildPrivateWindowsHttpQaEnvironment} from "./bostan-private-windows-qa-env.mjs";
 import {parsePrivateWindowsQaWave,matchingPrivateWindowsQaWave} from "./bostan-private-windows-qa-wave.mjs";
+import {observeOwnedQaChild} from "./bostan-private-windows-child-lifecycle.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const spec={schema:"bostan.private-windows-auth-server.v1",run:false,
@@ -54,7 +55,7 @@ async function availablePort(){
   return port;
 }
 const sleep=ms=>new Promise(ok=>setTimeout(ok,ms));
-let db=null,server=null;
+let db=null,server=null,serverObserver=null;
 let failed=false;
 let serverOutput="";
 let lastHealthStatus="no_response";
@@ -86,6 +87,9 @@ try{
     "../scripts/bostan-private-windows-server-entry.mjs"],{
     cwd:join(root,"server"),env,windowsHide:true,stdio:["ignore","pipe","pipe"],
   });
+  // Observe immediately: a failed spawn emits async error and close events.
+  // The monitor owns this specific ChildProcess handle; no global PID search.
+  serverObserver=observeOwnedQaChild(server);
   for(const stream of [server.stdout,server.stderr])stream?.on("data",part=>{
     serverOutput=(serverOutput+String(part)).slice(-65536);
   });
@@ -93,7 +97,7 @@ try{
   let healthy=false;
   serverStartedAt=Date.now();
   for(let i=0;i<180;i++){
-    if(server.exitCode!==null)break;
+    if(serverObserver.exitedOrFailed)break;
     try{
       const r=await fetch(origin+"/api/health",{signal:AbortSignal.timeout(1500)});
       lastHealthStatus="http_"+r.status;
@@ -180,18 +184,19 @@ try{
   console.error("BOSTAN_WINDOWS_LIVE_ERROR_TYPE="+errorKind);
 }finally{
   if(server){
-    // signalCode, not just exitCode, is set when Node terminates a process by
-    // signal. Wait for a real exit before touching a database used by the child.
-    const stopped=()=>server.exitCode!==null||server.signalCode!==null;
-    if(!stopped()){
-      server.kill("SIGTERM");
-      await Promise.race([new Promise(ok=>server.once("close",ok)),sleep(10000)]);
-      if(!stopped()){
-        server.kill("SIGKILL");
-        await Promise.race([new Promise(ok=>server.once("close",ok)),sleep(5000)]);
-      }
+    // Node sets signalCode/exitCode before the 'close' event guarantees all
+    // child stdio streams are closed. Never stop PG or reclaim owned fixture
+    // until that event has been observed for THIS child.
+    const childState=await serverObserver.stop();
+    serverClosed=childState.closed&&!childState.spawnError;
+    if(childState.spawnError){
+      failed=true;
+      console.error("BOSTAN_WINDOWS_LIVE_SERVER_SPAWN_FAILED");
     }
-    serverClosed=stopped();
+    if(childState.forceUsed){
+      failed=true;
+      console.error("BOSTAN_WINDOWS_LIVE_SERVER_FORCE_TERMINATION");
+    }
     if(!serverClosed){
       failed=true;
       console.error("BOSTAN_WINDOWS_LIVE_SERVER_TEARDOWN_UNCERTAIN");
