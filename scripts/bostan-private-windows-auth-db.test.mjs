@@ -72,3 +72,13 @@ test("Windows live probe separates static imports from runtime startup",()=>{
   assert.match(liveSource,/if\(failed\)process\.exit\(1\)/);
   assert.doesNotMatch(source,/console\.error\(error\)|JSON\.stringify\(process\.env\)/);
 });
+
+test("Windows staged server entry refuses any direct or unsentinelized invocation",()=>{
+  const stage=fileURLToPath(new URL("./bostan-private-windows-server-entry.mjs",import.meta.url));
+  const direct=spawnSync(process.execPath,[stage],{encoding:"utf8",timeout:6000,
+    env:{...process.env,BOSTAN_PRIVATE_QA_ENTRY:""}});
+  assert.equal(direct.status,2);
+  assert.match(direct.stderr,/owned synthetic localhost fixture/);
+  assert.match(liveSource,/BOSTAN_PRIVATE_QA_ENTRY/);
+  assert.match(liveSource,/BOSTAN_PRIVATE_QA_MARKER/);
+});
