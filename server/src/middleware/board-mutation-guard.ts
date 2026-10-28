@@ -64,8 +64,14 @@ function trustedOriginsForRequest(req: Request) {
  */
 export function trustedBoardMutationOrigin(req: Request): string | null {
   const allowedOrigins = trustedOriginsForRequest(req);
-  const origin = parseOrigin(req.header("origin"));
-  if (origin && allowedOrigins.has(origin)) return origin;
+  const originHeader = req.header("origin");
+  if (originHeader !== undefined) {
+    // A browser supplies Origin for mutating requests. A hostile, opaque or
+    // malformed Origin must never be overruled by a seemingly trusted Referer.
+    // Referer is a fallback ONLY for clients that omit Origin entirely.
+    const origin = parseOrigin(originHeader);
+    return origin && allowedOrigins.has(origin) ? origin : null;
+  }
 
   const refererOrigin = parseOrigin(req.header("referer"));
   if (refererOrigin && allowedOrigins.has(refererOrigin)) return refererOrigin;
