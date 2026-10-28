@@ -14,7 +14,7 @@ Existing application implementation `server/src/routes/access.ts` checks a priva
 
 - Extend the opted-in **real macOS localhost PostgreSQL+HTTP** probe to send an anonymous same-origin `POST /api/bootstrap/claim` **before** any user exists. Require HTTP **401**; no user or token is printed.
 - After synthetic signup, use the returned session cookie to call `GET /api/auth/get-session`; require **200**, matching returned user id, exact synthetic email, and matching session `userId`.
-- After the first successful authenticated claim, repeat the exact claim using the same cookie and same origin; require HTTP **409**, not a second promotion or success.
+- For the first successful authenticated claim, additionally require response `{claimed:true,userId}` with `userId` matching the exact session-verified synthetic user. Then repeat the claim using the same cookie and same origin; require HTTP **409**, not a second promotion or success.
 - Extend `MAC_HTTP_REQUIRED_STAGES` to **10 ordered, unique exact-line markers**, with the three additional required denials/identity stages inserted at their correct causal positions. B0-94's fail-closed child-exit, no-timeout, no-failure-marker, bounded log and verified-owned-fixture cleanup criteria remain mandatory.
 - Expand private receipt with `anonymousClaimDenied`, `signedInSession`, `repeatClaimDenied` booleans; never log credentials, cookies, response bodies, tokens, or user identifiers.
 - Add tests proving that removal of any new authorization marker prevents qualification and checking the exact response/identity assertions in the runnable harness.
