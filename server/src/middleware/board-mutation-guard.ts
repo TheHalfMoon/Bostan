@@ -25,7 +25,7 @@ function parseOrigin(value: string | undefined) {
  * Referer and PAPERCLIP_PUBLIC_URL are full URLs and continue to use parseOrigin.
  */
 function parseBrowserOriginHeader(value: string | undefined): string | null {
-  if (!value || /[\\r\\n]/.test(value)) return null;
+  if (!value || /[\r\n]/.test(value)) return null;
   const candidate = value.trim();
   try {
     const url = new URL(candidate);
