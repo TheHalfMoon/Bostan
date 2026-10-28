@@ -93,3 +93,14 @@ test("the complete Windows proof is exact ordered and required for the green rec
   assert.match(source,/const qualified=proof\.windowsAuthenticatedHttpQualified/);
   assert.match(source,/noOrphanPostgresProcessVerified:false|\.\.\.proof/);
 });
+
+test("native Windows startup uses one bounded localhost deadline rather than 180 slow probes",()=>{
+  assert.match(source,/waitForWindowsPrivateHealth\(\{/);
+  assert.match(source,/endpoint:origin\+"\/api\/health"/);
+  assert.match(source,/childExited:\(\)=>serverObserver\.exitedOrFailed/);
+  assert.match(source,/if\(!healthProbe\.healthy\)/);
+  assert.match(source,/BOSTAN_WINDOWS_LIVE_STARTUP_OUTCOME/);
+  assert.match(source,/BOSTAN_WINDOWS_LIVE_STARTUP_PROBES/);
+  assert.doesNotMatch(source,/for\(let i=0;i<180;i\+\+\)/);
+  assert.doesNotMatch(source,/const sleep=ms=>/);
+});
