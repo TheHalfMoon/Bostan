@@ -17,6 +17,30 @@ function parseOrigin(value: string | undefined) {
 }
 
 /**
+ * Browsers serialize Origin as a bare HTTP(S) scheme + authority.
+ * URL() is intentionally permissive: it accepts URLs with paths, query strings,
+ * fragments, username/password, and normalizes unusual spellings. None of
+ * those are valid serialized browser Origin headers.
+ *
+ * Referer and PAPERCLIP_PUBLIC_URL are full URLs and continue to use parseOrigin.
+ */
+function parseBrowserOriginHeader(value: string | undefined): string | null {
+  if (!value || /[\\r\\n]/.test(value)) return null;
+  const candidate = value.trim();
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    if (url.username || url.password) return null;
+    // Canonical Origin has no slash, path, query, fragment, credentials,
+    // explicit default port or normalized alternate authority syntax.
+    if (candidate.toLowerCase() !== url.origin.toLowerCase()) return null;
+    return url.origin.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Resolve the host used for same-origin checks without letting a direct client
  * promote its own X-Forwarded-Host value into the trusted-origin set. Express
  * compiles the operator's TRUST_PROXY setting into `trust proxy fn`; only a
@@ -69,7 +93,7 @@ export function trustedBoardMutationOrigin(req: Request): string | null {
     // A browser supplies Origin for mutating requests. A hostile, opaque or
     // malformed Origin must never be overruled by a seemingly trusted Referer.
     // Referer is a fallback ONLY for clients that omit Origin entirely.
-    const origin = parseOrigin(originHeader);
+    const origin = parseBrowserOriginHeader(originHeader);
     return origin && allowedOrigins.has(origin) ? origin : null;
   }
 
