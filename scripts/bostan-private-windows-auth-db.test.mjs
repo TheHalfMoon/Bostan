@@ -78,7 +78,7 @@ test("Windows staged server entry refuses any direct or unsentinelized invocatio
   const direct=spawnSync(process.execPath,[stage],{encoding:"utf8",timeout:6000,
     env:{...process.env,BOSTAN_PRIVATE_QA_ENTRY:""}});
   assert.equal(direct.status,2);
-  assert.match(direct.stderr,/owned synthetic localhost fixture/);
+  assert.match(direct.stderr,/unsafe synthetic test fixture/);
   assert.match(liveSource,/BOSTAN_PRIVATE_QA_ENTRY/);
   assert.match(liveSource,/BOSTAN_PRIVATE_QA_MARKER/);
 });
