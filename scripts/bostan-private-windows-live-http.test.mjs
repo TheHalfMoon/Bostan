@@ -35,7 +35,7 @@ test("success is reported only after real server exit and owned database cleanup
   const final=source.indexOf("}finally{");
   const pg=source.indexOf("await db.cleanup()",final);
   const home=source.indexOf("rmSync(home,",final);
-  const qualified=source.indexOf("const qualified=completedHttpChecks&&!failed&&serverClosed&&dbCleaned&&ownedHomeCleaned;");
+  const qualified=source.indexOf("const qualified=proof.windowsAuthenticatedHttpQualified;");
   assert.ok(final>0&&pg>final&&home>pg&&qualified>home&&success>qualified);
   assert.match(source,/serverObserver=observeOwnedQaChild\(server\)/);
   assert.match(source,/const childState=await serverObserver\.stop\(\)/);
@@ -65,4 +65,31 @@ test("failed child spawn cannot produce a green HTTP or cleanup receipt",()=>{
   const observer=source.indexOf("serverObserver=observeOwnedQaChild(server)");
   const streams=source.indexOf("for(const stream of [server.stdout,server.stderr])");
   assert.ok(observer>0&&observer<streams);
+});
+
+test("real Windows first-admin steps bind synthetic user and refuse anonymous or replay",()=>{
+  for(const pattern of [
+    /anonymousClaim\.status!==401/,
+    /sessionBody\?\.user\?\.id!==body\.user\.id/,
+    /sessionBody\?\.user\?\.email!==email/,
+    /sessionBody\?\.session\?\.userId!==body\.user\.id/,
+    /hostileOrigin\.status!==403/,
+    /forgedReferer\.status!==403/,
+    /noOrigin\.status!==403/,
+    /pendingBody\?\.bootstrapStatus!=="bootstrap_pending"/,
+    /claimedBody\?\.claimed!==true/,
+    /claimedBody\?\.userId!==body\.user\.id/,
+    /repeat\.status!==409/,
+    /bootstrapStatus!=="ready"/,
+  ]) assert.match(source,pattern);
+});
+test("the complete Windows proof is exact ordered and required for the green receipt",async()=>{
+  const {WINDOWS_HTTP_REQUIRED_STAGES:stages}=
+    await import("./bostan-private-windows-http-evidence.mjs");
+  assert.equal(stages.length,15);
+  for(const stage of stages) assert.ok(source.includes('markHttpStage("'+stage+'")'),stage);
+  assert.match(source,/evaluateWindowsPrivateHttpEvidence\(\{/);
+  assert.match(source,/events:httpEvents,httpComplete:completedHttpChecks,childClosed:serverClosed/);
+  assert.match(source,/const qualified=proof\.windowsAuthenticatedHttpQualified/);
+  assert.match(source,/noOrphanPostgresProcessVerified:false|\.\.\.proof/);
 });
