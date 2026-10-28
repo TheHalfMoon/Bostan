@@ -1,6 +1,8 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
+import {readFileSync} from "node:fs";
+import {fileURLToPath} from "node:url";
 import {evaluateWindowsPgOrphanCheck as check, WINDOWS_PG_ORPHAN_CHECK_LINES as LINES} from "./bostan-private-windows-pg-orphan-proof.mjs";
 
 const proof = LINES.join("\r\n")+"\r\n";
@@ -49,4 +51,23 @@ test("no secrets or input text are ever echoed by failure receipts",()=>{
   const v=checkResult({stdout:proof+key});
   assert.equal(v.noOrphanPostgresProcessVerified,false);
   assert.equal(JSON.stringify(v).includes(key),false);
+});
+test("exact PowerShell records reject blank lines, whitespace and missing final newline",()=>{
+  for(const output of [
+    proof+"\r\n",proof+"\n",proof.replace(/\r\n$/, ""),
+    proof.replace("PROCESSES=0","PROCESSES=0 "),
+    proof.replace("UNINSPECTABLE=0","UNINSPECTABLE=0\t"),
+    proof.replace("\r\n","\n\n"),
+    "\n"+proof,
+  ]) assert.equal(checkResult({stdout:output}).noOrphanPostgresProcessVerified,false);
+  assert.equal(checkResult({stdout:LINES.join("\n")+"\n"}).noOrphanPostgresProcessVerified,true);
+});
+test("native scanner refuses all unattributed PostgreSQL executables and remains read-only",()=>{
+  const source=readFileSync(fileURLToPath(new URL("./bostan-native-windows-postgres-no-orphans.ps1",import.meta.url)),"utf8");
+  assert.match(source,/Get-CimInstance Win32_Process -Filter "Name = 'postgres\.exe'"/);
+  assert.match(source,/if \(\$full\.StartsWith\(\$rootPrefix, \[System\.StringComparison\]::OrdinalIgnoreCase\)\) \{/);
+  assert.match(source,/\$owned \+= \$proc\s*\} else \{[\s\S]*?\$uninspected\+\+/);
+  assert.match(source,/IsNullOrWhiteSpace\(\$exe\)[\s\S]*?\$uninspected\+\+/);
+  assert.match(source,/if \(\$owned\.Count -ne 0 -or \$uninspected -ne 0\) \{ exit 1 \}/);
+  assert.doesNotMatch(source,/\b(?:Stop-Process|taskkill|TerminateProcess|Remove-Item)\b/i);
 });
