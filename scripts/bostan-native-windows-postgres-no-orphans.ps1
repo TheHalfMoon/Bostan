@@ -17,15 +17,21 @@ try {
   foreach ($proc in (Get-CimInstance Win32_Process -Filter "Name = 'postgres.exe'")) {
     $exe = [string]$proc.ExecutablePath
     if ([string]::IsNullOrWhiteSpace($exe)) {
-      # A process without an inspectable executable cannot be proven unrelated
-      # to this QA checkout. Never claim zero owned workers while it exists.
-      # Read-only: do not terminate or inspect unrelated process secrets.
+      # No executable path: ownership cannot be established. Fail closed.
       $uninspected++
       continue
     }
     $full = [System.IO.Path]::GetFullPath($exe)
     if ($full.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
       $owned += $proc
+    } else {
+      # The native embedded-postgres binary may live outside the checkout
+      # (e.g. a redirected pnpm virtual store). A different executable path
+      # alone cannot PROVE the process is unrelated to this QA run. Treat it
+      # as unattributed rather than silently claiming no Bostan orphans.
+      # This deliberately blocks qualification if unrelated PostgreSQL is
+      # running: never terminate or alter that process to make a test pass.
+      $uninspected++
     }
   }
   Write-Output ("BOSTAN_WINDOWS_PG_OWNED_PROCESSES=" + $owned.Count)
