@@ -152,6 +152,40 @@ describe("boardMutationGuard", () => {
     expect([200, 204]).toContain(res.status);
   });
 
+  it("rejects HTTPS Origin on a direct HTTP request to the identical host", async () => {
+    const app = createApp("board");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Host", "private.example.invalid:42000")
+      .set("Origin", "https://private.example.invalid:42000")
+      .send({ ok: true });
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects HTTP Origin on a trusted-proxy HTTPS request to the identical host", async () => {
+    const app = createApp("board");
+    app.set("trust proxy", "loopback");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Host", "private.example.invalid:42000")
+      .set("X-Forwarded-Proto", "https")
+      .set("Origin", "http://private.example.invalid:42000")
+      .send({ ok: true });
+    expect(res.status).toBe(403);
+  });
+
+  it("allows HTTPS Origin on a trusted-proxy HTTPS request to the identical host", async () => {
+    const app = createApp("board");
+    app.set("trust proxy", "loopback");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Host", "private.example.invalid:42000")
+      .set("X-Forwarded-Proto", "https")
+      .set("Origin", "https://private.example.invalid:42000")
+      .send({ ok: true });
+    expect(res.status).toBe(204);
+  });
+
   it("allows HTTPS branch-runtime mutations when forwarded MagicDNS host and non-standard port match", async () => {
     const app = createApp("board");
     app.set("trust proxy", "loopback");
