@@ -49,8 +49,11 @@ test("fail-closed evidence includes termination and real post-claim health",()=>
   assert.match(source,/BOSTAN_MAC_HTTP_QA_MARKER:marker/);
   assert.match(source,/timeout:110000/);
   assert.match(source,/stdio:\["ignore",fd,fd\]/);
-  assert.match(source,/result\.status===0&&!result\.error&&!result\.signal/);
-  assert.match(source,/withinBudget&&flags\.every\(Boolean\)/);
+  assert.match(source,/evaluateMacHttpEvidence\(\{/);
+  assert.match(source,/status:result\.status,signal:result\.signal,errorCode:result\.error\?\.code/);
+  assert.match(source,/evidence\.macAuthenticatedHttpQualified&&homeCleaned/);
+  assert.match(source,/if\(evidence\.macAuthenticatedHttpQualified\)/);
+  assert.match(source,/ownedFixtureCleaned:homeCleaned/);
   assert.match(source,/bootstrapStatus!=="ready"/);
   assert.match(source,/server\.shutdown\("SIGTERM"\)/);
   assert.match(source,/db\.cleanup\(\)/);
