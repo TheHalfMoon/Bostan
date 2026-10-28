@@ -5,6 +5,7 @@ import {basename, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {spawnSync} from "node:child_process";
 import {checkBostanWindowsDisk} from "./bostan-private-windows-disk-admission.mjs";
+import {parsePrivateWindowsQaWave,matchingPrivateWindowsQaWave} from "./bostan-private-windows-qa-wave.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const plan={
@@ -38,12 +39,12 @@ if(pkg.name!=="bostan"||pkg.private!==true){
   process.exit(2);
 }
 const qa=realpathSync(root);
-if(!/^Bostan-B0\d+-qa$/i.test(basename(qa))||!existsSync(join(root,".git"))){
-  console.error("Bostan Windows auth/DB QA requires an isolated owned B0xx QA checkout");
+if(!parsePrivateWindowsQaWave(basename(qa),"qa")||!existsSync(join(root,".git"))){
+  console.error("Bostan Windows auth/DB QA requires an isolated owned three-digit Bostan QA checkout");
   process.exit(2);
 }
 const tmp=process.env.TEMP||"";
-if(!/^Bostan-B0\d+-temp$/i.test(basename(tmp))||!existsSync(tmp)||
+if(!matchingPrivateWindowsQaWave(basename(qa),basename(tmp))||!existsSync(tmp)||
    lstatSync(tmp).isSymbolicLink()||realpathSync(tmp)===qa){
   console.error("Bostan Windows auth/DB QA requires isolated owned temporary directory");
   process.exit(2);
