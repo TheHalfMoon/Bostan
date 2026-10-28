@@ -11,6 +11,7 @@ import {buildPrivateWindowsHttpQaEnvironment} from "./bostan-private-windows-qa-
 import {parsePrivateWindowsQaWave,matchingPrivateWindowsQaWave} from "./bostan-private-windows-qa-wave.mjs";
 import {observeOwnedQaChild} from "./bostan-private-windows-child-lifecycle.mjs";
 import {evaluateWindowsPrivateHttpEvidence} from "./bostan-private-windows-http-evidence.mjs";
+import {waitForWindowsPrivateHealth} from "./bostan-private-windows-health-wait.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const spec={schema:"bostan.private-windows-auth-server.v1",run:false,
@@ -27,7 +28,7 @@ if(args.length!==1||args[0]!=="--run"){
   process.exit(2);
 }
 if(process.platform!=="win32"||!parsePrivateWindowsQaWave(basename(resolve(root)),"qa")){
-  console.error("Native Windows live HTTP QA requires an isolated Bostan B0xx QA checkout");
+  console.error("Native Windows live HTTP QA requires an isolated Bostan three-digit QA checkout");
   process.exit(2);
 }
 for(const key of Object.keys(process.env)){
@@ -55,11 +56,12 @@ async function availablePort(){
   await new Promise(ok=>server.close(ok));
   return port;
 }
-const sleep=ms=>new Promise(ok=>setTimeout(ok,ms));
 let db=null,server=null,serverObserver=null;
 let failed=false;
 let serverOutput="";
 let lastHealthStatus="no_response";
+let lastHealthOutcome="not_started";
+let lastHealthProbes=0;
 let serverStartedAt=0;
 const home=mkdtempSync(join(temp,"bostan-private-auth-http-"));
 writeFileSync(join(home,"BOSTAN_QA_OWNED"),"BOSTAN_PRIVATE_SYNTHETIC_ONLY\n");
@@ -101,30 +103,19 @@ try{
     serverOutput=(serverOutput+String(part)).slice(-65536);
   });
   serverClosed=false;
-  let healthy=false;
   serverStartedAt=Date.now();
-  for(let i=0;i<180;i++){
-    if(serverObserver.exitedOrFailed)break;
-    try{
-      const r=await fetch(origin+"/api/health",{signal:AbortSignal.timeout(1500)});
-      lastHealthStatus="http_"+r.status;
-      if(r.status===200){
-        const j=await r.json();
-        if(j&&typeof j==="object"){
-          lastHealthStatus="health_"+(j.status==="ok"?"ok":"non_ok")+"_"+
-            (j.deploymentMode==="authenticated"?"authenticated":"other_mode")+"_"+
-            (j.bootstrapStatus==="bootstrap_pending"?"pending":"other_bootstrap");
-        }
-        if(j.status==="ok"&&j.deploymentMode==="authenticated"&&
-           j.deploymentExposure==="private"&&j.bootstrapStatus==="bootstrap_pending"&&
-           !Object.hasOwn(j,"cloud")){
-          healthy=true;break;
-        }
-      }
-    }catch{}
-    await sleep(1000);
-  }
-  if(!healthy)throw Error("Real Bostan native Windows authenticated server did not reach expected private ready state");
+  // This is a TRUE 180-second monotonic elapsed-time deadline, not 180
+  // attempts of up to 1.5s fetch + 1s delay (up to ~450 seconds).
+  // Only this owned child is observed; the endpoint must be loopback HTTP.
+  const healthProbe=await waitForWindowsPrivateHealth({
+    endpoint:origin+"/api/health",
+    childExited:()=>serverObserver.exitedOrFailed,
+  });
+  lastHealthStatus=healthProbe.observation;
+  lastHealthOutcome=healthProbe.outcome;
+  lastHealthProbes=healthProbe.probes;
+  if(!healthProbe.healthy)
+    throw Error("Real Bostan native Windows authenticated server did not reach expected private ready state");
   markHttpStage("BOSTAN_WINDOWS_LIVE_HTTP_AUTH_HEALTH_PASS");
   // Same-origin without a browser session must not claim first admin.
   const anonymousClaim=await fetch(origin+"/api/bootstrap/claim",{
@@ -235,6 +226,8 @@ try{
     }catch{console.error("BOSTAN_WINDOWS_LIVE_MODULE_PROFILE=unparseable");}
   }
   console.error("BOSTAN_WINDOWS_LIVE_HTTP_OBSERVATION="+lastHealthStatus);
+  console.error("BOSTAN_WINDOWS_LIVE_STARTUP_OUTCOME="+lastHealthOutcome);
+  console.error("BOSTAN_WINDOWS_LIVE_STARTUP_PROBES="+lastHealthProbes);
   console.error("BOSTAN_WINDOWS_LIVE_SERVER_SECONDS="+Math.round((Date.now()-serverStartedAt)/1000));
   const pkg=serverOutput.match(/Cannot find package ['"](@bostan\/[a-z0-9_-]+)['"]/i);
   const diagnostic=pkg?"missing_bostan_package:"+pkg[1]:
