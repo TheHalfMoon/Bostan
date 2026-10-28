@@ -152,6 +152,49 @@ describe("boardMutationGuard", () => {
     expect([200, 204]).toContain(res.status);
   });
 
+  it("rejects the built-in localhost dev Origin for a remote Bostan Host", async () => {
+    const app = createApp("board");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Host", "private.example.invalid:42000")
+      .set("Origin", "http://localhost:3100")
+      .send({ ok: true });
+    expect(res.status).toBe(403);
+  });
+
+  it("keeps the localhost dev Origin available for a loopback Bostan Host", async () => {
+    const app = createApp("board");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Host", "127.0.0.1:42000")
+      .set("Origin", "http://localhost:3100")
+      .send({ ok: true });
+    expect(res.status).toBe(204);
+  });
+
+  it("rejects a localhost-like remote Host for dev Origin exemption", async () => {
+    const app = createApp("board");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Host", "localhost.attacker.example.invalid:42000")
+      .set("Origin", "http://localhost:3100")
+      .send({ ok: true });
+    expect(res.status).toBe(403);
+  });
+
+  it("uses the trusted forwarded Host, not local reverse-proxy Host, for dev origins", async () => {
+    const app = createApp("board");
+    app.set("trust proxy", "loopback");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Host", "127.0.0.1:42000")
+      .set("X-Forwarded-Host", "private.example.invalid:42000")
+      .set("X-Forwarded-Proto", "https")
+      .set("Origin", "http://localhost:3100")
+      .send({ ok: true });
+    expect(res.status).toBe(403);
+  });
+
   it("rejects HTTPS Origin on a direct HTTP request to the identical host", async () => {
     const app = createApp("board");
     const res = await request(app)
