@@ -114,6 +114,41 @@ test("restore rejects launcher-managed external paths and leaves original HOME u
   assert.equal(fs.existsSync(f.restore),false);
   assert.equal(fs.readFileSync(filename,"utf8"),JSON.stringify(cfg));
 }));
+test("restore rejects dot-segment managed paths that escape the new app", () => run(f => {
+  const filename=path.join(f.app,"state","instances","local","config.json");
+  const cfg=JSON.parse(fs.readFileSync(filename,"utf8"));
+  // This still starts with the original app's bytes, but normalizes outside
+  // the isolated Bostan app. Never rebase it under a new HOME.
+  const escaped=f.app+path.sep+".."+path.sep+".."+path.sep+".."+path.sep+"outside"+path.sep+"master.key";
+  assert.equal(escaped.startsWith(f.app+path.sep),true);
+  assert.equal(path.normalize(escaped).startsWith(f.app+path.sep),false);
+  cfg.secrets={localEncrypted:{keyFilePath:escaped}};
+  fs.writeFileSync(filename,JSON.stringify(cfg),{mode:0o600});
+  const backup=createColdSnapshot({home:f.home,pgCtl:f.pg}).path;
+  assert.throws(()=>restoreColdSnapshot({backup,targetHome:f.restore}),
+    /Unsafe external or invalid managed path/);
+  assert.equal(fs.existsSync(f.restore),false);
+  assert.equal(fs.readFileSync(filename,"utf8"),JSON.stringify(cfg));
+}));
+test("restore validates containment for every launcher-owned path field", () => {
+  for (const keys of [
+    ["database","backup","dir"],
+    ["logging","logDir"],
+    ["storage","localDisk","baseDir"],
+    ["secrets","localEncrypted","keyFilePath"],
+  ]) run(f => {
+    const filename=path.join(f.app,"state","instances","local","config.json");
+    const cfg=JSON.parse(fs.readFileSync(filename,"utf8"));
+    let parent=cfg;
+    for (const key of keys.slice(0,-1)) parent=parent[key]??={};
+    parent[keys.at(-1)]=f.app+path.sep+".."+path.sep+"outside"+path.sep+"managed";
+    fs.writeFileSync(filename,JSON.stringify(cfg),{mode:0o600});
+    const backup=createColdSnapshot({home:f.home,pgCtl:f.pg}).path;
+    assert.throws(()=>restoreColdSnapshot({backup,targetHome:f.restore}),
+      /Unsafe external or invalid managed path/,keys.join("."));
+    assert.equal(fs.existsSync(f.restore),false,keys.join("."));
+  });
+});
 test("restore rejects manifest without valid sourceApp before touching target HOME", () => run(f => {
   const backup=createColdSnapshot({home:f.home,pgCtl:f.pg}).path;
   const file=path.join(backup,"manifest.json");

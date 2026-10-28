@@ -143,6 +143,9 @@ function rebaseManagedConfig(sourceApp, targetApp) {
     const value = parent[leaf];
     if (value === undefined || value === null) continue;
     if (typeof value !== "string" || !path.isAbsolute(value)
+      // A lexical prefix can hide ../ segments that escape the app after
+      // Windows/POSIX path normalization. Never rebase such a path.
+      || path.normalize(value) !== value
       || !(value === sourceApp || value.startsWith(sourceApp + path.sep))) {
       throw new Error("Unsafe external or invalid managed path in restored Bostan configuration: " + keyPath.join("."));
     }
