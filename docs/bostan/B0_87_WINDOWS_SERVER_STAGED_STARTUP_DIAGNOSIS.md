@@ -17,7 +17,7 @@ B0-86 successfully ran **28/28 real Express/Supertest auth/first-admin route tes
 
 ## Live native Windows status
 
-The isolated full PostgreSQL + authenticated localhost server retake is being measured. Record results and any independent auth session or first-admin evidence only after verified runtime exit and zero owned PostgreSQL child processes.
+Actual isolated Windows 11 retake, Node 24.19.0, frozen dependencies, pinned PostgreSQL 18.1: **real database startup and 375 SQL migrations succeeded**. The server child remained alive consuming about 700–800 MB during cold import, but the host returned no HTTP within the bounded check. Terminal marker **`BOSTAN_WINDOWS_LIVE_IMPORT_STAGE=static_import_start`**, no `static_import_complete`, `BOSTAN_WINDOWS_LIVE_HTTP_OBSERVATION=no_response`, **`BOSTAN_WINDOWS_LIVE_SERVER_SECONDS=182`**, `B087_WINDOWS_LIVE_EXIT=1`, and **`B087_OWNED_POSTGRES_REMAINING=0`**. Source entry `startServer()` was never reached, so no account signup, cookie, admin claim, browser or tenant isolation was tested. The precise slow module/graph remains unknown; the next actionable direction is a reproducible compiled JavaScript production-style server build instead of unbounded TypeScript import. No user data or paid models.
 
 ## Release blockers
 
