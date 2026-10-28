@@ -30,3 +30,10 @@ The Windows UI build gate is **not** a complete native Windows installed app, ac
 ### Initial native Windows failure and required repair
 
 The initial frozen **UI-only** scoped install completed **902/902 packages** in 4m 10s but intentionally skipped package build scripts. The first actual native Windows UI typecheck **FAILED exit 1**, not a pass: `@bostan/runner` source imports could not resolve `ajv/dist/2020.js` or `json-schema-to-ts`; the UI could not resolve `@bostan/plugin-sdk/ui` because the SDK's `dist/ui` had not been built. These were incomplete QA build prerequisites, not verified application source defects. B0-82 now preflights runner dependency presence and explicitly builds the SDK before typecheck. The Windows QA runner store is being augmented with the pinned runner dependency closure; **record the actual retake output before calling Windows qualified**.
+
+
+### Real cross-platform build blocker and fix
+
+After completing the second, **frozen-lockfile + ignore-scripts** install with the required `@bostan/runner...` closure (17 selected workspaces; 16 extra packages, Windows exit 0), the native Windows gate correctly advanced to `@bostan/plugin-sdk build` but **failed exit 1** because `@bostan/shared` runs `tsc && mkdir -p ... && cp ...`, which depends on Unix shell commands absent from native Windows Command Prompt. No application typecheck/build PASS was claimed for that retake.
+
+Repaired the **real first-party cross-platform product build script** in `packages/shared/package.json` to `tsc && node scripts/copy-cliplab-notices.mjs`. The new standard Node API utility copies both original required `LICENSE` and `PROVENANCE.md` byte-for-byte from the owned package into `dist/cliplab`, checks output realpaths, and refuses symlinked output directories/files or missing/foreign source notices. It never removes/relicenses/rewrites copyright or provenance material. Mac safety tests **3/3 PASS** including idempotent repeat, missing source notice refusal, and symlink escape denial; Windows gate source tests **3/3 PASS**. **Only a real Windows rerun can qualify the build.**
