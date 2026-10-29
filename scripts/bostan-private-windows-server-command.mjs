@@ -1,4 +1,5 @@
 import { join, isAbsolute, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { assertSafeRuntimeOutdir } from '../server/scripts/bundle-runtime-output-admission.mjs';
 
 const SOURCE_IMPORTS = Object.freeze([
@@ -34,5 +35,8 @@ export async function resolvePrivateWindowsQaServerCommand({
   if (admitted !== output) {
     throw Error('Bostan compiled runtime ownership was not verified');
   }
-  return { mode: 'compiled', nodeArgs: [join(output, 'index.mjs')] };
+  return { mode: 'compiled', nodeArgs: [
+    '--import', pathToFileURL(join(root, 'scripts', 'bostan-private-windows-compiled-entry-guard.mjs')).href,
+    join(output, 'index.mjs'),
+  ] };
 }
