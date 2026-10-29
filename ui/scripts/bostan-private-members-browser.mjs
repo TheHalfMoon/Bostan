@@ -56,13 +56,24 @@ export function summarizePrivateMembersPageError(error){
       message.length<80?'short':message.length<250?'medium':'long'};
 }
 
+/** Playwright serializes this pure function into every new document, including
+ * sandboxed/opaque-origin subframes. Touch storage only on the exact verified
+ * localhost *top-level* app document; never suppress errors on that document.
+ */
+export function selectPrivateMembersCompanyOnMatchingTopLevelDocument({origin,companyId}){
+  if(window.top!==window || window.location.origin!==origin)return;
+  window.localStorage.setItem('paperclip.selectedCompanyId',companyId);
+}
+
 export async function withPrivateMemberBrowser(input,callback,{launch=chromium.launch.bind(chromium)}={}){
   const settings=validateMemberBrowserTarget(input);
   const browser=await launch({headless:true});
   try{
     const context=await browser.newContext({serviceWorkers:'block',permissions:['clipboard-read','clipboard-write']});
     await context.addCookies([{name:settings.name,value:settings.value,url:settings.origin,httpOnly:true,sameSite:'Lax'}]);
-    await context.addInitScript((companyId)=>{localStorage.setItem('paperclip.selectedCompanyId',companyId)},settings.companyId);
+    await context.addInitScript(selectPrivateMembersCompanyOnMatchingTopLevelDocument,{
+      origin:settings.origin,companyId:settings.companyId,
+    });
     // Reuse the existing QA-wide network firewall, including new pages and
     // WebSockets; page.route alone misses first popup navigation requests.
     let firstPageError=null;

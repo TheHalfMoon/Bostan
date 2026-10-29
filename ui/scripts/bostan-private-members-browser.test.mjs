@@ -1,6 +1,7 @@
+import {runInNewContext} from 'node:vm';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {validateMemberBrowserTarget,classifyPrivateMembersPageError,summarizePrivateMembersPageError} from './bostan-private-members-browser.mjs';
+import {validateMemberBrowserTarget,classifyPrivateMembersPageError,summarizePrivateMembersPageError,selectPrivateMembersCompanyOnMatchingTopLevelDocument} from './bostan-private-members-browser.mjs';
 const good={origin:'http://127.0.0.1:44551/',cookie:'better-auth.session_token=abc123xyz%2Ffoo%3Dbar.and-signed-verification',companyId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',companyPrefix:'BOS'};
 test('private signed browser fixture accepts actual Better Auth cookie serialization',()=>{
   const result=validateMemberBrowserTarget(good);
@@ -135,4 +136,40 @@ test('Members UI fails closed on a popup JavaScript error with allowlisted evide
     },
   );
   assert.equal(closed,1);
+});
+
+
+test('private Members init script only accesses storage on exact app top-level origin',()=>{
+  const origin='http://127.0.0.1:44551';
+  const source='('+selectPrivateMembersCompanyOnMatchingTopLevelDocument.toString()+')({origin,companyId})';
+  const evalOn=({actualOrigin,subframe})=>{
+    const stored=[];
+    const top={};
+    const view={
+      top,
+      location:{origin:actualOrigin},
+      localStorage:{setItem:(k,v)=>stored.push([k,v])},
+    };
+    if(!subframe)view.top=view;
+    runInNewContext(source,{window:view,origin,companyId:good.companyId});
+    return stored;
+  };
+  assert.deepEqual(evalOn({actualOrigin:origin,subframe:false}),
+    [['paperclip.selectedCompanyId',good.companyId]]);
+  assert.deepEqual(evalOn({actualOrigin:'null',subframe:false}),[]);
+  assert.deepEqual(evalOn({actualOrigin:'http://127.0.0.1:45000',subframe:false}),[]);
+  assert.deepEqual(evalOn({actualOrigin:origin,subframe:true}),[]);
+  // A sandboxed opaque document's localStorage can throw on *read*, not
+  // just on setItem. Neither should be reached for foreign/sandboxed frames.
+  const foreign={top:null,location:{origin:'null'}};
+  foreign.top=foreign;
+  Object.defineProperty(foreign,'localStorage',{get(){throw Error('denied')}});
+  assert.doesNotThrow(()=>runInNewContext(source,{
+    window:foreign,origin,companyId:good.companyId,
+  }));
+  // The real top-level app's denied storage must still fail closed.
+  const own={top:null,location:{origin}};
+  own.top=own;
+  Object.defineProperty(own,'localStorage',{get(){throw Error('denied')}});
+  assert.throws(()=>runInNewContext(source,{window:own,origin,companyId:good.companyId}),/denied/);
 });
