@@ -21,6 +21,7 @@ import { matchingPrivateWindowsQaWave, parsePrivateWindowsQaWave } from "./bosta
 import { resolvePrivateWindowsQaServerCommand } from "./bostan-private-windows-server-command.mjs";
 import { observeOwnedQaChild } from "./bostan-private-windows-child-lifecycle.mjs";
 import { summarizePrivateWindowsCpuProfile, summarizePrivateWindowsImportExit, summarizePrivateWindowsMonitor, summarizePrivateWindowsStartupFailure, classifyPrivateWindowsPackedPhase } from "./bostan-private-windows-cpu-profile-summary.mjs";
+import {classifyPrivateWindowsImportHeartbeat} from "./bostan-private-windows-import-heartbeat-classifier.mjs";
 
 const root=resolve(fileURLToPath(new URL("../",import.meta.url)));
 const args=process.argv.slice(2);
@@ -109,6 +110,8 @@ async function run() {
     console.log("BOSTAN_WIN_IMPORT_ONLY_FIRST_STAGE="+(stages[0]?.[1]||"not_observed"));
     console.log("BOSTAN_WIN_IMPORT_ONLY_LAST_STAGE="+(stages.at(-1)?.[1]||"not_observed"));
     console.log("BOSTAN_WIN_IMPORT_ONLY_STAGE_COUNT="+stages.length);
+    console.log("BOSTAN_WIN_IMPORT_ONLY_HEARTBEAT="+
+      JSON.stringify(classifyPrivateWindowsImportHeartbeat(observed)));
     console.log("BOSTAN_WIN_IMPORT_ONLY_CHILD_CLOSED="+childClosed);
     console.log("BOSTAN_WIN_IMPORT_ONLY_FORCED="+forced);
     console.log("BOSTAN_WIN_IMPORT_ONLY_REAL_POSTGRES_USED=false");

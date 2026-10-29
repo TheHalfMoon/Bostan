@@ -16,6 +16,7 @@ import {waitForWindowsPrivateHealth} from "./bostan-private-windows-health-wait.
 import {evaluateWindowsPgOrphanCheck} from "./bostan-private-windows-pg-orphan-proof.mjs";
 import {resolvePrivateWindowsPowerShellBinary} from "./bostan-private-windows-powershell-binary.mjs";
 import {resolvePrivateWindowsQaServerCommand} from "./bostan-private-windows-server-command.mjs";
+import {classifyPrivateWindowsImportHeartbeat} from "./bostan-private-windows-import-heartbeat-classifier.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const spec={schema:"bostan.private-windows-auth-server.v1",run:false,
@@ -535,6 +536,8 @@ try{
   const stages=[...serverOutput.matchAll(/BOSTAN_WIN_SERVER_STAGE=(static_import_start|static_import_pending|static_import_worker_alive|static_import_worker_pending|static_import_worker_failed|static_import_complete|runtime_start|runtime_ready|runtime_failed)/g)];
   const stage=stages.at(-1)?.[1]||"not_observed";
   console.error("BOSTAN_WINDOWS_LIVE_IMPORT_STAGE="+stage);
+  console.error("BOSTAN_WINDOWS_LIVE_IMPORT_HEARTBEAT="+
+    JSON.stringify(classifyPrivateWindowsImportHeartbeat(serverOutput)));
   const profiles=serverOutput.split(String.fromCharCode(10)).filter(line=>line.startsWith("BOSTAN_WIN_IMPORT_PROFILE="));
   const latestProfile=profiles.at(-1)?.slice("BOSTAN_WIN_IMPORT_PROFILE=".length);
   if(latestProfile){
