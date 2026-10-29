@@ -27,11 +27,12 @@ if(!args.length||args.length===1&&args[0]==="--plan"){
   console.log(JSON.stringify(spec,null,2));
   process.exit(0);
 }
-if(args.length!==1||!["--run","--run-compiled","--run-compiled-browser"].includes(args[0])){
-  console.error("Usage: node --import ./server/node_modules/tsx/dist/loader.mjs scripts/bostan-private-windows-live-http.mjs [--plan|--run|--run-compiled|--run-compiled-browser]");
+if(args.length!==1||!["--run","--run-compiled","--run-compiled-browser","--run-compiled-browser-members"].includes(args[0])){
+  console.error("Usage: node --import ./server/node_modules/tsx/dist/loader.mjs scripts/bostan-private-windows-live-http.mjs [--plan|--run|--run-compiled|--run-compiled-browser|--run-compiled-browser-members]");
   process.exit(2);
 }
-const browserMode=args[0]==="--run-compiled-browser";
+const browserMode=["--run-compiled-browser","--run-compiled-browser-members"].includes(args[0]);
+const membersMode=args[0]==="--run-compiled-browser-members";
 const serverMode=args[0]==="--run"?"source":"compiled";
 if(process.platform!=="win32"||!parsePrivateWindowsQaWave(basename(resolve(root)),"qa")){
   console.error("Native Windows live HTTP QA requires an isolated Bostan three-digit QA checkout");
@@ -125,7 +126,7 @@ let dbCleaned=true;
 let ownedHomeCleaned=false;
 let childStateForceUsed=false;
 let postgresProcessTreeVerified=false;
-let browserSignupPassed=false,browserAdminPassed=false;
+let browserSignupPassed=false,browserAdminPassed=false,browserMembersPassed=false;
 try{
   process.env.PAPERCLIP_TEST_POSTGRES_TEMPLATE="0";
   const {startEmbeddedPostgresTestDatabase}=await import("../packages/db/src/test-embedded-postgres.js");
@@ -306,6 +307,89 @@ try{
   if(status.status!==200||(await status.json())?.bootstrapStatus!=="ready")
     throw Error("Real first-admin claim did not close bootstrap state");
   markHttpStage("BOSTAN_WINDOWS_LIVE_POST_CLAIM_HEALTH_PASS");
+  if(membersMode){
+    // Continue the very same disposable, already-claimed authenticated fixture.
+    // No SQL role seeding or second infrastructure. Members UI must create an
+    // invite, promote a real viewer and suspend that same user with live API
+    // permission transitions. Never print generated tokens or cookies.
+    async function req(path,{method="GET",body:json,cookie:sessionCookie}={}){
+      const response=await fetch(origin+path,{
+        method,headers:{origin,"content-type":"application/json",
+          ...(sessionCookie?{cookie:sessionCookie}:{})},
+        ...(json===undefined?{}:{body:JSON.stringify(json)}),
+        signal:AbortSignal.timeout(15000),redirect:"error",
+      });
+      return {status:response.status,body:await response.json().catch(()=>null)};
+    }
+    const organization=await req("/api/companies",{
+      method:"POST",cookie,body:{name:"Bostan Windows private browser QA "+randomUUID()},
+    });
+    const company=organization.body;
+    if(organization.status!==201||
+       !/^[a-f0-9-]{36}$/i.test(company?.id||"")||
+       !/^[A-Z][A-Z0-9-]{1,15}$/.test(company?.issuePrefix||""))
+      throw Error("Windows browser QA company not created or scoped");
+    const inviteeEmail="bostan-qa-c-"+randomUUID()+"@example.invalid";
+    const inviteePassword="Test-only-"+randomBytes(18).toString("hex")+"!A2";
+    const invitee=await req("/api/auth/sign-up/email",{
+      method:"POST",body:{email:inviteeEmail,
+        name:"Bostan QA c",password:inviteePassword},
+    });
+    if(invitee.status!==200||
+       typeof invitee.body?.user?.id!=="string")throw Error("Third synthetic Windows session missing");
+    // The same sign-up API response issues an actual Better Auth cookie.
+    // A separate request below is used to obtain its cookie safely.
+    // For a cookie-bearing response we intentionally do not use the
+    // JSON-only helper; keep the token only in volatile process memory.
+    const signed=await fetch(origin+"/api/auth/sign-in/email",{
+      method:"POST",headers:{origin,"content-type":"application/json"},
+      body:JSON.stringify({email:inviteeEmail,
+        password:inviteePassword}),
+      redirect:"error",signal:AbortSignal.timeout(15000),
+    });
+    if(signed.status!==200)throw Error("Third synthetic session sign-in rejected");
+    const inviteeCookie=signed.headers.getSetCookie?.().map(v=>v.split(";",1)[0])
+      .find(v=>v.includes("session_token="));
+    if(!inviteeCookie)throw Error("Third synthetic Better Auth session cookie missing");
+    const {withPrivateMemberBrowser}=await import("../ui/scripts/bostan-private-members-browser.mjs");
+    const result=await withPrivateMemberBrowser({
+      origin,cookie,companyId:company.id,companyPrefix:company.issuePrefix,
+    },async ui=>{
+      const invitation=await ui.createInvite();
+      const accepted=await req("/api/invites/"+invitation.token+"/accept",{
+        method:"POST",cookie:inviteeCookie,body:{requestType:"human"},
+      });
+      if(accepted.status!==202||accepted.body?.status!=="approved"||
+         accepted.body.companyId!==company.id||
+         accepted.body.requestingUserId!==invitee.body.user.id)
+        throw Error("Third real session failed scoped UI invitation");
+      const viewer=await req("/api/companies/"+company.id+"/issues",{
+        method:"POST",cookie:inviteeCookie,body:{title:"Viewer denied"},
+      });
+      if(viewer.status!==403)throw Error("Invited viewer created issue");
+      const promotion=await ui.updateMember(inviteeEmail,{role:"operator"});
+      const allowed=await req("/api/companies/"+company.id+"/issues",{
+        method:"POST",cookie:inviteeCookie,body:{title:"UI promoted agent",status:"todo"},
+      });
+      if(allowed.status!==201||allowed.body?.companyId!==company.id)
+        throw Error("Operator UI promotion failed to authorize task");
+      const suspension=await ui.updateMember(inviteeEmail,{status:"suspended"});
+      if(suspension.memberId!==promotion.memberId)
+        throw Error("Member UI changed target across actions");
+      const denied=await req("/api/companies/"+company.id+"/issues",{
+        method:"POST",cookie:inviteeCookie,body:{title:"Suspended denied"},
+      });
+      if(denied.status!==403)throw Error("Suspended session retained write access");
+      return {inviteCreated:1,acceptedByThirdSession:1,viewerWriteDenied:1,
+        promotionEnablesWrite:1,suspensionWriteDenied:1,updatedSameMember:1};
+    });
+    browserMembersPassed=result.inviteCreated===1&&result.acceptedByThirdSession===1&&
+      result.viewerWriteDenied===1&&result.promotionEnablesWrite===1&&
+      result.suspensionWriteDenied===1&&result.updatedSameMember===1&&
+      result.browserJsErrors===0&&result.externalBrowserRequests===0;
+    if(!browserMembersPassed)throw Error("Windows Members Chromium proof incomplete");
+    console.log("BOSTAN_WINDOWS_CHROMIUM_MEMBERS_INVITE_ROLE_SUSPEND_PASS");
+  }
   if(browserMode&&(!browserSignupPassed||!browserAdminPassed))
     throw Error("Windows real browser and admin qualification incomplete");
   completedHttpChecks=true;
@@ -461,11 +545,13 @@ try{
   });
   const browserQualified=browserMode&&browserSignupPassed&&browserAdminPassed&&
     proof.windowsAuthenticatedHttpQualified;
-  const qualified=proof.windowsAuthenticatedHttpQualified&&(!browserMode||browserQualified);
+  const qualified=proof.windowsAuthenticatedHttpQualified&&
+    (!browserMode||browserQualified)&&(!membersMode||browserMembersPassed);
   if(qualified){
     console.log(JSON.stringify({...spec,...proof,run:true,livePostgres:true,
       realHttpStatus:200,realSession:true,firstAdmin:true,
-      authenticatedBrowserQualified:browserQualified},null,2));
+      authenticatedBrowserQualified:browserQualified,
+      authenticatedMembersBrowserQualified:membersMode&&browserMembersPassed},null,2));
   }else{
     failed=true;
     console.log(JSON.stringify({...spec,...proof,run:true,

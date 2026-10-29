@@ -31,3 +31,15 @@ test('no implicit user-facing mode or publishing, native platform gate remains',
     assert.match(outcome.stderr,/requires an isolated/);
   }
 });
+
+test("real Windows Members UX is an explicit stronger opted-in browser proof",()=>{
+  for(const marker of [
+    "--run-compiled-browser-members","membersMode",
+    "BOSTAN_WINDOWS_CHROMIUM_MEMBERS_INVITE_ROLE_SUSPEND_PASS",
+    'withPrivateMemberBrowser','ui.createInvite()','ui.updateMember(',
+    'viewer.status!==403','allowed.status!==201','denied.status!==403',
+    'authenticatedMembersBrowserQualified:membersMode&&browserMembersPassed',
+    '!membersMode||browserMembersPassed',
+  ])assert.ok(source.includes(marker),marker);
+  assert.doesNotMatch(source,/console\.log\((?:inviteePassword|inviteeCookie|invitation\.token)\)/);
+});
