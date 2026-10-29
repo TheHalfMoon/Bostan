@@ -4,7 +4,6 @@ import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
 import { isPrivateWindowsQaEntryAllowed as allowed } from './bostan-private-windows-entry-admission.mjs';
 
 async function fixture(t) {
@@ -36,9 +35,15 @@ test('shared admission refuses missing, modified, linked or directory markers',a
   const owned=join(f.parent,'owned');
   await writeFile(owned,'BOSTAN_PRIVATE_SYNTHETIC_ONLY\n');
   await rm(f.marker);
-  await symlink(owned,f.marker,'file');
-  assert.equal(allowed(f),false);
-  await rm(f.marker);
+  try {
+    await symlink(owned,f.marker,'file');
+    assert.equal(allowed(f),false);
+    await rm(f.marker);
+  } catch (error) {
+    // Windows without Developer Mode cannot create symlinks. Do not treat
+    // lack of privileges as a failed security check; continue directory test.
+    if (!['EPERM','EACCES'].includes(error?.code)) throw error;
+  }
   await mkdir(f.marker);
   assert.equal(allowed(f),false);
   assert.equal(await readFile(owned,'utf8'),'BOSTAN_PRIVATE_SYNTHETIC_ONLY\n');
@@ -62,7 +67,7 @@ test('Node compiled --import guard exits before loading an unrelated module',asy
   const sentinel=join(f.parent,'server-ran.txt');
   await writeFile(moduleFile,
     "import {writeFileSync} from 'node:fs';writeFileSync("+JSON.stringify(sentinel)+",'RAN');");
-  const guard=pathToFileURL(new URL('./bostan-private-windows-compiled-entry-guard.mjs',import.meta.url).pathname).href;
+  const guard=new URL('./bostan-private-windows-compiled-entry-guard.mjs',import.meta.url).href;
   const child=spawnSync(process.execPath,['--import',guard,moduleFile],
     {cwd:f.root,encoding:'utf8',env:{...process.env,...f.env},timeout:5000});
   assert.equal(child.status,2,child.stderr);
