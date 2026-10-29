@@ -114,7 +114,12 @@ async function run() {
         const profile=JSON.parse(await readFile(join(home,files[0]),"utf8"));
         const summary=summarizePrivateWindowsCpuProfile(profile);
         console.log("BOSTAN_WIN_IMPORT_ONLY_CPU_ATTRIBUTION="+JSON.stringify(summary));
-      }catch{console.log("BOSTAN_WIN_IMPORT_ONLY_CPU_PROFILE=unavailable");}
+      }catch{
+        // Do not report a successful diagnostic when profiling output was
+        // missing, truncated or malformed. Still tear down owned scratch.
+        console.log("BOSTAN_WIN_IMPORT_ONLY_CPU_PROFILE=unavailable");
+        process.exitCode=1;
+      }
       const safe=(await lstat(home)).isDirectory() &&
         !(await lstat(home)).isSymbolicLink() &&
         await readFile(marker,"utf8")==="BOSTAN_PRIVATE_SYNTHETIC_ONLY\n";
