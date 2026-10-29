@@ -1,8 +1,9 @@
 import { access, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { runnerStressEvalModuleUrl } from "./runner-stress-eval-module-url.mjs";
 
 const packageRoot = resolve(import.meta.dirname, "..");
-const evals = await import(resolve(packageRoot, "dist/eval/index.js"));
+const evals = await import(runnerStressEvalModuleUrl(packageRoot));
 const manifest = JSON.parse(await readFile(resolve(packageRoot, "spec/evals/stress-workflow-traceability.json"), "utf8"));
 const summary = evals.validateStressTraceabilityManifest(manifest);
 for (const finding of manifest.findings) {
