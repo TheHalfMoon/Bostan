@@ -94,7 +94,17 @@ export function inspectNativeLinuxRuntimePreflight({
     availableMemoryKiB,sourceFreeKiB,
   });
 }
-const direct=process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url);
+// Node 24+ supplies the authoritative entrypoint flag. On older test Nodes,
+// canonicalize both paths so a symlinked CLI cannot silently skip --check.
+function isDirectInvocation(){
+  if(import.meta.main===true)return true;
+  if(!process.argv[1])return false;
+  try{
+    return realpathSync(resolve(process.argv[1]))===
+      realpathSync(fileURLToPath(import.meta.url));
+  }catch{ return false; }
+}
+const direct=isDirectInvocation();
 if(direct){
   const args=process.argv.slice(2);
   if(args.length===0||(args.length===1&&args[0]==='--plan')){

@@ -70,3 +70,21 @@ test('Linux, Node 24, glibc, real tmpfs, RAM and disk are strict and independent
   assert.ok(all.missingRequirements.length>10);
   assert.ok(!JSON.stringify(all).includes('PRIVATE_PASSWORD'));
 });
+import {mkdtempSync,symlinkSync,rmSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+test("symlinked CLI entry still executes explicit check and rejects invalid modes",{skip:process.platform==="win32"},()=>{
+  const owned=mkdtempSync(join(tmpdir(),"bostan-preflight-symlink-owned-"));
+  try{
+    const alias=join(owned,"preflight-alias.mjs");
+    symlinkSync(file,alias);
+    const plan=spawnSync(process.execPath,[alias,"--plan"],{encoding:"utf8",timeout:4000});
+    assert.equal(plan.status,0);
+    assert.equal(JSON.parse(plan.stdout).requiresExplicitCheck,true);
+    const bad=spawnSync(process.execPath,[alias,"--publish"],{encoding:"utf8",timeout:4000});
+    assert.equal(bad.status,2);
+    const checked=spawnSync(process.execPath,[alias,"--check"],{encoding:"utf8",timeout:4000});
+    assert.ok(checked.status===0||checked.status===2);
+    assert.equal(JSON.parse(checked.stdout).schema,"bostan.private-linux-native-runtime-preflight.v1");
+  }finally{rmSync(owned,{recursive:true,force:true});}
+});
