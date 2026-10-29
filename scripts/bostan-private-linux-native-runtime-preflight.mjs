@@ -4,7 +4,7 @@
  * before pnpm, Docker, PostgreSQL or any mutable stage is created.
  * Never install dependencies, report user paths or print credentials.
  */
-import {accessSync,constants,realpathSync,statfsSync,readFileSync} from 'node:fs';
+import {accessSync,constants,realpathSync,statSync,statfsSync,readFileSync} from 'node:fs';
 import {join,delimiter,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -31,7 +31,9 @@ export function findAdmittedLinuxCommand(name,searchPath=process.env.PATH??''){
     if(!isAdmittedNativeLinuxExecutable(candidate))continue;
     try{
       const target=realpathSync(candidate);
-      if(!isAdmittedNativeLinuxExecutable(target))continue;
+      // Search permission on a directory also satisfies X_OK; only files
+      // can be executable native CLI prerequisites. Check the resolved target.
+      if(!isAdmittedNativeLinuxExecutable(target)||!statSync(target).isFile())continue;
       accessSync(candidate,constants.X_OK);
       return true;
     }catch{ /* Always fail closed and try the next native directory. */ }

@@ -88,3 +88,26 @@ test("symlinked CLI entry still executes explicit check and rejects invalid mode
     assert.equal(JSON.parse(checked.stdout).schema,"bostan.private-linux-native-runtime-preflight.v1");
   }finally{rmSync(owned,{recursive:true,force:true});}
 });
+import {mkdirSync,writeFileSync,readFileSync,chmodSync,rmdirSync} from 'node:fs';
+test('a directory named pnpm cannot satisfy native executable admission', {skip:!process.env.BOSTAN_NATIVE_PREFLIGHT_TEST_ROOT},()=>{
+  const root=process.env.BOSTAN_NATIVE_PREFLIGHT_TEST_ROOT;
+  assert.equal(isAdmittedNativeLinuxExecutable(join(root,'pnpm')),true);
+  const owned=mkdtempSync(join(root,'bostan-preflight-dir-owned-'));
+  const marker=join(owned,'.bostan-b159-marker');
+  writeFileSync(marker,'B159_OWNED');
+  try{
+    mkdirSync(join(owned,'pnpm'));
+    assert.equal(findAdmittedLinuxCommand('pnpm',owned),false,
+      'directory execute/search permission is not an executable native command');
+    rmdirSync(join(owned,'pnpm'));
+    writeFileSync(join(owned,'pnpm'),'#!/bin/sh\nexit 0\n',{mode:0o600});
+    assert.equal(findAdmittedLinuxCommand('pnpm',owned),false,
+      'regular files without execute permission must refuse');
+    chmodSync(join(owned,'pnpm'),0o700);
+    assert.equal(findAdmittedLinuxCommand('pnpm',owned),true,
+      'owned executable regular files in admitted roots remain supported');
+  }finally{
+    assert.equal(readFileSync(marker,'utf8'),'B159_OWNED');
+    rmSync(owned,{recursive:true,force:true});
+  }
+});
