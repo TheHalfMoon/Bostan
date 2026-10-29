@@ -66,3 +66,17 @@ test("Members UI diagnostic accepts only allowlisted visible flags and HTTP code
     assert.ok(source.includes(token),token);
   assert.doesNotMatch(source,/console\.error\("BOSTAN_WIN_MEMBERS.*"\+failure\)/);
 });
+
+test('native Windows real shared-DB writes are opt-in, require auth+browser+cleanup',()=>{
+  for(const marker of [
+    '--run-compiled-browser-members-concurrent',
+    'concurrentMode=args[0]===',
+    'qualifyPrivateSharedWindowsPostgres',
+    'sharedPostgresConcurrentPassed',
+    'BOSTAN_WINDOWS_REAL_SHARED_POSTGRES_12_CONCURRENT_WRITES_PASS',
+    '(!concurrentMode||sharedPostgresConcurrentPassed)',
+    'realSharedPostgresConcurrentWritesQualified:concurrentMode&&sharedPostgresConcurrentPassed',
+  ])assert.ok(source.includes(marker),marker);
+  assert.ok(source.indexOf('BOSTAN_WINDOWS_CHROMIUM_ASSET_PREFLIGHT_PASS')<
+    source.indexOf('startEmbeddedPostgresTestDatabase'));
+});

@@ -27,12 +27,14 @@ if(!args.length||args.length===1&&args[0]==="--plan"){
   console.log(JSON.stringify(spec,null,2));
   process.exit(0);
 }
-if(args.length!==1||!["--run","--run-compiled","--run-compiled-browser","--run-compiled-browser-members"].includes(args[0])){
-  console.error("Usage: node --import ./server/node_modules/tsx/dist/loader.mjs scripts/bostan-private-windows-live-http.mjs [--plan|--run|--run-compiled|--run-compiled-browser|--run-compiled-browser-members]");
+if(args.length!==1||!["--run","--run-compiled","--run-compiled-browser","--run-compiled-browser-members","--run-compiled-browser-members-concurrent"].includes(args[0])){
+  console.error("Usage: node --import ./server/node_modules/tsx/dist/loader.mjs scripts/bostan-private-windows-live-http.mjs [--plan|--run|--run-compiled|--run-compiled-browser|--run-compiled-browser-members|--run-compiled-browser-members-concurrent]");
   process.exit(2);
 }
-const browserMode=["--run-compiled-browser","--run-compiled-browser-members"].includes(args[0]);
-const membersMode=args[0]==="--run-compiled-browser-members";
+const browserMode=["--run-compiled-browser","--run-compiled-browser-members","--run-compiled-browser-members-concurrent"].includes(args[0]);
+const membersMode=["--run-compiled-browser-members",
+  "--run-compiled-browser-members-concurrent"].includes(args[0]);
+const concurrentMode=args[0]==="--run-compiled-browser-members-concurrent";
 const serverMode=args[0]==="--run"?"source":"compiled";
 if(process.platform!=="win32"||!parsePrivateWindowsQaWave(basename(resolve(root)),"qa")){
   console.error("Native Windows live HTTP QA requires an isolated Bostan three-digit QA checkout");
@@ -127,6 +129,7 @@ let ownedHomeCleaned=false;
 let childStateForceUsed=false;
 let postgresProcessTreeVerified=false;
 let browserSignupPassed=false,browserAdminPassed=false,browserMembersPassed=false;
+let sharedPostgresConcurrentPassed=false;
 let membersLastStage="not_started",membersLastHttpStatus="none";
 const membersCheckpoint=(stage)=>{
   // A closed, test-only vocabulary: no endpoints, email, cookies or tokens.
@@ -398,6 +401,33 @@ try{
       if(allowed.status!==201||allowed.body?.companyId!==company.id)
         throw Error("Operator UI promotion failed to authorize task");
       membersCheckpoint("operator_write_allowed");
+      if(concurrentMode){
+        // Dedicated stronger test only. Keep ordinary Members mode unchanged.
+        const other=await req("/api/companies",{
+          method:"POST",cookie,body:{
+            name:"Bostan Windows concurrent QA "+randomUUID(),
+          },
+        });
+        if(other.status!==201||
+           !/^[a-f0-9-]{36}$/i.test(other.body?.id??"")||
+           other.body.id===company.id)
+          throw Error("Second synthetic company missing");
+        const {qualifyPrivateSharedWindowsPostgres}=await import(
+          "./bostan-private-windows-shared-db-concurrency.mjs");
+        const concurrency=await qualifyPrivateSharedWindowsPostgres({
+          requestFn:req,firstCompany:other.body,secondCompany:company,
+          firstCookie:cookie,secondCookie:inviteeCookie,
+        });
+        sharedPostgresConcurrentPassed=concurrency.sameRealDatabase===true&&
+          concurrency.realConcurrentWrites===12&&
+          concurrency.distinctIssueIds===12&&
+          concurrency.overlappingHttpRequests===true&&
+          concurrency.twoCompanyReadback===true&&
+          concurrency.crossCompanyWriteDenied===true;
+        if(!sharedPostgresConcurrentPassed)
+          throw Error("Windows real shared PostgreSQL concurrent authz incomplete");
+        console.log("BOSTAN_WINDOWS_REAL_SHARED_POSTGRES_12_CONCURRENT_WRITES_PASS");
+      }
       const suspension=await ui.updateMember(inviteeEmail,{status:"suspended"});
       if(suspension.memberId!==promotion.memberId)
         throw Error("Member UI changed target across actions");
@@ -653,12 +683,14 @@ try{
   const browserQualified=browserMode&&browserSignupPassed&&browserAdminPassed&&
     proof.windowsAuthenticatedHttpQualified;
   const qualified=proof.windowsAuthenticatedHttpQualified&&
-    (!browserMode||browserQualified)&&(!membersMode||browserMembersPassed);
+    (!browserMode||browserQualified)&&(!membersMode||browserMembersPassed)&&
+    (!concurrentMode||sharedPostgresConcurrentPassed);
   if(qualified){
     console.log(JSON.stringify({...spec,...proof,run:true,livePostgres:true,
       realHttpStatus:200,realSession:true,firstAdmin:true,
       authenticatedBrowserQualified:browserQualified,
-      authenticatedMembersBrowserQualified:membersMode&&browserMembersPassed},null,2));
+      authenticatedMembersBrowserQualified:membersMode&&browserMembersPassed,
+      realSharedPostgresConcurrentWritesQualified:concurrentMode&&sharedPostgresConcurrentPassed},null,2));
   }else{
     failed=true;
     console.log(JSON.stringify({...spec,...proof,run:true,
