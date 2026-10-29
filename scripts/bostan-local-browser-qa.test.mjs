@@ -223,3 +223,22 @@ test("REAL Chromium context refuses HTTP, popup navigation and external WebSocke
     await browser.close();
   }
 });
+
+
+test("context-wide network capture can hand a private page error to in-process safe classification",async()=>{
+  const handlers={};const observed=[];
+  const context={
+    on(event,callback){handlers[event]=callback},
+    async route(pattern,callback){assert.equal(pattern,"**/*");handlers.http=callback},
+    async routeWebSocket(pattern,callback){assert.equal(pattern,"**/*");handlers.ws=callback},
+  };
+  const evidence=await installPrivateBrowserNetworkCapture(context,
+    "http://127.0.0.1:31881",{onPageError:e=>observed.push(e.name)});
+  let observer;
+  handlers.page({on(event,callback){assert.equal(event,"pageerror");observer=callback}});
+  observer({name:"TypeError",message:"sensitive error not logged"});
+  assert.equal(evidence.pageErrors,1);
+  assert.deepEqual(observed,["TypeError"]);
+  await assert.rejects(installPrivateBrowserNetworkCapture(context,
+    "http://127.0.0.1:31881",{onPageError:"bad"}),/observer invalid/);
+});

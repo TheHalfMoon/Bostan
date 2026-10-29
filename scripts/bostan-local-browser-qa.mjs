@@ -36,10 +36,16 @@ export function isAllowedPrivateBrowserWebSocket(url, privateOrigin) {
   } catch { return false; }
 }
 
-export async function installPrivateBrowserNetworkCapture(context, privateOrigin) {
+export async function installPrivateBrowserNetworkCapture(context, privateOrigin, {onPageError} = {}) {
+  if(onPageError!==undefined && typeof onPageError!=="function")
+    throw Error("Private browser page error observer invalid");
   const evidence = { blockedHttp: 0, blockedWebSockets: 0, pageErrors: 0 };
   context.on("page", page => {
-    page.on("pageerror", () => { evidence.pageErrors += 1; });
+    page.on("pageerror", error => {
+      evidence.pageErrors += 1;
+      // Optional in-process-only classification; never log raw exceptions.
+      if(onPageError)onPageError(error);
+    });
   });
   await context.route("**/*", async route => {
     if (isAllowedPrivateBrowserRequest(route.request().url(), privateOrigin)) {

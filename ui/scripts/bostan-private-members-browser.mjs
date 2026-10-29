@@ -39,7 +39,13 @@ export async function withPrivateMemberBrowser(input,callback,{launch=chromium.l
     await context.addInitScript((companyId)=>{localStorage.setItem('paperclip.selectedCompanyId',companyId)},settings.companyId);
     // Reuse the existing QA-wide network firewall, including new pages and
     // WebSockets; page.route alone misses first popup navigation requests.
-    const evidence=await installPrivateBrowserNetworkCapture(context,settings.origin);
+    let pageErrorClass='none';
+    const evidence=await installPrivateBrowserNetworkCapture(context,settings.origin,{
+      onPageError:error=>{
+        if(pageErrorClass==='none')
+          pageErrorClass=classifyPrivateMembersPageError(error);
+      },
+    });
     const assertCapture=()=>{
       // Fixed, non-sensitive failure classes; never log blocked URLs, query
       // strings, page text, session cookies or browser exception stacks.
@@ -48,15 +54,10 @@ export async function withPrivateMemberBrowser(input,callback,{launch=chromium.l
       if(evidence.blockedWebSockets>0)
         throw Error('Bostan Members Chromium blocked external WebSocket');
       if(evidence.pageErrors>0)
-        throw Error('Bostan Members Chromium JS class: '+mainPageErrorClass);
+        throw Error('Bostan Members Chromium JS class: '+pageErrorClass);
       assertPrivateBrowserEgressEvidence(evidence);
     };
     const page=await context.newPage();
-    let mainPageErrorClass='none';
-    page.on('pageerror',error=>{
-      if(mainPageErrorClass==='none')
-        mainPageErrorClass=classifyPrivateMembersPageError(error);
-    });
     const sessionStatuses=[];
     page.on('response',response=>{if(new URL(response.url()).pathname==='/api/auth/get-session')sessionStatuses.push(response.status())});
     const visit=async(tab)=>{
