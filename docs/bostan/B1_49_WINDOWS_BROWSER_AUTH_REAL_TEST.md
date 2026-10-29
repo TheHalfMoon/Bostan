@@ -15,7 +15,7 @@ B1-46 backend-only Windows PG/Better Auth HTTP was independently GREEN; B1-48 Wi
 
 The new stricter preflight and corrected stale profiler-path assertions passed 26/26 focused Mac tests. These later edits require a new Windows run under sufficient free RAM; no such full run is claimed.
 
-Release remains NO-GO. Still required: UI TypeScript checking, broader Windows authenticated member/invite UI, offline local agent, Linux/installers, multi-suite PG stress, and security/privacy/licensing reviews. No publish or protected-main merge.
+Release remains NO-GO. Still required: broader Windows authenticated member/invite UI, offline local agent, Linux/installers, multi-suite PG stress, and security/privacy/licensing reviews. The full Windows UI TypeScript gate subsequently passed; see below. No publish or protected-main merge.
 
 ## FINAL re-execution at the exact private Draft HEAD — GREEN
 
@@ -25,4 +25,8 @@ All 18 original Windows Better Auth security/HTTP/cleanup stages passed. Additio
 
 Final JSON receipt `authenticatedBrowserQualified:true`, `windowsAuthenticatedHttpQualified:true`, `outcome:"pass"`, `realHttpStatus:200`, `realSession:true`, `firstAdmin:true`, `childClosed:true`, `postgresCleaned:true`, `noOrphanPostgresProcessVerified:true`, `ownedFixtureCleaned:true`, `releaseQualified:false`.
 
-Independent native Windows post-run read-only scan: **0 active postgres.exe, 0 B144-owned Node processes, 0 disposable B149 PostgreSQL/HTTP fixture directories**; the B135 shared checkout and B144 QA checkout tracked sources remained clean. D drive ~7.55 GiB free. Real browser/signup/first-admin now GREEN for this exact source and device, unlike the earlier low-resource failed attempt. This does NOT prove Windows member/invite UI, full UI semantic typecheck, installers or full release qualification.
+Independent native Windows post-run read-only scan: **0 active postgres.exe, 0 B144-owned Node processes, 0 disposable B149 PostgreSQL/HTTP fixture directories**; the B135 shared checkout and B144 QA checkout tracked sources remained clean. D drive ~7.55 GiB free. Real browser/signup/first-admin now GREEN for this exact source and device, unlike the earlier low-resource failed attempt. This does NOT prove Windows member/invite UI, installers or full release qualification. The full UI semantic typecheck was subsequently run and passed; see below.
+
+## Final native Windows full UI semantic typecheck — GREEN
+
+On the same authorized Windows B144 QA checkout after repairing all previously missing pinned adapter workspace dependency links, `pnpm --filter @bostan/ui typecheck` executed the real `node ../scripts/storybook-catalog.mjs && tsc -b`: **EXIT 0 in 63.90 seconds**. The Storybook catalog enumerated **316 files and 2,973 stories** (structural evidence only). TypeScript `tsc -b` completed without reported errors, unlike the prior isolated checkout attempt that lacked the `@bostan/adapter-utils` link. The run used installed frozen-lock dependencies with offline settings, no install scripts, no model calls and no source modifications. The last native Windows tested HEAD `6c8060949768c9ed8dbc38edad55919b16519a01` differs from the final evidence-only head only by documentation. This closes the narrow native Windows UI semantic typecheck gate, not browser member/invite acceptance, native installers or full-product release qualification.
