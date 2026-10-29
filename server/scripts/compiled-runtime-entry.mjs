@@ -15,5 +15,7 @@ export function nativeEsmFileUrl(filename) {
 
 export function compiledRuntimeEntrySource(entry) {
   const url = nativeEsmFileUrl(entry);
-  return `process.argv[1] = ${JSON.stringify(entry)};\nawait import(${JSON.stringify(url)});\n`;
+  // Keep the URL expression dynamic: esbuild cannot resolve file: URLs as
+  // bundle inputs, but Node must receive a file: URL at runtime on Windows.
+  return `process.argv[1] = ${JSON.stringify(entry)};\nawait import(new URL(${JSON.stringify(url)}).href);\n`;
 }
