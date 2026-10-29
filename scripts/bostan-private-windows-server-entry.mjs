@@ -4,30 +4,13 @@
  * Only the Bostan QA harness may enable this module; it must not start the
  * app against operator settings, user data, other hosts or managed Cloud.
  */
-import {existsSync,readFileSync,lstatSync} from "node:fs";
-import {basename,isAbsolute} from "node:path";
 import {fileURLToPath} from "node:url";
-import {parsePrivateWindowsQaWave} from "./bostan-private-windows-qa-wave.mjs";
+import {isPrivateWindowsQaEntryAllowed} from "./bostan-private-windows-entry-admission.mjs";
 import {safeWindowsStartupSite,safeWindowsStartupCode,safeWindowsMissingPackage,safeWindowsMissingLocalModule} from "./bostan-private-windows-failure-site.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
-const marker=process.env.BOSTAN_PRIVATE_QA_MARKER;
-let database=null;
-try{database=new URL(process.env.DATABASE_URL);}catch{}
-const allowed =
-  process.platform==="win32" &&
-  process.env.BOSTAN_PRIVATE_QA_ENTRY==="B087_TEST_ONLY" &&
-  Boolean(parsePrivateWindowsQaWave(basename(root.replace(/[\\/]+$/,"")),"qa")) &&
-  typeof marker==="string" && isAbsolute(marker) &&
-  existsSync(marker) && !lstatSync(marker).isSymbolicLink() &&
-  basename(marker)==="BOSTAN_QA_OWNED" &&
-  readFileSync(marker,"utf8")==="BOSTAN_PRIVATE_SYNTHETIC_ONLY"+String.fromCharCode(10) &&
-  database && (database.protocol==="postgres:"||database.protocol==="postgresql:") &&
-  database.hostname==="127.0.0.1" &&
-  Number(database.port)>1023 && Number(database.port)<=65535 &&
-  process.env.PAPERCLIP_DEPLOYMENT_MODE==="authenticated" &&
-  process.env.PAPERCLIP_DEPLOYMENT_EXPOSURE==="private" &&
-  !Object.keys(process.env).some(k=>/^(PAPERCLIP_CLOUD_|BOSTAN_CLOUD_|PAPERCLIP_MANAGED_CONFIG$)/i.test(k));
+// The source and compiled test entries share one fail-closed fixture gate.
+const allowed=isPrivateWindowsQaEntryAllowed({root});
 if(!allowed){
   console.error("Bostan Windows server stage entry refuses a missing or unsafe synthetic test fixture");
   process.exit(2);
