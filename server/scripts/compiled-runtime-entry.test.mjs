@@ -66,3 +66,12 @@ test("legacy Windows drive-letter ESM imports fail before reaching the module", 
   await assert.rejects(import("D:/Bostan-B118-temp/legacy-entry.mjs"), error =>
     error?.code === "ERR_UNSUPPORTED_ESM_URL_SCHEME");
 });
+
+test("Windows compiled runtime refuses drive-less rooted paths", () => {
+  if (process.platform !== "win32") return;
+  for (const value of [String.raw`\rooted\private.mjs`, "/rooted/private.mjs", String.raw`\\?\C:\Windows\private.mjs`]) {
+    assert.throws(() => nativeEsmFileUrl(value), /absolute local file path/);
+    assert.throws(() => compiledRuntimeEntrySource(value), /absolute local file path/);
+  }
+  assert.match(nativeEsmFileUrl(String.raw`C:\Windows\private.mjs`), /^file:\/\/\/C:\//i);
+});
