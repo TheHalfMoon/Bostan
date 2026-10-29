@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** Actual signed-in Chromium acceptance for Bostan's private Members page. */
 import {chromium} from '@playwright/test';
+import {installPrivateBrowserNetworkCapture,assertPrivateBrowserEgressEvidence} from '../../scripts/bostan-local-browser-qa.mjs';
 
 export function validateMemberBrowserTarget({origin,cookie,companyId,companyPrefix}){
   const u=new URL(origin);
@@ -21,17 +22,12 @@ export async function withPrivateMemberBrowser(input,callback,{launch=chromium.l
     const context=await browser.newContext({serviceWorkers:'block',permissions:['clipboard-read','clipboard-write']});
     await context.addCookies([{name:settings.name,value:settings.value,url:settings.origin,httpOnly:true,sameSite:'Lax'}]);
     await context.addInitScript((companyId)=>{localStorage.setItem('paperclip.selectedCompanyId',companyId)},settings.companyId);
+    // Reuse the existing QA-wide network firewall, including new pages and
+    // WebSockets; page.route alone misses first popup navigation requests.
+    const evidence=await installPrivateBrowserNetworkCapture(context,settings.origin);
     const page=await context.newPage();
-    let jsErrors=0,externalRequests=0;
     const sessionStatuses=[];
     page.on('response',response=>{if(new URL(response.url()).pathname==='/api/auth/get-session')sessionStatuses.push(response.status())});
-    page.on('pageerror',()=>{jsErrors++});
-    await page.route('**/*',route=>{
-      const url=route.request().url();
-      if(url.startsWith(settings.origin+'/'))return route.continue();
-      externalRequests++;
-      return route.abort();
-    });
     const visit=async(tab)=>{
       const response=await page.goto(`${settings.origin}/${settings.companyPrefix}/company/settings/members?tab=${tab}`,{waitUntil:'domcontentloaded',timeout:25000});
       if(!response||response.status()!==200)throw Error('Bostan private Members UI failed to load');
@@ -41,9 +37,9 @@ export async function withPrivateMemberBrowser(input,callback,{launch=chromium.l
         const headingCount=await page.locator('h1,h2').count();
         const bodyText=await page.locator('body').innerText();
         const visibleFlags=['Sign in','Welcome','Setup','Select organization','Organization Members','Loading','No organization','Error','Authentication'].filter(flag=>bodyText.includes(flag));
-        throw Error(`Private Members UI not reached: path=${currentPath},headingCount=${headingCount},visibleFlags=${visibleFlags.join('|')},sessionHttpStatuses=${sessionStatuses.join('|')},jsErrors=${jsErrors},externalRequests=${externalRequests}`);
+        throw Error(`Private Members UI not reached: path=${currentPath},headingCount=${headingCount},visibleFlags=${visibleFlags.join('|')},sessionHttpStatuses=${sessionStatuses.join('|')},jsErrors=${evidence.pageErrors},blockedHttp=${evidence.blockedHttp},blockedWebSockets=${evidence.blockedWebSockets}`);
       }
-      if(jsErrors||externalRequests)throw Error('Private Members UI emitted browser JS error or external request');
+      assertPrivateBrowserEgressEvidence(evidence);
     };
     const createInvite=async()=>{
       await visit('invites');
@@ -80,7 +76,7 @@ export async function withPrivateMemberBrowser(input,callback,{launch=chromium.l
       return {memberId:member.id,role:member.membershipRole,status:member.status,uiUpdated:true};
     };
     const result=await callback({createInvite,updateMember});
-    if(jsErrors||externalRequests)throw Error(`Private member browser failed: jsErrors=${jsErrors}, externalRequests=${externalRequests}`);
+    assertPrivateBrowserEgressEvidence(evidence);
     return {...result,browserJsErrors:0,externalBrowserRequests:0};
   }finally{await browser.close()}
 }
