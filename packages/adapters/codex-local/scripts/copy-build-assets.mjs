@@ -1,4 +1,4 @@
-import { copyFile, lstat, mkdir } from "node:fs/promises";
+import { copyFile, lstat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -25,7 +25,9 @@ export async function copyCodexLocalBuildAssets(packageRoot) {
   if (!targetInfo.isDirectory() || targetInfo.isSymbolicLink()) {
     throw new Error("Bostan Codex build destination must be an existing directory");
   }
-  for (const [i, name] of ASSET_FILES.entries()) {
+  const targetFiles = [];
+  // Preflight all destination paths before writing any file.
+  for (const name of ASSET_FILES) {
     const target = join(destination, name);
     const info = await lstat(target).catch(error => {
       if (error?.code === "ENOENT") return null;
@@ -34,7 +36,10 @@ export async function copyCodexLocalBuildAssets(packageRoot) {
     if (info && (!info.isFile() || info.isSymbolicLink())) {
       throw new Error("Bostan Codex build target must be a regular file");
     }
-    await copyFile(sourceFiles[i], target);
+    targetFiles.push(target);
+  }
+  for (let i = 0; i < ASSET_FILES.length; i++) {
+    await copyFile(sourceFiles[i], targetFiles[i]);
   }
 }
 
