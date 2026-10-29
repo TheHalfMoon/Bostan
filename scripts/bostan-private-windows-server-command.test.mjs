@@ -16,6 +16,7 @@ async function fixture(t) {
   const output = join(server, 'dist-runtime');
   await mkdir(join(root, 'scripts'), {recursive:true});
   for (const name of ['bostan-private-windows-compiled-entry-guard.mjs',
+      'bostan-private-windows-compiled-startup-probe.mjs',
       'bostan-private-windows-entry-admission.mjs',
       'bostan-private-windows-qa-wave.mjs']) {
     await copyFile(new URL(name, import.meta.url), join(root, 'scripts', name));
@@ -48,6 +49,7 @@ test('compiled mode refuses unmarked output, then accepts exact SHA-owned output
   assert.equal(command.mode, 'compiled');
   assert.deepEqual(command.nodeArgs, [
     '--import', pathToFileURL(join(f.root, 'scripts', 'bostan-private-windows-compiled-entry-guard.mjs')).href,
+    '--import', pathToFileURL(join(f.root, 'scripts', 'bostan-private-windows-compiled-startup-probe.mjs')).href,
     f.index,
   ]);
 });
