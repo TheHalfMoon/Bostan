@@ -88,6 +88,8 @@ createdb -h 127.0.0.1 -p "$PGPORT" -U bostan_verify bostan_qualification
 export DATABASE_URL="postgres://bostan_verify@127.0.0.1:$PGPORT/bostan_qualification"
 export PAPERCLIP_HOME="$TMP/bostan-home" PAPERCLIP_CONFIG="$TMP/bostan-config.json" PAPERCLIP_MIGRATION_PROMPT=never PAPERCLIP_MIGRATION_AUTO_APPLY=true
 export PAPERCLIP_OPEN_ON_LISTEN=false BOSTAN_FEEDBACK_EXPORT_ENABLED=0 HOST=127.0.0.1 PORT="$HTTPPORT" OTEL_SDK_DISABLED=true
+# Never inherit an operator-supplied first-admin test override into legacy modes.
+unset BOSTAN_AUTHZ_API_FIRST_ADMIN
 if [ "$MODE" = "--run-deployed-authz" ] || [ "$MODE" = "--run-deployed-authz-ui" ] || [ "$MODE" = "--run-deployed-admin-race" ] || [ "$MODE" = "--run-dist-authz" ]; then
   # The new built-server test must prove the first-admin API, not SQL seeding.
   if [ "$MODE" = "--run-dist-authz" ]; then export BOSTAN_AUTHZ_API_FIRST_ADMIN=1; fi
