@@ -458,8 +458,13 @@ try{
       uiClass="members_external_http";
     else if(failure==="Bostan Members Chromium blocked external WebSocket")
       uiClass="members_external_websocket";
-    else if(failure==="Bostan Members Chromium observed JavaScript error")
-      uiClass="members_browser_js_exception";
+    else if(failure.startsWith("Bostan Members Chromium JS class: ")){
+      const candidate=failure.slice("Bostan Members Chromium JS class: ".length);
+      const allowed=["undefined_property","null_property","not_function",
+        "editor_extension","module_load","react_runtime","network_error",
+        "syntax_error","unclassified","none"];
+      uiClass="members_browser_js_"+(allowed.includes(candidate)?candidate:"unclassified");
+    }
     else if(failure.startsWith("Private Bostan browser QA observed errors or attempted external network egress"))
       uiClass="members_external_request_or_browser_error";
     else if(failure.includes("Browser invite creation rejected"))

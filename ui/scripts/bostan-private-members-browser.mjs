@@ -15,6 +15,21 @@ export function validateMemberBrowserTarget({origin,cookie,companyId,companyPref
   return {origin:u.origin,name:cookie.slice(0,split),value:cookie.slice(split+1),companyId,companyPrefix};
 }
 
+// An enumerated, privacy-preserving page error category. Never include
+// browser exception messages, source URLs, stack traces, user data or tokens.
+export function classifyPrivateMembersPageError(error){
+  const message=typeof error?.message==='string'?error.message:'';
+  if(/Cannot read properties of undefined/.test(message))return 'undefined_property';
+  if(/Cannot read properties of null/.test(message))return 'null_property';
+  if(/is not a function/.test(message))return 'not_function';
+  if(/Unrecognized extension value/.test(message))return 'editor_extension';
+  if(/Failed to fetch dynamically imported module|Importing a module script failed/.test(message))return 'module_load';
+  if(/Minified React error|React error #/.test(message))return 'react_runtime';
+  if(/Failed to fetch|NetworkError/.test(message))return 'network_error';
+  if(error?.name==='SyntaxError')return 'syntax_error';
+  return 'unclassified';
+}
+
 export async function withPrivateMemberBrowser(input,callback,{launch=chromium.launch.bind(chromium)}={}){
   const settings=validateMemberBrowserTarget(input);
   const browser=await launch({headless:true});
@@ -33,10 +48,15 @@ export async function withPrivateMemberBrowser(input,callback,{launch=chromium.l
       if(evidence.blockedWebSockets>0)
         throw Error('Bostan Members Chromium blocked external WebSocket');
       if(evidence.pageErrors>0)
-        throw Error('Bostan Members Chromium observed JavaScript error');
+        throw Error('Bostan Members Chromium JS class: '+mainPageErrorClass);
       assertPrivateBrowserEgressEvidence(evidence);
     };
     const page=await context.newPage();
+    let mainPageErrorClass='none';
+    page.on('pageerror',error=>{
+      if(mainPageErrorClass==='none')
+        mainPageErrorClass=classifyPrivateMembersPageError(error);
+    });
     const sessionStatuses=[];
     page.on('response',response=>{if(new URL(response.url()).pathname==='/api/auth/get-session')sessionStatuses.push(response.status())});
     const visit=async(tab)=>{

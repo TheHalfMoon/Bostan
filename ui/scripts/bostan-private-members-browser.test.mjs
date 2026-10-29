@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {validateMemberBrowserTarget} from './bostan-private-members-browser.mjs';
+import {validateMemberBrowserTarget,classifyPrivateMembersPageError} from './bostan-private-members-browser.mjs';
 const good={origin:'http://127.0.0.1:44551/',cookie:'better-auth.session_token=abc123xyz%2Ffoo%3Dbar.and-signed-verification',companyId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',companyPrefix:'BOS'};
 test('private signed browser fixture accepts actual Better Auth cookie serialization',()=>{
   const result=validateMemberBrowserTarget(good);
@@ -63,4 +63,19 @@ test('real Members browser wrapper blocks cross-origin subrequests/WebSockets co
   assert.equal(blockedHttp,1);
   assert.equal(blockedWebSockets,1);
   assert.equal(closed,1,'Only the exact owned browser is closed');
+});
+
+
+test('Members page error classifier exposes only fixed non-sensitive classes',()=>{
+  for(const [sample,expected] of [
+    [{message:"Cannot read properties of undefined (reading 'foo')"},'undefined_property'],
+    [{message:"Cannot read properties of null (reading 'foo')"},'null_property'],
+    [{message:'x is not a function'},'not_function'],
+    [{message:'Unrecognized extension value in extension set'},'editor_extension'],
+    [{message:'Failed to fetch dynamically imported module: https://hidden.invalid/private?q=token'},'module_load'],
+    [{message:'Minified React error #418'},'react_runtime'],
+    [{message:'Failed to fetch'},'network_error'],
+    [{name:'SyntaxError',message:'random attacker secret in script'},'syntax_error'],
+    [{message:'sensitive-token-DO-NOT-PRINT'},'unclassified'],
+  ])assert.equal(classifyPrivateMembersPageError(sample),expected);
 });
