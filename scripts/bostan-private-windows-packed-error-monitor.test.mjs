@@ -28,3 +28,14 @@ test("rejects injected paths or tokens in forged monitor lines",()=>{
   for(const key of ["secret-user","password","secrets.js"])assert.ok(!JSON.stringify(result).includes(key));
   assert.equal(summarizePrivateWindowsMonitor("BOSTAN_WIN_MONITOR={bad-json").uncaught,null);
 });
+test("captures only the bounded process.exit call site class",()=>{
+  const payload=[
+    {event:"exit_called",code:1,site:"packed_chunk"},
+    {event:"exit",code:1},
+  ].map(x=>"BOSTAN_WIN_MONITOR="+JSON.stringify(x)).join("\n");
+  const out=summarizePrivateWindowsMonitor(payload);
+  assert.deepEqual(out.exitCalled,{code:1,site:"packed_chunk"});
+  const bad=summarizePrivateWindowsMonitor('BOSTAN_WIN_MONITOR='+JSON.stringify({
+    event:"exit_called",code:1,site:"D:/Users/SECRET/path.js"}));
+  assert.equal(bad.exitCalled,null);
+});

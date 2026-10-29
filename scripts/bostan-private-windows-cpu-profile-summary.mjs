@@ -99,12 +99,17 @@ export function summarizePrivateWindowsMonitor(observed) {
   const allowedCodes=new Set(["unknown","ENOENT","EACCES","EPERM","EADDRINUSE",
     "ECONNREFUSED","ERR_MODULE_NOT_FOUND","MODULE_NOT_FOUND",
     "ERR_PACKAGE_PATH_NOT_EXPORTED","42P01","42703","28P01","23505"]);
-  let uncaught=null,exit=null,beforeExit=false;
+  let uncaught=null,exit=null,beforeExit=false,exitCalled=null;
   for(const line of lines.slice(-6)) {
     let obj;
     try{obj=JSON.parse(line.slice("BOSTAN_WIN_MONITOR=".length));}catch{continue}
     if(!obj || typeof obj!=="object")continue;
     if(obj.event==="before_exit")beforeExit=true;
+    if(obj.event==="exit_called" && Number.isInteger(obj.code) &&
+      obj.code>=0&&obj.code<=255 &&
+      ["packed_entry","packed_server","packed_chunk","compiled_server",
+       "qa_preload","third_party","workspace","unknown"].includes(obj.site))
+      exitCalled={code:obj.code,site:obj.site};
     if(obj.event==="exit" && Number.isInteger(obj.code) && obj.code>=0 && obj.code<=255)
       exit=obj.code;
     if(obj.event==="uncaught" && allowedNames.has(obj.name) &&
@@ -120,6 +125,6 @@ export function summarizePrivateWindowsMonitor(observed) {
     }
   }
   return {schema:"bostan.private-windows-packed-import-monitor.v1",
-    uncaught,exit,beforeExit,monitorInstalled:lines.length>0,
+    uncaught,exit,beforeExit,exitCalled,monitorInstalled:lines.length>0,
     redacted:true,releaseQualified:false};
 }
