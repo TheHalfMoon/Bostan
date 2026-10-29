@@ -34,3 +34,7 @@ Focused regression unit suite: **5/5 PASS** covering inert plan, rejected public
 ## Strict limits
 
 This is genuine **two concurrently running separate PostgreSQL clusters and separate Bostan server instances**; it is *not* two workers concurrently modifying one shared database, nor a high-load stress benchmark. Windows and Linux concurrent real native PG remain unqualified by this Mac-only gate, as do installer packaging, free local offline agent execution, full security/privacy/license/provenance and release. Explicit `releaseQualified:false` is maintained in upstream test receipt. KEEP PRIVATE / DRAFT, NO-GO for release, do not merge main, publish, deploy, pack npm, use real customers or paid inference.
+
+## Cross-platform rejection and proof-validator checks
+
+At committed candidate source `327f85f3cd3e7c9c1dcdea17a4a1d38696f9012f`, the **same five-test** negative/validation suite ran with real native Windows Node 24 on B144 **5/5 PASS, exit 0**, and real Ubuntu WSL2 Linux Node 22 (using `/usr/bin/node`, not the Windows binary) **5/5 PASS, exit 0**. These tests verify safe no-op/default, publication denial, scrubbed environment, strict real-success/cleanup receipt rules, concurrency overlap truth and macOS memory free percentage parsing. They did **not** launch PostgreSQL on Windows/Linux: the real two-instance database/server test is Mac-only, by explicit platform gate. Native Windows independent postcheck: **0 postgres.exe**, tracked QA checkout clean. Existing B1-53 real Mac and Windows Members UI E2E evidence is unchanged.
