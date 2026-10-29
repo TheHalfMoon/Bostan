@@ -35,6 +35,8 @@ test('refuses non-Linux host and without explicit private tmpfs admission',()=>{
 });
 test('prebuilt stage keeps native Linux code, resource, source and vendor gates',()=>{
   for(const marker of [
+    'bostan-private-linux-native-runtime-preflight.mjs --check',
+    'BOSTAN_LINUX_NATIVE_TOOLCHAIN_EARLY_ADMITTED',
     'bostan-private-linux-tmpfs-admission.mjs --check',
     'bostan-private-linux-native-build-closure.mjs --check',
     'bostan-private-bundled-font-license-gate.mjs --check',

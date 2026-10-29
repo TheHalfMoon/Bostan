@@ -23,6 +23,10 @@ cd "$ROOT"
 export DO_NOT_TRACK=1 OTEL_SDK_DISABLED=true BOSTAN_FEEDBACK_EXPORT_ENABLED=0 npm_config_offline=true
 unset OPENAI_API_KEY ANTHROPIC_API_KEY OPENROUTER_API_KEY GEMINI_API_KEY GOOGLE_API_KEY XAI_API_KEY AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY SENTRY_DSN OTEL_EXPORTER_OTLP_ENDPOINT 2>/dev/null || true
 umask 077
+# Before any pnpm, package staging, PostgreSQL, build or mutation, prove the
+# actual native Linux toolchain, not a Windows /mnt/c pnpm shim from WSL PATH.
+node scripts/bostan-private-linux-native-runtime-preflight.mjs --check
+echo BOSTAN_LINUX_NATIVE_TOOLCHAIN_EARLY_ADMITTED
 for prerequisite in node pnpm initdb pg_ctl createdb curl git; do
   command -v "$prerequisite" >/dev/null || { echo "Bostan QA missing $prerequisite" >&2;exit 2; }
 done
