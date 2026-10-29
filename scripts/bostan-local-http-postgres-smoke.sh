@@ -7,6 +7,7 @@ if [ "${1:-}" = "--help" ] && [ "$#" -eq 1 ]; then
   echo "Or built JS + actual synthetic private Better Auth sessions: bash scripts/bostan-local-http-postgres-smoke.sh --run-dist-authz"
   echo "Or SHA-owned packed runtime + real private Better Auth/PG: bash scripts/bostan-local-http-postgres-smoke.sh --run-packed-authz"
   echo "Or real Chromium signup, first-admin and member UI on packed server: bash scripts/bostan-local-http-postgres-smoke.sh --run-packed-authz-ui"
+  echo "Or real same-PostgreSQL concurrent synthetic writes: bash scripts/bostan-local-http-postgres-smoke.sh --run-packed-authz-concurrent"
   echo "Or isolated private staged production bundle: bash scripts/bostan-local-http-postgres-smoke.sh --run-deployed <absolute-stage>"
   echo "Or isolated authenticated production sessions: bash scripts/bostan-local-http-postgres-smoke.sh --run-deployed-authz <absolute-stage>"
   echo "Or synthetic eight-caller private first-admin race: --run-deployed-admin-race <absolute-stage>"
@@ -15,8 +16,8 @@ if [ "${1:-}" = "--help" ] && [ "$#" -eq 1 ]; then
   echo "Requires local PostgreSQL CLI tools; no paid models or remote services."
   exit 0
 fi
-if ! { [ "$#" -eq 1 ] && { [ "$1" = "--run" ] || [ "$1" = "--run-dist" ] || [ "$1" = "--run-dist-authz" ] || [ "$1" = "--run-packed-authz" ] || [ "$1" = "--run-packed-authz-ui" ]; }; } && ! { [ "$#" -eq 2 ] && { [ "$1" = "--run-deployed" ] || [ "$1" = "--run-deployed-authz" ] || [ "$1" = "--run-deployed-authz-ui" ] || [ "$1" = "--run-deployed-admin-race" ]; }; }; then
-  echo "Usage: bash scripts/bostan-local-http-postgres-smoke.sh [--help|--run|--run-dist|--run-dist-authz|--run-packed-authz|--run-packed-authz-ui|--run-deployed <absolute-stage>|--run-deployed-authz <absolute-stage>|--run-deployed-authz-ui <absolute-stage>|--run-deployed-admin-race <absolute-stage>]" >&2
+if ! { [ "$#" -eq 1 ] && { [ "$1" = "--run" ] || [ "$1" = "--run-dist" ] || [ "$1" = "--run-dist-authz" ] || [ "$1" = "--run-packed-authz" ] || [ "$1" = "--run-packed-authz-concurrent" ] || [ "$1" = "--run-packed-authz-ui" ]; }; } && ! { [ "$#" -eq 2 ] && { [ "$1" = "--run-deployed" ] || [ "$1" = "--run-deployed-authz" ] || [ "$1" = "--run-deployed-authz-ui" ] || [ "$1" = "--run-deployed-admin-race" ]; }; }; then
+  echo "Usage: bash scripts/bostan-local-http-postgres-smoke.sh [--help|--run|--run-dist|--run-dist-authz|--run-packed-authz|--run-packed-authz-concurrent|--run-packed-authz-ui|--run-deployed <absolute-stage>|--run-deployed-authz <absolute-stage>|--run-deployed-authz-ui <absolute-stage>|--run-deployed-admin-race <absolute-stage>]" >&2
   exit 2
 fi
 umask 077
@@ -35,7 +36,7 @@ if [ "$MODE" = "--run-deployed" ] || [ "$MODE" = "--run-deployed-authz" ] || [ "
   node "$REPO/scripts/bostan-private-staged-server-check.mjs" --verify "$2" >/dev/null
   STAGE="$(cd "$2" && pwd -P)"
 fi
-if [ "$MODE" = "--run-dist" ] || [ "$MODE" = "--run-dist-authz" ] || [ "$MODE" = "--run-packed-authz" ] || [ "$MODE" = "--run-packed-authz-ui" ]; then
+if [ "$MODE" = "--run-dist" ] || [ "$MODE" = "--run-dist-authz" ] || [ "$MODE" = "--run-packed-authz" ] || [ "$MODE" = "--run-packed-authz-concurrent" ] || [ "$MODE" = "--run-packed-authz-ui" ]; then
   for file in "$REPO/server/dist/index.js" "$REPO/server/dist/build-info.json" "$REPO/server/dist/vendor/paperclip-runner/index.js"; do
     if [ ! -f "$file" ]; then
       echo "Bostan compiled-dist smoke: prepared server build missing ($file)" >&2
@@ -43,7 +44,7 @@ if [ "$MODE" = "--run-dist" ] || [ "$MODE" = "--run-dist-authz" ] || [ "$MODE" =
     fi
   done
 fi
-if [ "$MODE" = "--run-packed-authz" ] || [ "$MODE" = "--run-packed-authz-ui" ]; then
+if [ "$MODE" = "--run-packed-authz" ] || [ "$MODE" = "--run-packed-authz-concurrent" ] || [ "$MODE" = "--run-packed-authz-ui" ]; then
   # The packed runtime is a different SHA256-owned entry, not merely dist/.
   # Admit it with the production verifier before creating scratch databases.
   node --input-type=module - "$REPO" <<'BOSTAN_PACKED_ADMISSION'
@@ -117,10 +118,10 @@ export DATABASE_URL="postgres://bostan_verify@127.0.0.1:$PGPORT/bostan_qualifica
 export PAPERCLIP_HOME="$TMP/bostan-home" PAPERCLIP_CONFIG="$TMP/bostan-config.json" PAPERCLIP_MIGRATION_PROMPT=never PAPERCLIP_MIGRATION_AUTO_APPLY=true
 export PAPERCLIP_OPEN_ON_LISTEN=false BOSTAN_FEEDBACK_EXPORT_ENABLED=0 HOST=127.0.0.1 PORT="$HTTPPORT" OTEL_SDK_DISABLED=true
 # Never inherit an operator-supplied first-admin test override into legacy modes.
-unset BOSTAN_AUTHZ_API_FIRST_ADMIN BOSTAN_AUTHZ_BROWSER_UI
-if [ "$MODE" = "--run-deployed-authz" ] || [ "$MODE" = "--run-deployed-authz-ui" ] || [ "$MODE" = "--run-deployed-admin-race" ] || [ "$MODE" = "--run-dist-authz" ] || [ "$MODE" = "--run-packed-authz" ] || [ "$MODE" = "--run-packed-authz-ui" ]; then
+unset BOSTAN_AUTHZ_API_FIRST_ADMIN BOSTAN_AUTHZ_BROWSER_UI BOSTAN_AUTHZ_SHARED_DB_CONCURRENT
+if [ "$MODE" = "--run-deployed-authz" ] || [ "$MODE" = "--run-deployed-authz-ui" ] || [ "$MODE" = "--run-deployed-admin-race" ] || [ "$MODE" = "--run-dist-authz" ] || [ "$MODE" = "--run-packed-authz" ] || [ "$MODE" = "--run-packed-authz-concurrent" ] || [ "$MODE" = "--run-packed-authz-ui" ]; then
   # The new built-server test must prove the first-admin API, not SQL seeding.
-  if [ "$MODE" = "--run-dist-authz" ] || [ "$MODE" = "--run-packed-authz" ]; then export BOSTAN_AUTHZ_API_FIRST_ADMIN=1; fi
+  if [ "$MODE" = "--run-dist-authz" ] || [ "$MODE" = "--run-packed-authz" ] || [ "$MODE" = "--run-packed-authz-concurrent" ]; then export BOSTAN_AUTHZ_API_FIRST_ADMIN=1; fi
   export PAPERCLIP_DEPLOYMENT_MODE=authenticated PAPERCLIP_DEPLOYMENT_EXPOSURE=private
   export PAPERCLIP_AUTH_PUBLIC_BASE_URL="http://127.0.0.1:$HTTPPORT" PAPERCLIP_AUTH_BASE_URL_MODE=explicit
   export PAPERCLIP_AUTH_DISABLE_SIGN_UP=false PAPERCLIP_AUTH_RATE_LIMIT_ENABLED=false
@@ -129,6 +130,7 @@ if [ "$MODE" = "--run-deployed-authz" ] || [ "$MODE" = "--run-deployed-authz-ui"
     export PLAYWRIGHT_BROWSERS_PATH="$REPO/.qa-playwright-browsers"
   fi
   export BETTER_AUTH_SECRET="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')"
+  if [ "$MODE" = "--run-packed-authz-concurrent" ]; then export BOSTAN_AUTHZ_SHARED_DB_CONCURRENT=1; fi
 fi
 unset OPENAI_API_KEY ANTHROPIC_API_KEY GEMINI_API_KEY GOOGLE_API_KEY OPENROUTER_API_KEY XAI_API_KEY OTEL_EXPORTER_OTLP_ENDPOINT SENTRY_DSN 2>/dev/null || true
 cd "$REPO"
@@ -145,7 +147,7 @@ if [ "$MODE" = "--run-deployed" ] || [ "$MODE" = "--run-deployed-authz" ] || [ "
   node --conditions=bostan-compiled dist/index.js > "$TMP/server.log" 2>&1 & SPID=$!
 else
   cd "$REPO/server"
-  if [ "$MODE" = "--run-packed-authz" ] || [ "$MODE" = "--run-packed-authz-ui" ]; then
+  if [ "$MODE" = "--run-packed-authz" ] || [ "$MODE" = "--run-packed-authz-concurrent" ] || [ "$MODE" = "--run-packed-authz-ui" ]; then
     node "$REPO/server/dist-runtime/index.mjs" > "$TMP/server.log" 2>&1 & SPID=$!
   elif [ "$MODE" = "--run-dist" ] || [ "$MODE" = "--run-dist-authz" ]; then
     node --conditions=bostan-compiled dist/index.js > "$TMP/server.log" 2>&1 & SPID=$!
@@ -168,7 +170,7 @@ for i in $(seq 1 "$HEALTH_ATTEMPTS");do
   if ! kill -0 "$SPID" 2>/dev/null; then status=1;break;fi
   if curl -fsS --connect-timeout 1 --max-time 2 "http://127.0.0.1:$HTTPPORT/api/health" >"$TMP/health.json" 2>/dev/null; then
     # HTTP can be available before asynchronous startup recovery reaches ready.
-    if [ "$MODE" = "--run-deployed-authz" ] || [ "$MODE" = "--run-deployed-authz-ui" ] || [ "$MODE" = "--run-deployed-admin-race" ] || [ "$MODE" = "--run-dist-authz" ] || [ "$MODE" = "--run-packed-authz" ] || [ "$MODE" = "--run-packed-authz-ui" ]; then
+    if [ "$MODE" = "--run-deployed-authz" ] || [ "$MODE" = "--run-deployed-authz-ui" ] || [ "$MODE" = "--run-deployed-admin-race" ] || [ "$MODE" = "--run-dist-authz" ] || [ "$MODE" = "--run-packed-authz" ] || [ "$MODE" = "--run-packed-authz-concurrent" ] || [ "$MODE" = "--run-packed-authz-ui" ]; then
       if node --input-type=module -e 'import{readFileSync}from"node:fs";const j=JSON.parse(readFileSync(process.argv[1],"utf8"));process.exit(j.status==="ok"&&j.deploymentMode==="authenticated"&&j.bootstrapStatus==="bootstrap_pending"?0:1)' "$TMP/health.json";then status=2;break;fi
     else
       if node --input-type=module -e 'import{readFileSync}from"node:fs";const j=JSON.parse(readFileSync(process.argv[1],"utf8"));process.exit(j.status==="ok"&&j.bootstrapStatus==="ready"?0:1)' "$TMP/health.json";then status=2;break;fi
@@ -180,7 +182,7 @@ for i in $(seq 1 "$HEALTH_ATTEMPTS");do
   sleep 1
 done
 if [ "$status" = 2 ]; then
-  if [ "$MODE" = "--run-deployed-authz" ] || [ "$MODE" = "--run-deployed-authz-ui" ] || [ "$MODE" = "--run-deployed-admin-race" ] || [ "$MODE" = "--run-dist-authz" ] || [ "$MODE" = "--run-packed-authz" ] || [ "$MODE" = "--run-packed-authz-ui" ]; then export BOSTAN_AUTHZ_EXPECTED_MODE=1;fi
+  if [ "$MODE" = "--run-deployed-authz" ] || [ "$MODE" = "--run-deployed-authz-ui" ] || [ "$MODE" = "--run-deployed-admin-race" ] || [ "$MODE" = "--run-dist-authz" ] || [ "$MODE" = "--run-packed-authz" ] || [ "$MODE" = "--run-packed-authz-concurrent" ] || [ "$MODE" = "--run-packed-authz-ui" ]; then export BOSTAN_AUTHZ_EXPECTED_MODE=1;fi
   node --input-type=module - "$TMP/health.json" <<'NODE'
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -222,11 +224,13 @@ if [ "$MODE" = "--run-deployed-admin-race" ]; then
   echo BOSTAN_PORTABLE_STAGED_FIRST_ADMIN_RACE_QUALIFIED
   exit 0
 fi
-if [ "$MODE" = "--run-deployed-authz" ] || [ "$MODE" = "--run-deployed-authz-ui" ] || [ "$MODE" = "--run-dist-authz" ] || [ "$MODE" = "--run-packed-authz" ] || [ "$MODE" = "--run-packed-authz-ui" ]; then
+if [ "$MODE" = "--run-deployed-authz" ] || [ "$MODE" = "--run-deployed-authz-ui" ] || [ "$MODE" = "--run-dist-authz" ] || [ "$MODE" = "--run-packed-authz" ] || [ "$MODE" = "--run-packed-authz-concurrent" ] || [ "$MODE" = "--run-packed-authz-ui" ]; then
   if [ "$MODE" = "--run-deployed-authz-ui" ]; then export BOSTAN_AUTHZ_BROWSER_UI=1; fi
   BOSTAN_TEST_ONLY_SENTINEL="$TMP/BOSTAN_TEMP_OWNED" node "$REPO/scripts/bostan-private-staged-authz-e2e.mjs" --run --url "http://127.0.0.1:$HTTPPORT/"
   if [ "$MODE" = "--run-packed-authz-ui" ]; then
     echo BOSTAN_PACKED_SERVER_AUTHENTICATED_CHROMIUM_JOURNEY_QUALIFIED
+  elif [ "$MODE" = "--run-packed-authz-concurrent" ]; then
+    echo BOSTAN_PACKED_SHARED_POSTGRES_CONCURRENT_WRITES_QUALIFIED
   elif [ "$MODE" = "--run-packed-authz" ]; then
     echo BOSTAN_PACKED_SERVER_AUTHENTICATED_TWO_SESSION_QUALIFIED
   elif [ "$MODE" = "--run-dist-authz" ]; then

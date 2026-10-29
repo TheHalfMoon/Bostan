@@ -169,6 +169,61 @@ export async function runAuthenticatedIsolation(address,{request=fetch,env=proce
   await call(`/api/companies/${companyA.id}`,{cookie:b.cookie,expected:[403]});
   await call(`/api/companies/${companyA.id}/issues`,{cookie:b.cookie,expected:[403]});
   await call(`/api/companies/${companyA.id}/issues`,{method:'POST',cookie:b.cookie,body:{title:'Suspended member cannot write'},expected:[403]});
+  let sharedPostgresConcurrency=null;
+  if(env.BOSTAN_AUTHZ_SHARED_DB_CONCURRENT==='1'){
+    // All 12 writes intentionally target the *same* real PostgreSQL cluster
+    // from two distinct already-authenticated companies and users. Use no
+    // direct SQL modifications, mock responders, or imported fixture tokens.
+    const prepared=Array.from({length:12},(_,i)=>({
+      actor:i%2===0?a:b,company:i%2===0?companyA:companyB,
+      title:'Bostan simultaneous synthetic write '+String(i)+' '+trace,
+    }));
+    const committed=await Promise.all(prepared.map(async item=>{
+      const began=performance.now();
+      const {result}=await call(`/api/companies/${item.company.id}/issues`,{
+        method:'POST',cookie:item.actor.cookie,
+        body:{title:item.title,status:'todo'},expected:[201],
+      });
+      const ended=performance.now();
+      quoteUuid(result?.id);
+      if(result.companyId!==item.company.id||ended<began)
+        throw Error('Shared PostgreSQL concurrent write scope mismatch');
+      return {id:result.id,companyId:result.companyId,began,ended};
+    }));
+    const overlap=Math.max(...committed.map(x=>x.began))<
+      Math.min(...committed.map(x=>x.ended));
+    if(!overlap||new Set(committed.map(x=>x.id)).size!==committed.length)
+      throw Error('Real shared PostgreSQL writes did not overlap or have distinct IDs');
+    const [aRows,bRows]=await Promise.all([
+      call(`/api/companies/${companyA.id}/issues`,{cookie:a.cookie}),
+      call(`/api/companies/${companyB.id}/issues`,{cookie:b.cookie}),
+    ]);
+    const list=value=>Array.isArray(value)?value:value?.issues;
+    const aList=list(aRows.result),bList=list(bRows.result);
+    if(!Array.isArray(aList)||!Array.isArray(bList))
+      throw Error('Real shared PostgreSQL issue list malformed');
+    const ownA=new Set(committed.filter(x=>x.companyId===companyA.id).map(x=>x.id));
+    const ownB=new Set(committed.filter(x=>x.companyId===companyB.id).map(x=>x.id));
+    if(ownA.size!==6||ownB.size!==6||
+       ![...ownA].every(id=>aList.some(x=>x.id===id&&x.companyId===companyA.id))||
+       ![...ownB].every(id=>bList.some(x=>x.id===id&&x.companyId===companyB.id))||
+       aList.some(x=>ownB.has(x.id))||bList.some(x=>ownA.has(x.id)))
+      throw Error('Concurrent shared PostgreSQL readback leaked or lost a company issue');
+    await Promise.all([
+      call(`/api/companies/${companyB.id}/issues`,{
+        method:'POST',cookie:a.cookie,body:{title:'Cross-tenant write refused A'},
+        expected:[403]}),
+      call(`/api/companies/${companyA.id}/issues`,{
+        method:'POST',cookie:b.cookie,body:{title:'Suspended write refused B'},
+        expected:[403]}),
+    ]);
+    sharedPostgresConcurrency={
+      sameRealDatabase:true,concurrentWrites:12,
+      distinctIssueIds:12,actualHttpOverlap:true,
+      twoCompanyReadbacksPassed:true,concurrentForbiddenWritesDenied:2,
+    };
+    console.log('BOSTAN_SHARED_REAL_POSTGRES_CONCURRENT_WRITES_PASS');
+  }
   let browserUi=null;
   if(env.BOSTAN_AUTHZ_BROWSER_UI==='1'){
     // Run ONLY as a continuation of the already verified disposable fixture,
@@ -191,7 +246,8 @@ export async function runAuthenticatedIsolation(address,{request=fetch,env=proce
       return {realChromiumInviteCreated:1,inviteAcceptedByThirdSession:1,viewerTaskWriteDenied:1,uiPromotionEnablesWrite:1,uiSuspensionDenials:2,memberUiUpdates:2};
     });
   }
-  return {schema:browserUi?'bostan.three-session-chromium-signup-first-admin.v3':'bostan.two-authenticated-sessions.v2',passed:true,releaseQualified:false,authMode:'authenticated',sessionUsers:browserUi?3:2,independentMemberships:2,crossCompanyDetailDenials:2,crossCompanyListDenials:2,crossCompanyWriteDenials:2,foreignTask404MatchesNonexistence:2,viewerReadAllowed:1,viewerWriteDenied:1,revokedMembershipAccessDenied:2,inviteCreated:1,inviteAcceptedViaApi:1,inviteeViewerRead:1,inviteeViewerWriteDenied:1,unauthorizedInviteDenied:1,unauthorizedPromotionDenied:1,promotionEnablesOperatorWrite:1,suspensionDenialsSameSession:3,syntheticOnly:true,requests:count,providerCalls:0,...(env.BOSTAN_AUTHZ_API_FIRST_ADMIN==='1'?{realApiFirstAdminClaim:1,anonymousAdminClaimDenied:1,secondAdminClaimDenied:1}:{}),...(firstSignupBrowser?{firstSignupBrowser}:{}),...(firstAdminBrowser?{firstAdminBrowser,secondAdminClaimRejected:1,anonymousAdminClaimRejected:1}:{}),...(browserUi?{browserUi}:{} )};
+  return {schema:browserUi?'bostan.three-session-chromium-signup-first-admin.v3':'bostan.two-authenticated-sessions.v2',passed:true,releaseQualified:false,authMode:'authenticated',sessionUsers:browserUi?3:2,independentMemberships:2,crossCompanyDetailDenials:2,crossCompanyListDenials:2,crossCompanyWriteDenials:2,foreignTask404MatchesNonexistence:2,viewerReadAllowed:1,viewerWriteDenied:1,revokedMembershipAccessDenied:2,inviteCreated:1,inviteAcceptedViaApi:1,inviteeViewerRead:1,inviteeViewerWriteDenied:1,unauthorizedInviteDenied:1,unauthorizedPromotionDenied:1,promotionEnablesOperatorWrite:1,suspensionDenialsSameSession:3,syntheticOnly:true,requests:count,providerCalls:0,...(env.BOSTAN_AUTHZ_API_FIRST_ADMIN==='1'?{realApiFirstAdminClaim:1,anonymousAdminClaimDenied:1,secondAdminClaimDenied:1}:{}),...(firstSignupBrowser?{firstSignupBrowser}:{}),...(firstAdminBrowser?{firstAdminBrowser,secondAdminClaimRejected:1,anonymousAdminClaimRejected:1}:{}),...(browserUi?{browserUi}:{} ),
+    ...(sharedPostgresConcurrency?{sharedPostgresConcurrency}:{} )};
 }
 const direct=process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url);
 if(direct){const args=process.argv.slice(2);if(args.length===0||(args.length===1&&args[0]==='--plan'))console.log('Bostan private authenticated multi-session test: --run --url http://127.0.0.1:<port>/; requires disposable PostgreSQL sentinel. No real accounts or model calls.');else if(args.length===3&&args[0]==='--run'&&args[1]==='--url'){try{console.log(JSON.stringify(await runAuthenticatedIsolation(args[2]),null,2));console.log('BOSTAN_AUTHENTICATED_TWO_SESSION_TENANT_ISOLATION_PASS')}catch(e){console.error('Bostan real authenticated QA failed:',e.message);process.exitCode=1}}else{console.error('Usage: --plan | --run --url http://127.0.0.1:<port>/');process.exitCode=2;}}
