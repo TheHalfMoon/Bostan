@@ -5,7 +5,7 @@ import os from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel, syntheticFreeAgentAdapterConfig, observeHeartbeatQaStatus, assertHeartbeatQaSucceeded, firstAgentLifecycleReadinessTimeoutMs, safeAgentLifecycleDiagnostic, safeFreeProviderFailureSignal, selectSingleAssignmentRun } from "./bostan-first-agent-free-e2e.mjs";
+import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel, syntheticFreeAgentAdapterConfig, observeHeartbeatQaStatus, assertHeartbeatQaSucceeded, firstAgentLifecycleReadinessTimeoutMs, safeAgentLifecycleDiagnostic, safeFreeProviderFailureSignal, selectSingleAssignmentRun, safeFirstAgentQaEndpointClass, safeFirstAgentQaHttpError } from "./bostan-first-agent-free-e2e.mjs";
 
 function fixture() {
   const home = mkdtempSync(path.join(os.tmpdir(), "bostan-free-agent-guard-"));
@@ -246,4 +246,33 @@ test("source QA never diagnoses rate-limit from a successful or unrelated failed
   ]) {
     assert.equal(safeFreeProviderFailureSignal(row), null);
   }
+});
+
+
+test("free-agent API diagnostics redact synthetic route IDs, tokens and raw provider failures", () => {
+  const id = "d5f790a6-8dbc-48ea-bba3-50b320cf6475";
+  const samples = [
+    ["health", "health"],
+    ["companies", "companies"],
+    ["companies/" + id + "/agents", "company_agents"],
+    ["companies/" + id + "/issues", "company_issues"],
+    ["companies/" + id + "/heartbeat-runs", "company_heartbeat_runs"],
+    ["agents/" + id, "agent"],
+    ["heartbeat-runs/" + id, "heartbeat_run"],
+    ["issues/" + id, "issue"],
+    ["issues/" + id + "/comments", "issue_comments"],
+    ["issues/" + id + "/comments?token=PRIVATE_SECRET", "unknown"],
+    ["https://attacker.invalid/?token=PRIVATE_SECRET", "unknown"],
+    ["companies/" + "A".repeat(300), "unknown"],
+  ];
+  for (const [route, category] of samples) {
+    assert.equal(safeFirstAgentQaEndpointClass(route), category);
+    for (const status of [401, 429, 500, -4, "200"]) {
+      const message = safeFirstAgentQaHttpError(route, status).message;
+      assert.ok(message.includes(category));
+      assert.doesNotMatch(message,/PRIVATE_SECRET|attacker|d5f790a6|Bearer|token|https?:/);
+      assert.match(message,/^(Bostan private synthetic QA) [a-z_]+ http_rejected status=(unknown|[1-5][0-9]{2})$/);
+    }
+  }
+  assert.match(safeFirstAgentQaHttpError("health",200,true).message,/malformed_json/);
 });

@@ -292,6 +292,39 @@ export function qualifyDisposableFirstAgentScope({
   return { base, home: homeReal };
 }
 
+/**
+ * API errors can contain provider messages, credentials, synthetic user data,
+ * and one-off task IDs. Never include an untrusted response body or route IDs
+ * in a QA diagnostic (including on HTTP 4xx/5xx and invalid JSON).
+ */
+export function safeFirstAgentQaEndpointClass(endpoint) {
+  if (typeof endpoint !== "string" || endpoint.length > 256) return "unknown";
+  const segments = endpoint.split("/");
+  if (endpoint === "health") return "health";
+  if (endpoint === "companies") return "companies";
+  if (segments[0] === "companies" && UUID_PATTERN.test(segments[1] ?? "") &&
+      segments.length === 3 && ["agents", "issues", "heartbeat-runs"].includes(segments[2])) {
+    return "company_" + segments[2].replaceAll("-", "_");
+  }
+  if (segments[0] === "agents" && UUID_PATTERN.test(segments[1] ?? "") &&
+      segments.length === 2) return "agent";
+  if (segments[0] === "heartbeat-runs" && UUID_PATTERN.test(segments[1] ?? "") &&
+      segments.length === 2) return "heartbeat_run";
+  if (segments[0] === "issues" && UUID_PATTERN.test(segments[1] ?? "")) {
+    if (segments.length === 2) return "issue";
+    if (segments.length === 3 && segments[2] === "comments") return "issue_comments";
+  }
+  return "unknown";
+}
+export function safeFirstAgentQaHttpError(endpoint, status, malformed = false) {
+  const kind = safeFirstAgentQaEndpointClass(endpoint);
+  const code = Number.isInteger(status) && status >= 100 && status <= 599
+    ? String(status) : "unknown";
+  const reason = malformed ? "malformed_json" : "http_rejected";
+  return new Error("Bostan private synthetic QA " + kind + " " + reason +
+    " status=" + code);
+}
+
 async function requestJson(base, endpoint, body) {
   const response = await fetch(new URL("/api/" + endpoint, base), {
     method: body === undefined ? "GET" : "POST",
@@ -301,12 +334,16 @@ async function requestJson(base, endpoint, body) {
     }),
     signal: AbortSignal.timeout(20_000),
   });
-  const json = await response.json();
   if (!response.ok) {
-    throw new Error("Bostan QA " + endpoint + " HTTP " + response.status + ": " +
-      JSON.stringify(json).slice(0, 500));
+    // Do not parse or expose arbitrary API error JSON. The HTTP status and
+    // allowlisted route class suffice to diagnose this synthetic fixture.
+    throw safeFirstAgentQaHttpError(endpoint, response.status);
   }
-  return json;
+  try {
+    return await response.json();
+  } catch {
+    throw safeFirstAgentQaHttpError(endpoint, response.status, true);
+  }
 }
 async function waitFor(check, { timeoutMs, intervalMs = 3_000, label, diagnostic }) {
   const deadline = Date.now() + timeoutMs;
