@@ -22,7 +22,7 @@ test("compiled entry loads sibling server chunk, never the original source", () 
     `if(process.argv[1] !== ${JSON.stringify(original)}) throw Error("argv mismatch");\nconsole.log("B119_BUNDLED_ENTRY_OK");\n`);
   const entry = join(runtime, "index.mjs");
   const source = compiledRuntimeEntrySource(original);
-  assert.match(source, /await import\\(new URL\\("\\.\\/server\\.mjs", import\\.meta\\.url\\)\\.href\\)/);
+  assert.ok(source.includes('await import(new URL("./server.mjs", import.meta.url).href)'));
   assert.ok(!source.includes(nativeEsmFileUrl(original)), "source URL must not be imported");
   assert.ok(source.includes(JSON.stringify(original)), "legacy argv must stay native");
   writeFileSync(entry, source);
