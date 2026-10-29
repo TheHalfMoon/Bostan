@@ -87,11 +87,12 @@ test("Windows staged server entry refuses any direct or unsentinelized invocatio
 });
 
 test("private Windows live HTTP fixture imports the module profiler without enabling it in other workflows",()=>{
-  assert.match(liveSource,/bostan-private-windows-import-profiler\.mjs/);
+  const commandSource=readFileSync(fileURLToPath(new URL("./bostan-private-windows-server-command.mjs",import.meta.url)),"utf8");
+  assert.match(commandSource,/bostan-private-windows-import-profiler\.mjs/);
   assert.match(liveSource,/BOSTAN_WINDOWS_LIVE_MODULE_LOAD_COUNT/);
   assert.match(liveSource,/BOSTAN_WINDOWS_LIVE_SLOW_MODULES/);
   assert.match(liveSource,/BOSTAN_WIN_IMPORT_PROFILE=/);
   assert.match(envSource,/BOSTAN_PRIVATE_QA_ENTRY:"B087_TEST_ONLY"/);
   const entrySource=readFileSync(fileURLToPath(new URL("./bostan-private-windows-server-entry.mjs",import.meta.url)),"utf8");
-  assert.match(entrySource,/BOSTAN_PRIVATE_QA_ENTRY==="B087_TEST_ONLY"/);
+  assert.match(entrySource,/isPrivateWindowsQaEntryAllowed/);
 });

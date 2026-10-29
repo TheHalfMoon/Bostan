@@ -60,6 +60,14 @@ if(!memoryAdmission.allowed){
   console.error("BOSTAN_WINDOWS_LIVE_MEMORY_REFUSED="+memoryAdmission.reason);
   process.exit(2);
 }
+// A native Chromium + real PostgreSQL + packed Node server launch is
+// significantly heavier than the backend-only gate. Refuse low-memory
+// attempts before creating any owned database or long-running process.
+// This is resource protection, not a claim that 4 GiB ensures success.
+if(browserMode&&memoryAdmission.freeGiB<4){
+  console.error("BOSTAN_WINDOWS_LIVE_CHROMIUM_MEMORY_REFUSED");
+  process.exit(2);
+}
 // Fail closed before creating scratch state or starting PostgreSQL. A compiled
 // QA run must have a complete, SHA-256-owned, non-linked Bostan runtime.
 let serverCommand;
@@ -126,8 +134,9 @@ try{
   // Recheck after the real migration, before starting the memory-heavy
   // TypeScript server. A failure enters owned PostgreSQL teardown below.
   const afterDbMemory=checkBostanWindowsMemory();
-  if(!afterDbMemory.allowed){
-    console.error("BOSTAN_WINDOWS_LIVE_MEMORY_POSTGRES_REFUSED="+afterDbMemory.reason);
+  if(!afterDbMemory.allowed||(browserMode&&afterDbMemory.freeGiB<3)){
+    console.error("BOSTAN_WINDOWS_LIVE_MEMORY_POSTGRES_REFUSED="+
+      (browserMode&&afterDbMemory.freeGiB<3?"chromium_low_free_memory":afterDbMemory.reason));
     throw Error("Native Windows memory admission failed after PostgreSQL migration");
   }
   const port=await availablePort();
