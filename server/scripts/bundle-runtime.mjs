@@ -133,7 +133,7 @@ function externalizeThirdParty(isBundled, runtimeDir) {
 
 export async function bundleRuntime({
   entry, outdir,
-  isBundled = (specifier) => specifier.startsWith("@paperclipai/"),
+  isBundled = (specifier) => specifier.startsWith("@bostan/") || specifier.startsWith("@paperclipai/"),
   compiledRunnerQa = false,
 }) {
   if (compiledRunnerQa) await verifyQaRunnerBuild();
@@ -149,7 +149,7 @@ export async function bundleRuntime({
     platform: "node",
     target: "node24",
     mainFields: ["main"],
-    conditions: ["node"],
+    conditions: ["node", "bostan-compiled"],
     banner: { js: REQUIRE_SHIM },
     sourcemap: "linked",
     metafile: true,
