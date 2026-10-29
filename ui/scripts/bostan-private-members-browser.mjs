@@ -30,6 +30,32 @@ export function classifyPrivateMembersPageError(error){
   return 'unclassified';
 }
 
+
+/** A bounded, non-reversible, fixed-vocabulary view of browser exceptions.
+ * No source URL, stack, email, session key, arbitrary function, or message.
+ */
+export function summarizePrivateMembersPageError(error){
+  const name=['Error','TypeError','ReferenceError','SyntaxError',
+    'RangeError','AggregateError','DOMException'].includes(error?.name)
+    ?error.name:'other';
+  const message=typeof error?.message==='string'?error.message.slice(0,4000):'';
+  const terms=['react','component','render','invalid','invariant','failed',
+    'cannot','could','read','property','properties','undefined','null',
+    'missing','provider','context','query','router','route','navigate',
+    'hook','module','load','import','export','script','syntax','reference',
+    'fetch','network','promise','rejection','object','array','function',
+    'json','parse','element','type','dom','access','member','invite',
+    'company','organization','editor','extension','lazy','chunk','error',
+    'update','state','loop','redirect','abort','unexpected','token',
+    'storage','localstorage','map','filter','find','length','default'];
+  const matches=terms.filter(term=>
+    new RegExp('(?:^|[^a-z])'+term+'(?:$|[^a-z])','i').test(message))
+    .slice(0,8);
+  return {kind:name,category:classifyPrivateMembersPageError(error),
+    lexicon:matches.join('_'),lengthBand:message.length===0?'empty':
+      message.length<80?'short':message.length<250?'medium':'long'};
+}
+
 export async function withPrivateMemberBrowser(input,callback,{launch=chromium.launch.bind(chromium)}={}){
   const settings=validateMemberBrowserTarget(input);
   const browser=await launch({headless:true});
@@ -39,11 +65,11 @@ export async function withPrivateMemberBrowser(input,callback,{launch=chromium.l
     await context.addInitScript((companyId)=>{localStorage.setItem('paperclip.selectedCompanyId',companyId)},settings.companyId);
     // Reuse the existing QA-wide network firewall, including new pages and
     // WebSockets; page.route alone misses first popup navigation requests.
-    let pageErrorClass='none';
+    let firstPageError=null;
     const evidence=await installPrivateBrowserNetworkCapture(context,settings.origin,{
       onPageError:error=>{
-        if(pageErrorClass==='none')
-          pageErrorClass=classifyPrivateMembersPageError(error);
+        if(firstPageError===null)
+          firstPageError=summarizePrivateMembersPageError(error);
       },
     });
     const assertCapture=()=>{
@@ -53,8 +79,13 @@ export async function withPrivateMemberBrowser(input,callback,{launch=chromium.l
         throw Error('Bostan Members Chromium blocked external HTTP request');
       if(evidence.blockedWebSockets>0)
         throw Error('Bostan Members Chromium blocked external WebSocket');
-      if(evidence.pageErrors>0)
-        throw Error('Bostan Members Chromium JS class: '+pageErrorClass);
+      if(evidence.pageErrors>0){
+        const safe=firstPageError??{
+          category:'unclassified',kind:'other',lexicon:'',lengthBand:'empty'};
+        // Every interpolated field is selected from a finite static allowlist.
+        throw Error('Bostan Members Chromium JS class: '+safe.category+
+          ';kind='+safe.kind+';words='+safe.lexicon+';size='+safe.lengthBand);
+      }
       assertPrivateBrowserEgressEvidence(evidence);
     };
     const page=await context.newPage();

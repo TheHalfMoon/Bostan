@@ -459,11 +459,28 @@ try{
     else if(failure==="Bostan Members Chromium blocked external WebSocket")
       uiClass="members_external_websocket";
     else if(failure.startsWith("Bostan Members Chromium JS class: ")){
-      const candidate=failure.slice("Bostan Members Chromium JS class: ".length);
+      const match=/^Bostan Members Chromium JS class: ([a-z_]+);kind=([A-Za-z]+);words=([a-z_]*);size=(empty|short|medium|long)$/.exec(failure);
+      const candidate=match?.[1];
       const allowed=["undefined_property","null_property","not_function",
         "editor_extension","module_load","react_runtime","network_error",
         "syntax_error","unclassified","none"];
       uiClass="members_browser_js_"+(allowed.includes(candidate)?candidate:"unclassified");
+      const kinds=["Error","TypeError","ReferenceError","SyntaxError",
+        "RangeError","AggregateError","DOMException","other"];
+      const kind=kinds.includes(match?.[2])?match[2]:"other";
+      console.error("BOSTAN_WIN_MEMBERS_SAFE_JS_KIND="+kind);
+      const vocab=["react","component","render","invalid","invariant","failed",
+        "cannot","could","read","property","properties","undefined","null",
+        "missing","provider","context","query","router","route","navigate",
+        "hook","module","load","import","export","script","syntax","reference",
+        "fetch","network","promise","rejection","object","array","function",
+        "json","parse","element","type","dom","access","member","invite",
+        "company","organization","editor","extension","lazy","chunk","error",
+        "update","state","loop","redirect","abort","unexpected","token",
+        "storage","localstorage","map","filter","find","length","default"];
+      const lexicon=(match?.[3]||"").split("_").filter(word=>vocab.includes(word)).slice(0,8);
+      console.error("BOSTAN_WIN_MEMBERS_SAFE_JS_WORDS="+lexicon.join("_"));
+      console.error("BOSTAN_WIN_MEMBERS_SAFE_JS_SIZE="+(match?.[4]||"empty"));
     }
     else if(failure.startsWith("Private Bostan browser QA observed errors or attempted external network egress"))
       uiClass="members_external_request_or_browser_error";

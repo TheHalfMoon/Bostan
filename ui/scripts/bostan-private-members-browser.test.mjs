@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {validateMemberBrowserTarget,classifyPrivateMembersPageError} from './bostan-private-members-browser.mjs';
+import {validateMemberBrowserTarget,classifyPrivateMembersPageError,summarizePrivateMembersPageError} from './bostan-private-members-browser.mjs';
 const good={origin:'http://127.0.0.1:44551/',cookie:'better-auth.session_token=abc123xyz%2Ffoo%3Dbar.and-signed-verification',companyId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',companyPrefix:'BOS'};
 test('private signed browser fixture accepts actual Better Auth cookie serialization',()=>{
   const result=validateMemberBrowserTarget(good);
@@ -78,4 +78,22 @@ test('Members page error classifier exposes only fixed non-sensitive classes',()
     [{name:'SyntaxError',message:'random attacker secret in script'},'syntax_error'],
     [{message:'sensitive-token-DO-NOT-PRINT'},'unclassified'],
   ])assert.equal(classifyPrivateMembersPageError(sample),expected);
+});
+
+
+test('Members JavaScript exception summary never emits unknown or sensitive content',()=>{
+  const summary=summarizePrivateMembersPageError({
+    name:'TypeError',
+    message:'Failed to render React component, secret.user@internal.invalid '+
+      'postgres://user:PRIVATE_PASSWORD@127.0.0.1:5432/x',
+  });
+  assert.deepEqual(Object.keys(summary).sort(),
+    ['category','kind','lengthBand','lexicon'].sort());
+  assert.equal(summary.kind,'TypeError');
+  assert.match(summary.lexicon,/react/);
+  assert.ok(!JSON.stringify(summary).includes('PRIVATE_PASSWORD'));
+  assert.ok(!JSON.stringify(summary).includes('internal.invalid'));
+  assert.deepEqual(summarizePrivateMembersPageError({
+    name:'OtherSecretName',message:'credential=SUPER_PRIVATE',
+  }),{kind:'other',category:'unclassified',lexicon:'',lengthBand:'short'});
 });
