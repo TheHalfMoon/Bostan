@@ -41,3 +41,10 @@ test("real child process cannot observe inherited operator tokens",()=>{
     assert.equal(output.keys.some(k=>k.toUpperCase()===key),false,key);
   }
 });
+
+
+test('real Windows UI is enabled only by explicit booleans and never by inherited env',()=>{
+  assert.equal(build({...params,inherited:{SERVE_UI:'true'}}).SERVE_UI,'false');
+  assert.equal(build({...params,serveUi:true}).SERVE_UI,'true');
+  assert.throws(()=>build({...params,serveUi:'true'}),/UI flag invalid/);
+});

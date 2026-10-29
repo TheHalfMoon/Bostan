@@ -10,10 +10,11 @@ const SYSTEM_KEYS = Object.freeze([
 ]);
 
 export function buildPrivateWindowsHttpQaEnvironment({
-  inherited = {}, home, origin, connectionString, port, marker, secret,
+  inherited = {}, home, origin, connectionString, port, marker, secret, serveUi = false,
 } = {}) {
   if (![home, marker, secret].every(value => typeof value === "string" && value.length > 0))
     throw Error("Missing isolated private QA fixture input");
+  if (typeof serveUi !== "boolean")throw Error("Private Windows QA UI flag invalid");
   const portNumber = Number(port);
   if (!Number.isSafeInteger(portNumber) || portNumber < 1024 || portNumber > 65535 ||
       origin !== `http://127.0.0.1:${portNumber}`)
@@ -54,7 +55,7 @@ export function buildPrivateWindowsHttpQaEnvironment({
     BOSTAN_PRIVATE_QA_MARKER:marker,
     DATABASE_URL:connectionString,
     HOST:"127.0.0.1", PORT:String(portNumber),
-    PAPERCLIP_OPEN_ON_LISTEN:"false", SERVE_UI:"false",
+    PAPERCLIP_OPEN_ON_LISTEN:"false", SERVE_UI:serveUi?"true":"false",
     HEARTBEAT_SCHEDULER_ENABLED:"false",
     BOSTAN_FEEDBACK_EXPORT_ENABLED:"0", OTEL_SDK_DISABLED:"true",
     DO_NOT_TRACK:"1", CI:"1", PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD:"1",

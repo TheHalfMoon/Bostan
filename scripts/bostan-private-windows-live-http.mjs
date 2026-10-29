@@ -27,11 +27,12 @@ if(!args.length||args.length===1&&args[0]==="--plan"){
   console.log(JSON.stringify(spec,null,2));
   process.exit(0);
 }
-if(args.length!==1||!["--run","--run-compiled"].includes(args[0])){
-  console.error("Usage: node --import ./server/node_modules/tsx/dist/loader.mjs scripts/bostan-private-windows-live-http.mjs [--plan|--run|--run-compiled]");
+if(args.length!==1||!["--run","--run-compiled","--run-compiled-browser"].includes(args[0])){
+  console.error("Usage: node --import ./server/node_modules/tsx/dist/loader.mjs scripts/bostan-private-windows-live-http.mjs [--plan|--run|--run-compiled|--run-compiled-browser]");
   process.exit(2);
 }
-const serverMode=args[0]==="--run-compiled"?"compiled":"source";
+const browserMode=args[0]==="--run-compiled-browser";
+const serverMode=args[0]==="--run"?"source":"compiled";
 if(process.platform!=="win32"||!parsePrivateWindowsQaWave(basename(resolve(root)),"qa")){
   console.error("Native Windows live HTTP QA requires an isolated Bostan three-digit QA checkout");
   process.exit(2);
@@ -68,6 +69,27 @@ try {
   console.error("BOSTAN_WINDOWS_LIVE_COMPILED_RUNTIME_REFUSED");
   process.exit(2);
 }
+if(browserMode){
+  // Fail closed BEFORE creating a PostgreSQL fixture or any application data.
+  const browserRoot=join(root,".qa-playwright-browsers");
+  const requested=process.env.PLAYWRIGHT_BROWSERS_PATH;
+  const dist=join(root,"ui","dist","index.html");
+  try {
+    if(typeof requested!=="string"||resolve(requested)!==browserRoot||
+       !lstatSync(browserRoot).isDirectory()||lstatSync(browserRoot).isSymbolicLink()||
+       !lstatSync(dist).isFile()||lstatSync(dist).isSymbolicLink())
+      throw Error("Unsafe browser assets");
+    const {createRequire}=await import("node:module");
+    const require=createRequire(join(root,"ui","package.json"));
+    const {chromium}=require("@playwright/test");
+    const browser=await chromium.launch({headless:true,timeout:15000});
+    await browser.close();
+  }catch{
+    console.error("BOSTAN_WINDOWS_CHROMIUM_ASSET_PREFLIGHT_REFUSED");
+    process.exit(2);
+  }
+  console.log("BOSTAN_WINDOWS_CHROMIUM_ASSET_PREFLIGHT_PASS");
+}
 async function availablePort(){
   const server=createServer();
   await new Promise((ok,fail)=>{server.once("error",fail);server.listen(0,"127.0.0.1",ok);});
@@ -95,6 +117,7 @@ let dbCleaned=true;
 let ownedHomeCleaned=false;
 let childStateForceUsed=false;
 let postgresProcessTreeVerified=false;
+let browserSignupPassed=false,browserAdminPassed=false;
 try{
   process.env.PAPERCLIP_TEST_POSTGRES_TEMPLATE="0";
   const {startEmbeddedPostgresTestDatabase}=await import("../packages/db/src/test-embedded-postgres.js");
@@ -114,7 +137,7 @@ try{
   const env=buildPrivateWindowsHttpQaEnvironment({
     inherited:process.env,home,origin,connectionString:db.connectionString,
     port,marker:join(home,"BOSTAN_QA_OWNED"),
-    secret:randomBytes(32).toString("hex"),
+    secret:randomBytes(32).toString("hex"),serveUi:browserMode,
   });
   mkdirSync(env.APPDATA,{recursive:true,mode:0o700});
   mkdirSync(env.LOCALAPPDATA,{recursive:true,mode:0o700});
@@ -151,18 +174,31 @@ try{
   if(anonymousClaim.status!==401)
     throw Error("Anonymous first-admin claim was not denied");
   markHttpStage("BOSTAN_WINDOWS_LIVE_ANONYMOUS_CLAIM_DENIED");
-  const email="bostan-b086-"+randomUUID()+"@example.invalid";
+  const email=(browserMode?"bostan-qa-a-":"bostan-b086-")+randomUUID()+"@example.invalid";
   const password="Test-only-"+randomBytes(18).toString("hex")+"!A2";
-  const response=await fetch(origin+"/api/auth/sign-up/email",{
-    method:"POST",headers:{"content-type":"application/json","origin":origin},
-    body:JSON.stringify({email,password,name:"Bostan synthetic QA first admin"}),
-    signal:AbortSignal.timeout(15000),redirect:"error",
-  });
-  if(response.status!==200)throw Error("Native Windows real Better Auth signup status mismatch");
-  const body=await response.json();
-  if(typeof body?.user?.id!=="string"||!body.user.id)throw Error("Real session user id missing");
-  const cookie=response.headers.getSetCookie?.().map(x=>x.split(";")[0]).find(x=>x.includes("session_token="));
-  if(!cookie)throw Error("Real Bostan Better Auth session cookie absent");
+  let body,cookie;
+  if(browserMode){
+    const {signupFirstUserWithBrowser}=await import("../ui/scripts/bostan-private-auth-signup-browser.mjs");
+    const signed=await signupFirstUserWithBrowser({
+      origin,email,password,name:"Bostan QA a",
+    });
+    body={user:{id:signed.id}};
+    cookie=signed.cookie;
+    browserSignupPassed=signed.createdFromRealUi===true;
+    if(!browserSignupPassed)throw Error("Real Windows browser signup was not proven");
+    console.log("BOSTAN_WINDOWS_CHROMIUM_SIGNUP_PASS");
+  }else{
+    const response=await fetch(origin+"/api/auth/sign-up/email",{
+      method:"POST",headers:{"content-type":"application/json","origin":origin},
+      body:JSON.stringify({email,password,name:"Bostan synthetic QA first admin"}),
+      signal:AbortSignal.timeout(15000),redirect:"error",
+    });
+    if(response.status!==200)throw Error("Native Windows real Better Auth signup status mismatch");
+    body=await response.json();
+    if(typeof body?.user?.id!=="string"||!body.user.id)throw Error("Real session user id missing");
+    cookie=response.headers.getSetCookie?.().map(x=>x.split(";")[0]).find(x=>x.includes("session_token="));
+    if(!cookie)throw Error("Real Bostan Better Auth session cookie absent");
+  }
   markHttpStage("BOSTAN_WINDOWS_LIVE_AUTH_SIGNUP_PASS");
   // Session cookie presence is insufficient: bind it to this synthetic user.
   const session=await fetch(origin+"/api/auth/get-session",{
@@ -228,14 +264,26 @@ try{
   if(pending.status!==200||pendingBody?.bootstrapStatus!=="bootstrap_pending")
     throw Error("Rejected claims changed first-admin bootstrap state");
   markHttpStage("BOSTAN_WINDOWS_LIVE_DENIALS_PRESERVE_PENDING");
-  const claim=await fetch(origin+"/api/bootstrap/claim",{
-    method:"POST",headers:{"cookie":cookie,"origin":origin,"content-type":"application/json"},
-    signal:AbortSignal.timeout(15000),redirect:"error",
-  });
-  const claimedBody=await claim.json().catch(()=>null);
-  if(claim.status!==200||claimedBody?.claimed!==true||
-     claimedBody?.userId!==body.user.id)
-    throw Error("First-admin claim did not bind signed-in synthetic user");
+  if(browserMode){
+    const {claimFirstAdminWithBrowser}=await import("../ui/scripts/bostan-private-first-admin-browser.mjs");
+    const browserClaim=await claimFirstAdminWithBrowser({
+      origin,cookie,expectedUserId:body.user.id,
+    });
+    browserAdminPassed=browserClaim.claimedThroughActualChromiumUi===1 &&
+      browserClaim.claimedUserIdMatchesSession===1 &&
+      browserClaim.browserJsErrors===0 && browserClaim.externalBrowserRequests===0;
+    if(!browserAdminPassed)throw Error("Real Windows browser admin claim not proven");
+    console.log("BOSTAN_WINDOWS_CHROMIUM_FIRST_ADMIN_PASS");
+  }else{
+    const claim=await fetch(origin+"/api/bootstrap/claim",{
+      method:"POST",headers:{"cookie":cookie,"origin":origin,"content-type":"application/json"},
+      signal:AbortSignal.timeout(15000),redirect:"error",
+    });
+    const claimedBody=await claim.json().catch(()=>null);
+    if(claim.status!==200||claimedBody?.claimed!==true||
+       claimedBody?.userId!==body.user.id)
+      throw Error("First-admin claim did not bind signed-in synthetic user");
+  }
   markHttpStage("BOSTAN_WINDOWS_LIVE_FIRST_ADMIN_CLAIM_PASS");
   const repeat=await fetch(origin+"/api/bootstrap/claim",{
     method:"POST",headers:{cookie,origin,"content-type":"application/json"},
@@ -249,6 +297,8 @@ try{
   if(status.status!==200||(await status.json())?.bootstrapStatus!=="ready")
     throw Error("Real first-admin claim did not close bootstrap state");
   markHttpStage("BOSTAN_WINDOWS_LIVE_POST_CLAIM_HEALTH_PASS");
+  if(browserMode&&(!browserSignupPassed||!browserAdminPassed))
+    throw Error("Windows real browser and admin qualification incomplete");
   completedHttpChecks=true;
 }catch(error){
   failed=true;
@@ -400,10 +450,13 @@ try{
     ownedFixtureCleaned:ownedHomeCleaned,
     priorFailure:failed,
   });
-  const qualified=proof.windowsAuthenticatedHttpQualified;
+  const browserQualified=browserMode&&browserSignupPassed&&browserAdminPassed&&
+    proof.windowsAuthenticatedHttpQualified;
+  const qualified=proof.windowsAuthenticatedHttpQualified&&(!browserMode||browserQualified);
   if(qualified){
     console.log(JSON.stringify({...spec,...proof,run:true,livePostgres:true,
-      realHttpStatus:200,realSession:true,firstAdmin:true},null,2));
+      realHttpStatus:200,realSession:true,firstAdmin:true,
+      authenticatedBrowserQualified:browserQualified},null,2));
   }else{
     failed=true;
     console.log(JSON.stringify({...spec,...proof,run:true,
