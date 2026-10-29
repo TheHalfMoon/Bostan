@@ -4,7 +4,7 @@ import {qualifyPrivateSharedWindowsPostgres} from './bostan-private-windows-shar
 const first={id:'d5f790a6-8dbc-48ea-bba3-50b320cf6475'};
 const second={id:'98691832-49a1-40aa-8a2a-8e5fb12f5245'};
 const makeId=i=>'a0010000-1234-4abc-8def-'+(i+1).toString(16).padStart(12,'0');
-function fixture({duplicate=false,leak=false,allowForbidden=false,failOne=false,overlap=true}={}){
+function fixture({duplicate=false,leak=false,leakExisting=false,missingCompanyId=false,allowForbidden=false,failOne=false,overlap=true}={}){
   const data=new Map([[first.id,[]],[second.id,[]]]);
   let n=0,clock=0;
   async function req(path,{method='GET',cookie,body}={}){
@@ -14,6 +14,8 @@ function fixture({duplicate=false,leak=false,allowForbidden=false,failOne=false,
     if(method==='GET'){
       const items=[...(data.get(company)??[])];
       if(leak&&company===first.id)items.push(...data.get(second.id));
+      if(leakExisting&&company===first.id)items.push({id:makeId(1000),companyId:second.id});
+      if(missingCompanyId&&company===first.id)items.push({id:makeId(1001)});
       return {status:200,body:{issues:items}};
     }
     if(company===first.id&&cookie==='second')
@@ -50,4 +52,9 @@ test('foreign company leak, duplicate IDs, non-201 and forbidden write all fail 
     {failOne:true},{allowForbidden:true}]){
     await assert.rejects(qualifyPrivateSharedWindowsPostgres(fixture(patch)));
   }
+});
+
+test('pre-existing foreign or unscoped issue rows cannot pass private readback',async()=>{
+  for(const patch of [{leakExisting:true},{missingCompanyId:true}])
+    await assert.rejects(qualifyPrivateSharedWindowsPostgres(fixture(patch)),/isolation failed/);
 });

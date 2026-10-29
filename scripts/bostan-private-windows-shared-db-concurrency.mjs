@@ -51,6 +51,8 @@ export async function qualifyPrivateSharedWindowsPostgres({
   if(ownedA.length!==6||ownedB.length!==6||
      !ownedA.every(r=>listA.some(row=>row.id===r.id&&row.companyId===firstCompany.id))||
      !ownedB.every(r=>listB.some(row=>row.id===r.id&&row.companyId===secondCompany.id))||
+     listA.some(row=>row?.companyId!==firstCompany.id)||
+     listB.some(row=>row?.companyId!==secondCompany.id)||
      listA.some(row=>ownedB.some(r=>r.id===row.id))||
      listB.some(row=>ownedA.some(r=>r.id===row.id)))
     throw Error('Bostan concurrent private company isolation failed');
