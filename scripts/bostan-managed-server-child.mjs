@@ -62,7 +62,8 @@ export function superviseManagedServer(startServer, ipc = process, { stopTimeout
   // still requires the separately verified stopped-database lock protocol.
   ipc.on("message", onMessage);
   ipc.on("disconnect", requestStop);
-  ready = Promise.resolve().then(startServer);
+  // Let the startup loader see a stop received while its async import runs.
+  ready = Promise.resolve().then(() => startServer(() => pending));
   ready.then((instance) => {
     resolveReady(instance);
     if (pending) void orderlyStop();
@@ -79,11 +80,19 @@ async function main() {
   // not print model prompts, credentials or private runtime configuration.
   const tracing = process.platform === "win32" && process.env.BOSTAN_WINDOWS_TEMP_QA === "1";
   const startedAt = performance.now();
-  if (tracing) process.stderr.write("Bostan Windows QA: beginning server module import.\n");
-  const { startServer } = await import("../server/src/index.ts");
-  if (tracing) process.stderr.write("Bostan Windows QA: module import complete after " +
-    Math.round((performance.now() - startedAt) / 1000) + " seconds; beginning startup.\n");
-  await superviseManagedServer(async () => {
+  // Attach IPC stop/disconnect listeners BEFORE the potentially minutes-long
+  // TypeScript module import. Otherwise the parent can disappear while the
+  // child is still loading and no stop watchdog exists.
+  await superviseManagedServer(async (stopRequested) => {
+    if (stopRequested()) throw new Error("Managed backend import canceled after parent stop");
+    if (tracing) process.stderr.write("Bostan Windows QA: beginning server module import.\n");
+    const { startServer } = await import("../server/src/index.ts");
+    // Never start the service if its owner stopped/disconnected during import.
+    // Fail closed: importing modules may have side effects, so this is NOT a
+    // verified clean shutdown; the parent must still check owned resources.
+    if (stopRequested()) throw new Error("Managed backend import canceled after parent stop");
+    if (tracing) process.stderr.write("Bostan Windows QA: module import complete after " +
+      Math.round((performance.now() - startedAt) / 1000) + " seconds; beginning startup.\n");
     const result = await startServer();
     if (tracing) process.stderr.write("Bostan Windows QA: service startup complete after " +
       Math.round((performance.now() - startedAt) / 1000) + " seconds.\n");
