@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, copyFile, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, copyFile, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
@@ -9,7 +9,7 @@ import { recordRuntimeOutputOwnership } from '../server/scripts/bundle-runtime-o
 import { resolvePrivateWindowsQaServerCommand as resolveCommand } from './bostan-private-windows-server-command.mjs';
 
 async function fixture(t) {
-  const root = await mkdtemp(join(tmpdir(), 'bostan-b134-qa-'));
+  const root = await mkdtemp(join(await realpath(tmpdir()), 'bostan-b134-qa-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const server = join(root, 'server');
   const dist = join(server, 'dist');
