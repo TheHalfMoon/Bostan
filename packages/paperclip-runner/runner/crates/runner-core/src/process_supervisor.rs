@@ -458,16 +458,28 @@ impl VerifiedProcessLaunch {
         &self,
         environment: &std::collections::BTreeMap<String, String>,
     ) -> Result<Child, LocalRunnerError> {
-        let inherited = self.inherited_command()?;
-        Command::new(&inherited.program)
-            .args(&inherited.args)
-            .env_clear()
-            .envs(environment)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
-            .spawn()
-            .map_err(|_| LocalRunnerError::invalid("failed to spawn verified stdio MCP server"))
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        {
+            let inherited = self.inherited_command()?;
+            Command::new(&inherited.program)
+                .args(&inherited.args)
+                .env_clear()
+                .envs(environment)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::inherit())
+                .spawn()
+                .map_err(|_| LocalRunnerError::invalid("failed to spawn verified stdio MCP server"))
+        }
+        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+        {
+            // No immutable process snapshot/inherited fd implementation exists
+            // here. Refuse before ever executing an unverified program path.
+            let _ = (self, environment);
+            Err(LocalRunnerError::invalid(
+                "verified stdio MCP launch is supported only on Linux and macOS",
+            ))
+        }
     }
 
     pub fn with_inherited_runtime_executable(mut self) -> Self {
