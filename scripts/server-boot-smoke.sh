@@ -9,7 +9,7 @@ fi
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 port="${SMOKE_PORT:-$(node -e 'const s=require("node:net").createServer().listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close();})')}"
 timeout_seconds="${SMOKE_TIMEOUT_SECONDS:-180}"
-scratch="$(mktemp -d "${TMPDIR:-/tmp}/paperclip-boot-smoke.XXXXXX")"
+scratch="$(mktemp -d "${TMPDIR:-/tmp}/bostan-boot-smoke.XXXXXX")"
 log="$scratch/server.log"
 
 args=()
@@ -18,13 +18,29 @@ for arg in "$@"; do
 done
 
 server_pid=""
+# A PID can be reused after the child exits. Bash's jobs table only contains
+# active children owned by this shell, unlike kill -0 on an arbitrary PID.
+owned_server_running() {
+  [ -n "$server_pid" ] || return 1
+  local running
+  while IFS= read -r running; do
+    if [ "$running" = "$server_pid" ]; then return 0; fi
+  done < <(jobs -pr)
+  return 1
+}
 cleanup() {
-  if [ -n "$server_pid" ] && kill -0 "$server_pid" 2>/dev/null; then
-    kill -TERM "$server_pid" 2>/dev/null || true
-    for _ in $(seq 1 50); do kill -0 "$server_pid" 2>/dev/null || break; sleep 0.2; done
-    kill -KILL "$server_pid" 2>/dev/null || true
+  trap - EXIT INT TERM
+  if owned_server_running; then
+    kill -TERM -- "$server_pid" 2>/dev/null || true
+    for _ in $(seq 1 50); do
+      owned_server_running || break
+      sleep 0.2
+    done
+    # Never send KILL to a PID after Bash has reaped its child.
+    if owned_server_running; then kill -KILL -- "$server_pid" 2>/dev/null || true; fi
   fi
-  rm -rf "$scratch"
+  if [ -n "$server_pid" ]; then wait "$server_pid" 2>/dev/null || true; fi
+  rm -rf -- "$scratch"
 }
 trap cleanup EXIT
 
@@ -50,7 +66,7 @@ server_pid=$!
 listen_ms=""
 deadline=$(( $(date +%s) + timeout_seconds ))
 while [ "$(date +%s)" -lt "$deadline" ]; do
-  if ! kill -0 "$server_pid" 2>/dev/null; then
+  if ! owned_server_running; then
     echo "FAIL: server exited before becoming ready" >&2
     cat "$log" >&2
     exit 1
