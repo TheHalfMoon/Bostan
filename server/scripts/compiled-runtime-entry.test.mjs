@@ -12,18 +12,24 @@ function withOwnedFixture(run) {
   try { return run(root); } finally { rmSync(root, { recursive: true, force: true }); }
 }
 
-test("compiled runtime entry executes a native absolute module through file URL", () => withOwnedFixture(root => {
-  const target = join(root, "source #1", "server.mjs");
-  mkdirSync(dirname(target), { recursive: true });
-  writeFileSync(target, 'console.log("BOSTAN_B118_ENTRY_OK");\n');
-  const entry = join(root, "index.mjs");
-  const source = compiledRuntimeEntrySource(target);
-  assert.match(source, /await import\(new URL\("file:/);
-  assert.ok(source.includes(nativeEsmFileUrl(target)));
-  assert.ok(source.includes(JSON.stringify(target)));
+test("compiled entry loads sibling server chunk, never the original source", () => withOwnedFixture(root => {
+  const original = join(root, "source #1", "index.js");
+  mkdirSync(dirname(original), { recursive: true });
+  writeFileSync(original, 'throw new Error("B119_SOURCE_MUST_NOT_RUN");\n');
+  const runtime = join(root, "runtime");
+  mkdirSync(runtime, { recursive: true });
+  writeFileSync(join(runtime, "server.mjs"),
+    `if(process.argv[1] !== ${JSON.stringify(original)}) throw Error("argv mismatch");\nconsole.log("B119_BUNDLED_ENTRY_OK");\n`);
+  const entry = join(runtime, "index.mjs");
+  const source = compiledRuntimeEntrySource(original);
+  assert.match(source, /await import\\(new URL\\("\\.\\/server\\.mjs", import\\.meta\\.url\\)\\.href\\)/);
+  assert.ok(!source.includes(nativeEsmFileUrl(original)), "source URL must not be imported");
+  assert.ok(source.includes(JSON.stringify(original)), "legacy argv must stay native");
   writeFileSync(entry, source);
-  const output = execFileSync(process.execPath, [entry], { cwd: root, encoding: "utf8", timeout: 5000 });
-  assert.equal(output.trim(), "BOSTAN_B118_ENTRY_OK");
+  const output = execFileSync(process.execPath, [entry], {
+    cwd: root, encoding: "utf8", timeout: 5000,
+  });
+  assert.equal(output.trim(), "B119_BUNDLED_ENTRY_OK");
 }));
 
 test("external absolute paths are file URLs with reserved characters encoded and importable", async () => {
@@ -41,6 +47,12 @@ test("external absolute paths are file URLs with reserved characters encoded and
     assert.equal(imported.verified, "B118");
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("compiled entry also rejects non-native source paths", () => {
+  for (const value of ["relative.js", "D:relative.js", "file:///tmp/x.js", null]) {
+    assert.throws(() => compiledRuntimeEntrySource(value), /absolute local file path/);
   }
 });
 
