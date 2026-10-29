@@ -12,3 +12,8 @@ test("refuses external and forged paths",()=>{
   assert.equal(classify("Error\n at fn (D:\\secret\\server\\dist-runtime\\server.mjs:1:2)",root),"unknown");
   assert.equal(classify("Error\n at fn (D:\\Bostan-B144-qa-copy\\server\\dist-runtime\\server.mjs:1:2)",root),"unknown");
 });
+
+test("skips the monitoring wrapper and locates the real bundled caller",()=>{
+  const stack="Error\n    at process.exit (file:///D:/Bostan-B144-qa/scripts/bostan-private-windows-packed-error-monitor.mjs:41:15)\n    at run (file:///D:/Bostan-B144-qa/server/dist-runtime/chunk-A343.mjs:350:7)";
+  assert.equal(classify(stack,root),"packed_chunk");
+});

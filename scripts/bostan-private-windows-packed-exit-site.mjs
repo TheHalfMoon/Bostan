@@ -16,6 +16,9 @@ export function classifyPrivatePackedExitSite(stack,root) {
     if(/^server\/dist-runtime\/chunk-[a-z0-9_-]+\.mjs$/i.test(rel))return "packed_chunk";
     if(/^server\/dist\/[a-zA-Z0-9_./-]+\.(?:js|mjs)$/.test(rel) &&
       !rel.includes("../"))return "compiled_server";
+    // The first frame is our overridden process.exit wrapper itself.
+    // Skip it to attribute the *caller* rather than the monitoring hook.
+    if(rel==="scripts/bostan-private-windows-packed-error-monitor.mjs")continue;
     if(/^scripts\/bostan-private-[a-zA-Z0-9_-]+\.mjs$/.test(rel))return "qa_preload";
     if(rel.startsWith("node_modules/")||rel.includes("/node_modules/"))return "third_party";
     if(rel.startsWith("../")||rel.includes("/../"))continue;
