@@ -36,3 +36,16 @@ A separate OS thread ran and emitted a later timer during the same compiled-runt
 The next gate is a privacy-safe **CPU vs I/O/activity** attribution for the exact owned Node import process; the old built-in `--cpu-prof` did not produce a usable file on bounded SIGTERM and must not be reported as successful. Do not extend the 180s HTTP deadline or disable startup/resource/ownership checks to disguise the issue. Only rerun actual Windows PostgreSQL + Chrome + 12 same-DB issue writes after the bundled server becomes HTTP-healthy within the original bound and independently cleanly shuts down.
 
 **Release NO-GO**. Full Linux runtime/installers, production-grade autonomous agent sandbox/effects consent, sustained load/transaction testing, complete security/privacy/license/NOTICE/provenance/branding remain unqualified. No public release, package publish, Actions, protected-main merge, model costs or customer data.
+
+## Follow-up: process CPU utilization category without raw profiler data
+
+A second **test-only** extension at exact source commit `f5db5d4b1b6eb699abe025d480ae5ee0beed760d` adds aggregate **process CPU time / elapsed wall-clock time** sampling from the independent private Windows Worker during its own 30-second interval. The private Worker reports **only one of `high`, `moderate`, `low`, `unavailable`**, never CPU paths, symbol names, stack frames, session values, provider credentials, DSNs or free text. No new network, process or database access. The shell/Node shutdown deadline, source SHA admission, privileges and previous fail-closed CPU-prof contract remain unchanged. Pure threshold and malformed-input regressions cover all four fixed classes.
+
+**Actual native Windows 11 B144 source (same commit) results:**
+- Worker+classified startup native Node tests **13/13 PASS, zero skips**. Free RAM **4.98 GiB** and D: **7.54 GiB** before admission; existing PostgreSQL 0.
+- Real **36-second no-database bundled import** launched with a bound dummy local PostgreSQL port and exactly private owned synthetic temporary marker. Stage `static_import_start` occurred, then Worker `static_import_worker_alive` and `static_import_worker_pending`; main-thread `static_import_pending` again did not occur.
+- The bounded **fixed-vocabulary CPU observation** was `cpuActivity:"moderate"` and `finding:"worker_timer_seen_main_timer_not_seen"`. `moderate` represents a conservative aggregate process CPU-time fraction in the sample window; it is **not a stack trace, a named hot function or definitive CPU-vs-I/O diagnosis**.
+- `CHILD_CLOSED=true`, `FORCED=false`, `REAL_POSTGRES_USED=false`, `OWNED_FIXTURE_CLEANED=true`.
+- **`CPU_PROFILE=unavailable` still; total diagnostic EXIT 1** by unchanged strict profiler-availability rule. Neither import success nor full Windows authenticated HTTP/PG/browser concurrency passed. Do not greenwash this evidence.
+
+The same test-only Worker heartbeat changes leave old server lifecycle/production runtime untouched. Root cause remains open and more precise CPU source attribution is required before a compiled-bundle fix or another heavy 180-second Windows full E2E.
