@@ -57,3 +57,11 @@ On the same unchanged B1-53 product source, run actual workspace Vitest directly
 - Native Mac `CI=1 DO_NOT_TRACK=1 pnpm --filter @bostan/ui exec vitest run src/pages/CompanyAccess.test.tsx src/components/access/InvitesSection.test.tsx --reporter=dot`: **20/20 PASS**, two files, exit 0, 2.40s runner.
 - Native Windows at SHA `25ac9f35bafc675d12f8e53ce36d887ce8eb1c75`: same 20/20 PASS, two files, exit 0, 15.70s runner, no real PG or model calls. Windows memory admission measured 4.08 GiB available and bounded Node heap to 1.5 GiB for this test.
 - These tests supplement, rather than substitute for, real Chromium/PG E2E. They do not qualify every UI component, end-user accessibility, Linux or release packaging.
+
+## Additional native Linux / WSL2 source-guard tests — PASS, not an app E2E
+
+Using **actual native Ubuntu WSL2 Linux kernel 6.18.33.1 x86_64, Node 22.22.1** on authorized Windows without modifying the user's Linux installation, run Node `--test` against the same B144 QA source mounted read-only for this exercise:
+- `scripts/bostan-private-linux-native-build-closure.test.mjs`, `bostan-private-linux-native-prebuilt-stage-authz.test.mjs`, `bostan-private-linux-tmpfs-admission.test.mjs`: **15/15 PASS**, no skips, exit 0 (~1.07s).
+- `scripts/bostan-private-windows-auth-browser-gate.test.mjs` and `bostan-private-windows-qa-env.test.mjs`: **10/10 PASS** with Linux-native Node, no skips.
+- This was a **test-only** native Linux execution (no PostgreSQL installation, backend startup, browser, Linux package build or installer). Read-only tool inspection found Ubuntu WSL2 and Node installed but did not find a Linux `pg_ctl` binary on the search path. The detected `pnpm` was the Windows-mounted binary rather than proven isolated Linux toolchain.
+- Linux **product** runtime E2E, native dependency closure and installation remain NO-GO, do not conflate these Linux unit-test passes with end-user release readiness. No package installation, GitHub Actions activation, paid provider, source mutation or shared service stop occurred.
