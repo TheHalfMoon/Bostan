@@ -38,3 +38,14 @@ test('untrusted, oversized, forged or missing output cannot create leaked detail
  assert.equal(classify(null).finding,'insufficient_evidence');
  assert.equal(classify(marker('static_import_start')).finding,'insufficient_evidence');
 });
+
+test('CPU categories are a closed vocabulary and invalid log text is never emitted',()=>{
+  const marker='BOSTAN_WIN_SERVER_STAGE=static_import_worker_pending\n';
+  for(const category of ['high','moderate','low','unavailable']){
+    const result=classify(marker+'BOSTAN_WIN_IMPORT_CPU_ACTIVITY='+category+'\n');
+    assert.equal(result.cpuActivity,category);
+    assert.equal(result.releaseQualified,false);
+  }
+  assert.equal(classify(marker+
+    'BOSTAN_WIN_IMPORT_CPU_ACTIVITY=Bearer_PRIVATE_TOKEN\n').cpuActivity,'not_observed');
+});

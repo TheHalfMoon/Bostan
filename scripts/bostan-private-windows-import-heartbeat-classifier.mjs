@@ -7,6 +7,7 @@ export function classifyPrivateWindowsImportHeartbeat(output){
   if(typeof output!=='string'||output.length>65536)
     return Object.freeze({schema:'bostan.private-import-heartbeat.v1',
       worker:'invalid_observation',main:'invalid_observation',
+      cpuActivity:'not_observed',
       finding:'insufficient_evidence',releaseQualified:false});
   const prefix='BOSTAN_WIN_SERVER_STAGE=';
   const allowed=new Set(['static_import_start','static_import_pending',
@@ -20,6 +21,11 @@ export function classifyPrivateWindowsImportHeartbeat(output){
   const worker=tokens.has('static_import_worker_failed')?'failed':
     tokens.has('static_import_worker_pending')?'timer_observed':
     tokens.has('static_import_worker_alive')?'started_only':'not_observed';
+  // Accept only exact Worker diagnostic constants. Never echo other stderr.
+  const activity=output.split(/\r?\n/).filter(line=>
+    /^BOSTAN_WIN_IMPORT_CPU_ACTIVITY=(high|moderate|low|unavailable)$/.test(line))
+    .map(line=>line.slice('BOSTAN_WIN_IMPORT_CPU_ACTIVITY='.length));
+  const cpuActivity=activity.length>0?activity.at(-1):'not_observed';
   const finding=worker==='failed'?'worker_failed':
     worker==='timer_observed'&&main==='start_only'?
       'worker_timer_seen_main_timer_not_seen':
@@ -29,5 +35,5 @@ export function classifyPrivateWindowsImportHeartbeat(output){
       'worker_started_main_timer_not_seen':
     'insufficient_evidence';
   return Object.freeze({schema:'bostan.private-import-heartbeat.v1',
-    worker,main,finding,releaseQualified:false});
+    worker,main,cpuActivity,finding,releaseQualified:false});
 }

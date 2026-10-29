@@ -137,10 +137,13 @@ test('synthetic worker emits only fixed literal tokens and has no inherited sens
   assert.equal(startPrivateCompiledImportWorker({
     main:false,data:IMPORT_WORKER_TOKEN,platform:'win32',
     write:m=>received.push(m),schedule:f=>{scheduled=f},
+    readCpu:(()=>{let usage=0;return ()=>({user:usage+=6_000_000,system:0})})(),
+    nowMicroseconds:(()=>{let clock=0;return ()=>clock+=30_000_000})(),
   }),true);
   assert.deepEqual(received,[IMPORT_WORKER_ALIVE]);
   scheduled();
-  assert.deepEqual(received,[IMPORT_WORKER_ALIVE,IMPORT_WORKER_PENDING]);
+  assert.deepEqual(received,[IMPORT_WORKER_ALIVE,IMPORT_WORKER_PENDING,
+    'BOSTAN_WIN_IMPORT_CPU_ACTIVITY=moderate']);
   assert.ok(received.every(x=>!x.includes(env.OPENAI_API_KEY)&&
     !x.includes(env.DATABASE_URL)));
 });
@@ -164,4 +167,16 @@ test('bounded no-PostgreSQL CPU import probe recognizes only the fixed worker st
   assert.ok(source.includes('static_import_worker_alive|static_import_worker_pending|static_import_worker_failed'));
   assert.ok(source.includes('BOSTAN_WIN_IMPORT_ONLY_REAL_POSTGRES_USED=false'));
   assert.ok(source.includes('BOSTAN_WIN_IMPORT_ONLY_OWNED_FIXTURE_CLEANED='));
+});
+
+
+test('Worker CPU classification uses only finite bounded ratios, never raw paths',async()=>{
+  const {classifyPrivateWorkerCpuWindow:classify}=await import(
+    './bostan-private-windows-compiled-import-worker.mjs');
+  assert.equal(classify(21_000_000,30_000_000),'high');
+  assert.equal(classify(6_000_000,30_000_000),'moderate');
+  assert.equal(classify(1_000_000,30_000_000),'low');
+  for(const input of [-1,NaN,Infinity,null])
+    if(input!==null) assert.equal(classify(input,30_000_000),'unavailable');
+  assert.equal(classify(1_000_000,0),'unavailable');
 });
