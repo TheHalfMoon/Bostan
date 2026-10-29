@@ -89,6 +89,8 @@ export DATABASE_URL="postgres://bostan_verify@127.0.0.1:$PGPORT/bostan_qualifica
 export PAPERCLIP_HOME="$TMP/bostan-home" PAPERCLIP_CONFIG="$TMP/bostan-config.json" PAPERCLIP_MIGRATION_PROMPT=never PAPERCLIP_MIGRATION_AUTO_APPLY=true
 export PAPERCLIP_OPEN_ON_LISTEN=false BOSTAN_FEEDBACK_EXPORT_ENABLED=0 HOST=127.0.0.1 PORT="$HTTPPORT" OTEL_SDK_DISABLED=true
 if [ "$MODE" = "--run-deployed-authz" ] || [ "$MODE" = "--run-deployed-authz-ui" ] || [ "$MODE" = "--run-deployed-admin-race" ] || [ "$MODE" = "--run-dist-authz" ]; then
+  # The new built-server test must prove the first-admin API, not SQL seeding.
+  if [ "$MODE" = "--run-dist-authz" ]; then export BOSTAN_AUTHZ_API_FIRST_ADMIN=1; fi
   export PAPERCLIP_DEPLOYMENT_MODE=authenticated PAPERCLIP_DEPLOYMENT_EXPOSURE=private
   export PAPERCLIP_AUTH_PUBLIC_BASE_URL="http://127.0.0.1:$HTTPPORT" PAPERCLIP_AUTH_BASE_URL_MODE=explicit
   export PAPERCLIP_AUTH_DISABLE_SIGN_UP=false PAPERCLIP_AUTH_RATE_LIMIT_ENABLED=false
