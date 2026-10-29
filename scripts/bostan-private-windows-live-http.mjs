@@ -28,7 +28,7 @@ if(!args.length||args.length===1&&args[0]==="--plan"){
   process.exit(0);
 }
 if(args.length!==1||!["--run","--run-compiled"].includes(args[0])){
-  console.error("Usage: node --import tsx scripts/bostan-private-windows-live-http.mjs [--plan|--run|--run-compiled]");
+  console.error("Usage: node --import ./server/node_modules/tsx/dist/loader.mjs scripts/bostan-private-windows-live-http.mjs [--plan|--run|--run-compiled]");
   process.exit(2);
 }
 const serverMode=args[0]==="--run-compiled"?"compiled":"source";
@@ -252,7 +252,7 @@ try{
   completedHttpChecks=true;
 }catch(error){
   failed=true;
-  const stages=[...serverOutput.matchAll(/BOSTAN_WIN_SERVER_STAGE=(static_import_start|static_import_complete|runtime_start|runtime_ready|runtime_failed)/g)];
+  const stages=[...serverOutput.matchAll(/BOSTAN_WIN_SERVER_STAGE=(static_import_start|static_import_pending|static_import_complete|runtime_start|runtime_ready|runtime_failed)/g)];
   const stage=stages.at(-1)?.[1]||"not_observed";
   console.error("BOSTAN_WINDOWS_LIVE_IMPORT_STAGE="+stage);
   const profiles=serverOutput.split(String.fromCharCode(10)).filter(line=>line.startsWith("BOSTAN_WIN_IMPORT_PROFILE="));
