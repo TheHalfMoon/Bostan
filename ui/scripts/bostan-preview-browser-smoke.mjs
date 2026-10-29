@@ -34,16 +34,33 @@ async function main(){
   const viteJs=resolve(uiRoot,'node_modules/vite/bin/vite.js');
   assert.ok(existsSync(viteJs),'frozen UI workspace dependencies must already be installed');
   // Running the Vite CLI under Node gives us exactly one owned preview process to stop.
+  // The preview serves static assets only. Do not forward provider tokens,
+  // cloud/agent settings or unrelated operator environment values.
+  const forwarded={CI:'1',DO_NOT_TRACK:'1',OTEL_SDK_DISABLED:'true'};
+  for(const key of ['PATH','Path','SystemRoot','WINDIR','ComSpec','PATHEXT',
+    'HOME','USERPROFILE','TEMP','TMP','TMPDIR']){
+    if(typeof process.env[key]==='string')forwarded[key]=process.env[key];
+  }
   const preview=spawn(process.execPath,[viteJs,'preview','--host','127.0.0.1','--port',String(port),'--strictPort'],{
-    cwd:uiRoot,stdio:['ignore','pipe','pipe'],env:process.env,
+    cwd:uiRoot,stdio:['ignore','pipe','pipe'],env:forwarded,windowsHide:true,
   });
+  let previewClosed=false,previewSpawnFailed=false;
+  const closed=new Promise(resolve=>preview.once('close',()=>{previewClosed=true;resolve()}));
+  preview.on('error',()=>{previewSpawnFailed=true});
+  async function waitForClose(ms){
+    if(previewClosed)return true;
+    let timer;
+    try{return await Promise.race([closed.then(()=>true),
+      new Promise(resolve=>{timer=setTimeout(()=>resolve(false),ms)})]);}
+    finally{if(timer)clearTimeout(timer)}
+  }
   let serverLog='';
   for(const stream of [preview.stdout,preview.stderr]) stream.on('data',chunk=>{serverLog+=chunk.toString().slice(0,4096)});
   let browser;
   try {
     let ready=false;
     for(let attempt=0;attempt<80;attempt++){
-      if(preview.exitCode!==null) throw Error(`local Vite preview exited: ${serverLog.slice(-1200)}`);
+      if(previewClosed||previewSpawnFailed)throw Error('Owned Vite preview failed before HTTP ready');
       try {const response=await fetch(origin,{signal:AbortSignal.timeout(500)});if(response.ok){ready=true;break}}catch{}
       await new Promise(resolve=>setTimeout(resolve,100));
     }
@@ -72,7 +89,20 @@ async function main(){
     assert.equal(nonlocalRequests,0,'frontend first paint must not request external origins in offline preview');
     console.log(JSON.stringify({kind:'bostan.browser-first-paint.v1',releaseQualified:false,origin:'127.0.0.1',httpStatus:response.status(),title,visibleText:visible.slice(0,200),pageErrors:pageErrors.length,externalRequests:nonlocalRequests},null,2));
   } finally {
-    if(browser) await browser.close();
-    preview.kill('SIGTERM');
+    try{
+      if(browser)await browser.close();
+    }finally{
+      if(!previewClosed&&!previewSpawnFailed)preview.kill('SIGTERM');
+      const graceful=await waitForClose(5000);
+      let forced=false;
+      if(!graceful){
+        forced=true;
+        if(!previewSpawnFailed)preview.kill('SIGKILL');
+        await waitForClose(5000);
+      }
+      console.log('BOSTAN_PRIVATE_UI_OWNED_PREVIEW_CLOSED='+previewClosed);
+      if(!previewClosed||previewSpawnFailed||forced)
+        throw Error('Owned preview teardown was not graceful and verified');
+    }
   }
 }

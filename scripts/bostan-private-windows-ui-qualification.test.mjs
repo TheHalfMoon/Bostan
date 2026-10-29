@@ -71,3 +71,12 @@ test('offline Chromium verification blocks service-worker bypass and external or
   assert.ok(browserSource.includes('waitForFunction(()=>/Bostan/i.test(document.body.innerText)'));
 
 });
+
+
+test('private browser preview sanitizes credentials and awaits its exact owned process closure',()=>{
+  const browserSource=readFileSync(fileURLToPath(new URL('../ui/scripts/bostan-preview-browser-smoke.mjs',import.meta.url)),'utf8');
+  for(const marker of ['env:forwarded','OTEL_SDK_DISABLED',"preview.once('close'",
+    'BOSTAN_PRIVATE_UI_OWNED_PREVIEW_CLOSED',"preview.kill('SIGTERM')",'waitForClose(5000)'])
+    assert.ok(browserSource.includes(marker),marker);
+  assert.doesNotMatch(browserSource,/env:\s*process\.env/);
+});
