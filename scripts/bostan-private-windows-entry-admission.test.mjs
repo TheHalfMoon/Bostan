@@ -69,7 +69,7 @@ test('Node compiled --import guard exits before loading an unrelated module',asy
     "import {writeFileSync} from 'node:fs';writeFileSync("+JSON.stringify(sentinel)+",'RAN');");
   const guard=new URL('./bostan-private-windows-compiled-entry-guard.mjs',import.meta.url).href;
   const child=spawnSync(process.execPath,['--import',guard,moduleFile],
-    {cwd:f.root,encoding:'utf8',env:{...process.env,...f.env},timeout:5000});
+    {cwd:f.root,encoding:'utf8',env:{...process.env,...f.env,BOSTAN_PRIVATE_QA_ENTRY:'FORBIDDEN'},timeout:5000});
   assert.equal(child.status,2,child.stderr);
   assert.match(child.stderr,/unsafe synthetic QA fixture/);
   await assert.rejects(readFile(sentinel),{code:'ENOENT'});
