@@ -21,11 +21,11 @@ const spec={schema:"bostan.private-windows-real-postgres-teardown.v1",
   modelCalls:false,releaseQualified:false};
 if(process.argv.length===2||(process.argv.length===3&&process.argv[2]==="--plan")){
   console.log(JSON.stringify({...spec,run:false}));}
-else if(process.argv.length===3&&process.argv[2]==="--run"){
-  try{await run();}catch{
+else if(process.argv.length===3&&["--run","--run-two"].includes(process.argv[2])){
+  try{await run(process.argv[2]==="--run-two"?2:1);}catch{
     console.error("BOSTAN_WIN_OWNED_PG_TEARDOWN_FAIL_CLOSED");process.exitCode=1;
   }
-}else{console.error("Usage: [--plan|--run]");process.exitCode=2;}
+}else{console.error("Usage: [--plan|--run|--run-two]");process.exitCode=2;}
 
 function readOnlyPgProof(temp){
   const powerShell=resolvePrivateWindowsPowerShellBinary({systemRoot:process.env.SystemRoot});
@@ -39,7 +39,7 @@ function readOnlyPgProof(temp){
     errorCode:checked.error?.code,stdout:checked.stdout,stderr:checked.stderr});
 }
 
-async function run(){
+async function run(rounds=1){
   const temp=process.env.TEMP||"";
   if(process.platform!=="win32"||
     !matchingPrivateWindowsQaWave(basename(root),basename(temp)) ||
@@ -57,34 +57,37 @@ async function run(){
     throw Error("Cloud setting not permitted");
   if(!checkBostanWindowsDisk({workspace:root,tempDir:temp}).allowed ||
      !checkBostanWindowsMemory().allowed)throw Error("Insufficient resources");
-  // Required before starting any owned PostgreSQL. Do not stop foreign PG.
-  const before=readOnlyPgProof(temp);
-  if(!before.noOrphanPostgresProcessVerified)
-    throw Error("Cannot prove zero pre-existing PostgreSQL processes");
-  console.log("BOSTAN_WIN_PG_PREEXISTING_ZERO_VERIFIED");
   process.env.PAPERCLIP_TEST_POSTGRES_TEMPLATE="0";
-  let db=null,cleanupPassed=false,after=null,realDB=false;
-  try{
-    const {startEmbeddedPostgresTestDatabase}=await import("../packages/db/src/test-embedded-postgres.js");
-    db=await startEmbeddedPostgresTestDatabase("bostan-b146-owned-postgres-");
-    realDB=true;
-    // The helper has performed real PostgreSQL initdb, an authenticated
-    // database connection, creation and migrations, before it resolves.
-    console.log("BOSTAN_WIN_PG_REAL_MIGRATION_PASS");
-  }finally{
-    if(db) {
-      try { await db.cleanup();cleanupPassed=true; }
-      catch {console.error("BOSTAN_WIN_PG_CLEANUP_UNCERTAIN");}
+  for(let round=1;round<=rounds;round++){
+    // Prove the previous round left no process before starting another.
+    // Each round creates a fresh owned data directory (no template reuse).
+    const before=readOnlyPgProof(temp);
+    if(!before.noOrphanPostgresProcessVerified)
+      throw Error("Unattributed PostgreSQL process before owned round");
+    console.log("BOSTAN_WIN_PG_PREEXISTING_ZERO_VERIFIED");
+    let db=null,cleanupPassed=false,after=null,realDB=false;
+    try{
+      const {startEmbeddedPostgresTestDatabase}=await import("../packages/db/src/test-embedded-postgres.js");
+      db=await startEmbeddedPostgresTestDatabase("bostan-b147-owned-postgres-");
+      realDB=true;
+      console.log("BOSTAN_WIN_PG_REAL_MIGRATION_PASS");
+    }finally{
+      if(db) {
+        try{await db.cleanup();cleanupPassed=true;}
+        catch{console.error("BOSTAN_WIN_PG_CLEANUP_UNCERTAIN");}
+      }
+      // This scanner is read-only and never kills any process.
+      after=readOnlyPgProof(temp);
+      console.log("BOSTAN_WIN_PG_CLEANUP_METHOD_PASS="+cleanupPassed);
+      console.log("BOSTAN_WIN_PG_NO_ORPHANS="+after.noOrphanPostgresProcessVerified);
     }
-    // This scanner is read-only and cannot terminate or reclaim any process.
-    after=readOnlyPgProof(temp);
-    console.log("BOSTAN_WIN_PG_CLEANUP_METHOD_PASS="+cleanupPassed);
-    console.log("BOSTAN_WIN_PG_NO_ORPHANS="+after.noOrphanPostgresProcessVerified);
+    if(!realDB||!cleanupPassed||!after.noOrphanPostgresProcessVerified)
+      throw Error("Real PostgreSQL teardown not proven");
+    console.log("BOSTAN_WIN_PG_ROUND_"+round+"_OWNED_STOP_AND_ORPHAN_PASS");
   }
-  if(!realDB || !cleanupPassed || !after.noOrphanPostgresProcessVerified)
-    throw Error("Real PostgreSQL teardown not proven");
-  console.log("BOSTAN_WINDOWS_REAL_POSTGRES_SINGLE_SUITE_TEARDOWN_QUALIFIED");
-  console.log(JSON.stringify({...spec,run:true,postgresMigrationsPassed:true,
-    ownedCleanup:true,noOrphanPostgresProcessVerified:true,
-    fullWindowsHttpQualified:false}));
+  if(rounds===1)console.log("BOSTAN_WINDOWS_REAL_POSTGRES_SINGLE_SUITE_TEARDOWN_QUALIFIED");
+  else console.log("BOSTAN_WINDOWS_REAL_POSTGRES_TWO_ROUND_TEARDOWN_QUALIFIED");
+  console.log(JSON.stringify({...spec,run:true,postgresCycles:rounds,
+    postgresMigrationsPassed:true,ownedCleanup:true,
+    noOrphanPostgresProcessVerified:true,fullWindowsHttpQualified:false}));
 }
