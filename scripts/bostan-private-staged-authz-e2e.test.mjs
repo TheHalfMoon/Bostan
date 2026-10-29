@@ -5,7 +5,7 @@ import {mkdtempSync,mkdirSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {validateAuthzFixture,runAuthenticatedIsolation} from './bostan-private-staged-authz-e2e.mjs';
+import {validateAuthzFixture,runAuthenticatedIsolation,safeAuthzQaRequestError} from './bostan-private-staged-authz-e2e.mjs';
 const script=fileURLToPath(new URL('./bostan-private-staged-authz-e2e.mjs',import.meta.url));
 function owned(){const dir=mkdtempSync(join(tmpdir(),'bostan-two-session-'));const marker=join(dir,'BOSTAN_TEMP_OWNED');writeFileSync(marker,'BOSTAN_TEST_ONLY\n');return {dir,marker,cleanup:()=>rmSync(dir,{recursive:true,force:true})}}
 function environment(marker){return {PAPERCLIP_DEPLOYMENT_MODE:'authenticated',PAPERCLIP_DEPLOYMENT_EXPOSURE:'private',PAPERCLIP_AUTH_PUBLIC_BASE_URL:'http://127.0.0.1:46732',BOSTAN_TEST_ONLY_SENTINEL:marker,DATABASE_URL:'postgres://bostan_verify@127.0.0.1:46548/bostan_qualification'}}
@@ -24,4 +24,28 @@ test('no SQL mutation even with a mocked request if ownership is not verified',a
   let called=false;
   await assert.rejects(()=>runAuthenticatedIsolation('http://127.0.0.1:46732/',{env:{...environment('/definitely-not-a-test-file')},request:async()=>{called=true;throw Error('unexpected')}}),/marker is missing/);
   assert.equal(called,false);
+});
+
+
+test('invite-token, path and provider data are never emitted in authenticated QA HTTP failures',()=>{
+  const token='pcp_invite_A_PRIVATE_LONG_SECRET_123456789';
+  const cases=[
+    ['/api/auth/sign-up/email','auth_signup'],
+    ['/api/auth/sign-in/email','auth_signin'],
+    ['/api/bootstrap/claim','bootstrap'],
+    ['/api/companies','companies'],
+    ['/api/invites/'+token+'/accept','invite_accept'],
+    ['/api/companies/d5f790a6-8dbc-48ea-bba3-50b320cf6475/members','company_scope'],
+    ['/api/issues/d5f790a6-8dbc-48ea-bba3-50b320cf6475','issue_scope'],
+    ['https://secret.invalid?token=private','unknown'],
+  ];
+  for(const [path,kind] of cases){
+    const result=safeAuthzQaRequestError(path,'POST',429,[200,201]);
+    assert.ok(result.message.includes(kind));
+    assert.match(result.message,/unexpected_http status=429 expected=200_201$/);
+    assert.doesNotMatch(result.message,/A_PRIVATE|d5f790|secret.invalid|pcp_invite_/);
+  }
+  const malformed=safeAuthzQaRequestError('/api/auth/sign-up/email','POST',200,[200],true);
+  assert.match(malformed.message,/invalid_json status=200/);
+  assert.doesNotMatch(safeAuthzQaRequestError('secret','BAD',-1,['SECRET']).message,/SECRET|BAD/);
 });

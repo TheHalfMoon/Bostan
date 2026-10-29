@@ -19,6 +19,30 @@ export function validateAuthzFixture(address,env=process.env){
   return u.origin;
 }
 
+/** Test-only safe HTTP error: never include a generated invitation token,
+ * account/session identifiers, raw API response body or arbitrary route.
+ */
+export function safeAuthzQaRequestError(path, method, status, expected, malformed=false){
+  let kind='unknown';
+  if(path==='/api/auth/sign-up/email')kind='auth_signup';
+  else if(path==='/api/auth/sign-in/email')kind='auth_signin';
+  else if(path==='/api/bootstrap/claim')kind='bootstrap';
+  else if(path==='/api/companies')kind='companies';
+  else if(/^\/api\/invites\/pcp_invite_[a-zA-Z0-9_-]+\/accept$/.test(path))
+    kind='invite_accept';
+  else if(/^\/api\/companies\/[a-f0-9-]+(?:\/(?:issues|invites|members(?:\/[a-f0-9-]+)?))?$/.test(path))
+    kind='company_scope';
+  else if(/^\/api\/issues\/[a-f0-9-]+$/.test(path))
+    kind='issue_scope';
+  const safeMethod=['GET','POST','PATCH','DELETE'].includes(method)?method:'other';
+  const safeCode=Number.isInteger(status)&&status>=100&&status<=599?String(status):'unknown';
+  const safeExpected=Array.isArray(expected)?
+    expected.filter(x=>Number.isInteger(x)&&x>=100&&x<=599).slice(0,5).join('_'):'';
+  return Error('Bostan private authz QA '+kind+' '+safeMethod+' '+
+    (malformed?'invalid_json':'unexpected_http')+' status='+safeCode+
+    ' expected='+(safeExpected||'none'));
+}
+
 function quoteId(value){
   if(typeof value!=='string'||!/^[A-Za-z0-9_-]{8,90}$/.test(value))throw Error('Bad synthetic Better Auth user identity');
   return `'${value}'`;
@@ -41,8 +65,11 @@ export async function runAuthenticatedIsolation(address,{request=fetch,env=proce
     if(cookie)headers.cookie=cookie;
     const res=await request(origin+path,{method,headers,redirect:'error',signal:AbortSignal.timeout(15000),...(body===undefined?{}:{body:JSON.stringify(body)})});
     count++;
-    if(!expected.includes(res.status))throw Error(`Actual authenticated Bostan HTTP ${res.status} on ${method} ${path}; expected ${expected.join('/')}`);
-    const result=await res.json();
+    if(!expected.includes(res.status))
+      throw safeAuthzQaRequestError(path,method,res.status,expected);
+    let result;
+    try{result=await res.json()}
+    catch{throw safeAuthzQaRequestError(path,method,res.status,expected,true)}
     return {result,res};
   }
   async function signUp(label){
