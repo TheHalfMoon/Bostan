@@ -5,12 +5,12 @@ import {fileURLToPath} from 'node:url';
 import {scrubPrivateParallelEnv,summarizeParallelAuthzExit,
   assessParallelOverlap,parseMacMemoryPressureFreePercentage} from './bostan-private-mac-parallel-postgres-authz.mjs';
 const entry=fileURLToPath(new URL('./bostan-private-mac-parallel-postgres-authz.mjs',import.meta.url));
-const markers=[
+const common=[
  'BOSTAN_PACKED_SHA256_RUNTIME_OWNERSHIP_VERIFIED','MIGRATED',
  'BOSTAN_BOOT_BANNER_QUALIFIED',
- 'BOSTAN_AUTHENTICATED_TWO_SESSION_TENANT_ISOLATION_PASS',
- 'BOSTAN_PACKED_SERVER_AUTHENTICATED_TWO_SESSION_QUALIFIED','CLEANUP_COMPLETED exit=0',
+ 'BOSTAN_AUTHENTICATED_TWO_SESSION_TENANT_ISOLATION_PASS','CLEANUP_COMPLETED exit=0',
 ];
+const markers=[...common,'BOSTAN_PACKED_SERVER_AUTHENTICATED_TWO_SESSION_QUALIFIED'];
 test('no network or mutable side effects in no-arg plan',()=>{
   const result=spawnSync(process.execPath,[entry],{encoding:'utf8',timeout:4000,
     env:{...process.env,DATABASE_URL:'postgres://secret.fake.invalid/customer',
@@ -60,4 +60,19 @@ test('macOS memory pressure admission requires one bounded authoritative percent
     'System-wide memory free percentage: 101%',
     'System-wide memory free percentage: 55%\nSystem-wide memory free percentage: 44%'])
     assert.equal(parseMacMemoryPressureFreePercentage(invalid),null);
+});
+
+
+test('Mac mixed Chromium/API concurrent mode requires its own exact browser proof',()=>{
+  const ui='BOSTAN_PACKED_SERVER_AUTHENTICATED_CHROMIUM_JOURNEY_QUALIFIED';
+  const browserOutput=[...common,ui].join('\n')+'\n';
+  const apiOutput=markers.join('\n')+'\n';
+  assert.equal(summarizeParallelAuthzExit({
+    exit:0,signal:null,output:browserOutput,mode:'browser'}).qualified,true);
+  assert.equal(summarizeParallelAuthzExit({
+    exit:0,signal:null,output:apiOutput,mode:'browser'}).qualified,false);
+  assert.equal(summarizeParallelAuthzExit({
+    exit:0,signal:null,output:browserOutput,mode:'api'}).qualified,false);
+  assert.throws(()=>summarizeParallelAuthzExit({
+    exit:0,signal:null,output:apiOutput,mode:'unknown'}));
 });
