@@ -20,6 +20,11 @@ test('HTTP smoke uses disposable localhost postgres and isolated Bostan instance
   assert.match(contents,/BOSTAN_PORTABLE_STAGED_COMPANY_TASK_API_QUALIFIED/);
   assert.match(contents,/--run-deployed-authz/);
   assert.match(contents,/--run-deployed-authz-ui/);
+  assert.match(contents,/--run-packed-authz-ui/);
+  assert.match(contents,/BOSTAN_PACKED_SERVER_CHROMIUM_AUTHZ_UI_QUALIFIED/);
+  assert.match(contents,/BOSTAN_PACKED_UI_REQUIRES_NATIVE_MAC_QA/);
+  assert.match(contents,/BOSTAN_PACKED_UI_REQUIRES_OWNED_CHROMIUM/);
+  assert.ok(contents.includes('if [ "$MODE" = "--run-deployed-authz-ui" ] || [ "$MODE" = "--run-packed-authz-ui" ]; then'));
   assert.match(contents,/--run-deployed-admin-race/);
   assert.match(contents,/BOSTAN_PORTABLE_STAGED_FIRST_ADMIN_RACE_QUALIFIED/);
   assert.match(contents,/BOSTAN_AUTHZ_BROWSER_UI=1/);
@@ -50,6 +55,16 @@ test('HTTP smoke uses disposable localhost postgres and isolated Bostan instance
   assert.doesNotMatch(contents,/\b(?:publish|deploy|release)\s+\S+\s*$/m);
 });
 
+
+test('packed Chromium mode fails before PostgreSQL creation without an owned browser',()=>{
+  const result=spawnSync('bash',[script,'--run-packed-authz-ui'],{
+    encoding:'utf8',timeout:20000,
+    env:{...process.env,PLAYWRIGHT_BROWSERS_PATH:''},
+  });
+  assert.equal(result.status,2);
+  assert.match(result.stderr,/BOSTAN_PACKED_UI_REQUIRES_OWNED_CHROMIUM/);
+  assert.doesNotMatch(result.stdout,/MIGRATED|BOSTAN_BOOT_BANNER_QUALIFIED/);
+});
 
 test('actual local PostgreSQL HTTP runner refuses inherited Cloud keys before making a QA database',()=>{
   const result=spawnSync('bash',[script,'--run'],{
