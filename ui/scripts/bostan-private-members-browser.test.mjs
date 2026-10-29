@@ -97,3 +97,42 @@ test('Members JavaScript exception summary never emits unknown or sensitive cont
     name:'OtherSecretName',message:'credential=SUPER_PRIVATE',
   }),{kind:'other',category:'unclassified',lexicon:'',lengthBand:'short'});
 });
+
+test('Members UI fails closed on a popup JavaScript error with allowlisted evidence only',async()=>{
+  const {withPrivateMemberBrowser}=await import('./bostan-private-members-browser.mjs');
+  const hooks={};
+  let closed=0;
+  const context={
+    on(event,cb){hooks[event]=cb},
+    async route(_pattern,cb){hooks.http=cb},
+    async routeWebSocket(_pattern,cb){hooks.websocket=cb},
+    async addCookies(){},
+    async addInitScript(){},
+    async newPage(){
+      // A same-context popup fires a pageerror; the principal page has none.
+      hooks.page({on(event,cb){
+        if(event==='pageerror')cb({name:'TypeError',message:
+          'Failed to render React component. token=SUPER_PRIVATE_SECRET user@secret.invalid'});
+      }});
+      return {
+        on(){},
+        async goto(){return {status:()=>200}},
+        getByRole(){return {async waitFor(){}}},
+      };
+    },
+  };
+  const launch=async()=>({
+    async newContext(){return context},
+    async close(){closed++},
+  });
+  await assert.rejects(
+    withPrivateMemberBrowser(good,async({createInvite})=>createInvite(),{launch}),
+    error=>{
+      assert.match(error.message,/Bostan Members Chromium JS class: unclassified;kind=TypeError;words=/);
+      assert.ok(!error.message.includes('SUPER_PRIVATE_SECRET'));
+      assert.ok(!error.message.includes('secret.invalid'));
+      return true;
+    },
+  );
+  assert.equal(closed,1);
+});
