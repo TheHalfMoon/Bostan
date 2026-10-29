@@ -90,6 +90,7 @@ test('a validator admitting a different output cannot select executable path', a
     validateRuntime: async () => f.root }), /was not verified/);
 });
 
+
 test('owned compiled runtime launches using plain Node without tsx', async t => {
   const f = await fixture(t);
   await recordRuntimeOutputOwnership(f.entry, f.output, [f.index, f.module]);
