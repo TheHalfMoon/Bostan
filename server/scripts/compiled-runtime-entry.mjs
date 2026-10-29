@@ -14,8 +14,12 @@ export function nativeEsmFileUrl(filename) {
 }
 
 export function compiledRuntimeEntrySource(entry) {
-  const url = nativeEsmFileUrl(entry);
-  // Keep the URL expression dynamic: esbuild cannot resolve file: URLs as
-  // bundle inputs, but Node must receive a file: URL at runtime on Windows.
-  return `process.argv[1] = ${JSON.stringify(entry)};\nawait import(new URL(${JSON.stringify(url)}).href);\n`;
+  // Validate the original native entrypoint, but never load that source
+  // file at runtime. The bundle's sibling server.mjs is the executable
+  // artifact; importing the original dist/index.js bypassed esbuild and
+  // silently made the compiled runtime depend on a mutable source tree.
+  nativeEsmFileUrl(entry);
+  // Preserve the original native argv path for legacy main-module checks.
+  // Keep the sibling URL dynamic so esbuild does not resolve it as an input.
+  return `process.argv[1] = ${JSON.stringify(entry)};\nawait import(new URL("./server.mjs", import.meta.url).href);\n`;
 }
