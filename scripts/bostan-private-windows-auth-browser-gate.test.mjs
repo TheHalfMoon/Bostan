@@ -43,3 +43,15 @@ test("real Windows Members UX is an explicit stronger opted-in browser proof",()
   ])assert.ok(source.includes(marker),marker);
   assert.doesNotMatch(source,/console\.log\((?:inviteePassword|inviteeCookie|invitation\.token)\)/);
 });
+
+
+test("Members runner diagnostics expose only bounded fixed stage and numeric status",()=>{
+  for(const token of ["membersLastHttpStatus","membersLastStage",
+    "BOSTAN_WIN_MEMBERS_LAST_STAGE",
+    "BOSTAN_WIN_MEMBERS_LAST_HTTP_STATUS",
+    "BOSTAN_WIN_MEMBERS_SAFE_ERROR_CLASS",
+    'membersCheckpoint("members_complete")',
+    'if(!allowed.includes(stage))'])
+    assert.ok(source.includes(token),token);
+  assert.doesNotMatch(source,/console\.error\("BOSTAN_WIN_MEMBERS.*"\+error\.message/);
+});

@@ -127,6 +127,20 @@ let ownedHomeCleaned=false;
 let childStateForceUsed=false;
 let postgresProcessTreeVerified=false;
 let browserSignupPassed=false,browserAdminPassed=false,browserMembersPassed=false;
+let membersLastStage="not_started",membersLastHttpStatus="none";
+const membersCheckpoint=(stage)=>{
+  // A closed, test-only vocabulary: no endpoints, email, cookies or tokens.
+  const allowed=[
+    "scenario_started","company_created","third_user_signed_up",
+    "third_session_signed_in","chromium_invite_created",
+    "third_session_invite_accepted","viewer_write_denied",
+    "member_promoted","operator_write_allowed",
+    "member_suspended","suspended_write_denied","members_complete",
+  ];
+  if(!allowed.includes(stage))throw Error("Invalid Windows members diagnostic stage");
+  membersLastStage=stage;
+  console.log("BOSTAN_WIN_MEMBERS_STAGE="+stage);
+};
 try{
   process.env.PAPERCLIP_TEST_POSTGRES_TEMPLATE="0";
   const {startEmbeddedPostgresTestDatabase}=await import("../packages/db/src/test-embedded-postgres.js");
@@ -308,6 +322,7 @@ try{
     throw Error("Real first-admin claim did not close bootstrap state");
   markHttpStage("BOSTAN_WINDOWS_LIVE_POST_CLAIM_HEALTH_PASS");
   if(membersMode){
+    membersCheckpoint("scenario_started");
     // Continue the very same disposable, already-claimed authenticated fixture.
     // No SQL role seeding or second infrastructure. Members UI must create an
     // invite, promote a real viewer and suspend that same user with live API
@@ -319,6 +334,8 @@ try{
         ...(json===undefined?{}:{body:JSON.stringify(json)}),
         signal:AbortSignal.timeout(15000),redirect:"error",
       });
+      membersLastHttpStatus=Number.isInteger(response.status)&&
+        response.status>=100&&response.status<=599?String(response.status):"unknown";
       return {status:response.status,body:await response.json().catch(()=>null)};
     }
     const organization=await req("/api/companies",{
@@ -329,6 +346,7 @@ try{
        !/^[a-f0-9-]{36}$/i.test(company?.id||"")||
        !/^[A-Z][A-Z0-9-]{1,15}$/.test(company?.issuePrefix||""))
       throw Error("Windows browser QA company not created or scoped");
+    membersCheckpoint("company_created");
     const inviteeEmail="bostan-qa-c-"+randomUUID()+"@example.invalid";
     const inviteePassword="Test-only-"+randomBytes(18).toString("hex")+"!A2";
     const invitee=await req("/api/auth/sign-up/email",{
@@ -337,6 +355,7 @@ try{
     });
     if(invitee.status!==200||
        typeof invitee.body?.user?.id!=="string")throw Error("Third synthetic Windows session missing");
+    membersCheckpoint("third_user_signed_up");
     // The same sign-up API response issues an actual Better Auth cookie.
     // A separate request below is used to obtain its cookie safely.
     // For a cookie-bearing response we intentionally do not use the
@@ -351,11 +370,13 @@ try{
     const inviteeCookie=signed.headers.getSetCookie?.().map(v=>v.split(";",1)[0])
       .find(v=>v.includes("session_token="));
     if(!inviteeCookie)throw Error("Third synthetic Better Auth session cookie missing");
+    membersCheckpoint("third_session_signed_in");
     const {withPrivateMemberBrowser}=await import("../ui/scripts/bostan-private-members-browser.mjs");
     const result=await withPrivateMemberBrowser({
       origin,cookie,companyId:company.id,companyPrefix:company.issuePrefix,
     },async ui=>{
       const invitation=await ui.createInvite();
+      membersCheckpoint("chromium_invite_created");
       const accepted=await req("/api/invites/"+invitation.token+"/accept",{
         method:"POST",cookie:inviteeCookie,body:{requestType:"human"},
       });
@@ -363,23 +384,29 @@ try{
          accepted.body.companyId!==company.id||
          accepted.body.requestingUserId!==invitee.body.user.id)
         throw Error("Third real session failed scoped UI invitation");
+      membersCheckpoint("third_session_invite_accepted");
       const viewer=await req("/api/companies/"+company.id+"/issues",{
         method:"POST",cookie:inviteeCookie,body:{title:"Viewer denied"},
       });
       if(viewer.status!==403)throw Error("Invited viewer created issue");
+      membersCheckpoint("viewer_write_denied");
       const promotion=await ui.updateMember(inviteeEmail,{role:"operator"});
+      membersCheckpoint("member_promoted");
       const allowed=await req("/api/companies/"+company.id+"/issues",{
         method:"POST",cookie:inviteeCookie,body:{title:"UI promoted agent",status:"todo"},
       });
       if(allowed.status!==201||allowed.body?.companyId!==company.id)
         throw Error("Operator UI promotion failed to authorize task");
+      membersCheckpoint("operator_write_allowed");
       const suspension=await ui.updateMember(inviteeEmail,{status:"suspended"});
       if(suspension.memberId!==promotion.memberId)
         throw Error("Member UI changed target across actions");
+      membersCheckpoint("member_suspended");
       const denied=await req("/api/companies/"+company.id+"/issues",{
         method:"POST",cookie:inviteeCookie,body:{title:"Suspended denied"},
       });
       if(denied.status!==403)throw Error("Suspended session retained write access");
+      membersCheckpoint("suspended_write_denied");
       return {inviteCreated:1,acceptedByThirdSession:1,viewerWriteDenied:1,
         promotionEnablesWrite:1,suspensionWriteDenied:1,updatedSameMember:1};
     });
@@ -388,6 +415,7 @@ try{
       result.suspensionWriteDenied===1&&result.updatedSameMember===1&&
       result.browserJsErrors===0&&result.externalBrowserRequests===0;
     if(!browserMembersPassed)throw Error("Windows Members Chromium proof incomplete");
+    membersCheckpoint("members_complete");
     console.log("BOSTAN_WINDOWS_CHROMIUM_MEMBERS_INVITE_ROLE_SUSPEND_PASS");
   }
   if(browserMode&&(!browserSignupPassed||!browserAdminPassed))
@@ -395,6 +423,28 @@ try{
   completedHttpChecks=true;
 }catch(error){
   failed=true;
+  if(membersMode){
+    console.error("BOSTAN_WIN_MEMBERS_LAST_STAGE="+membersLastStage);
+    console.error("BOSTAN_WIN_MEMBERS_LAST_HTTP_STATUS="+membersLastHttpStatus);
+    // Only hard-coded local QA classifications; never echo untrusted error
+    // messages, URL paths, user emails, session cookies or invite tokens.
+    const failure=String(error?.message||"");
+    const classes=[
+      "Windows browser QA company not created or scoped",
+      "Third synthetic Windows session missing",
+      "Third synthetic session sign-in rejected",
+      "Third synthetic Better Auth session cookie missing",
+      "Third real session failed scoped UI invitation",
+      "Invited viewer created issue",
+      "Operator UI promotion failed to authorize task",
+      "Member UI changed target across actions",
+      "Suspended session retained write access",
+      "Windows Members Chromium proof incomplete",
+    ];
+    const idx=classes.indexOf(failure);
+    const klass=idx<0?"other_safe_error":"qa_step_"+String(idx+1);
+    console.error("BOSTAN_WIN_MEMBERS_SAFE_ERROR_CLASS="+klass);
+  }
   const stages=[...serverOutput.matchAll(/BOSTAN_WIN_SERVER_STAGE=(static_import_start|static_import_pending|static_import_complete|runtime_start|runtime_ready|runtime_failed)/g)];
   const stage=stages.at(-1)?.[1]||"not_observed";
   console.error("BOSTAN_WINDOWS_LIVE_IMPORT_STAGE="+stage);
