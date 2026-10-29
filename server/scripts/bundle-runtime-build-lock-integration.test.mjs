@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, readdir, readFile, rm, writeFile, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import { buildAndCommitCompiledRuntime } from './bundle-runtime-commit.mjs';
 
 async function fixture(t) {
@@ -29,7 +29,7 @@ async function fixture(t) {
     const files = [];
     for (const file of paths) {
       assert.ok((await stat(file)).isFile());
-      files.push({name:file.split('/').at(-1),sha256:createHash('sha256').update(await readFile(file)).digest('hex')});
+      files.push({name:basename(file),sha256:createHash('sha256').update(await readFile(file)).digest('hex')});
     }
     await writeFile(join(path,'.bostan-compiled-runtime-owner.json'),JSON.stringify({schema:'bostan.compiled-runtime-owner.v1',entry:resolve(e),outdir:resolve(path),files}),{flag:'wx'});
   };
