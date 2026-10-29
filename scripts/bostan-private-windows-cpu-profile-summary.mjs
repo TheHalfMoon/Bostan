@@ -128,3 +128,43 @@ export function summarizePrivateWindowsMonitor(observed) {
     uncaught,exit,beforeExit,exitCalled,monitorInstalled:lines.length>0,
     redacted:true,releaseQualified:false};
 }
+
+/** Reduce ONLY the logger's exact startup-error event to fixed categorical
+ * fields. No raw JSON, message, stack, URL, path or code is returned.
+ */
+export function summarizePrivateWindowsStartupFailure(observed) {
+  const content=typeof observed==="string" ? observed.slice(-65536) : "";
+  const marker="Bostan server failed to start";
+  let found=content.includes(marker),cause="unclassified",
+    type="unclassified",code="unclassified",serialized=false;
+  const codes=new Set(["ECONNREFUSED","ECONNRESET","ETIMEDOUT","EPIPE",
+    "ENOTFOUND","ENOENT","EACCES","ERR_MODULE_NOT_FOUND",
+    "ERR_UNSUPPORTED_ESM_URL_SCHEME","57P01","08006","28P01","42P01"]);
+  const types=new Set(["Error","TypeError","SyntaxError","ReferenceError",
+    "RangeError","PostgresError","AggregateError","DatabaseError"]);
+  for(const line of content.split(/\r?\n/).slice(-70)) {
+    if(!line.startsWith("{")||line.length>15000)continue;
+    let obj;
+    try{obj=JSON.parse(line);}catch{continue}
+    if(obj?.msg!==marker)continue;
+    serialized=true;
+    const err=obj.err&&typeof obj.err==="object"?obj.err:
+      obj.error&&typeof obj.error==="object"?obj.error:{};
+    if(types.has(err.type))type=err.type;
+    const rawCode=typeof err.code==="string"?err.code:"";
+    if(codes.has(rawCode))code=rawCode;
+    const message=typeof err.message==="string"?err.message.slice(0,2000):"";
+    if(/(?:ECONNREFUSED|ECONNRESET|ETIMEDOUT|EPIPE|connection|connect|socket|postgres|database|terminated)/i.test(message))
+      cause="database_or_transport";
+    else if(/(?:module|package|import|cannot find)/i.test(message))
+      cause="module_or_dependency";
+    else if(/(?:configuration|config|environment|invalid|missing required)/i.test(message))
+      cause="configuration";
+    else if(message)cause="other";
+    break;
+  }
+  return {schema:"bostan.private-windows-startup-failure.v1",
+    startupFailureMarker:found,structuredLog:serialized,errorType:type,
+    allowlistedCode:code,messageCategory:cause,
+    fullMessageEmitted:false,releaseQualified:false};
+}
