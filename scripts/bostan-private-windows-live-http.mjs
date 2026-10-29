@@ -454,6 +454,12 @@ try{
       uiClass="members_ui_egress_or_js_error";
     else if(failure.includes("Timeout")&&failure.includes("exceeded"))
       uiClass="members_ui_timeout";
+    else if(failure==="Bostan Members Chromium blocked external HTTP request")
+      uiClass="members_external_http";
+    else if(failure==="Bostan Members Chromium blocked external WebSocket")
+      uiClass="members_external_websocket";
+    else if(failure==="Bostan Members Chromium observed JavaScript error")
+      uiClass="members_browser_js_exception";
     else if(failure.startsWith("Private Bostan browser QA observed errors or attempted external network egress"))
       uiClass="members_external_request_or_browser_error";
     else if(failure.includes("Browser invite creation rejected"))

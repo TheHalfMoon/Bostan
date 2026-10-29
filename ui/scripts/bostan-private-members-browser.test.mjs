@@ -57,7 +57,7 @@ test('real Members browser wrapper blocks cross-origin subrequests/WebSockets co
   await assert.rejects(withPrivateMemberBrowser(good,async({createInvite})=>{
     callbackReached=true;
     await createInvite();
-  },{launch}),/attempted external network egress/);
+  },{launch}),/Bostan Members Chromium blocked external HTTP request/);
   assert.equal(callbackReached,true);
   assert.equal(continued,1);
   assert.equal(blockedHttp,1);

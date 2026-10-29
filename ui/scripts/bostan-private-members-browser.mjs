@@ -25,6 +25,17 @@ export async function withPrivateMemberBrowser(input,callback,{launch=chromium.l
     // Reuse the existing QA-wide network firewall, including new pages and
     // WebSockets; page.route alone misses first popup navigation requests.
     const evidence=await installPrivateBrowserNetworkCapture(context,settings.origin);
+    const assertCapture=()=>{
+      // Fixed, non-sensitive failure classes; never log blocked URLs, query
+      // strings, page text, session cookies or browser exception stacks.
+      if(evidence.blockedHttp>0)
+        throw Error('Bostan Members Chromium blocked external HTTP request');
+      if(evidence.blockedWebSockets>0)
+        throw Error('Bostan Members Chromium blocked external WebSocket');
+      if(evidence.pageErrors>0)
+        throw Error('Bostan Members Chromium observed JavaScript error');
+      assertPrivateBrowserEgressEvidence(evidence);
+    };
     const page=await context.newPage();
     const sessionStatuses=[];
     page.on('response',response=>{if(new URL(response.url()).pathname==='/api/auth/get-session')sessionStatuses.push(response.status())});
@@ -39,7 +50,7 @@ export async function withPrivateMemberBrowser(input,callback,{launch=chromium.l
         const visibleFlags=['Sign in','Welcome','Setup','Select organization','Organization Members','Loading','No organization','Error','Authentication'].filter(flag=>bodyText.includes(flag));
         throw Error(`Private Members UI not reached: path=${currentPath},headingCount=${headingCount},visibleFlags=${visibleFlags.join('|')},sessionHttpStatuses=${sessionStatuses.join('|')},jsErrors=${evidence.pageErrors},blockedHttp=${evidence.blockedHttp},blockedWebSockets=${evidence.blockedWebSockets}`);
       }
-      assertPrivateBrowserEgressEvidence(evidence);
+      assertCapture();
     };
     const createInvite=async()=>{
       await visit('invites');
@@ -76,7 +87,7 @@ export async function withPrivateMemberBrowser(input,callback,{launch=chromium.l
       return {memberId:member.id,role:member.membershipRole,status:member.status,uiUpdated:true};
     };
     const result=await callback({createInvite,updateMember});
-    assertPrivateBrowserEgressEvidence(evidence);
+    assertCapture();
     return {...result,browserJsErrors:0,externalBrowserRequests:0};
   }finally{await browser.close()}
 }
