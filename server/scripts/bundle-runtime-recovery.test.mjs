@@ -103,7 +103,11 @@ test('backup with copied marker bound to different source is rejected', async t=
 test('a symlinked backup cannot be restored', async t=>{
   const f=await fixture(t);const original=await f.createBackup();
   const moved=join(f.root,'original-safe');await rename(original,moved);
-  await symlink(moved,original,'dir');
+  try { await symlink(moved,original,process.platform === 'win32' ? 'junction' : 'dir'); }
+  catch (error) {
+    if (['EPERM','EACCES'].includes(error?.code)) { t.skip('Windows link privilege unavailable'); return; }
+    throw error;
+  }
   await assert.rejects(recover(f), /not safely isolated/);
   assert.ok((await lstat(moved)).isDirectory());
 });
@@ -112,7 +116,11 @@ test('a symlinked file inside backup cannot be restored',async t=>{
   const f=await fixture(t);const backup=await f.createBackup();
   const path=join(backup,'server.mjs');
   const moved=join(f.root,'old-server.mjs');await rename(path,moved);
-  await symlink(moved,path,'file');
+  try { await symlink(moved,path,'file'); }
+  catch (error) {
+    if (['EPERM','EACCES'].includes(error?.code)) { t.skip('Windows file symlink privilege unavailable'); return; }
+    throw error;
+  }
   await assert.rejects(recover(f), /not safely isolated/);
   assert.equal(await readFile(moved,'utf8'),'console.log("OLD_WORKING");\n');
 });
