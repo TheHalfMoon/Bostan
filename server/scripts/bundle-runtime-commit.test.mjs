@@ -94,3 +94,24 @@ test("late output admission failure preserves the last bundle", async () => {
     assert.equal(await readFile(join(dir, "server.mjs"), "utf8"), "WORKING");
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test("successful non-writing build commits its verified outputFiles", async () => {
+  const root = await mkdtemp(join(tmpdir(), "bostan-b127-owned-"));
+  const dir = join(root, "runtime");
+  try {
+    await mkdir(dir);
+    await writeFile(join(dir, "server.mjs"), "OLD");
+    const { result, admittedOutdir } = await buildAndCommitCompiledRuntime({
+      entry: join(root, "entry.js"), outdir: dir, options: { write: true },
+      buildRuntime: async (options) => {
+        assert.equal(options.write, false);
+        assert.equal(options.outdir, dir);
+        return response(dir);
+      },
+      ...fakeAdmission(dir),
+    });
+    assert.equal(admittedOutdir, dir);
+    assert.equal(result.outputFiles.length, 2);
+    assert.equal(await readFile(join(dir, "server.mjs"), "utf8"), "console.log(42);");
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
