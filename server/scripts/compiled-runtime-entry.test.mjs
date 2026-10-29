@@ -18,7 +18,7 @@ test("compiled runtime entry executes a native absolute module through file URL"
   writeFileSync(target, 'console.log("BOSTAN_B118_ENTRY_OK");\n');
   const entry = join(root, "index.mjs");
   const source = compiledRuntimeEntrySource(target);
-  assert.match(source, /await import\("file:/);
+  assert.match(source, /await import\(new URL\("file:/);
   assert.ok(source.includes(nativeEsmFileUrl(target)));
   assert.ok(source.includes(JSON.stringify(target)));
   writeFileSync(entry, source);
