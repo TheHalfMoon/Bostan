@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, copyFile, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { recordRuntimeOutputOwnership } from '../server/scripts/bundle-runtime-output-admission.mjs';
 import { resolvePrivateWindowsQaServerCommand as resolveCommand } from './bostan-private-windows-server-command.mjs';
 
@@ -13,6 +14,12 @@ async function fixture(t) {
   const server = join(root, 'server');
   const dist = join(server, 'dist');
   const output = join(server, 'dist-runtime');
+  await mkdir(join(root, 'scripts'), {recursive:true});
+  for (const name of ['bostan-private-windows-compiled-entry-guard.mjs',
+      'bostan-private-windows-entry-admission.mjs',
+      'bostan-private-windows-qa-wave.mjs']) {
+    await copyFile(new URL(name, import.meta.url), join(root, 'scripts', name));
+  }
   await mkdir(dist, { recursive: true });
   await mkdir(output);
   const entry = join(dist, 'index.js');
@@ -39,7 +46,10 @@ test('compiled mode refuses unmarked output, then accepts exact SHA-owned output
   await recordRuntimeOutputOwnership(f.entry, f.output, [f.index, f.module]);
   const command = await resolveCommand({ root: f.root, mode: 'compiled' });
   assert.equal(command.mode, 'compiled');
-  assert.deepEqual(command.nodeArgs, [f.index]);
+  assert.deepEqual(command.nodeArgs, [
+    '--import', pathToFileURL(join(f.root, 'scripts', 'bostan-private-windows-compiled-entry-guard.mjs')).href,
+    f.index,
+  ]);
 });
 
 test('compiled mode rejects modified output without executing it', async t => {
@@ -95,9 +105,24 @@ test('owned compiled runtime launches using plain Node without tsx', async t => 
   const f = await fixture(t);
   await recordRuntimeOutputOwnership(f.entry, f.output, [f.index, f.module]);
   const command = await resolveCommand({root: f.root, mode: 'compiled'});
-  const child = spawnSync(process.execPath, command.nodeArgs, {
+  // Verify the generated module itself is valid without the Windows-only QA
+  // preload, whose own fail-closed behavior has separate tests.
+  const child = spawnSync(process.execPath, [f.index], {
     cwd: join(f.root, 'server'), encoding: 'utf8', timeout: 5000,
   });
   assert.equal(child.status, 0, child.stderr?.slice(0, 500));
   assert.match(child.stdout, /compiled/);
+});
+ 
+
+test('compiled QA child rejects Linux preflight before evaluating server module', async t => {
+  const f = await fixture(t);
+  await recordRuntimeOutputOwnership(f.entry, f.output, [f.index, f.module]);
+  const command = await resolveCommand({ root: f.root, mode: 'compiled' });
+  const child = spawnSync(process.execPath, command.nodeArgs, {
+    cwd: join(f.root, 'server'), encoding: 'utf8', timeout: 5000,
+  });
+  assert.equal(child.status, 2, child.stderr);
+  assert.doesNotMatch(child.stdout, /compiled/);
+  assert.match(child.stderr, /unsafe synthetic QA fixture/);
 });
