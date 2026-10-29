@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { recordRuntimeOutputOwnership } from '../server/scripts/bundle-runtime-output-admission.mjs';
 import { resolvePrivateWindowsQaServerCommand as resolveCommand } from './bostan-private-windows-server-command.mjs';
@@ -87,4 +88,15 @@ test('a validator admitting a different output cannot select executable path', a
   const f = await fixture(t);
   await assert.rejects(resolveCommand({ root: f.root, mode: 'compiled',
     validateRuntime: async () => f.root }), /was not verified/);
+});
+
+test('owned compiled runtime launches using plain Node without tsx', async t => {
+  const f = await fixture(t);
+  await recordRuntimeOutputOwnership(f.entry, f.output, [f.index, f.module]);
+  const command = await resolveCommand({root: f.root, mode: 'compiled'});
+  const child = spawnSync(process.execPath, command.nodeArgs, {
+    cwd: join(f.root, 'server'), encoding: 'utf8', timeout: 5000,
+  });
+  assert.equal(child.status, 0, child.stderr?.slice(0, 500));
+  assert.match(child.stdout, /compiled/);
 });
