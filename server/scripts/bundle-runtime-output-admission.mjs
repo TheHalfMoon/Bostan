@@ -43,6 +43,15 @@ async function validateLocation(entry, outdir) {
   // fails only AFTER the existing runtime has been recursively removed.
   const sourceInfo = await lstat(source).catch(() => null);
   if (!sourceInfo?.isFile() || sourceInfo.isSymbolicLink()) throw failure();
+  // A regular final entry can still be reached through a substituted parent
+  // symlink or Windows junction. Check every source ancestor before admitting
+  // deletion of a previously owned runtime.
+  let sourceCursor = parse(source).root;
+  for (const component of relative(sourceCursor, sourceParent).split(sep).filter(Boolean)) {
+    sourceCursor = resolve(sourceCursor, component);
+    const info = await lstat(sourceCursor).catch(() => null);
+    if (!info?.isDirectory() || info.isSymbolicLink()) throw failure();
+  }
 
   // lstat every parent: no symlinks, junctions or substituted path roots.
   let cursor = parse(target).root;
