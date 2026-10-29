@@ -4,6 +4,7 @@ import { dirname, isAbsolute, join, win32 } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { compiledRuntimeEntrySource, nativeEsmFileUrl } from "./compiled-runtime-entry.mjs";
+import { assertSafeRuntimeOutdir } from "./bundle-runtime-output-admission.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const serverDir = join(scriptDir, "..");
@@ -137,7 +138,8 @@ export async function bundleRuntime({
   compiledRunnerQa = false,
 }) {
   if (compiledRunnerQa) await verifyQaRunnerBuild();
-  await rm(outdir, { recursive: true, force: true });
+  const admittedOutdir = await assertSafeRuntimeOutdir(entry, outdir);
+  await rm(admittedOutdir, { recursive: true, force: true });
   const result = await build({
     entryPoints: { index: "paperclip-runtime-entry", server: entry },
     outdir,
