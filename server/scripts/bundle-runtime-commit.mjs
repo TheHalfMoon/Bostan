@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, rmdir, writeFile } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { recoverInterruptedRuntime } from './bundle-runtime-recovery.mjs';
+import { withExclusiveRuntimeBuildLock } from './bundle-runtime-lock.mjs';
 
 const MAX_OUTPUT_BYTES = 512 * 1024 * 1024;
 const MAX_OUTPUT_FILES = 10_000;
@@ -192,12 +193,15 @@ export async function buildAndCommitCompiledRuntime({
   entry, outdir, buildRuntime, options, assertSafeRuntimeOutdir, recordRuntimeOutputOwnership,
 }) {
   if (typeof buildRuntime !== 'function') throw failure();
-  // Restore one verified owned backup after an interrupted B1-28 promotion.
-  // Never replace an existing runtime or choose among ambiguous backups.
-  await recoverInterruptedRuntime({ entry, outdir, assertSafeRuntimeOutdir });
-  const admitted = await assertSafeRuntimeOutdir(entry, outdir);
-  const result = await buildRuntime({ ...options, outdir: admitted, write: false });
-  await commitCompiledRuntimeOutputs({ entry, outdir: admitted, result,
-    assertSafeRuntimeOutdir, recordRuntimeOutputOwnership });
-  return { result, admittedOutdir: admitted };
+  return withExclusiveRuntimeBuildLock({ entry, outdir, assertSafeRuntimeOutdir,
+    operation: async () => {
+      // Hold the same exclusive lock over recovery, compilation and promotion.
+      await recoverInterruptedRuntime({ entry, outdir, assertSafeRuntimeOutdir });
+      const admitted = await assertSafeRuntimeOutdir(entry, outdir);
+      const result = await buildRuntime({ ...options, outdir: admitted, write: false });
+      await commitCompiledRuntimeOutputs({ entry, outdir: admitted, result,
+        assertSafeRuntimeOutdir, recordRuntimeOutputOwnership });
+      return { result, admittedOutdir: admitted };
+    },
+  });
 }
