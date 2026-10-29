@@ -31,3 +31,18 @@ test("limits arbitrary package labels and profile size before formatting",()=>{
   assert.throws(()=>summarize({nodes:[],samples:{}}),/Malformed/);
   assert.throws(()=>summarize({nodes:[],samples:Array(2_000_001).fill(1)}),/oversized/);
 });
+
+test("child exit diagnostic classifies only fixed safe codes, never raw paths or messages",async()=>{
+  const {summarizePrivateWindowsImportExit:summarize}=await import("./bostan-private-windows-cpu-profile-summary.mjs");
+  const diagnostic=summarize({
+    observed:"file:///C:/Users/private-name/server/config.mjs\nTypeError: secret=NEVER_PRINT\n  code: 'ERR_UNSUPPORTED_ESM_URL_SCHEME'\nDATABASE_URL=private-password\n",
+    exitCode:1,signal:null,
+  });
+  assert.equal(diagnostic.errorCode,"ERR_UNSUPPORTED_ESM_URL_SCHEME");
+  assert.equal(diagnostic.errorClass,"TypeError");
+  assert.equal(diagnostic.exitCode,1);
+  for(const forbidden of ["private-name","NEVER_PRINT","private-password","C:","file://"])
+    assert.ok(!JSON.stringify(diagnostic).includes(forbidden));
+  assert.equal(summarize({observed:"token=SECRET",exitCode:-1,signal:"SECRET"}).errorCode,"unclassified");
+  assert.equal(summarize({observed:"",exitCode:null,signal:"SIGTERM"}).signal,"SIGTERM");
+});

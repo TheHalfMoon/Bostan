@@ -62,3 +62,28 @@ export function summarizePrivateWindowsCpuProfile(profile) {
     rawPathsEmitted:false,rawFunctionsEmitted:false,realPostgresUsed:false,
     startupQualified:false,releaseQualified:false};
 }
+
+/**
+ * Whitelist-only reduction of child stderr/stdout. Never surface diagnostic
+ * text, raw errors, arbitrary error codes, executable paths, URLs or secrets.
+ */
+const EXIT_ERROR_CODES=Object.freeze([
+  "ERR_MODULE_NOT_FOUND","ERR_UNSUPPORTED_ESM_URL_SCHEME",
+  "ERR_UNKNOWN_FILE_EXTENSION","ERR_PACKAGE_PATH_NOT_EXPORTED",
+  "ERR_INVALID_ARG_TYPE","ERR_REQUIRE_ESM","ERR_DLOPEN_FAILED",
+  "MODULE_NOT_FOUND","ERR_OUT_OF_MEMORY",
+]);
+const EXIT_ERROR_CLASSES=Object.freeze([
+  "SyntaxError","TypeError","ReferenceError","RangeError","AggregateError",
+]);
+export function summarizePrivateWindowsImportExit({observed,exitCode,signal}) {
+  const content=typeof observed==="string" ? observed.slice(-65536) : "";
+  const errorCode=EXIT_ERROR_CODES.find(code=>content.includes(code)) || "unclassified";
+  const errorClass=EXIT_ERROR_CLASSES.find(name=>
+    new RegExp("(?:^|\\n)\\s*"+name+":").test(content)) || "unclassified";
+  const safeExitCode=Number.isInteger(exitCode)&&exitCode>=0&&exitCode<=255?exitCode:null;
+  const safeSignal=["SIGTERM","SIGKILL","SIGINT"].includes(signal)?signal:"none";
+  return {schema:"bostan.private-windows-import-exit.v1",exitCode:safeExitCode,
+    signal:safeSignal,errorCode,errorClass,
+    rawDiagnosticEmitted:false,releaseQualified:false};
+}

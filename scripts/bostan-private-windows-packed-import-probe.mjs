@@ -19,7 +19,7 @@ import { buildPrivateWindowsHttpQaEnvironment } from "./bostan-private-windows-q
 import { matchingPrivateWindowsQaWave, parsePrivateWindowsQaWave } from "./bostan-private-windows-qa-wave.mjs";
 import { resolvePrivateWindowsQaServerCommand } from "./bostan-private-windows-server-command.mjs";
 import { observeOwnedQaChild } from "./bostan-private-windows-child-lifecycle.mjs";
-import { summarizePrivateWindowsCpuProfile } from "./bostan-private-windows-cpu-profile-summary.mjs";
+import { summarizePrivateWindowsCpuProfile, summarizePrivateWindowsImportExit } from "./bostan-private-windows-cpu-profile-summary.mjs";
 
 const root=resolve(fileURLToPath(new URL("../",import.meta.url)));
 const args=process.argv.slice(2);
@@ -105,6 +105,11 @@ async function run() {
     console.log("BOSTAN_WIN_IMPORT_ONLY_CHILD_CLOSED="+childClosed);
     console.log("BOSTAN_WIN_IMPORT_ONLY_FORCED="+forced);
     console.log("BOSTAN_WIN_IMPORT_ONLY_REAL_POSTGRES_USED=false");
+    console.log("BOSTAN_WIN_IMPORT_ONLY_SAFE_EXIT="+JSON.stringify(
+      summarizePrivateWindowsImportExit({
+        observed,exitCode:child?.exitCode,signal:child?.signalCode,
+      })));
+
     if(home && childClosed && !forced) {
       // CPU profile contains source URLs: summarize CATEGORIES ONLY,
       // never print or export the raw profile or personal paths.
