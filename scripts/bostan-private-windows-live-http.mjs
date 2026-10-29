@@ -15,6 +15,7 @@ import {evaluateWindowsPrivateHttpEvidence} from "./bostan-private-windows-http-
 import {waitForWindowsPrivateHealth} from "./bostan-private-windows-health-wait.mjs";
 import {evaluateWindowsPgOrphanCheck} from "./bostan-private-windows-pg-orphan-proof.mjs";
 import {resolvePrivateWindowsPowerShellBinary} from "./bostan-private-windows-powershell-binary.mjs";
+import {resolvePrivateWindowsQaServerCommand} from "./bostan-private-windows-server-command.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const spec={schema:"bostan.private-windows-auth-server.v1",run:false,
@@ -26,10 +27,11 @@ if(!args.length||args.length===1&&args[0]==="--plan"){
   console.log(JSON.stringify(spec,null,2));
   process.exit(0);
 }
-if(args.length!==1||args[0]!=="--run"){
-  console.error("Usage: node --import tsx scripts/bostan-private-windows-live-http.mjs [--plan|--run]");
+if(args.length!==1||!["--run","--run-compiled"].includes(args[0])){
+  console.error("Usage: node --import tsx scripts/bostan-private-windows-live-http.mjs [--plan|--run|--run-compiled]");
   process.exit(2);
 }
+const serverMode=args[0]==="--run-compiled"?"compiled":"source";
 if(process.platform!=="win32"||!parsePrivateWindowsQaWave(basename(resolve(root)),"qa")){
   console.error("Native Windows live HTTP QA requires an isolated Bostan three-digit QA checkout");
   process.exit(2);
@@ -55,6 +57,15 @@ if(!admission.allowed){
 const memoryAdmission=checkBostanWindowsMemory();
 if(!memoryAdmission.allowed){
   console.error("BOSTAN_WINDOWS_LIVE_MEMORY_REFUSED="+memoryAdmission.reason);
+  process.exit(2);
+}
+// Fail closed before creating scratch state or starting PostgreSQL. A compiled
+// QA run must have a complete, SHA-256-owned, non-linked Bostan runtime.
+let serverCommand;
+try {
+  serverCommand=await resolvePrivateWindowsQaServerCommand({root:resolve(root),mode:serverMode});
+} catch {
+  console.error("BOSTAN_WINDOWS_LIVE_COMPILED_RUNTIME_REFUSED");
   process.exit(2);
 }
 async function availablePort(){
@@ -107,9 +118,8 @@ try{
   });
   mkdirSync(env.APPDATA,{recursive:true,mode:0o700});
   mkdirSync(env.LOCALAPPDATA,{recursive:true,mode:0o700});
-  server=spawn(process.execPath,["--import","tsx","--import",
-    "../scripts/bostan-private-windows-import-profiler.mjs",
-    "../scripts/bostan-private-windows-server-entry.mjs"],{
+  console.log("BOSTAN_WINDOWS_LIVE_SERVER_MODE="+serverCommand.mode);
+  server=spawn(process.execPath,serverCommand.nodeArgs,{
     cwd:join(root,"server"),env,windowsHide:true,stdio:["ignore","pipe","pipe"],
   });
   // Observe immediately: a failed spawn emits async error and close events.
