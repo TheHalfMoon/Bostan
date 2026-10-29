@@ -1729,3 +1729,30 @@ mod tests {
         fs::remove_dir_all(directory).unwrap();
     }
 }
+
+#[cfg(all(test, not(any(target_os = "linux", target_os = "macos"))))]
+mod unsupported_verified_stdio_tests {
+    use super::{VerifiedProcessArtifact, VerifiedProcessLaunch};
+    use std::collections::BTreeMap;
+    use std::fs::File;
+    use std::sync::Arc;
+
+    #[test]
+    fn missing_immutable_snapshot_support_refuses_stdio_before_spawn() {
+        // Construct an inert fixture without bypassing production snapshot
+        // admission or launching anything on the host operating system.
+        let path = std::env::current_exe().expect("test executable path");
+        let program = VerifiedProcessArtifact {
+            display_path: path.clone(),
+            file: Arc::new(File::open(&path).expect("open own test executable")),
+        };
+        let launch = VerifiedProcessLaunch::new(program, Vec::new());
+        let error = launch
+            .spawn_stdio(&BTreeMap::new())
+            .expect_err("unsupported OS must never spawn an unverified program");
+        assert!(
+            error.to_string().contains("supported only on Linux and macOS"),
+            "must reject with the explicit platform boundary"
+        );
+    }
+}
