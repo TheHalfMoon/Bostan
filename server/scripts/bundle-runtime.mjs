@@ -3,6 +3,7 @@ import { readFile, rm, lstat } from "node:fs/promises";
 import { dirname, isAbsolute, join, win32 } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "esbuild";
+import { compiledRuntimeEntrySource, nativeEsmFileUrl } from "./compiled-runtime-entry.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const serverDir = join(scriptDir, "..");
@@ -60,7 +61,7 @@ function runtimeEntry(entry) {
     setup(builder) {
       builder.onResolve({ filter: /^paperclip-runtime-entry$/ }, () => ({ path: "paperclip-runtime-entry", namespace: "runtime-entry" }));
       builder.onLoad({ filter: /.*/, namespace: "runtime-entry" }, () => ({
-        contents: `process.argv[1] = ${JSON.stringify(entry)};\nawait import(${JSON.stringify(entry)});\n`,
+        contents: compiledRuntimeEntrySource(entry),
         loader: "js",
         resolveDir: dirname(entry),
       }));
@@ -122,7 +123,9 @@ function externalizeThirdParty(isBundled, runtimeDir) {
           pluginData: { externalizeThirdParty: true },
         });
         if (fromServer.errors.length === 0 && fromServer.path === resolved.path) return { path: args.path, external: true };
-        return { path: resolved.path, external: true };
+        // A native Windows D:\\... specifier is interpreted as an unsupported d: URL
+        // by Node ESM. External absolute package-private paths need file: URLs.
+        return { path: nativeEsmFileUrl(resolved.path), external: true };
       });
     },
   };
