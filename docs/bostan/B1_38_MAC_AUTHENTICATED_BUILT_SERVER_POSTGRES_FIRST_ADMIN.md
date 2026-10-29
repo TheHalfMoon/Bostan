@@ -36,3 +36,30 @@ Next after adding actual first-admin claim at `d832753297176f68ecda311232ca86837
 ## What is still NOT proven / NO-GO
 
 No real Chromium/Playwright first-admin UI/signup, browser design/navigation, native Windows bundled server authentication/18-stage HTTP+PG issue #237, Windows multi-suite PostgreSQL orphan issue #234, full free genuine local agent execution, installers, Linux end-user journey, or cross-platform security/privacy/license/release qualification. Mac QA has no `ui/dist` and no installed Playwright browser at this check; browser must be independently built/tested. Windows full server TypeScript compile remains RAM-blocked under current user desktop load; do not trigger unsafe repeats. Preserve PRIVATE repo, stacked Draft PRs, no main merge, publication, deployment, release, npm pack, paid compute/model/provider, customer data or unowned process/file deletion. **Product release NO-GO.**
+
+
+## B1-38 supplementary real native Windows low-memory compiled runtime receipts
+
+These results are subsequent to the successful Mac authenticated acceptance, and qualify different gates. Exact native Windows Node **v24.19.0**, authorized owned `D:\Bostan-B135-qa` worktree checked out at B1-38 head **`0bad60fb343ae2b23ef40a7a7617d9e62dde96a1`**, D test TEMP wave `D:\Bostan-B135-temp`. The older B111 checkout and unrelated user applications/data were not changed. **This is development QA, not a release-authorized Windows build.**
+
+- Real `pnpm --filter @bostan/server exec tsc --noCheck --pretty false` with `NODE_OPTIONS=--max-old-space-size=1536` **EXIT 0**, produced `server/dist/index.js` with an isolated QA build cap. RAM before ~6.69 GiB, after ~6.76 GiB, D after ~9.66 GiB. IMPORTANT: `--noCheck` skips semantic TypeScript checking; this is **NOT** proof of native full TS typecheck or production release readiness. The Mac full ordinary TS build passed in B1-36.
+- Verified actual local Runner vendors, then `node server/scripts/copy-build-assets.mjs` **EXIT 0**, `node server/dist/install-copilot-assets.mjs` **EXIT 0** with `unsupported-platform (win32-x64)` (no unsupported Copilot binary installed), and `node server/scripts/write-build-stamp.mjs` **EXIT 0** with exact tested source HEAD. These source assets were copied locally without invoking any Unix `cp`.
+- Genuine native Windows `node server/scripts/bundle-runtime.mjs` (pinned esbuild0.28.2), `NODE_OPTIONS=--max-old-space-size=1536`: **EXIT 0**; **2366 inputs -> 119 chunks in 36,841ms**, `server/dist-runtime/index.mjs` exists. Independently called the unchanged production `assertSafeRuntimeOutdir(server/dist/index.js,server/dist-runtime)`: **SHA256 admission PASS** with **238 manifest-owned files**, `index.mjs` present, validator **EXIT 0**, free RAM ~6.5GiB, D ~9.6GiB.
+
+### Actual Windows PostgreSQL+HTTP integration attempt: FAIL, not a pass
+
+The B1-34/B1-35 explicit `--run-compiled` test runs from the repo root. Its old usage sample `node --import tsx ...` failed because the pnpm workspace puts `tsx` under `server/node_modules`, not the repo root. Direct `node scripts/... --run-compiled` failed **before PostgreSQL** because the QA harness dynamically imports `../packages/db/src/test-embedded-postgres.js` while only `test-embedded-postgres.ts` exists and the TSX loader is absent. Verified the exact pinned `tsx 4.23.15` loader is at `server/node_modules/tsx/dist/loader.mjs`, and **actually imported** that real embedded-PostgreSQL helper with it: `REAL_TSX_POSTGRES_TEST_HELPER_LOADED=true`, **EXIT 0**.
+
+Ran with explicit, actually verified local loader:
+
+```powershell
+$env:TEMP='D:\Bostan-B135-temp'
+$env:TMP='D:\Bostan-B135-temp'
+node --import ./server/node_modules/tsx/dist/loader.mjs scripts/bostan-private-windows-live-http.mjs --run-compiled
+```
+
+Test-only TEMP and checkout waves matched; native Windows disk/memory admission passed (system disk >2GiB, workspace/TEMP >6GiB, free RAM >2GiB), no pre-existing postgres processes. Real `BOSTAN_WINDOWS_LIVE_POSTGRES_MIGRATED` PASS and `BOSTAN_WINDOWS_LIVE_SERVER_MODE=compiled` emitted; **but the full compiled server did not respond to private authenticated `/api/health` within 180 seconds**: `BOSTAN_WINDOWS_LIVE_STARTUP_OUTCOME=deadline_exceeded`, `BOSTAN_WINDOWS_LIVE_STARTUP_PROBES=178`, `HTTP_OBSERVATION=no_response`, no safe compiled app startup stage or error code observed. Actual integration **EXIT 1**, **0/18 authenticated HTTP + cleanup evidence stages fully qualified**. `BOSTAN_WINDOWS_LIVE_SERVER_CLOSED=true`, but **embedded PostgreSQL `db.cleanup()` reported failure**, so `POSTGRES_CLEANED=false`, `NO_POSTGRES_ORPHANS_PASS=false`, `OWNED_FIXTURE_CLEANED=false`; the test correctly kept uncertain diagnostic fixtures. A separate read-only process snapshot immediately after showed **zero active `postgres.exe` and zero Bostan-owned Node processes**, but this is **NOT** the harness-required multi-suite orphan cleanup proof and cannot be substituted for it.
+
+The Windows TEMP contains two exact owner-marked `bostan-private-auth-http-...` QA home directories and a PostgreSQL cluster with `postmaster.pid`; **none was deleted** because the harness explicitly marked cleanup uncertain. `tsx-Shehr` loader-cache directory was also observed but is NOT an authorized fixture for deletion. D available remained ~9.33GiB, RAM ~4.96GiB. Do not repeatedly launch the 180-second real PG acceptance or delete failed fixtures until there is a concrete startup/cleanup diagnosis and conservative disk/process admission. The compiled build and SHA-256 ownership PASS are real; **Windows runtime startup, authentic sign-in and cleanup remain RED**.
+
+The highest-value next engineering is **bounded, secret-free compiled startup stage instrumentation** (current compiled mode emits no useful `BOSTAN_WIN_SERVER_STAGE` event), followed by diagnosis and native Windows PostgreSQL cleanup/orphan behavior. Then rerun the original 18-stage gate, browser/Chromium and first actual free local agent, not additional synthetic-only green claims. Release remains **NO-GO**.
