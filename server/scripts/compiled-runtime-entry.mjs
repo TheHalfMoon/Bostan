@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
  */
 export function nativeEsmFileUrl(filename) {
   if (typeof filename !== "string" || !isAbsolute(filename) || filename.includes("\0") ||
-      (process.platform === "win32" && /^\\\\/.test(filename))) {
+      (process.platform === "win32" && !/^[A-Za-z]:[\\/]/.test(filename))) {
     throw new TypeError("Bostan compiled runtime requires an absolute local file path");
   }
   return pathToFileURL(filename).href;
