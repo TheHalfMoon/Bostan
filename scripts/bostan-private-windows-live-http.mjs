@@ -532,7 +532,7 @@ try{
     const safeStatuses=statuses.split("|").filter(v=>/^[1-5][0-9]{2}$/.test(v)).slice(0,10);
     console.error("BOSTAN_WIN_MEMBERS_SAFE_SESSION_STATUSES="+safeStatuses.join("|"));
   }
-  const stages=[...serverOutput.matchAll(/BOSTAN_WIN_SERVER_STAGE=(static_import_start|static_import_pending|static_import_complete|runtime_start|runtime_ready|runtime_failed)/g)];
+  const stages=[...serverOutput.matchAll(/BOSTAN_WIN_SERVER_STAGE=(static_import_start|static_import_pending|static_import_worker_alive|static_import_worker_pending|static_import_worker_failed|static_import_complete|runtime_start|runtime_ready|runtime_failed)/g)];
   const stage=stages.at(-1)?.[1]||"not_observed";
   console.error("BOSTAN_WINDOWS_LIVE_IMPORT_STAGE="+stage);
   const profiles=serverOutput.split(String.fromCharCode(10)).filter(line=>line.startsWith("BOSTAN_WIN_IMPORT_PROFILE="));

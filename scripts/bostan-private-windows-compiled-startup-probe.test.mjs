@@ -38,9 +38,10 @@ test("authorized Windows startup probe emits exact bounded constant strings", ()
       scheduled=callback;intervalMs=ms;
       return {unref:() => unrefCalled++};
     },
+    spawnWorker:()=>({on(){},unref:()=>unrefCalled++}),
   }),true);
   assert.equal(intervalMs,30000);
-  assert.equal(unrefCalled,1);
+  assert.equal(unrefCalled,2);
   assert.deepEqual(received,[COMPILED_IMPORT_START]);
   scheduled();
   assert.deepEqual(received,[COMPILED_IMPORT_START,COMPILED_IMPORT_PENDING]);
@@ -92,9 +93,65 @@ test("genuine guarded Windows child emits stage only after synthetic QA admissio
   assert.equal(good.status,0,good.stderr?.slice(0,500));
   assert.match(good.stdout,/BOSTAN_FIXTURE_NO_SERVER/);
   assert.match(good.stderr,/BOSTAN_WIN_SERVER_STAGE=static_import_start/);
+  // Synchronously block only the main JS event loop. The independent worker
+  // must still be able to write its fixed OS-fd2 heartbeat. This regression
+  // would stay RED with the old same-event-loop setInterval-only design.
+  const blocked=spawnSync(process.execPath,[
+    "--import",entry,"--import",probe,
+    "--input-type=module","--eval",
+    "Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,1600);"+
+      "console.log('BOSTAN_SYNTHETIC_MAIN_BLOCK_RELEASED')",
+  ],{cwd:join(import.meta.dirname,".."),env,encoding:"utf8",timeout:7000});
+  assert.equal(blocked.status,0);
+  assert.match(blocked.stdout,/BOSTAN_SYNTHETIC_MAIN_BLOCK_RELEASED/);
+  assert.match(blocked.stderr,/BOSTAN_WIN_SERVER_STAGE=static_import_start/);
+  assert.match(blocked.stderr,/BOSTAN_WIN_SERVER_STAGE=static_import_worker_alive/);
+  assert.doesNotMatch(blocked.stderr,/PRIVATE_PATH|DATABASE_URL|OPENAI_API_KEY/);
   await writeFile(marker,"INVALID_FIXTURE\n");
   const denied=run();
   assert.equal(denied.status,2,denied.stderr?.slice(0,500));
   assert.doesNotMatch(denied.stdout,/BOSTAN_FIXTURE_NO_SERVER/);
   assert.doesNotMatch(denied.stderr,/BOSTAN_WIN_SERVER_STAGE=/);
+});
+
+
+test('synthetic worker emits only fixed literal tokens and has no inherited sensitive environment',async()=>{
+  const {startPrivateCompiledImportWorker,IMPORT_WORKER_ALIVE,
+    IMPORT_WORKER_PENDING,IMPORT_WORKER_TOKEN}=await import(
+      './bostan-private-windows-compiled-import-worker.mjs');
+  const received=[];let scheduled=null;
+  const env={OPENAI_API_KEY:'DONT_PRINT_THIS',DATABASE_URL:'PRIVATE_URL'};
+  assert.equal(startPrivateCompiledImportWorker({
+    main:true,data:IMPORT_WORKER_TOKEN,platform:'win32',
+    write:m=>received.push(m),schedule:f=>{scheduled=f},
+  }),false);
+  assert.equal(startPrivateCompiledImportWorker({
+    main:false,data:'untrusted',platform:'win32',
+    write:m=>received.push(m),schedule:f=>{scheduled=f},
+  }),false);
+  assert.equal(startPrivateCompiledImportWorker({
+    main:false,data:IMPORT_WORKER_TOKEN,platform:'linux',
+    write:m=>received.push(m),schedule:f=>{scheduled=f},
+  }),false);
+  assert.equal(received.length,0);
+  assert.equal(startPrivateCompiledImportWorker({
+    main:false,data:IMPORT_WORKER_TOKEN,platform:'win32',
+    write:m=>received.push(m),schedule:f=>{scheduled=f},
+  }),true);
+  assert.deepEqual(received,[IMPORT_WORKER_ALIVE]);
+  scheduled();
+  assert.deepEqual(received,[IMPORT_WORKER_ALIVE,IMPORT_WORKER_PENDING]);
+  assert.ok(received.every(x=>!x.includes(env.OPENAI_API_KEY)&&
+    !x.includes(env.DATABASE_URL)));
+});
+
+test('spawn errors are fixed and do not disclose internal paths or app secrets',()=>{
+  const received=[];
+  startCompiledStartupProbe({platform:'win32',
+    environment:{BOSTAN_PRIVATE_QA_ENTRY:'B087_TEST_ONLY'},
+    emit:x=>received.push(x),schedule:()=>({unref(){}}),
+    spawnWorker:()=>{throw Error('PRIVATE_PATH C: secret user');}});
+  assert.deepEqual(received,[
+    'BOSTAN_WIN_SERVER_STAGE=static_import_start',
+    'BOSTAN_WIN_SERVER_STAGE=static_import_worker_failed']);
 });
