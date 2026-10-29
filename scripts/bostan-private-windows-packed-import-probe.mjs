@@ -104,7 +104,7 @@ async function run() {
       forced=state.forceUsed;
     }
     if(dbStub)await new Promise(ok=>dbStub.close(()=>ok()));
-    const stages=[...observed.matchAll(/BOSTAN_WIN_SERVER_STAGE=(static_import_start|static_import_pending|static_import_complete|runtime_start|runtime_ready|runtime_failed)/g)];
+    const stages=[...observed.matchAll(/BOSTAN_WIN_SERVER_STAGE=(static_import_start|static_import_pending|static_import_worker_alive|static_import_worker_pending|static_import_worker_failed|static_import_complete|runtime_start|runtime_ready|runtime_failed)/g)];
     console.log("BOSTAN_WIN_IMPORT_ONLY_OUTCOME="+boundedOutcome);
     console.log("BOSTAN_WIN_IMPORT_ONLY_FIRST_STAGE="+(stages[0]?.[1]||"not_observed"));
     console.log("BOSTAN_WIN_IMPORT_ONLY_LAST_STAGE="+(stages.at(-1)?.[1]||"not_observed"));

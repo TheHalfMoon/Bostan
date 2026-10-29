@@ -155,3 +155,13 @@ test('spawn errors are fixed and do not disclose internal paths or app secrets',
     'BOSTAN_WIN_SERVER_STAGE=static_import_start',
     'BOSTAN_WIN_SERVER_STAGE=static_import_worker_failed']);
 });
+
+
+test('bounded no-PostgreSQL CPU import probe recognizes only the fixed worker stages',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const file=new URL('./bostan-private-windows-packed-import-probe.mjs',import.meta.url);
+  const source=readFileSync(file,'utf8');
+  assert.ok(source.includes('static_import_worker_alive|static_import_worker_pending|static_import_worker_failed'));
+  assert.ok(source.includes('BOSTAN_WIN_IMPORT_ONLY_REAL_POSTGRES_USED=false'));
+  assert.ok(source.includes('BOSTAN_WIN_IMPORT_ONLY_OWNED_FIXTURE_CLEANED='));
+});
