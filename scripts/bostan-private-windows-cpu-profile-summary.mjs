@@ -87,3 +87,39 @@ export function summarizePrivateWindowsImportExit({observed,exitCode,signal}) {
     signal:safeSignal,errorCode,errorClass,
     rawDiagnosticEmitted:false,releaseQualified:false};
 }
+
+/** Parse only a narrow, controlled JSON line emitted by the QA preloader.
+ * Reject every unrecognized value and all arbitrary strings.
+ */
+export function summarizePrivateWindowsMonitor(observed) {
+  const lines=typeof observed==="string"?
+    observed.slice(-65536).split(/\r?\n/).filter(x=>x.startsWith("BOSTAN_WIN_MONITOR=")):[];
+  const allowedNames=new Set(["Error","TypeError","SyntaxError","ReferenceError",
+    "RangeError","AggregateError","EvalError","other"]);
+  const allowedCodes=new Set(["unknown","ENOENT","EACCES","EPERM","EADDRINUSE",
+    "ECONNREFUSED","ERR_MODULE_NOT_FOUND","MODULE_NOT_FOUND",
+    "ERR_PACKAGE_PATH_NOT_EXPORTED","42P01","42703","28P01","23505"]);
+  let uncaught=null,exit=null,beforeExit=false;
+  for(const line of lines.slice(-6)) {
+    let obj;
+    try{obj=JSON.parse(line.slice("BOSTAN_WIN_MONITOR=".length));}catch{continue}
+    if(!obj || typeof obj!=="object")continue;
+    if(obj.event==="before_exit")beforeExit=true;
+    if(obj.event==="exit" && Number.isInteger(obj.code) && obj.code>=0 && obj.code<=255)
+      exit=obj.code;
+    if(obj.event==="uncaught" && allowedNames.has(obj.name) &&
+      allowedCodes.has(obj.code) && ["rejection","exception"].includes(obj.origin)) {
+      const site=typeof obj.site==="string" && obj.site.length<=180 &&
+        /^(unknown|(?:server\/src|packages)\/[a-zA-Z0-9_/-]+\.(?:ts|tsx|js|mjs):[1-9][0-9]{0,5})$/.test(obj.site) ? obj.site:"unknown";
+      const pkg=typeof obj.package==="string" && obj.package.length<=100 &&
+        /^(unknown|package:(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*)$/.test(obj.package)?obj.package:"unknown";
+      const local=typeof obj.local==="string" && obj.local.length<=190 &&
+        /^(unknown|repo:(?:server|packages)\/[a-zA-Z0-9_./-]+\.(?:ts|tsx|js|mjs|json))$/.test(obj.local) &&
+        !obj.local.includes("../") ? obj.local:"unknown";
+      uncaught={name:obj.name,code:obj.code,origin:obj.origin,site,package:pkg,local};
+    }
+  }
+  return {schema:"bostan.private-windows-packed-import-monitor.v1",
+    uncaught,exit,beforeExit,monitorInstalled:lines.length>0,
+    redacted:true,releaseQualified:false};
+}

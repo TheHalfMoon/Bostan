@@ -12,6 +12,7 @@ import { once } from "node:events";
 import { lstat, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { basename, join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { fileURLToPath } from "node:url";
 import { checkBostanWindowsDisk } from "./bostan-private-windows-disk-admission.mjs";
 import { checkBostanWindowsMemory } from "./bostan-private-windows-memory-admission.mjs";
@@ -19,7 +20,7 @@ import { buildPrivateWindowsHttpQaEnvironment } from "./bostan-private-windows-q
 import { matchingPrivateWindowsQaWave, parsePrivateWindowsQaWave } from "./bostan-private-windows-qa-wave.mjs";
 import { resolvePrivateWindowsQaServerCommand } from "./bostan-private-windows-server-command.mjs";
 import { observeOwnedQaChild } from "./bostan-private-windows-child-lifecycle.mjs";
-import { summarizePrivateWindowsCpuProfile, summarizePrivateWindowsImportExit } from "./bostan-private-windows-cpu-profile-summary.mjs";
+import { summarizePrivateWindowsCpuProfile, summarizePrivateWindowsImportExit, summarizePrivateWindowsMonitor } from "./bostan-private-windows-cpu-profile-summary.mjs";
 
 const root=resolve(fileURLToPath(new URL("../",import.meta.url)));
 const args=process.argv.slice(2);
@@ -77,9 +78,15 @@ async function run() {
       connectionString:"postgres://synthetic:synthetic@127.0.0.1:"+dbPort+"/synthetic_probe",
       secret:randomBytes(32).toString("hex"),
     });
+    // Keep the existing strict guard and stage probe *before* this diagnostic
+    // preload; do not change the production compiled entrypoint.
+    const monitor=pathToFileURL(join(root,"scripts",
+      "bostan-private-windows-packed-error-monitor.mjs")).href;
+    const entry=command.nodeArgs.at(-1);
+    const args=command.nodeArgs.slice(0,-1);
     child=spawn(process.execPath,[
       "--cpu-prof","--cpu-prof-dir",home,
-      ...command.nodeArgs,
+      ...args,"--import",monitor,entry,
     ],{cwd:join(root,"server"),env,windowsHide:true,stdio:["ignore","pipe","pipe"]});
     observer=observeOwnedQaChild(child);
     // Only collect into memory, never emit raw logs, paths or network details.
@@ -109,6 +116,8 @@ async function run() {
       summarizePrivateWindowsImportExit({
         observed,exitCode:child?.exitCode,signal:child?.signalCode,
       })));
+    console.log("BOSTAN_WIN_IMPORT_ONLY_SAFE_MONITOR="+JSON.stringify(
+      summarizePrivateWindowsMonitor(observed)));
 
     if(home && childClosed && !forced) {
       // CPU profile contains source URLs: summarize CATEGORIES ONLY,
