@@ -141,6 +141,17 @@ export async function commitCompiledRuntimeOutputs({
         }
         await renameDirectory(backup, canonical);
         oldMoved = false;
+      } else if (promoted && await stageIsExactlyOurs(canonical, outputs)) {
+        // A first install has no old runtime to restore. A failed ownership
+        // marker must not strand a complete but unowned bundle at the live
+        // path, blocking the next admitted build. Only move exact generated
+        // bytes; foreign, modified, or linked contents remain untouched.
+        const rejected = join(dirname(canonical), '.bostan-' + basename(canonical) + '-rejected-' + randomUUID());
+        try {
+          await renameDirectory(canonical, rejected);
+        } catch {
+          // Preserve the original marker error; never delete uncertain data.
+        }
       }
       throw error;
     }
