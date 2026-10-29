@@ -75,7 +75,9 @@ function keepModuleLocations({ compiledRunnerQa = false } = {}) {
     name: "keep-module-locations",
     setup(builder) {
       builder.onLoad({ filter: /\.(?:[cm]?js|[cm]?ts)$/ }, async (args) => {
-        if (args.path.includes("/node_modules/")) return undefined;
+        // esbuild reports native backslash paths on Windows; never rewrite
+        // import.meta in third-party node_modules into a private absolute URL.
+        if (args.path.replaceAll("\\", "/").includes("/node_modules/")) return undefined;
         const source = await readFile(args.path, "utf8");
         if (!source.includes("import.meta")) return undefined;
         return {
