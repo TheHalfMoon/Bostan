@@ -443,7 +443,36 @@ try{
     ];
     const idx=classes.indexOf(failure);
     const klass=idx<0?"other_safe_error":"qa_step_"+String(idx+1);
-    console.error("BOSTAN_WIN_MEMBERS_SAFE_ERROR_CLASS="+klass);
+    // Catch known Playwright/UI failure families without ever echoing the
+    // untrusted browser exception or its embedded URLs and session values.
+    let uiClass=klass;
+    if(failure.startsWith("Private Members UI not reached: "))
+      uiClass="members_ui_not_reached";
+    else if(failure==="Bostan private Members UI failed to load")
+      uiClass="members_ui_http_failure";
+    else if(failure==="Private Members UI emitted browser JS error or external request")
+      uiClass="members_ui_egress_or_js_error";
+    else if(failure.includes("Timeout")&&failure.includes("exceeded"))
+      uiClass="members_ui_timeout";
+    else if(failure.startsWith("Private Bostan browser QA observed errors or attempted external network egress"))
+      uiClass="members_external_request_or_browser_error";
+    else if(failure.includes("Browser invite creation rejected"))
+      uiClass="browser_invite_http_rejected";
+    else if(failure.includes("Browser did not render exact generated invite URL"))
+      uiClass="browser_invite_render_mismatch";
+    else if(failure.includes("Browser member update rejected"))
+      uiClass="browser_member_update_http_rejected";
+    console.error("BOSTAN_WIN_MEMBERS_SAFE_ERROR_CLASS="+uiClass);
+    // The Members helper already emits only a pre-filtered fixed list of
+    // visible flags. Re-filter again here and never output raw page text.
+    const allowedFlags=["Sign in","Welcome","Setup","Select organization",
+      "Organization Members","Loading","No organization","Error","Authentication"];
+    const found=/visibleFlags=([^,]{0,250}),sessionHttpStatuses=/.exec(failure)?.[1]||"";
+    const visibleFlags=found.split("|").filter(v=>allowedFlags.includes(v));
+    console.error("BOSTAN_WIN_MEMBERS_SAFE_VISIBLE_FLAGS="+visibleFlags.join("|"));
+    const statuses=/sessionHttpStatuses=([0-9|]{0,100}),jsErrors=/.exec(failure)?.[1]||"";
+    const safeStatuses=statuses.split("|").filter(v=>/^[1-5][0-9]{2}$/.test(v)).slice(0,10);
+    console.error("BOSTAN_WIN_MEMBERS_SAFE_SESSION_STATUSES="+safeStatuses.join("|"));
   }
   const stages=[...serverOutput.matchAll(/BOSTAN_WIN_SERVER_STAGE=(static_import_start|static_import_pending|static_import_complete|runtime_start|runtime_ready|runtime_failed)/g)];
   const stage=stages.at(-1)?.[1]||"not_observed";

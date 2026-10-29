@@ -55,3 +55,14 @@ test("Members runner diagnostics expose only bounded fixed stage and numeric sta
     assert.ok(source.includes(token),token);
   assert.doesNotMatch(source,/console\.error\("BOSTAN_WIN_MEMBERS.*"\+error\.message/);
 });
+
+
+test("Members UI diagnostic accepts only allowlisted visible flags and HTTP codes",()=>{
+  for(const token of ["members_ui_not_reached",
+    "BOSTAN_WIN_MEMBERS_SAFE_VISIBLE_FLAGS",
+    "BOSTAN_WIN_MEMBERS_SAFE_SESSION_STATUSES",
+    "allowedFlags.includes(v)",
+    "/^[1-5][0-9]{2}$/.test(v)"])
+    assert.ok(source.includes(token),token);
+  assert.doesNotMatch(source,/console\.error\("BOSTAN_WIN_MEMBERS.*"\+failure\)/);
+});
