@@ -1,10 +1,11 @@
 
-import { readFile, rm, lstat } from "node:fs/promises";
+import { readFile, lstat } from "node:fs/promises";
 import { dirname, isAbsolute, join, win32 } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { compiledRuntimeEntrySource, nativeEsmFileUrl } from "./compiled-runtime-entry.mjs";
 import { assertSafeRuntimeOutdir, recordRuntimeOutputOwnership } from "./bundle-runtime-output-admission.mjs";
+import { buildAndCommitCompiledRuntime } from "./bundle-runtime-commit.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const serverDir = join(scriptDir, "..");
@@ -140,11 +141,11 @@ export async function bundleRuntime({
   compiledRunnerQa = false,
 }) {
   if (compiledRunnerQa) await verifyQaRunnerBuild();
-  const admittedOutdir = await assertSafeRuntimeOutdir(entry, outdir);
-  await rm(admittedOutdir, { recursive: true, force: true });
-  const result = await build({
+  const { result, admittedOutdir } = await buildAndCommitCompiledRuntime({
+    entry, outdir, buildRuntime: build,
+    assertSafeRuntimeOutdir, recordRuntimeOutputOwnership,
+    options: {
     entryPoints: { index: "paperclip-runtime-entry", server: entry },
-    outdir: admittedOutdir,
     outExtension: { ".js": ".mjs" },
     chunkNames: "chunk-[hash]",
     bundle: true,
@@ -160,8 +161,8 @@ export async function bundleRuntime({
     logLevel: "error",
     plugins: [runtimeEntry(entry), keepModuleLocations({ compiledRunnerQa }),
       externalizeThirdParty(isBundled, dirname(entry))],
+    },
   });
-  await recordRuntimeOutputOwnership(entry, admittedOutdir, Object.keys(result.metafile.outputs));
   const outputs = Object.keys(result.metafile.outputs).filter((file) => file.endsWith(".mjs"));
   return {
     outfile: join(admittedOutdir, "index.mjs"),
