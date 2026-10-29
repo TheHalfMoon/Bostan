@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, mkdir, rename, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rename, rm, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { bundleRuntime } from "./bundle-runtime.mjs";
@@ -22,6 +22,9 @@ test("compiled Bostan workspace dependency executes built JS without source fall
     const entry = join(server, "entry.mjs");
     await writeFile(entry, "import { value } from '@bostan/db'; if (value !== 42) throw new Error('BAD_VALUE'); console.log('B121_COMPILED=42');\n");
     const result = await bundleRuntime({ entry, outdir: join(server, "runtime") });
+    // A marker-backed rebuild must still work without requiring manual cleanup.
+    const rebuilt = await bundleRuntime({ entry, outdir: join(server, "runtime") });
+    assert.equal(rebuilt.serverModule, result.serverModule);
     await rename(pkg, `${pkg}.unavailable`);
     const child = spawnSync(process.execPath, [result.serverModule], {
       cwd: server, encoding: "utf8", timeout: 10000,
@@ -46,6 +49,10 @@ test("unrelated third-party package remains runtime-external", async () => {
     const entry = join(server, "entry.mjs");
     await writeFile(entry, "import { value } from 'third-party'; console.log('B121_EXTERNAL=' + value);\n");
     const result = await bundleRuntime({ entry, outdir: join(server, "runtime") });
+    const foreign = join(server, "runtime", "IMPORTANT_FOREIGN_FILE.txt");
+    await writeFile(foreign, "DO NOT DELETE");
+    await assert.rejects(bundleRuntime({ entry, outdir: join(server, "runtime") }), /not safely isolated/);
+    assert.equal(await readFile(foreign, "utf8"), "DO NOT DELETE");
     await writeFile(join(pkg, "index.js"), "export const value = 77;\n");
     const child = spawnSync(process.execPath, [result.serverModule], {
       cwd: server, encoding: "utf8", timeout: 10000,
