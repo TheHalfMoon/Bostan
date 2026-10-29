@@ -2,6 +2,7 @@ import { createReadStream } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 import { lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, rmdir, writeFile } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { recoverInterruptedRuntime } from './bundle-runtime-recovery.mjs';
 
 const MAX_OUTPUT_BYTES = 512 * 1024 * 1024;
 const MAX_OUTPUT_FILES = 10_000;
@@ -180,6 +181,9 @@ export async function buildAndCommitCompiledRuntime({
   entry, outdir, buildRuntime, options, assertSafeRuntimeOutdir, recordRuntimeOutputOwnership,
 }) {
   if (typeof buildRuntime !== 'function') throw failure();
+  // If the prior run lost power between two directory renames, recover its
+  // single SHA-256-verified owned rollback before attempting a fresh build.
+  await recoverInterruptedRuntime({ entry, outdir, assertSafeRuntimeOutdir });
   const admitted = await assertSafeRuntimeOutdir(entry, outdir);
   const result = await buildRuntime({ ...options, outdir: admitted, write: false });
   await commitCompiledRuntimeOutputs({ entry, outdir: admitted, result,
