@@ -49,3 +49,11 @@ The old B1-52 Windows Members E2E RED and its exception are **resolved for this 
 ## Remaining NO-GO release gates
 
 A real free offline agent execution task, full Linux user journey, native Windows/Linux installer/package verification, concurrent multi-suite PostgreSQL stress beyond sequential stop gates, independently complete security/privacy/NOTICE/third-party license/provenance audits, accessible/performance/user-facing acceptance, and integration/CI validation under the stacked protected branch are still outstanding. Strictly PRIVATE DRAFT, no protected-main merge, GitHub Actions enablement, deploy, npm publish/pack, release, paid inference or customer data. Never touch unrelated app/process or files.
+
+## Post-fix UI component regressions on both native operating systems
+
+On the same unchanged B1-53 product source, run actual workspace Vitest directly on the **source** `ui/src/pages/CompanyAccess.test.tsx` and `ui/src/components/access/InvitesSection.test.tsx`:
+
+- Native Mac `CI=1 DO_NOT_TRACK=1 pnpm --filter @bostan/ui exec vitest run src/pages/CompanyAccess.test.tsx src/components/access/InvitesSection.test.tsx --reporter=dot`: **20/20 PASS**, two files, exit 0, 2.40s runner.
+- Native Windows at SHA `25ac9f35bafc675d12f8e53ce36d887ce8eb1c75`: same 20/20 PASS, two files, exit 0, 15.70s runner, no real PG or model calls. Windows memory admission measured 4.08 GiB available and bounded Node heap to 1.5 GiB for this test.
+- These tests supplement, rather than substitute for, real Chromium/PG E2E. They do not qualify every UI component, end-user accessibility, Linux or release packaging.
