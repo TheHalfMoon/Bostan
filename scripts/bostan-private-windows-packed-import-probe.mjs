@@ -19,6 +19,7 @@ import { buildPrivateWindowsHttpQaEnvironment } from "./bostan-private-windows-q
 import { matchingPrivateWindowsQaWave, parsePrivateWindowsQaWave } from "./bostan-private-windows-qa-wave.mjs";
 import { resolvePrivateWindowsQaServerCommand } from "./bostan-private-windows-server-command.mjs";
 import { observeOwnedQaChild } from "./bostan-private-windows-child-lifecycle.mjs";
+import { summarizePrivateWindowsCpuProfile } from "./bostan-private-windows-cpu-profile-summary.mjs";
 
 const root=resolve(fileURLToPath(new URL("../",import.meta.url)));
 const args=process.argv.slice(2);
@@ -107,25 +108,13 @@ async function run() {
     if(home && childClosed && !forced) {
       // CPU profile contains source URLs: summarize CATEGORIES ONLY,
       // never print or export the raw profile or personal paths.
-      let counts={runtime:0,thirdParty:0,nodeInternal:0,other:0};
       try {
         const files=(await readdir(home)).filter(name=>name.endsWith(".cpuprofile"));
-        if(files.length===1) {
-          const profile=JSON.parse(await readFile(join(home,files[0]),"utf8"));
-          const categories=new Map();
-          for(const node of profile.nodes||[]){
-            const url=String(node.callFrame?.url||"");
-            const group=url.includes("dist-runtime")?"runtime":
-              url.includes("node_modules")?"thirdParty":
-              url.startsWith("node:")?"nodeInternal":"other";
-            categories.set(node.id,group);
-          }
-          for(const sample of profile.samples||[]){
-            const category=categories.get(sample)||"other";counts[category]++;
-          }
-        }
+        if(files.length!==1)throw Error("Missing single owned CPU profile");
+        const profile=JSON.parse(await readFile(join(home,files[0]),"utf8"));
+        const summary=summarizePrivateWindowsCpuProfile(profile);
+        console.log("BOSTAN_WIN_IMPORT_ONLY_CPU_ATTRIBUTION="+JSON.stringify(summary));
       }catch{console.log("BOSTAN_WIN_IMPORT_ONLY_CPU_PROFILE=unavailable");}
-      console.log("BOSTAN_WIN_IMPORT_ONLY_CPU_SAMPLES="+JSON.stringify(counts));
       const safe=(await lstat(home)).isDirectory() &&
         !(await lstat(home)).isSymbolicLink() &&
         await readFile(marker,"utf8")==="BOSTAN_PRIVATE_SYNTHETIC_ONLY\n";
