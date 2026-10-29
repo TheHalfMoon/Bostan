@@ -37,6 +37,8 @@ export async function resolvePrivateWindowsQaServerCommand({
   }
   return { mode: 'compiled', nodeArgs: [
     '--import', pathToFileURL(join(root, 'scripts', 'bostan-private-windows-compiled-entry-guard.mjs')).href,
+    // Emitted only after the guard passes. No raw stack, path or secrets.
+    '--import', pathToFileURL(join(root, 'scripts', 'bostan-private-windows-compiled-startup-probe.mjs')).href,
     join(output, 'index.mjs'),
   ] };
 }
