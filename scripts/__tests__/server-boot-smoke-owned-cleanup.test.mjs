@@ -6,6 +6,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// This runner executes a Bash script; native Windows qualifies it through WSL.
+const shellTest = process.platform === 'win32' ? test.skip : test;
 const script = process.env.BOSTAN_SMOKE_TEST_SCRIPT ||
   resolve(dirname(fileURLToPath(import.meta.url)), '..', 'server-boot-smoke.sh');
 const fake = `
@@ -51,19 +53,19 @@ async function run(t, mode) {
   const kills = await readFile(f.kills, 'utf8').catch(err => err.code === 'ENOENT' ? '' : Promise.reject(err));
   return { result, kills };
 }
-test('ready server succeeds without sending unnecessary SIGKILL', async t=>{
+shellTest('ready server succeeds without sending unnecessary SIGKILL', async t=>{
   const {result, kills} = await run(t, 'ok');
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /boot smoke ok:/);
   assert.equal(kills, '', 'must not signal a PID already reaped after graceful TERM');
 });
-test('early-exit server fails cleanly, never signals an unrelated PID', async t=>{
+shellTest('early-exit server fails cleanly, never signals an unrelated PID', async t=>{
   const {result, kills} = await run(t, 'exit');
   assert.equal(result.status, 1);
   assert.match(result.stderr, /server exited before becoming ready/);
   assert.equal(kills, '');
 });
-test('unresponsive owned server is forcibly stopped after bounded grace period', async t=>{
+shellTest('unresponsive owned server is forcibly stopped after bounded grace period', async t=>{
   const {result, kills} = await run(t, 'hang');
   assert.equal(result.status, 1);
   assert.match(result.stderr, /did not report ok within/);
