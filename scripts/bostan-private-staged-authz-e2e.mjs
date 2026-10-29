@@ -84,8 +84,24 @@ export async function runAuthenticatedIsolation(address,{request=fetch,env=proce
     await call('/api/bootstrap/claim',{method:'POST',cookie:b.cookie,expected:[409]});
     const check=await request(origin+'/api/health',{redirect:'error',signal:AbortSignal.timeout(15000)});
     if(check.status!==200||(await check.json())?.bootstrapStatus!=='ready')throw Error('First-admin browser claim did not close bootstrap state');
+  }else if(env.BOSTAN_AUTHZ_API_FIRST_ADMIN==='1'){
+    // Exact built-server QA: exercise the production first-admin claim endpoint
+    // with two real Better Auth session cookies, rather than seeding the role.
+    await call('/api/bootstrap/claim',{method:'POST',expected:[401]});
+    const {result:claimed}=await call('/api/bootstrap/claim',{
+      method:'POST',cookie:a.cookie,expected:[200],
+    });
+    if(claimed?.claimed!==true||claimed.userId!==a.id)
+      throw Error('First administrator claim did not assign the signed-in user');
+    await call('/api/bootstrap/claim',{method:'POST',cookie:b.cookie,expected:[409]});
+    const ready=await request(origin+'/api/health',{
+      redirect:'error',signal:AbortSignal.timeout(15000),
+    });
+    if(ready.status!==200||(await ready.json())?.bootstrapStatus!=='ready')
+      throw Error('Real first-admin claim did not complete bootstrap');
   }else{
-    // Strictly scoped to the prior API-only synthetic authz fixture.
+    // Backward-compatible staged API-only fixture: role is seeded in the
+    // isolated database (never claim this legacy path verified the HTTP claim).
     executeSql(`insert into instance_user_roles(user_id,role) values(${quoteId(a.id)},'instance_admin') on conflict (user_id,role) do nothing`);
   }
   const companyA=(await call('/api/companies',{method:'POST',cookie:a.cookie,body:{name:`Bostan authz A ${trace}`},expected:[201]})).result;
@@ -175,7 +191,7 @@ export async function runAuthenticatedIsolation(address,{request=fetch,env=proce
       return {realChromiumInviteCreated:1,inviteAcceptedByThirdSession:1,viewerTaskWriteDenied:1,uiPromotionEnablesWrite:1,uiSuspensionDenials:2,memberUiUpdates:2};
     });
   }
-  return {schema:browserUi?'bostan.three-session-chromium-signup-first-admin.v3':'bostan.two-authenticated-sessions.v2',passed:true,releaseQualified:false,authMode:'authenticated',sessionUsers:browserUi?3:2,independentMemberships:2,crossCompanyDetailDenials:2,crossCompanyListDenials:2,crossCompanyWriteDenials:2,foreignTask404MatchesNonexistence:2,viewerReadAllowed:1,viewerWriteDenied:1,revokedMembershipAccessDenied:2,inviteCreated:1,inviteAcceptedViaApi:1,inviteeViewerRead:1,inviteeViewerWriteDenied:1,unauthorizedInviteDenied:1,unauthorizedPromotionDenied:1,promotionEnablesOperatorWrite:1,suspensionDenialsSameSession:3,syntheticOnly:true,requests:count,providerCalls:0,...(firstSignupBrowser?{firstSignupBrowser}:{}),...(firstAdminBrowser?{firstAdminBrowser,secondAdminClaimRejected:1,anonymousAdminClaimRejected:1}:{}),...(browserUi?{browserUi}:{} )};
+  return {schema:browserUi?'bostan.three-session-chromium-signup-first-admin.v3':'bostan.two-authenticated-sessions.v2',passed:true,releaseQualified:false,authMode:'authenticated',sessionUsers:browserUi?3:2,independentMemberships:2,crossCompanyDetailDenials:2,crossCompanyListDenials:2,crossCompanyWriteDenials:2,foreignTask404MatchesNonexistence:2,viewerReadAllowed:1,viewerWriteDenied:1,revokedMembershipAccessDenied:2,inviteCreated:1,inviteAcceptedViaApi:1,inviteeViewerRead:1,inviteeViewerWriteDenied:1,unauthorizedInviteDenied:1,unauthorizedPromotionDenied:1,promotionEnablesOperatorWrite:1,suspensionDenialsSameSession:3,syntheticOnly:true,requests:count,providerCalls:0,...(env.BOSTAN_AUTHZ_API_FIRST_ADMIN==='1'?{realApiFirstAdminClaim:1,anonymousAdminClaimDenied:1,secondAdminClaimDenied:1}:{}),...(firstSignupBrowser?{firstSignupBrowser}:{}),...(firstAdminBrowser?{firstAdminBrowser,secondAdminClaimRejected:1,anonymousAdminClaimRejected:1}:{}),...(browserUi?{browserUi}:{} )};
 }
 const direct=process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url);
 if(direct){const args=process.argv.slice(2);if(args.length===0||(args.length===1&&args[0]==='--plan'))console.log('Bostan private authenticated multi-session test: --run --url http://127.0.0.1:<port>/; requires disposable PostgreSQL sentinel. No real accounts or model calls.');else if(args.length===3&&args[0]==='--run'&&args[1]==='--url'){try{console.log(JSON.stringify(await runAuthenticatedIsolation(args[2]),null,2));console.log('BOSTAN_AUTHENTICATED_TWO_SESSION_TENANT_ISOLATION_PASS')}catch(e){console.error('Bostan real authenticated QA failed:',e.message);process.exitCode=1}}else{console.error('Usage: --plan | --run --url http://127.0.0.1:<port>/');process.exitCode=2;}}
