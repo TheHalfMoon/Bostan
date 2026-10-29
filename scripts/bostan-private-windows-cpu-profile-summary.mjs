@@ -183,3 +183,15 @@ export function summarizePrivateWindowsStartupFailure(observed) {
     prettyFallback,errorType:type,allowlistedCode:code,messageCategory:cause,
     fullMessageEmitted:false,releaseQualified:false};
 }
+
+/** Do not equate an early preload stage with a stalled static import.
+ * A packed server may execute startServer() and its failure catch without
+ * printing any additional preload stage markers.
+ */
+export function classifyPrivateWindowsPackedPhase({monitor,startup}={}) {
+  if(monitor?.exitCalled?.site==="packed_server" &&
+     monitor.exitCalled.code===1 && startup?.startupFailureMarker===true)
+    return "application_startup_failure";
+  if(monitor?.uncaught) return "unhandled_exception";
+  return "unclassified";
+}

@@ -20,7 +20,7 @@ import { buildPrivateWindowsHttpQaEnvironment } from "./bostan-private-windows-q
 import { matchingPrivateWindowsQaWave, parsePrivateWindowsQaWave } from "./bostan-private-windows-qa-wave.mjs";
 import { resolvePrivateWindowsQaServerCommand } from "./bostan-private-windows-server-command.mjs";
 import { observeOwnedQaChild } from "./bostan-private-windows-child-lifecycle.mjs";
-import { summarizePrivateWindowsCpuProfile, summarizePrivateWindowsImportExit, summarizePrivateWindowsMonitor, summarizePrivateWindowsStartupFailure } from "./bostan-private-windows-cpu-profile-summary.mjs";
+import { summarizePrivateWindowsCpuProfile, summarizePrivateWindowsImportExit, summarizePrivateWindowsMonitor, summarizePrivateWindowsStartupFailure, classifyPrivateWindowsPackedPhase } from "./bostan-private-windows-cpu-profile-summary.mjs";
 
 const root=resolve(fileURLToPath(new URL("../",import.meta.url)));
 const args=process.argv.slice(2);
@@ -120,6 +120,10 @@ async function run() {
       summarizePrivateWindowsMonitor(observed)));
     console.log("BOSTAN_WIN_IMPORT_ONLY_SAFE_STARTUP_FAILURE="+JSON.stringify(
       summarizePrivateWindowsStartupFailure(observed)));
+    console.log("BOSTAN_WIN_IMPORT_ONLY_PHASE="+classifyPrivateWindowsPackedPhase({
+      monitor:summarizePrivateWindowsMonitor(observed),
+      startup:summarizePrivateWindowsStartupFailure(observed),
+    }));
 
     if(home && childClosed && !forced) {
       // CPU profile contains source URLs: summarize CATEGORIES ONLY,

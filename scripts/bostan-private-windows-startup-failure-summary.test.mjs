@@ -34,3 +34,10 @@ test("parses pino-pretty synthetic multiline error without leaking source",()=>{
  assert.equal(v.messageCategory,"database_or_transport");
  assert.ok(!JSON.stringify(v).includes("PRIVATE_TOKEN"));
 });
+
+test("distinguishes packed startup catch from a static import failure",async()=>{
+ const {classifyPrivateWindowsPackedPhase:phase}=await import("./bostan-private-windows-cpu-profile-summary.mjs");
+ assert.equal(phase({monitor:{exitCalled:{site:"packed_server",code:1}},startup:{startupFailureMarker:true}}),"application_startup_failure");
+ assert.equal(phase({monitor:{uncaught:{name:"TypeError"}},startup:{}}),"unhandled_exception");
+ assert.equal(phase({monitor:{exitCalled:{site:"packed_server",code:1}},startup:{startupFailureMarker:false}}),"unclassified");
+});
