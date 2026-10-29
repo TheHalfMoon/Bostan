@@ -38,6 +38,12 @@ async function validateLocation(entry, outdir) {
       isWithin(target, source) || isWithin(target, process.cwd()) ||
       target === parse(target).root) throw failure();
 
+  // Refuse to erase a previously owned runtime if its source entry is missing,
+  // substituted with a link, or no longer a regular file. Otherwise esbuild
+  // fails only AFTER the existing runtime has been recursively removed.
+  const sourceInfo = await lstat(source).catch(() => null);
+  if (!sourceInfo?.isFile() || sourceInfo.isSymbolicLink()) throw failure();
+
   // lstat every parent: no symlinks, junctions or substituted path roots.
   let cursor = parse(target).root;
   const components = relative(cursor, target).split(sep).filter(Boolean);
