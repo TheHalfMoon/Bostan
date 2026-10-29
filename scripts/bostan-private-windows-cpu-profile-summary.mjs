@@ -135,13 +135,24 @@ export function summarizePrivateWindowsMonitor(observed) {
 export function summarizePrivateWindowsStartupFailure(observed) {
   const content=typeof observed==="string" ? observed.slice(-65536) : "";
   const marker="Bostan server failed to start";
-  let found=content.includes(marker),cause="unclassified",
-    type="unclassified",code="unclassified",serialized=false;
+  const markerOffset=content.lastIndexOf(marker);
+  const found=markerOffset>=0;
+  let cause="unclassified",type="unclassified",code="unclassified",
+    serialized=false,prettyFallback=false;
   const codes=new Set(["ECONNREFUSED","ECONNRESET","ETIMEDOUT","EPIPE",
     "ENOTFOUND","ENOENT","EACCES","ERR_MODULE_NOT_FOUND",
     "ERR_UNSUPPORTED_ESM_URL_SCHEME","57P01","08006","28P01","42P01"]);
   const types=new Set(["Error","TypeError","SyntaxError","ReferenceError",
     "RangeError","PostgresError","AggregateError","DatabaseError"]);
+  const classifyMessage=(message)=>{
+    if(/(?:ECONNREFUSED|ECONNRESET|ETIMEDOUT|EPIPE|connection|connect|socket|postgres|database|terminated)/i.test(message))
+      return "database_or_transport";
+    if(/(?:module|package|import|cannot find)/i.test(message))
+      return "module_or_dependency";
+    if(/(?:configuration|config|environment|invalid|missing required)/i.test(message))
+      return "configuration";
+    return message?"other":"unclassified";
+  };
   for(const line of content.split(/\r?\n/).slice(-70)) {
     if(!line.startsWith("{")||line.length>15000)continue;
     let obj;
@@ -153,18 +164,22 @@ export function summarizePrivateWindowsStartupFailure(observed) {
     if(types.has(err.type))type=err.type;
     const rawCode=typeof err.code==="string"?err.code:"";
     if(codes.has(rawCode))code=rawCode;
-    const message=typeof err.message==="string"?err.message.slice(0,2000):"";
-    if(/(?:ECONNREFUSED|ECONNRESET|ETIMEDOUT|EPIPE|connection|connect|socket|postgres|database|terminated)/i.test(message))
-      cause="database_or_transport";
-    else if(/(?:module|package|import|cannot find)/i.test(message))
-      cause="module_or_dependency";
-    else if(/(?:configuration|config|environment|invalid|missing required)/i.test(message))
-      cause="configuration";
-    else if(message)cause="other";
+    cause=classifyMessage(typeof err.message==="string"?err.message.slice(0,2000):"");
     break;
   }
+  if(found&&!serialized){
+    // pino-pretty's development logger is ANSI-colored and multiline.
+    // Search a short adjacent region for *fixed, known tokens only*.
+    const context=content.slice(markerOffset,markerOffset+5000);
+    const matchCode=[...codes].find(v=>new RegExp("(?:^|[^A-Z0-9_])"+v+"(?:$|[^A-Z0-9_])").test(context));
+    if(matchCode)code=matchCode;
+    const matchType=[...types].find(v=>new RegExp("(?:^|[^a-zA-Z])"+v+"(?:$|[^a-zA-Z])").test(context));
+    if(matchType)type=matchType;
+    cause=classifyMessage(context);
+    prettyFallback=true;
+  }
   return {schema:"bostan.private-windows-startup-failure.v1",
-    startupFailureMarker:found,structuredLog:serialized,errorType:type,
-    allowlistedCode:code,messageCategory:cause,
+    startupFailureMarker:found,structuredLog:serialized,
+    prettyFallback,errorType:type,allowlistedCode:code,messageCategory:cause,
     fullMessageEmitted:false,releaseQualified:false};
 }
