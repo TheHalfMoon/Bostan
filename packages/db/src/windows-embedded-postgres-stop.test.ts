@@ -101,6 +101,29 @@ it("allows other inspectable PostgreSQL executables without terminating them", a
     expect(inspections).toBe(2);
   });
 });
+it("rejects duplicate Windows process IDs with contradictory identity fields", async () => {
+  await fixture(async (data) => {
+    const foreignA = path.join(path.dirname(binary), "foreign-a", "postgres.exe");
+    const foreignB = path.join(path.dirname(binary), "foreign-b", "postgres.exe");
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not stop an unidentified process"); },
+      async () => {
+        inspections++;
+        return [row(foreignA), row(foreignB)];
+      }, noWait)).rejects.toThrow(/Ambiguous|duplicate/);
+    expect(inspections).toBe(1);
+  });
+});
+it("rejects duplicate Windows PIDs even if their other fields match", async () => {
+  await fixture(async (data) => {
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not run"); },
+      async () => [row(path.join(path.dirname(binary), "foreign", "postgres.exe")),
+        row(path.join(path.dirname(binary), "foreign", "postgres.exe"))], noWait))
+      .rejects.toThrow(/Ambiguous|duplicate/);
+  });
+});
 it("refuses ambiguous process metadata and failed inspection", async () => {
   await fixture(async (data) => {
     await expect(stopOwnedWindowsEmbeddedPostgres(data, binary, async () => {},

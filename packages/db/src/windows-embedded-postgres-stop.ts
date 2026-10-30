@@ -70,6 +70,12 @@ async function provePinnedBinaryQuiescent(
     if (!Array.isArray(snapshot) || !snapshot.every(isValidProcess)) {
       throw Error("Ambiguous Windows PostgreSQL process identity; retaining fixture");
     }
+    // A CIM process snapshot must have a unique PID per observed process.
+    // Even two rows with the same metadata are ambiguous: a colliding/reused
+    // ID could otherwise falsely prove the pinned executable is quiescent.
+    const pids = new Set((snapshot as WindowsPostgresProcess[]).map(p => p.ProcessId));
+    if (pids.size !== snapshot.length)
+      throw Error("Ambiguous duplicate Windows PostgreSQL PID; retaining fixture");
     if (snapshot.some((p: WindowsPostgresProcess) =>
       normalizedExecutable(p.ExecutablePath!) === expected)) {
       clean = 0;
