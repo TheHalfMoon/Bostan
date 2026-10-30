@@ -30,15 +30,15 @@ if(args.length===0 || (args.length===1 && args[0]==="--plan")) {
     run:false,realDatabase:false,localhostOnly:true,
     cpuProfile:true,deadlineSeconds:36,releaseQualified:false,
     publishing:false}));
-} else if(args.length===1 && args[0]==="--run") {
-  try { await run(); }
+} else if(args.length===1 && ["--run","--run-trace"].includes(args[0])) {
+  try { await run({traceMode:args[0]==="--run-trace"}); }
   catch { console.error("BOSTAN_WINDOWS_PACKED_IMPORT_PROBE_FAILED");process.exitCode=1; }
 } else {
-  console.error("Usage: node scripts/bostan-private-windows-packed-import-probe.mjs [--plan|--run]");
+  console.error("Usage: node scripts/bostan-private-windows-packed-import-probe.mjs [--plan|--run|--run-trace]");
   process.exitCode=2;
 }
 
-async function run() {
+async function run({traceMode=false}={}) {
   const temp=process.env.TEMP||"";
   if(process.platform!=="win32" || !parsePrivateWindowsQaWave(basename(root),"qa") ||
      !matchingPrivateWindowsQaWave(basename(root),basename(temp)))
@@ -87,7 +87,10 @@ async function run() {
     const args=command.nodeArgs.slice(0,-1);
     child=spawn(process.execPath,[
       "--cpu-prof","--cpu-prof-dir",home,
-      ...args,"--import",monitor,entry,
+      ...args,"--import",monitor,
+      ...(traceMode?["--import",pathToFileURL(join(root,"scripts",
+        "bostan-private-windows-chunk-eval-preload.mjs")).href]:[]),
+      entry,
     ],{cwd:join(root,"server"),env,windowsHide:true,stdio:["ignore","pipe","pipe"]});
     observer=observeOwnedQaChild(child);
     // Only collect into memory, never emit raw logs, paths or network details.
@@ -110,6 +113,13 @@ async function run() {
     console.log("BOSTAN_WIN_IMPORT_ONLY_FIRST_STAGE="+(stages[0]?.[1]||"not_observed"));
     console.log("BOSTAN_WIN_IMPORT_ONLY_LAST_STAGE="+(stages.at(-1)?.[1]||"not_observed"));
     console.log("BOSTAN_WIN_IMPORT_ONLY_STAGE_COUNT="+stages.length);
+    if(traceMode){
+      const entered=[...observed.matchAll(/(?:^|\n)BOSTAN_WIN_CHUNK_EVAL=([a-f0-9]{12})(?=\r?\n|$)/g)];
+      console.log("BOSTAN_WIN_IMPORT_ONLY_CHUNK_EVAL_COUNT="+entered.length);
+      console.log("BOSTAN_WIN_IMPORT_ONLY_LAST_CHUNK_ID="+
+        (entered.at(-1)?.[1]||"not_observed"));
+      console.log("BOSTAN_WIN_IMPORT_ONLY_TRACE_QUALIFIED=false");
+    }
     console.log("BOSTAN_WIN_IMPORT_ONLY_HEARTBEAT="+
       JSON.stringify(classifyPrivateWindowsImportHeartbeat(observed)));
     console.log("BOSTAN_WIN_IMPORT_ONLY_CHILD_CLOSED="+childClosed);
