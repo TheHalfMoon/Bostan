@@ -80,6 +80,15 @@ async function provePinnedBinaryQuiescent(
   }
   throw Error("Pinned PostgreSQL processes remain; retaining owned fixture");
 }
+function scratchPathExists(dataDir: string): boolean {
+  try {
+    fs.lstatSync(dataDir);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw Error("Unable to inspect Windows PostgreSQL scratch directory; retaining fixture");
+  }
+}
 export async function stopOwnedWindowsEmbeddedPostgres(
   dataDir: string,
   pgCtlExe: string,
@@ -89,7 +98,14 @@ export async function stopOwnedWindowsEmbeddedPostgres(
 ): Promise<"stopped" | "already-stopped"> {
   if (process.platform !== "win32" && run === actualRun)
     throw Error("Windows-only native database test teardown");
-  if (!fs.existsSync(dataDir)) return "already-stopped";
+  if (!path.isAbsolute(pgCtlExe) || path.basename(pgCtlExe).toLowerCase() !== "pg_ctl.exe")
+    throw Error("Refusing unknown PostgreSQL shutdown binary");
+  if (!scratchPathExists(dataDir)) {
+    await provePinnedBinaryQuiescent(pgCtlExe, inspect, pause);
+    if (scratchPathExists(dataDir))
+      throw Error("PostgreSQL scratch directory appeared during worker verification; retaining fixture");
+    return "already-stopped";
+  }
   const temp = fs.realpathSync(os.tmpdir());
   const data = fs.realpathSync(dataDir);
   const rel = path.relative(temp, data);
@@ -98,8 +114,6 @@ export async function stopOwnedWindowsEmbeddedPostgres(
     throw Error("Refusing database shutdown outside an owned scratch directory");
   if (!fs.existsSync(path.join(data, "PG_VERSION")))
     throw Error("Refusing non-PostgreSQL database directory");
-  if (!path.isAbsolute(pgCtlExe) || path.basename(pgCtlExe).toLowerCase() !== "pg_ctl.exe")
-    throw Error("Refusing unknown PostgreSQL shutdown binary");
   const marker = path.join(data, "postmaster.pid");
   if (!fs.existsSync(marker)) {
     await provePinnedBinaryQuiescent(pgCtlExe, inspect, pause);

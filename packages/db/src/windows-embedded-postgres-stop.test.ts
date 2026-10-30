@@ -20,6 +20,68 @@ async function fixture(run: (data: string) => Promise<void>) {
   fs.writeFileSync(path.join(data, "PG_VERSION"), "18");
   try { await run(data); } finally { fs.rmSync(data, { recursive: true, force: true }); }
 }
+it("rejects a missing scratch cluster while pinned workers remain", async () => {
+  await fixture(async (data) => {
+    fs.rmSync(data, { recursive: true, force: true });
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not run"); },
+      async () => { inspections++; return [row()]; }, noWait))
+      .rejects.toThrow(/processes remain/);
+    expect(inspections).toBe(20);
+  });
+});
+it("proves two clean snapshots before accepting a missing scratch cluster", async () => {
+  await fixture(async (data) => {
+    fs.rmSync(data, { recursive: true, force: true });
+    let inspections = 0;
+    expect(await stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not run"); },
+      async () => { inspections++; return []; }, noWait)).toBe("already-stopped");
+    expect(inspections).toBe(2);
+  });
+});
+it("retains a missing scratch cluster that appears during inspection", async () => {
+  await fixture(async (data) => {
+    fs.rmSync(data, { recursive: true, force: true });
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not run"); },
+      async () => {
+        if (++inspections === 2) {
+          fs.mkdirSync(data);
+          fs.writeFileSync(path.join(data, "PG_VERSION"), "18");
+        }
+        return [];
+      }, noWait)).rejects.toThrow(/appeared/);
+    expect(inspections).toBe(2);
+    expect(fs.existsSync(data)).toBe(true);
+  });
+});
+it("refuses an unknown shutdown binary for a missing cluster", async () => {
+  await fixture(async (data) => {
+    fs.rmSync(data, { recursive: true, force: true });
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, path.resolve("different.exe"),
+      async () => { throw Error("must not run"); },
+      async () => { inspections++; return []; }, noWait)).rejects.toThrow(/binary/);
+    expect(inspections).toBe(0);
+  });
+});
+it("refuses a dangling scratch symlink rather than claiming it absent", async () => {
+  await fixture(async (data) => {
+    fs.rmSync(data, { recursive: true, force: true });
+    try {
+      fs.symlinkSync(data + "-missing", data, "dir");
+      await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+        async () => { throw Error("must not run"); }, clean, noWait)).rejects.toThrow();
+    } catch (error) {
+      if (process.platform === "win32" &&
+          ["EPERM", "EACCES"].includes((error as NodeJS.ErrnoException).code ?? "")) return;
+      throw error;
+    }
+  });
+});
 it("requires two clean snapshots after fixed graceful shutdown", async () => {
   await fixture(async (data) => {
     fs.writeFileSync(path.join(data, "postmaster.pid"), "123\n");
