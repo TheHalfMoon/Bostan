@@ -439,3 +439,49 @@ it("rejects PG_VERSION in-place modification after a real stop request", async (
     expect(inspections).toBe(2);
   });
 });
+
+
+it("rejects whitespace-only CIM executable paths instead of accepting a clean scan", async () => {
+  await fixture(async (data) => {
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not stop unknown processes"); },
+      async () => { inspections++; return [row("   ")]; }, noWait))
+      .rejects.toThrow(/Ambiguous/);
+    expect(inspections).toBe(1);
+  });
+});
+
+it("rejects ambiguous dot-segment CIM executable paths instead of treating them as foreign", async () => {
+  await fixture(async (data) => {
+    const ambiguous = pinnedExe.replace(/postgres\.exe$/i, "other\\..\\postgres.exe");
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not stop unknown processes"); },
+      async () => { inspections++; return [row(ambiguous)]; }, noWait))
+      .rejects.toThrow(/Ambiguous/);
+    expect(inspections).toBe(1);
+  });
+});
+
+it.skipIf(process.platform !== "win32")("recognizes native Windows extended-length path alias as pinned postgres.exe", async () => {
+  await fixture(async (data) => {
+    const extended = "\\\\?\\" + pinnedExe;
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not stop foreign processes"); },
+      async () => { inspections++; return [row(extended)]; }, noWait))
+      .rejects.toThrow(/processes remain/);
+    expect(inspections).toBe(20);
+  });
+});
+
+it("rejects ambiguous device namespace CIM paths", async () => {
+  await fixture(async (data) => {
+    const ambiguous = "\\\\.\\C:\\untrusted\\postgres.exe";
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not stop unknown processes"); },
+      async () => [row(ambiguous)], noWait))
+      .rejects.toThrow(/Ambiguous/);
+  });
+});

@@ -40,15 +40,31 @@ const actualInspect: Inspector = async () => {
 const actualPause: Pause = async (ms) => {
   await new Promise<void>((resolve) => setTimeout(resolve, ms));
 };
-function normalizedExecutable(value: string): string {
-  return value.replace(/\//g, "\\").toLowerCase();
+// CIM may report the same executable through a Win32 extended-length path.
+// Reject unresolvable device namespaces and dot-segments instead of mistaking
+// an ambiguous PostgreSQL process for an unrelated one.
+function normalizedExecutable(value: string): string | null {
+  if (!value || value !== value.trim() || /[\0\r\n]/.test(value)) return null;
+  let candidate = value.replace(/\//g, "\\");
+  if (candidate.startsWith("\\\\?\\")) {
+    const rest = candidate.slice(4);
+    if (/^[a-z]:\\/i.test(rest)) candidate = rest;
+    else if (/^UNC\\/i.test(rest)) candidate = "\\\\" + rest.slice(4);
+    else return null;
+  } else if (candidate.startsWith("\\\\.\\")) {
+    return null;
+  }
+  if (candidate.split("\\").some(segment =>
+    segment === "." || segment === ".." || /[. ]$/.test(segment))) return null;
+  if (!path.win32.isAbsolute(candidate)) return null;
+  return path.win32.normalize(candidate).toLowerCase();
 }
 function isValidProcess(value: unknown): value is WindowsPostgresProcess {
   if (!value || typeof value !== "object") return false;
   const p = value as Partial<WindowsPostgresProcess>;
   return Number.isSafeInteger(p.ProcessId) && (p.ProcessId ?? 0) > 0
     && Number.isSafeInteger(p.ParentProcessId) && (p.ParentProcessId ?? -1) >= 0
-    && typeof p.ExecutablePath === "string" && p.ExecutablePath.length > 0
+    && typeof p.ExecutablePath === "string" && p.ExecutablePath.trim().length > 0
     && typeof p.CreationDate === "string" && Number.isFinite(Date.parse(p.CreationDate));
 }
 /**
@@ -61,6 +77,8 @@ async function provePinnedBinaryQuiescent(
   pgCtlExe: string, inspect: Inspector, pause: Pause,
 ): Promise<void> {
   const expected = normalizedExecutable(path.join(path.dirname(pgCtlExe), "postgres.exe"));
+  if (!expected)
+    throw Error("Ambiguous pinned Windows PostgreSQL binary identity; retaining fixture");
   let clean = 0;
   for (let attempt = 0; attempt < 20; attempt += 1) {
     let snapshot: unknown;
@@ -76,8 +94,13 @@ async function provePinnedBinaryQuiescent(
     const pids = new Set((snapshot as WindowsPostgresProcess[]).map(p => p.ProcessId));
     if (pids.size !== snapshot.length)
       throw Error("Ambiguous duplicate Windows PostgreSQL PID; retaining fixture");
-    if (snapshot.some((p: WindowsPostgresProcess) =>
-      normalizedExecutable(p.ExecutablePath!) === expected)) {
+    // Normalize every row before deciding the pinned binary is absent.
+    // Unknown namespace/relative/whitespace paths cannot prove quiescence.
+    const executables = (snapshot as WindowsPostgresProcess[])
+      .map(p => normalizedExecutable(p.ExecutablePath!));
+    if (executables.some(executable => executable === null))
+      throw Error("Ambiguous Windows PostgreSQL process identity; retaining fixture");
+    if (executables.includes(expected)) {
       clean = 0;
     } else if (++clean === 2) {
       return;
