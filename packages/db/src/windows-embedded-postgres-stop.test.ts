@@ -87,6 +87,35 @@ it("refuses ambiguous process metadata and failed inspection", async () => {
       .rejects.toThrow(/Unable to inspect/);
   });
 });
+it("retains an absent-marker fixture when postmaster.pid reappears during verification", async () => {
+  await fixture(async (data) => {
+    const marker = path.join(data, "postmaster.pid");
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not run"); },
+      async () => {
+        if (++inspections === 2) fs.writeFileSync(marker, "999\\n");
+        return [];
+      }, noWait)).rejects.toThrow(/reappeared/);
+    expect(inspections).toBe(2);
+    expect(fs.existsSync(marker)).toBe(true);
+  });
+});
+it("retains a stopped fixture when postmaster.pid reappears after pg_ctl", async () => {
+  await fixture(async (data) => {
+    const marker = path.join(data, "postmaster.pid");
+    fs.writeFileSync(marker, "123\\n");
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { fs.unlinkSync(marker); },
+      async () => {
+        if (++inspections === 2) fs.writeFileSync(marker, "999\\n");
+        return [];
+      }, noWait)).rejects.toThrow(/reappeared/);
+    expect(inspections).toBe(2);
+    expect(fs.existsSync(marker)).toBe(true);
+  });
+});
 it("fails closed when postmaster marker survives graceful stop", async () => {
   await fixture(async (data) => {
     fs.writeFileSync(path.join(data, "postmaster.pid"), "123\n");

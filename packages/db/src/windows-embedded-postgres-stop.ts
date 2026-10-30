@@ -103,11 +103,15 @@ export async function stopOwnedWindowsEmbeddedPostgres(
   const marker = path.join(data, "postmaster.pid");
   if (!fs.existsSync(marker)) {
     await provePinnedBinaryQuiescent(pgCtlExe, inspect, pause);
+    if (fs.existsSync(marker))
+      throw Error("PostgreSQL PID marker reappeared during worker verification; retaining fixture");
     return "already-stopped";
   }
   await run(pgCtlExe, ["-D", data, "-m", "fast", "-w", "-t", "40", "stop"]);
   if (fs.existsSync(marker))
     throw Error("PostgreSQL PID marker survived graceful shutdown");
   await provePinnedBinaryQuiescent(pgCtlExe, inspect, pause);
+  if (fs.existsSync(marker))
+    throw Error("PostgreSQL PID marker reappeared during worker verification; retaining fixture");
   return "stopped";
 }
