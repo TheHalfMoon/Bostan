@@ -393,3 +393,49 @@ it.skipIf(process.platform === "win32")("rejects PG_VERSION changed into a symli
     expect(inspections).toBe(2);
   });
 });
+
+it("rejects PG_VERSION changed in place while workers are inspected", async () => {
+  await fixture(async (data) => {
+    const version = path.join(data, "PG_VERSION");
+    const originalIdentity = fs.lstatSync(version);
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not run pg_ctl"); },
+      async () => {
+        if (++inspections === 2) fs.writeFileSync(version, "19");
+        return [];
+      }, noWait)).rejects.toThrow(/version|identity|cluster/i);
+    expect(inspections).toBe(2);
+    expect(fs.lstatSync(version).ino).toBe(originalIdentity.ino);
+  });
+});
+
+it("rejects PG_VERSION rewritten with non-version bytes at the same inode", async () => {
+  await fixture(async (data) => {
+    const version = path.join(data, "PG_VERSION");
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not run pg_ctl"); },
+      async () => {
+        if (++inspections === 2) fs.writeFileSync(version, "XX");
+        return [];
+      }, noWait)).rejects.toThrow(/version|identity|cluster/i);
+    expect(inspections).toBe(2);
+  });
+});
+
+it("rejects PG_VERSION in-place modification after a real stop request", async () => {
+  await fixture(async (data) => {
+    const version = path.join(data, "PG_VERSION");
+    const marker = path.join(data, "postmaster.pid");
+    fs.writeFileSync(marker, "123\n");
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { fs.unlinkSync(marker); },
+      async () => {
+        if (++inspections === 2) fs.writeFileSync(version, "19");
+        return [];
+      }, noWait)).rejects.toThrow(/version|identity|cluster/i);
+    expect(inspections).toBe(2);
+  });
+});
