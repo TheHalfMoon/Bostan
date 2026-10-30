@@ -23,6 +23,7 @@ import { observeOwnedQaChild } from "./bostan-private-windows-child-lifecycle.mj
 import { summarizePrivateWindowsCpuProfile, summarizePrivateWindowsImportExit, summarizePrivateWindowsMonitor, summarizePrivateWindowsStartupFailure, classifyPrivateWindowsPackedPhase } from "./bostan-private-windows-cpu-profile-summary.mjs";
 import {classifyPrivateWindowsImportHeartbeat} from "./bostan-private-windows-import-heartbeat-classifier.mjs";
 import {admitPrivateWindowsProbeChildExit} from "./bostan-private-windows-import-probe-outcome.mjs";
+import {waitForPrivateWindowsImportProbeChild} from "./bostan-private-windows-import-probe-deadline.mjs";
 
 const root=resolve(fileURLToPath(new URL("../",import.meta.url)));
 const args=process.argv.slice(2);
@@ -98,10 +99,7 @@ async function run({traceMode=false}={}) {
     for(const stream of [child.stdout,child.stderr])stream?.on("data",part=>{
       observed=(observed+String(part)).slice(-65536);
     });
-    boundedOutcome=await Promise.race([
-      new Promise(ok=>child.once("close",()=>ok("child_exited"))),
-      new Promise(ok=>setTimeout(()=>ok("bounded_36s"),36000)),
-    ]);
+    boundedOutcome=await waitForPrivateWindowsImportProbeChild(child);
   } finally {
     if(observer){
       const state=await observer.stop({graceMs:6000,forceMs:3000});
