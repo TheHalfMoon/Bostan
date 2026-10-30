@@ -121,19 +121,33 @@ export async function stopOwnedWindowsEmbeddedPostgres(
   if (!rel || rel === ".." || rel.startsWith(".." + path.sep) || path.isAbsolute(rel)
       || fs.lstatSync(dataDir).isSymbolicLink())
     throw Error("Refusing database shutdown outside an owned scratch directory");
-  if (!fs.existsSync(path.join(data, "PG_VERSION")))
-    throw Error("Refusing non-PostgreSQL database directory");
+  // PG_VERSION must be an ordinary file, not a directory or symlink.
+  // Capture its identity as well as the cluster directory identity: a new
+  // PG_VERSION at the same path is not evidence of the original cluster.
+  const versionMarker = path.join(data, "PG_VERSION");
+  let initialVersion: fs.Stats;
+  try {
+    initialVersion = fs.lstatSync(versionMarker);
+    if (!initialVersion.isFile() || initialVersion.isSymbolicLink())
+      throw Error("ambiguous");
+  } catch {
+    throw Error("Refusing non-PostgreSQL or ambiguous version marker; retaining fixture");
+  }
   // A successful worker scan does not prove the scratch directory still
   // belongs to this invocation: another actor may rename or replace it.
   const initialDir = fs.lstatSync(dataDir);
   function assertClusterIdentityUnchanged(): void {
     try {
       const current = fs.lstatSync(dataDir);
+      const currentVersion = fs.lstatSync(versionMarker);
       if (!current.isDirectory() || current.isSymbolicLink()
           || current.dev !== initialDir.dev || current.ino !== initialDir.ino
           || current.birthtimeMs !== initialDir.birthtimeMs
           || fs.realpathSync(dataDir) !== data
-          || !fs.existsSync(path.join(data, "PG_VERSION"))) {
+          || !currentVersion.isFile() || currentVersion.isSymbolicLink()
+          || currentVersion.dev !== initialVersion.dev
+          || currentVersion.ino !== initialVersion.ino
+          || currentVersion.birthtimeMs !== initialVersion.birthtimeMs) {
         throw Error("changed");
       }
     } catch {

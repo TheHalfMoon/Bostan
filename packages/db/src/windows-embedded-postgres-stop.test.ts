@@ -328,3 +328,68 @@ it("rejects PG_VERSION disappearing during worker verification", async () => {
     expect(scans).toBe(2);
   });
 });
+
+it("rejects a PG_VERSION directory before issuing a clean teardown receipt", async () => {
+  await fixture(async (data) => {
+    const version = path.join(data, "PG_VERSION");
+    fs.unlinkSync(version);
+    fs.mkdirSync(version);
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not invoke pg_ctl"); },
+      async () => { inspections++; return []; }, noWait))
+      .rejects.toThrow(/PostgreSQL|PG_VERSION|identity/i);
+    expect(inspections).toBe(0);
+  });
+});
+
+it("rejects PG_VERSION replaced by a different regular file during worker proof", async () => {
+  await fixture(async (data) => {
+    const version = path.join(data, "PG_VERSION");
+    const original = path.join(data, "PG_VERSION-original");
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not invoke pg_ctl"); },
+      async () => {
+        if (++inspections === 2) {
+          fs.renameSync(version, original);
+          fs.writeFileSync(version, "18");
+        }
+        return [];
+      }, noWait)).rejects.toThrow(/identity|PG_VERSION/i);
+    expect(inspections).toBe(2);
+    expect(fs.existsSync(original)).toBe(true);
+  });
+});
+
+it.skipIf(process.platform === "win32")("rejects a dangling PG_VERSION symlink before inspecting processes", async () => {
+  await fixture(async (data) => {
+    const version = path.join(data, "PG_VERSION");
+    fs.unlinkSync(version);
+    fs.symlinkSync(path.join(data, "nonexistent-version"), version);
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not invoke pg_ctl"); },
+      async () => { inspections++; return []; }, noWait))
+      .rejects.toThrow(/PostgreSQL|PG_VERSION|identity/i);
+    expect(inspections).toBe(0);
+  });
+});
+
+it.skipIf(process.platform === "win32")("rejects PG_VERSION changed into a symlink during worker proof", async () => {
+  await fixture(async (data) => {
+    const version = path.join(data, "PG_VERSION");
+    const original = path.join(data, "PG_VERSION-original");
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not invoke pg_ctl"); },
+      async () => {
+        if (++inspections === 2) {
+          fs.renameSync(version, original);
+          fs.symlinkSync(original, version);
+        }
+        return [];
+      }, noWait)).rejects.toThrow(/identity|PG_VERSION/i);
+    expect(inspections).toBe(2);
+  });
+});
