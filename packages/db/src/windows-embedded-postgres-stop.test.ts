@@ -7,8 +7,9 @@ import {
   type WindowsPostgresProcess,
 } from "./windows-embedded-postgres-stop.js";
 
-const binary = path.resolve("pg_ctl.exe");
-const pinnedExe = path.join(path.dirname(binary), "postgres.exe");
+// Exercise native Win32 executable paths even when the synthetic test runs on macOS.
+const binary = process.platform === "win32" ? path.resolve("pg_ctl.exe") : "C:\\bostan-test\\pg_ctl.exe";
+const pinnedExe = path.win32.join(path.win32.dirname(binary), "postgres.exe");
 const clean = async () => [] as WindowsPostgresProcess[];
 const noWait = async () => {};
 const row = (exe = pinnedExe): WindowsPostgresProcess => ({
@@ -92,7 +93,7 @@ it("rejects a live pinned io_worker even without a PID marker", async () => {
 });
 it("allows other inspectable PostgreSQL executables without terminating them", async () => {
   await fixture(async (data) => {
-    const foreign = path.join(path.dirname(binary), "unrelated", "postgres.exe");
+    const foreign = path.win32.join(path.win32.dirname(binary), "unrelated", "postgres.exe");
     let inspections = 0;
     expect(await stopOwnedWindowsEmbeddedPostgres(data, binary,
       async () => { throw Error("must not run"); },
@@ -103,8 +104,8 @@ it("allows other inspectable PostgreSQL executables without terminating them", a
 });
 it("rejects duplicate Windows process IDs with contradictory identity fields", async () => {
   await fixture(async (data) => {
-    const foreignA = path.join(path.dirname(binary), "foreign-a", "postgres.exe");
-    const foreignB = path.join(path.dirname(binary), "foreign-b", "postgres.exe");
+    const foreignA = path.win32.join(path.win32.dirname(binary), "foreign-a", "postgres.exe");
+    const foreignB = path.win32.join(path.win32.dirname(binary), "foreign-b", "postgres.exe");
     let inspections = 0;
     await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
       async () => { throw Error("must not stop an unidentified process"); },
@@ -119,8 +120,8 @@ it("rejects duplicate Windows PIDs even if their other fields match", async () =
   await fixture(async (data) => {
     await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
       async () => { throw Error("must not run"); },
-      async () => [row(path.join(path.dirname(binary), "foreign", "postgres.exe")),
-        row(path.join(path.dirname(binary), "foreign", "postgres.exe"))], noWait))
+      async () => [row(path.win32.join(path.win32.dirname(binary), "foreign", "postgres.exe")),
+        row(path.win32.join(path.win32.dirname(binary), "foreign", "postgres.exe"))], noWait))
       .rejects.toThrow(/Ambiguous|duplicate/);
   });
 });
@@ -225,7 +226,7 @@ it("fails closed when postmaster marker survives graceful stop", async () => {
 it("refuses unrelated shutdown binary and incomplete database identity", async () => {
   await fixture(async (data) => {
     fs.writeFileSync(path.join(data, "postmaster.pid"), "123\n");
-    await expect(stopOwnedWindowsEmbeddedPostgres(data, path.resolve("different.exe"),
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, path.win32.join(path.win32.dirname(binary), "different.exe"),
       async () => {}, clean, noWait)).rejects.toThrow(/binary/);
     fs.unlinkSync(path.join(data, "PG_VERSION"));
     await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
@@ -473,6 +474,53 @@ it.skipIf(process.platform !== "win32")("recognizes native Windows extended-leng
       async () => { inspections++; return [row(extended)]; }, noWait))
       .rejects.toThrow(/processes remain/);
     expect(inspections).toBe(20);
+  });
+});
+
+it("rejects drive-less rooted CIM executable paths rather than treating them as foreign", async () => {
+  await fixture(async (data) => {
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not stop unknown processes"); },
+      async () => { inspections++; return [row("\\unanchored\\postgres.exe")]; }, noWait))
+      .rejects.toThrow(/Ambiguous/);
+    expect(inspections).toBe(1);
+  });
+});
+
+it("rejects CIM executable paths inconsistent with the postgres.exe process name", async () => {
+  await fixture(async (data) => {
+    let inspections = 0;
+    const inconsistent = path.win32.join("C:\\", "foreign", "not-postgres.exe");
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not stop unknown processes"); },
+      async () => { inspections++; return [row(inconsistent)]; }, noWait))
+      .rejects.toThrow(/Ambiguous/);
+    expect(inspections).toBe(1);
+  });
+});
+
+it("accepts a fully anchored foreign UNC postgres.exe without terminating it", async () => {
+  await fixture(async (data) => {
+    let inspections = 0;
+    const foreign = "\\\\server\\share\\postgres.exe";
+    expect(await stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not stop foreign processes"); },
+      async () => { inspections++; return [row(foreign)]; }, noWait))
+      .toBe("already-stopped");
+    expect(inspections).toBe(2);
+  });
+});
+
+it("rejects a CIM executable path ending in a directory separator", async () => {
+  await fixture(async (data) => {
+    let inspections = 0;
+    const ambiguous = path.win32.join("C:\\", "foreign", "postgres.exe") + "\\";
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not stop unknown processes"); },
+      async () => { inspections++; return [row(ambiguous)]; }, noWait))
+      .rejects.toThrow(/Ambiguous/);
+    expect(inspections).toBe(1);
   });
 });
 
