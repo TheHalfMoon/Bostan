@@ -36,6 +36,31 @@ export function instrumentPrivateRuntimeModule({
   return {id,source:prelude+(typeof source==='string'?source:Buffer.from(source).toString('utf8'))};
 }
 
+/**
+ * Observe only SHA-owned packed ESM load boundaries, never source paths.
+ * A start without completion means nextLoad did not return during observation;
+ * it does not prove which dependency or operation caused the delay.
+ */
+export function tracePrivateRuntimeLoad({
+  url,context,nextLoad,root,canonicalize=realpathSync,emit,
+}={}){
+  if(typeof nextLoad!=='function'||typeof emit!=='function')
+    throw Error('Private chunk load trace refused invalid configuration');
+  // Validate the canonical owned path before emitting even a digest marker.
+  const admitted=instrumentPrivateRuntimeModule({
+    url,format:'module',source:'',root,canonicalize,
+  });
+  if(admitted)emit('BOSTAN_WIN_CHUNK_LOAD_START='+admitted.id);
+  // A throw deliberately leaves an unmatched START for bounded diagnosis.
+  const result=nextLoad(url,context);
+  if(admitted)emit('BOSTAN_WIN_CHUNK_LOAD_COMPLETE='+admitted.id);
+  const transformed=instrumentPrivateRuntimeModule({
+    url,format:result.format||context?.format,source:result.source,
+    root,canonicalize,
+  });
+  return transformed?{...result,source:transformed.source}:result;
+}
+
 export function installPrivateRuntimeEvaluationTrace({
   root,register=registerHooks,canonicalize=realpathSync,
   emit=token=>writeSync(2,token+'\n'),
@@ -45,11 +70,6 @@ export function installPrivateRuntimeEvaluationTrace({
   Object.defineProperty(globalThis,KEY,{configurable:false,writable:false,
     value:id=>{if(/^[a-f0-9]{12}$/.test(id))emit('BOSTAN_WIN_CHUNK_EVAL='+id);}});
   register({load(url,context,nextLoad){
-    const result=nextLoad(url,context);
-    const transformed=instrumentPrivateRuntimeModule({
-      url,format:result.format||context.format,source:result.source,
-      root,canonicalize,
-    });
-    return transformed?{...result,source:transformed.source}:result;
+    return tracePrivateRuntimeLoad({url,context,nextLoad,root,canonicalize,emit});
   }});
 }

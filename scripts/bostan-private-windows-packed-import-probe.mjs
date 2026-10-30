@@ -116,6 +116,14 @@ async function run({traceMode=false}={}) {
     console.log("BOSTAN_WIN_IMPORT_ONLY_STAGE_COUNT="+stages.length);
     if(traceMode){
       const entered=[...observed.matchAll(/(?:^|\n)BOSTAN_WIN_CHUNK_EVAL=([a-f0-9]{12})(?=\r?\n|$)/g)];
+      const loadStarts=[...observed.matchAll(/(?:^|\n)BOSTAN_WIN_CHUNK_LOAD_START=([a-f0-9]{12})(?=\r?\n|$)/g)];
+      const loadEnds=[...observed.matchAll(/(?:^|\n)BOSTAN_WIN_CHUNK_LOAD_COMPLETE=([a-f0-9]{12})(?=\r?\n|$)/g)];
+      console.log("BOSTAN_WIN_IMPORT_ONLY_CHUNK_LOAD_START_COUNT="+loadStarts.length);
+      console.log("BOSTAN_WIN_IMPORT_ONLY_CHUNK_LOAD_COMPLETE_COUNT="+loadEnds.length);
+      console.log("BOSTAN_WIN_IMPORT_ONLY_LAST_LOAD_START_ID="+
+        (loadStarts.at(-1)?.[1]||"not_observed"));
+      console.log("BOSTAN_WIN_IMPORT_ONLY_LAST_LOAD_COMPLETE_ID="+
+        (loadEnds.at(-1)?.[1]||"not_observed"));
       console.log("BOSTAN_WIN_IMPORT_ONLY_CHUNK_EVAL_COUNT="+entered.length);
       console.log("BOSTAN_WIN_IMPORT_ONLY_LAST_CHUNK_ID="+
         (entered.at(-1)?.[1]||"not_observed"));

@@ -4,7 +4,7 @@ import {mkdtemp,mkdir,writeFile,symlink,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {instrumentPrivateRuntimeModule} from './bostan-private-windows-chunk-eval-trace.mjs';
+import {instrumentPrivateRuntimeModule,tracePrivateRuntimeLoad} from './bostan-private-windows-chunk-eval-trace.mjs';
 
 test('owned packed ESM receives a fixed digest-only evaluation marker',async()=>{
   const root=await mkdtemp(join(tmpdir(),'bostan-private-chunk-unit-'));
@@ -63,6 +63,79 @@ test('unrecognized packed filenames are not instrumented',async()=>{
   }finally{await rm(root,{recursive:true,force:true});}
 });
 
+test('owned load start and complete are emitted in order without source paths',async()=>{
+  const root=await mkdtemp(join(tmpdir(),'bostan-private-load-ok-'));
+  try{
+    const runtime=join(root,'server','dist-runtime');
+    await mkdir(runtime,{recursive:true});
+    const file=join(runtime,'server.mjs');
+    await writeFile(file,'export const answer=42;');
+    const markers=[];
+    const result=tracePrivateRuntimeLoad({
+      root,url:pathToFileURL(file).href,context:{format:'module'},
+      nextLoad:()=>({format:'module',source:'export const answer=42;'}),
+      emit:token=>markers.push(token),
+    });
+    assert.equal(markers.length,2);
+    assert.match(markers[0],/^BOSTAN_WIN_CHUNK_LOAD_START=[a-f0-9]{12}$/);
+    assert.equal(markers[1],markers[0].replace('_START=','_COMPLETE='));
+    assert.match(result.source,/export const answer=42/);
+    assert.doesNotMatch(markers.join('\n'),new RegExp(root));
+    const foreign=join(root,'foreign.mjs');
+    await writeFile(foreign,'export default 1;');
+    markers.length=0;
+    const untouched=tracePrivateRuntimeLoad({
+      root,url:pathToFileURL(foreign).href,context:{format:'module'},
+      nextLoad:()=>({format:'module',source:'export default 1;'}),
+      emit:token=>markers.push(token),
+    });
+    assert.deepEqual(markers,[]);
+    assert.equal(untouched.source,'export default 1;');
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('a thrown owned nextLoad leaves start only, never false completion',async()=>{
+  const root=await mkdtemp(join(tmpdir(),'bostan-private-load-throw-'));
+  try{
+    const runtime=join(root,'server','dist-runtime');
+    await mkdir(runtime,{recursive:true});
+    const file=join(runtime,'index.mjs');
+    await writeFile(file,'export default 1;');
+    const markers=[];
+    assert.throws(()=>tracePrivateRuntimeLoad({
+      root,url:pathToFileURL(file).href,context:{format:'module'},
+      nextLoad:()=>{throw Error('synthetic loader refusal');},
+      emit:token=>markers.push(token),
+    }),/synthetic loader refusal/);
+    assert.equal(markers.length,1);
+    assert.match(markers[0],/^BOSTAN_WIN_CHUNK_LOAD_START=[a-f0-9]{12}$/);
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('linked escape refuses before emitting any load marker',async(t)=>{
+  const root=await mkdtemp(join(tmpdir(),'bostan-private-load-escape-'));
+  try{
+    const runtime=join(root,'server','dist-runtime');
+    await mkdir(runtime,{recursive:true});
+    const foreign=join(root,'foreign.mjs');
+    await writeFile(foreign,'export default 1;');
+    const linked=join(runtime,'chunk-ABCD1234.mjs');
+    try{await symlink(foreign,linked);}catch(error){
+      if(process.platform==='win32'&&error?.code==='EPERM'){
+        t.skip('Windows symlink privilege missing');return;
+      }
+      throw error;
+    }
+    const markers=[];
+    assert.throws(()=>tracePrivateRuntimeLoad({
+      root,url:pathToFileURL(linked).href,context:{format:'module'},
+      nextLoad:()=>({format:'module',source:'export default 1;'}),
+      emit:token=>markers.push(token),
+    }),/linked runtime escape/);
+    assert.deepEqual(markers,[]);
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
 test('actual Node ESM hook traces entered packed modules without paths',async()=>{
   const {spawnSync}=await import('node:child_process');
   const root=await mkdtemp(join(tmpdir(),'bostan-private-chunk-real-'));
@@ -83,6 +156,8 @@ test('actual Node ESM hook traces entered packed modules without paths',async()=
     assert.equal(run.status,0,'owned synthetic Node load must exit zero');
     assert.match(run.stdout,/SYNTHETIC=42/);
     assert.equal((run.stderr.match(/BOSTAN_WIN_CHUNK_EVAL=[a-f0-9]{12}/g)||[]).length,2);
+    assert.equal((run.stderr.match(/BOSTAN_WIN_CHUNK_LOAD_START=[a-f0-9]{12}/g)||[]).length,2);
+    assert.equal((run.stderr.match(/BOSTAN_WIN_CHUNK_LOAD_COMPLETE=[a-f0-9]{12}/g)||[]).length,2);
     assert.doesNotMatch(run.stderr,new RegExp(root));
   }finally{await rm(root,{recursive:true,force:true});}
 });
