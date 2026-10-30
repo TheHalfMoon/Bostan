@@ -24,6 +24,7 @@ import { summarizePrivateWindowsCpuProfile, summarizePrivateWindowsImportExit, s
 import {classifyPrivateWindowsImportHeartbeat} from "./bostan-private-windows-import-heartbeat-classifier.mjs";
 import {admitPrivateWindowsProbeChildExit} from "./bostan-private-windows-import-probe-outcome.mjs";
 import {waitForPrivateWindowsImportProbeChild} from "./bostan-private-windows-import-probe-deadline.mjs";
+import {appendPrivateWindowsImportCapture} from "./bostan-private-windows-import-capture.mjs";
 
 const root=resolve(fileURLToPath(new URL("../",import.meta.url)));
 const args=process.argv.slice(2);
@@ -59,6 +60,7 @@ async function run({traceMode=false}={}) {
   const command=await resolvePrivateWindowsQaServerCommand({root,mode:"compiled"});
   let dbStub=null,home=null,marker=null,observer=null,child=null;
   let childClosed=false,observed="",boundedOutcome="not_started";
+  let capture={text:"",truncated:false};
   let forced=false;
   try {
     // Hold this port for the whole run; its handler immediately destroys all
@@ -97,7 +99,7 @@ async function run({traceMode=false}={}) {
     observer=observeOwnedQaChild(child);
     // Only collect into memory, never emit raw logs, paths or network details.
     for(const stream of [child.stdout,child.stderr])stream?.on("data",part=>{
-      observed=(observed+String(part)).slice(-65536);
+      capture=appendPrivateWindowsImportCapture(capture,part);
     });
     boundedOutcome=await waitForPrivateWindowsImportProbeChild(child);
   } finally {
@@ -107,6 +109,10 @@ async function run({traceMode=false}={}) {
       forced=state.forceUsed;
     }
     if(dbStub)await new Promise(ok=>dbStub.close(()=>ok()));
+    observed=capture.text;
+    console.log("BOSTAN_WIN_IMPORT_ONLY_TRACE_CAPTURE_TRUNCATED="+capture.truncated);
+    console.log("BOSTAN_WIN_IMPORT_ONLY_COUNTS_COMPLETE="+(!capture.truncated));
+    if(capture.truncated)process.exitCode=1;
     const stages=[...observed.matchAll(/BOSTAN_WIN_SERVER_STAGE=(static_import_start|static_import_pending|static_import_worker_alive|static_import_worker_pending|static_import_worker_failed|static_import_complete|runtime_start|runtime_ready|runtime_failed)/g)];
     console.log("BOSTAN_WIN_IMPORT_ONLY_OUTCOME="+boundedOutcome);
     console.log("BOSTAN_WIN_IMPORT_ONLY_FIRST_STAGE="+(stages[0]?.[1]||"not_observed"));
