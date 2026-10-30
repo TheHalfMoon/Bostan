@@ -19,10 +19,26 @@ Only after the existing Windows private QA entry guard passes, a test-only Node 
 - Actual guard-denial child EXIT 2 before application entry; owned runtime symlink escape rejected; unknown module names excluded.
 - `node --check` for new preloader/helper and modified probe PASS; original `--plan` remains inert, `run:false`, `realDatabase:false`, `deadlineSeconds:36`, `releaseQualified:false`.
 - Mac temporary synthetic fixtures were removed by their own tests. Existing B135 checkout, user files and unrelated PostgreSQL processes were not touched.
-- Windows authorized device was online, native Node v24.19.0, RAM ~5.05 GiB, C ~3.58 GiB and D ~7.46 GiB at final preflight. **No actual Windows trace run or real PG/browser E2E was executed in this change.** The 36-second trace must still be proven on Windows with resource and ownership checks.
+- Windows authorized device was online, native Node v24.19.0, RAM ~5.05 GiB, C ~3.58 GiB and D ~7.46 GiB at initial preflight. The later native Windows bounded trace and its exact limitations are recorded below; **no real PG/browser E2E was executed in this change**.
 
 ## Next qualification
 
 Run only the opt-in 36-second no-PostgreSQL trace from a separately owned exact-SHA Windows QA checkout when free RAM/disk meet the unchanged admission limits and no concurrent work conflicts. Correlate the last digest with the SHA-admitted local chunk list **without exporting raw filenames or stack data**. Fix the actual Windows source/import bottleneck only after positive evidence. Then rerun HTTP health, 18-stage Better Auth/Chromium and 12 same-PostgreSQL writes with independent no-orphan cleanup.
 
 **Release NO-GO.** Native Linux app, installers, sustained load, untrusted-agent effects sandbox and independent privacy/security/license/NOTICE/provenance reviews remain gates. No main merge, Actions, deployment, publish/release, npm pack, paid models/cloud or customer data.
+
+## Native Windows follow-up: real probe RED exposed a false-GREEN diagnostic
+
+An isolated B163 QA checkout at exact PR source was cloned on authorized native Windows Node v24.19.0. A previously SHA256-admitted **238-generated-file packed runtime** and the exact compiled source entry were copied read-only from the earlier B144 owned QA build, then re-admitted with a new **B163-local owner manifest**; the GitHub comparison from the B144 build source to B163 showed **only diagnostic scripts/docs changed**, not server/package source. The B144 checkout was not edited. This avoided a memory-heavy rebuild. No dependencies were installed in the new minimal clone.
+
+**First real native Windows 36s no-PG trace:** preflight 5.06 GiB free RAM, 7.15 GiB free D; actual child **exited with code 1** due `ERR_MODULE_NOT_FOUND`, allowlisted package `smol-toml` absent from the isolated minimal clone. Only the packed entry module was observed (`CHUNK_EVAL_COUNT=1`, digest `d6299b5bb2af`); this is a **QA fixture dependency gap**, not evidence of the original Windows import hang or a Bostan production dependency defect. A valid owned V8 CPU profile existed (227 samples), child closed without force, no genuine PostgreSQL, owned temporary fixture cleaned.
+
+**Actual defect discovered:** the original diagnostic wrapper nevertheless returned **EXIT 0** because it checked profile/cleanup but did **not** fail when its child exited nonzero. That is a real false-GREEN in the diagnostic, not a product E2E pass. Added `admitPrivateWindowsProbeChildExit()`: a child exiting nonzero/null now fails closed; a bounded 36s observation remains a diagnostic only. New regression cases include exit 1, exit 2, null, 0, timeout and invalid outcome.
+
+**After repair at exact source `a065e24a1b81d4f78ee42e95c5a8511a510c389c`:**
+- Native Windows Node v24.19.0 focused suites **19 PASS, 0 FAIL, 1 SKIP** (Windows symlink privilege); Mac Node 26 **19 PASS, 0 FAIL, 1 SKIP** (Windows-only guarded-child case).
+- Actual Windows owned 36s no-PG trace repeated at 5.08 GiB RAM / 7.15 GiB D: `OUTCOME=child_exited`, `CHILD_EXIT_ADMITTED=false`, `CHILD_CLOSED=true`, `FORCED=false`, `REAL_POSTGRES_USED=false`, `OWNED_FIXTURE_CLEANED=true`, same allowlisted missing-package classification, and **TRACE_PROCESS_EXIT=1**. This proves the wrapper now fails closed under the actual observed error.
+- Independent postrun native Windows read-only scan: **0 owned B163 Node processes, 0 PostgreSQL processes, 0 owned import fixture directories, 0 tracked B163 source edits**. B144 remained at its original SHA. Windows D ~7.15 GiB and free RAM ~5.11 GiB.
+- The B163 QA checkout and its matching empty owned TEMP root were retained; no unrelated files/processes were removed or terminated.
+
+**Still RED:** this did not reproduce the original B144 import stall with full dependencies, identify a hot chunk, or qualify Windows HTTP/Better Auth/Chromium/shared-PostgreSQL concurrency. A future exact-head trace needs a dependency-complete isolated Windows QA checkout and the same resource/ownership gates. No claim of product startup success.
