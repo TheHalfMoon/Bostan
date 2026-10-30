@@ -100,6 +100,26 @@ function pidMarkerPresent(marker: string): boolean {
     throw Error("Ambiguous PostgreSQL PID marker; retaining fixture");
   return true;
 }
+// Read at most 33 bytes, including a sentinel byte for an oversized marker.
+// The path may change between lstat and open; never read an unbounded file.
+function readBoundedVersionMarker(marker: string): Buffer {
+  let fd: number | undefined;
+  try {
+    fd = fs.openSync(marker, "r");
+    const bytes = Buffer.alloc(33);
+    const length = fs.readSync(fd, bytes, 0, bytes.length, 0);
+    if (length < 1 || length > 32) throw Error("invalid");
+    return bytes.subarray(0, length);
+  } catch {
+    throw Error("Unable to verify PostgreSQL version marker bytes; retaining fixture");
+  } finally {
+    if (fd !== undefined) {
+      try { fs.closeSync(fd); } catch {
+        throw Error("Unable to close PostgreSQL version marker; retaining fixture");
+      }
+    }
+  }
+}
 export async function stopOwnedWindowsEmbeddedPostgres(
   dataDir: string,
   pgCtlExe: string,
@@ -126,9 +146,14 @@ export async function stopOwnedWindowsEmbeddedPostgres(
   // PG_VERSION at the same path is not evidence of the original cluster.
   const versionMarker = path.join(data, "PG_VERSION");
   let initialVersion: fs.Stats;
+  let initialVersionBytes: Buffer;
   try {
     initialVersion = fs.lstatSync(versionMarker);
-    if (!initialVersion.isFile() || initialVersion.isSymbolicLink())
+    if (!initialVersion.isFile() || initialVersion.isSymbolicLink()
+        || initialVersion.size < 1 || initialVersion.size > 32)
+      throw Error("ambiguous");
+    initialVersionBytes = readBoundedVersionMarker(versionMarker);
+    if (initialVersionBytes.length !== initialVersion.size)
       throw Error("ambiguous");
   } catch {
     throw Error("Refusing non-PostgreSQL or ambiguous version marker; retaining fixture");
@@ -147,7 +172,9 @@ export async function stopOwnedWindowsEmbeddedPostgres(
           || !currentVersion.isFile() || currentVersion.isSymbolicLink()
           || currentVersion.dev !== initialVersion.dev
           || currentVersion.ino !== initialVersion.ino
-          || currentVersion.birthtimeMs !== initialVersion.birthtimeMs) {
+          || currentVersion.birthtimeMs !== initialVersion.birthtimeMs
+          || currentVersion.size !== initialVersion.size
+          || !readBoundedVersionMarker(versionMarker).equals(initialVersionBytes)) {
         throw Error("changed");
       }
     } catch {
