@@ -17,10 +17,10 @@ Normalize Windows extended-length drive/UNC paths before comparing with the pinn
 ## Objective receipts
 
 - Authorized Mac Node 26 / Vitest 5, one worker, 1024 MiB heap: **33 PASS / 0 FAIL / 1 SKIP** (Windows-only prefix case skipped).
-- Targeted TypeScript 7 strict `--noEmit` for the changed helper under 768 MiB: **EXIT 0**.
-- `git diff --check`: **PASS**.
-- Native Windows focused regression: pending, no claim of success until observed.
-- Native Windows read-only admission before this change: C 6.29 GiB, D 12.18 GiB, free RAM 5.50 GiB, 0 postgres.exe, 21 node.exe. No heavy build or real PostgreSQL test was attempted.
+- Targeted TypeScript 7 strict `--noEmit` for the changed helper under 768 MiB: **EXIT 0 on Mac and native Windows**.
+- `git diff --check`: **PASS on Mac and native Windows**.
+- Authorized native Windows 11, Node 24.19.0 / Vitest 5, 768 MiB heap and one worker: **29 PASS / 0 FAIL / 5 SKIP**. The real Windows extended-length drive-prefix alias regression ran and passed. Skips are existing Windows symlink-privilege cases; this remains a synthetic process-inspector test, not real PostgreSQL teardown.
+- Native Windows read-only admission before the focused test: C 6.29 GiB, D 12.18 GiB, free RAM 5.65 GiB, 0 postgres.exe, 21 node.exe at the preceding snapshot. No heavy build, packed-server 180-second E2E, real PostgreSQL, or Chromium test was attempted.
 
 ## Remaining gates
 
