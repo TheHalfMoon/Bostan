@@ -123,6 +123,23 @@ export async function stopOwnedWindowsEmbeddedPostgres(
     throw Error("Refusing database shutdown outside an owned scratch directory");
   if (!fs.existsSync(path.join(data, "PG_VERSION")))
     throw Error("Refusing non-PostgreSQL database directory");
+  // A successful worker scan does not prove the scratch directory still
+  // belongs to this invocation: another actor may rename or replace it.
+  const initialDir = fs.lstatSync(dataDir);
+  function assertClusterIdentityUnchanged(): void {
+    try {
+      const current = fs.lstatSync(dataDir);
+      if (!current.isDirectory() || current.isSymbolicLink()
+          || current.dev !== initialDir.dev || current.ino !== initialDir.ino
+          || current.birthtimeMs !== initialDir.birthtimeMs
+          || fs.realpathSync(dataDir) !== data
+          || !fs.existsSync(path.join(data, "PG_VERSION"))) {
+        throw Error("changed");
+      }
+    } catch {
+      throw Error("Owned PostgreSQL cluster identity changed during worker verification; retaining fixture");
+    }
+  }
   if (!path.isAbsolute(pgCtlExe) || path.basename(pgCtlExe).toLowerCase() !== "pg_ctl.exe")
     throw Error("Refusing unknown PostgreSQL shutdown binary");
   const marker = path.join(data, "postmaster.pid");
@@ -130,6 +147,7 @@ export async function stopOwnedWindowsEmbeddedPostgres(
     await provePinnedBinaryQuiescent(pgCtlExe, inspect, pause);
     if (pidMarkerPresent(marker))
       throw Error("PostgreSQL PID marker reappeared during worker verification; retaining fixture");
+    assertClusterIdentityUnchanged();
     return "already-stopped";
   }
   await run(pgCtlExe, ["-D", data, "-m", "fast", "-w", "-t", "40", "stop"]);
@@ -138,5 +156,6 @@ export async function stopOwnedWindowsEmbeddedPostgres(
   await provePinnedBinaryQuiescent(pgCtlExe, inspect, pause);
   if (pidMarkerPresent(marker))
     throw Error("PostgreSQL PID marker reappeared during worker verification; retaining fixture");
+  assertClusterIdentityUnchanged();
   return "stopped";
 }

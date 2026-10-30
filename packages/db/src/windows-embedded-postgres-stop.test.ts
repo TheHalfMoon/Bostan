@@ -246,3 +246,85 @@ it("refuses symlinked scratch clusters", async () => {
     } finally { try { fs.unlinkSync(link); } catch {} }
   });
 });
+
+it("rejects a scratch directory removed during worker verification", async () => {
+  await fixture(async (data) => {
+    const moved = data + "-owned-moved";
+    let scans = 0;
+    try {
+      await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+        async () => { throw Error("must not run pg_ctl"); },
+        async () => {
+          if (++scans === 2) fs.renameSync(data, moved);
+          return [];
+        }, noWait)).rejects.toThrow(/cluster|directory|identity/i);
+      expect(scans).toBe(2);
+    } finally {
+      if (fs.existsSync(moved)) fs.renameSync(moved, data);
+    }
+  });
+});
+it("rejects a replaced scratch directory with a fresh PG_VERSION", async () => {
+  await fixture(async (data) => {
+    const moved = data + "-owned-original";
+    let scans = 0;
+    try {
+      await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+        async () => { throw Error("must not run pg_ctl"); },
+        async () => {
+          if (++scans === 2) {
+            fs.renameSync(data, moved);
+            fs.mkdirSync(data);
+            fs.writeFileSync(path.join(data, "PG_VERSION"), "18");
+          }
+          return [];
+        }, noWait)).rejects.toThrow(/cluster|directory|identity/i);
+      expect(scans).toBe(2);
+    } finally {
+      if (fs.existsSync(moved)) {
+        if (fs.existsSync(data)) fs.rmSync(data, { recursive: true, force: true });
+        fs.renameSync(moved, data);
+      }
+    }
+  });
+});
+
+
+it("rejects cluster replacement after pg_ctl stop but before worker proof completes", async () => {
+  await fixture(async (data) => {
+    const marker = path.join(data, "postmaster.pid");
+    fs.writeFileSync(marker, "123\n");
+    const moved = data + "-owned-original";
+    let scans = 0;
+    try {
+      await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+        async () => { fs.unlinkSync(marker); },
+        async () => {
+          if (++scans === 2) {
+            fs.renameSync(data, moved);
+            fs.mkdirSync(data);
+            fs.writeFileSync(path.join(data, "PG_VERSION"), "18");
+          }
+          return [];
+        }, noWait)).rejects.toThrow(/cluster identity changed/);
+      expect(scans).toBe(2);
+    } finally {
+      if (fs.existsSync(moved)) {
+        if (fs.existsSync(data)) fs.rmSync(data, { recursive: true, force: true });
+        fs.renameSync(moved, data);
+      }
+    }
+  });
+});
+it("rejects PG_VERSION disappearing during worker verification", async () => {
+  await fixture(async (data) => {
+    let scans = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not run pg_ctl"); },
+      async () => {
+        if (++scans === 2) fs.unlinkSync(path.join(data, "PG_VERSION"));
+        return [];
+      }, noWait)).rejects.toThrow(/cluster identity changed/);
+    expect(scans).toBe(2);
+  });
+});
