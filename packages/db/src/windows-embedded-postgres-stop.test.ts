@@ -35,6 +35,33 @@ it("requires two clean snapshots after fixed graceful shutdown", async () => {
     expect(inspections).toBe(2);
   });
 });
+it("never calls missing data directory an already-stopped verified cluster", async () => {
+  // A concurrent cleanup or failed partial initialization may remove the
+  // directory while the pinned postgres.exe worker is still running.
+  // Do not infer quiescence from filesystem absence or delete foreign files.
+  const missing = path.join(os.tmpdir(), "bostan-windows-pg-absent-" +
+    process.pid + "-b172");
+  expect(fs.existsSync(missing)).toBe(false);
+  let runs = 0;
+  let inspections = 0;
+  await expect(stopOwnedWindowsEmbeddedPostgres(missing, binary,
+    async () => { runs++; }, async () => {
+      inspections++;
+      return [row()];
+    }, noWait)).rejects.toThrow(/Missing owned PostgreSQL/);
+  expect(runs).toBe(0);
+  expect(inspections).toBe(0);
+  expect(fs.existsSync(missing)).toBe(false);
+});
+it("missing data directory never passes even if a separate process scan is clean", async () => {
+  const missing = path.join(os.tmpdir(), "bostan-windows-pg-absent-" +
+    process.pid + "-clean-b172");
+  expect(fs.existsSync(missing)).toBe(false);
+  await expect(stopOwnedWindowsEmbeddedPostgres(missing, binary,
+    async () => { throw Error("must never run pg_ctl"); },
+    clean, noWait)).rejects.toThrow(/Missing owned PostgreSQL/);
+});
+
 it("does not call pg_ctl when marker is absent, but still proves no workers", async () => {
   await fixture(async (data) => {
     let inspections = 0;

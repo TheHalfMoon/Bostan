@@ -89,7 +89,12 @@ export async function stopOwnedWindowsEmbeddedPostgres(
 ): Promise<"stopped" | "already-stopped"> {
   if (process.platform !== "win32" && run === actualRun)
     throw Error("Windows-only native database test teardown");
-  if (!fs.existsSync(dataDir)) return "already-stopped";
+  // A missing cluster directory is not proof that its Windows io_worker
+  // children exited: another cleanup/restart can remove the marker first.
+  // With no PG_VERSION or owned marker left, identity cannot be established.
+  // Fail closed rather than returning a verified "already-stopped" receipt.
+  if (!fs.existsSync(dataDir))
+    throw Error("Missing owned PostgreSQL data directory; retaining fixture");
   const temp = fs.realpathSync(os.tmpdir());
   const data = fs.realpathSync(dataDir);
   const rel = path.relative(temp, data);
