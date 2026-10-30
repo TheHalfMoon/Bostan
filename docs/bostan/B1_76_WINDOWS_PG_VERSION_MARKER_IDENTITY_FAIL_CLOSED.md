@@ -17,8 +17,10 @@ Use `lstatSync` to require a regular non-symlink `PG_VERSION` at entry. Capture 
 ## Objective tests and limitations
 
 - Mac Node 26, Vitest 5, one worker, 1024 MiB heap: **27 PASS / 0 FAIL** (all 4 new cases included).
+- Native Windows 11 on authorized Abdulaziz device, Node 24.19.0 / Vitest 5, 768 MiB heap, one worker: **22 PASS / 0 FAIL / 5 SKIP** (Windows symlink privilege cases intentionally skipped). The ordinary-file replacement and directory-marker regressions passed on NTFS. This is a real Windows *synthetic test* execution, not a real PostgreSQL teardown.
 - Targeted TypeScript 7 `--strict --noEmit`, 768 MiB heap: **EXIT 0**.
 - `git diff --check`: **EXIT 0**.
-- Native Windows full PostgreSQL/Better Auth/Chromium tests remain unqualified; the source-level tests on Mac do not prove Windows NTFS inode/birthtime semantics or real PostgreSQL process ownership. Exact PID/parent/creation-time ownership, #234 multiple-suite no-orphan, #237 packed server startup, HTTP and Better Auth remain gates.
+- Windows admission before the lightweight run: C **9.74 GiB**, D **12.19 GiB**, free RAM **4.03 GiB**, 0 postgres.exe, 22 node.exe. No heavy build or 180-second E2E was attempted.
+- Native Windows full PostgreSQL/Better Auth/Chromium tests remain unqualified; synthetic Windows tests establish only the guarded helper behavior, not real PostgreSQL worker ownership or multi-suite cleanup. Exact PID/parent/creation-time ownership, #234 multiple-suite no-orphan, #237 packed server startup, HTTP and Better Auth remain gates.
 
 **Privacy/safety:** No Actions enablement, npm pack, publication, merge, deployment, paid models/cloud, customer data, foreign-process termination, or old-fixture deletion. Keep all PRs Draft.
