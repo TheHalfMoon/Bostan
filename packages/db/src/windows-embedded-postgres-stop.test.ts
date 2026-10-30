@@ -166,6 +166,53 @@ it("retains a stopped fixture when postmaster.pid reappears after pg_ctl", async
     expect(fs.existsSync(marker)).toBe(true);
   });
 });
+it.skipIf(process.platform === "win32")("rejects a dangling postmaster.pid symlink before issuing a clean receipt", async () => {
+  await fixture(async (data) => {
+    const marker = path.join(data, "postmaster.pid");
+    fs.symlinkSync(path.join(data, "absent-pid-target"), marker);
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not run pg_ctl"); },
+      async () => { inspections++; return []; }, noWait))
+      .rejects.toThrow(/PID marker/);
+    expect(inspections).toBe(0);
+    expect(fs.lstatSync(marker).isSymbolicLink()).toBe(true);
+  });
+});
+it.skipIf(process.platform === "win32")("rejects a live postmaster.pid symlink before invoking pg_ctl", async () => {
+  await fixture(async (data) => {
+    const marker = path.join(data, "postmaster.pid");
+    fs.writeFileSync(path.join(data, "other-pid"), "456\n");
+    fs.symlinkSync(path.join(data, "other-pid"), marker);
+    let calls = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { calls++; }, clean, noWait)).rejects.toThrow(/PID marker/);
+    expect(calls).toBe(0);
+  });
+});
+it("rejects a directory masquerading as postmaster.pid", async () => {
+  await fixture(async (data) => {
+    fs.mkdirSync(path.join(data, "postmaster.pid"));
+    let calls = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { calls++; }, clean, noWait)).rejects.toThrow(/PID marker/);
+    expect(calls).toBe(0);
+  });
+});
+it.skipIf(process.platform === "win32")("rejects a dangling PID symlink introduced during process inspection", async () => {
+  await fixture(async (data) => {
+    const marker = path.join(data, "postmaster.pid");
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not run pg_ctl"); },
+      async () => {
+        if (++inspections === 2)
+          fs.symlinkSync(path.join(data, "absent-pid-target"), marker);
+        return [];
+      }, noWait)).rejects.toThrow(/PID marker/);
+    expect(inspections).toBe(2);
+  });
+});
 it("fails closed when postmaster marker survives graceful stop", async () => {
   await fixture(async (data) => {
     fs.writeFileSync(path.join(data, "postmaster.pid"), "123\n");

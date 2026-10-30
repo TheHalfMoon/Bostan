@@ -86,6 +86,20 @@ async function provePinnedBinaryQuiescent(
   }
   throw Error("Pinned PostgreSQL processes remain; retaining owned fixture");
 }
+function pidMarkerPresent(marker: string): boolean {
+  let stat: fs.Stats;
+  try {
+    stat = fs.lstatSync(marker);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw Error("Unable to inspect PostgreSQL PID marker; retaining fixture");
+  }
+  // existsSync follows links (including dangling links), so it cannot prove
+  // that postmaster.pid is an ordinary marker owned by this scratch cluster.
+  if (!stat.isFile() || stat.isSymbolicLink())
+    throw Error("Ambiguous PostgreSQL PID marker; retaining fixture");
+  return true;
+}
 export async function stopOwnedWindowsEmbeddedPostgres(
   dataDir: string,
   pgCtlExe: string,
@@ -112,17 +126,17 @@ export async function stopOwnedWindowsEmbeddedPostgres(
   if (!path.isAbsolute(pgCtlExe) || path.basename(pgCtlExe).toLowerCase() !== "pg_ctl.exe")
     throw Error("Refusing unknown PostgreSQL shutdown binary");
   const marker = path.join(data, "postmaster.pid");
-  if (!fs.existsSync(marker)) {
+  if (!pidMarkerPresent(marker)) {
     await provePinnedBinaryQuiescent(pgCtlExe, inspect, pause);
-    if (fs.existsSync(marker))
+    if (pidMarkerPresent(marker))
       throw Error("PostgreSQL PID marker reappeared during worker verification; retaining fixture");
     return "already-stopped";
   }
   await run(pgCtlExe, ["-D", data, "-m", "fast", "-w", "-t", "40", "stop"]);
-  if (fs.existsSync(marker))
+  if (pidMarkerPresent(marker))
     throw Error("PostgreSQL PID marker survived graceful shutdown");
   await provePinnedBinaryQuiescent(pgCtlExe, inspect, pause);
-  if (fs.existsSync(marker))
+  if (pidMarkerPresent(marker))
     throw Error("PostgreSQL PID marker reappeared during worker verification; retaining fixture");
   return "stopped";
 }
