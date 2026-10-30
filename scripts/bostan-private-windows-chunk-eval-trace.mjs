@@ -11,6 +11,7 @@ import {join,sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const KEY=Symbol.for('bostan.private.windows.chunk.eval.trace');
+const COMPLETE_KEY=Symbol.for('bostan.private.windows.chunk.eval.complete');
 const SAFE_FILE=/^(?:index|server|chunk-[A-Z0-9]+)\.mjs$/;
 
 export function instrumentPrivateRuntimeModule({
@@ -33,7 +34,10 @@ export function instrumentPrivateRuntimeModule({
     throw Error('Private chunk evaluation trace refused an unsupported module source');
   const id=createHash('sha256').update(relative).digest('hex').slice(0,12);
   const prelude='globalThis[Symbol.for("bostan.private.windows.chunk.eval.trace")]?.("'+id+'");\n';
-  return {id,source:prelude+(typeof source==='string'?source:Buffer.from(source).toString('utf8'))};
+  // This is a diagnostic boundary, not a guarantee that all dependencies ran.
+  // A throw or blocked top-level await intentionally leaves START unmatched.
+  const epilogue='\n;globalThis[Symbol.for("bostan.private.windows.chunk.eval.complete")]?.("'+id+'");\n';
+  return {id,source:prelude+(typeof source==='string'?source:Buffer.from(source).toString('utf8'))+epilogue};
 }
 
 /**
@@ -69,6 +73,8 @@ export function installPrivateRuntimeEvaluationTrace({
     throw Error('Private chunk evaluation trace refused invalid configuration');
   Object.defineProperty(globalThis,KEY,{configurable:false,writable:false,
     value:id=>{if(/^[a-f0-9]{12}$/.test(id))emit('BOSTAN_WIN_CHUNK_EVAL='+id);}});
+  Object.defineProperty(globalThis,COMPLETE_KEY,{configurable:false,writable:false,
+    value:id=>{if(/^[a-f0-9]{12}$/.test(id))emit('BOSTAN_WIN_CHUNK_EVAL_COMPLETE='+id);}});
   register({load(url,context,nextLoad){
     return tracePrivateRuntimeLoad({url,context,nextLoad,root,canonicalize,emit});
   }});

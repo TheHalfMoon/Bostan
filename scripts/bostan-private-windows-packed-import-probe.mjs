@@ -116,6 +116,10 @@ async function run({traceMode=false}={}) {
     console.log("BOSTAN_WIN_IMPORT_ONLY_STAGE_COUNT="+stages.length);
     if(traceMode){
       const entered=[...observed.matchAll(/(?:^|\n)BOSTAN_WIN_CHUNK_EVAL=([a-f0-9]{12})(?=\r?\n|$)/g)];
+      const evalCompleted=[...observed.matchAll(/(?:^|\n)BOSTAN_WIN_CHUNK_EVAL_COMPLETE=([a-f0-9]{12})(?=\r?\n|$)/g)];
+      const completedIds=new Set(evalCompleted.map(match=>match[1]));
+      const unmatchedIds=[...new Set(entered.map(match=>match[1])
+        .filter(id=>!completedIds.has(id)))];
       const loadStarts=[...observed.matchAll(/(?:^|\n)BOSTAN_WIN_CHUNK_LOAD_START=([a-f0-9]{12})(?=\r?\n|$)/g)];
       const loadEnds=[...observed.matchAll(/(?:^|\n)BOSTAN_WIN_CHUNK_LOAD_COMPLETE=([a-f0-9]{12})(?=\r?\n|$)/g)];
       console.log("BOSTAN_WIN_IMPORT_ONLY_CHUNK_LOAD_START_COUNT="+loadStarts.length);
@@ -125,8 +129,15 @@ async function run({traceMode=false}={}) {
       console.log("BOSTAN_WIN_IMPORT_ONLY_LAST_LOAD_COMPLETE_ID="+
         (loadEnds.at(-1)?.[1]||"not_observed"));
       console.log("BOSTAN_WIN_IMPORT_ONLY_CHUNK_EVAL_COUNT="+entered.length);
+      console.log("BOSTAN_WIN_IMPORT_ONLY_CHUNK_EVAL_COMPLETE_COUNT="+evalCompleted.length);
       console.log("BOSTAN_WIN_IMPORT_ONLY_LAST_CHUNK_ID="+
         (entered.at(-1)?.[1]||"not_observed"));
+      console.log("BOSTAN_WIN_IMPORT_ONLY_LAST_EVAL_COMPLETE_ID="+
+        (evalCompleted.at(-1)?.[1]||"not_observed"));
+      // Bounded digest-only candidates; truncated output may overstate unmatched.
+      console.log("BOSTAN_WIN_IMPORT_ONLY_UNMATCHED_EVAL_COUNT="+unmatchedIds.length);
+      console.log("BOSTAN_WIN_IMPORT_ONLY_UNMATCHED_EVAL_IDS="+
+        (unmatchedIds.slice(0,4).join(",")||"not_observed"));
       console.log("BOSTAN_WIN_IMPORT_ONLY_TRACE_QUALIFIED=false");
     }
     console.log("BOSTAN_WIN_IMPORT_ONLY_HEARTBEAT="+
