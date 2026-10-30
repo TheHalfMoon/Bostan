@@ -3,6 +3,7 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import { stopOwnedWindowsEmbeddedPostgres } from "./windows-embedded-postgres-stop.js";
+import { isEmbeddedPostgresTemplateCacheDisabled } from "./embedded-postgres-template-policy.js";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -337,6 +338,8 @@ async function startEmbeddedPostgresWithRetry(tempDirPrefix: string): Promise<{
 // those checks reject it. Windows has no uid; its temp directory is already
 // per user, so the ownership and mode checks are skipped there.
 //
+// Windows bypasses the template cache until owned worker teardown is verified
+// (issue #234). It never touches existing cache entries in this mode.
 // Set PAPERCLIP_TEST_POSTGRES_TEMPLATE=0 to bypass the cache and run the fresh
 // path for every suite. Any failure on the template path (root checks, build,
 // copy, start, or publish) falls back to the fresh path, so a broken cache can
@@ -356,7 +359,13 @@ const TEMPLATE_BUILD_STOP_TIMEOUT_MS = 30_000;
 export type EmbeddedPostgresStartMode = "template" | "fresh";
 
 function isTemplateCacheDisabled(): boolean {
-  return process.env.PAPERCLIP_TEST_POSTGRES_TEMPLATE === "0";
+  // #234: Windows shutdown has not proved that all owned io_worker children exit.
+  // Do not publish, reuse or prune cached clusters until that proof exists.
+  // Existing cache directories are preserved without modification.
+  return isEmbeddedPostgresTemplateCacheDisabled(
+    process.platform,
+    process.env.PAPERCLIP_TEST_POSTGRES_TEMPLATE,
+  );
 }
 
 function migrationsDirectory(): string {

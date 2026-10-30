@@ -4,6 +4,7 @@ import path from "node:path";
 import postgres from "postgres";
 import { afterEach, describe, expect, it } from "vitest";
 import { inspectMigrations } from "./client.js";
+import { isEmbeddedPostgresTemplateCacheDisabled } from "./embedded-postgres-template-policy.js";
 import {
   __embeddedPostgresStartMaxAttemptsForTests as MAX_ATTEMPTS,
   __embeddedPostgresTemplateRootDirForTests as templateRootDir,
@@ -169,6 +170,7 @@ describe("computeEmbeddedPostgresTemplateKey", () => {
 });
 
 const describeOnPosix = process.platform === "win32" ? describe.skip : describe;
+const itWithTemplate = process.platform === "win32" ? it.skip : it;
 
 describe("isUsableTemplate", () => {
   let root: string;
@@ -266,7 +268,7 @@ describeWithPostgres("startEmbeddedPostgresTestDatabase template path", () => {
     else process.env.PAPERCLIP_TEST_POSTGRES_TEMPLATE = originalTemplateSetting;
   });
 
-  it("publishes a complete template and starts suites from a copy of it", { timeout: EMBEDDED_POSTGRES_TEST_TIMEOUT_MS }, async () => {
+  itWithTemplate("publishes a complete template and starts suites from a copy of it", { timeout: EMBEDDED_POSTGRES_TEST_TIMEOUT_MS }, async () => {
     // This test covers the template path, so it enables the cache even when
     // the suite runs under PAPERCLIP_TEST_POSTGRES_TEMPLATE=0. The first
     // start then builds the template if the support probe did not.
@@ -317,7 +319,7 @@ describeWithPostgres("startEmbeddedPostgresTestDatabase template path", () => {
     }
   });
 
-  it("refreshes the template's timestamp on every reuse so idle time drives pruning", { timeout: EMBEDDED_POSTGRES_TEST_TIMEOUT_MS }, async () => {
+  itWithTemplate("refreshes the template's timestamp on every reuse so idle time drives pruning", { timeout: EMBEDDED_POSTGRES_TEST_TIMEOUT_MS }, async () => {
     delete process.env.PAPERCLIP_TEST_POSTGRES_TEMPLATE;
     // Make sure a template exists before ageing it: the support probe does
     // not publish one under PAPERCLIP_TEST_POSTGRES_TEMPLATE=0, and a name
@@ -343,7 +345,7 @@ describeWithPostgres("startEmbeddedPostgresTestDatabase template path", () => {
     expect(fs.statSync(templateDir).mtimeMs).toBeGreaterThan(Date.now() - 60 * 1000);
   });
 
-  it("rebuilds the template when it was pruned after this process resolved it", { timeout: EMBEDDED_POSTGRES_TEST_TIMEOUT_MS }, async () => {
+  itWithTemplate("rebuilds the template when it was pruned after this process resolved it", { timeout: EMBEDDED_POSTGRES_TEST_TIMEOUT_MS }, async () => {
     delete process.env.PAPERCLIP_TEST_POSTGRES_TEMPLATE;
     const scratch = useScratchTmpdir("paperclip-template-pruned-");
     try {
@@ -446,7 +448,7 @@ describeWithPostgres("startEmbeddedPostgresTestDatabase template path", () => {
   });
 });
 
-describe("support probe when the template cannot be built", () => {
+describeOnPosix("support probe when the template cannot be built", () => {
   afterEach(() => {
     __setEmbeddedPostgresCtorProviderForTests(null);
     resetTemplateState();
