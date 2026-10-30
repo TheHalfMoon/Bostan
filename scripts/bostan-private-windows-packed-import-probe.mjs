@@ -98,9 +98,10 @@ async function run({traceMode=false}={}) {
     ],{cwd:join(root,"server"),env,windowsHide:true,stdio:["ignore","pipe","pipe"]});
     observer=observeOwnedQaChild(child);
     // Only collect into memory, never emit raw logs, paths or network details.
-    for(const stream of [child.stdout,child.stderr])stream?.on("data",part=>{
-      capture=appendPrivateWindowsImportCapture(capture,part);
-    });
+    for(const [source,stream] of [["stdout",child.stdout],["stderr",child.stderr]])
+      stream?.on("data",part=>{
+        capture=appendPrivateWindowsImportCapture(capture,part,{source});
+      });
     boundedOutcome=await waitForPrivateWindowsImportProbeChild(child);
   } finally {
     if(observer){
@@ -111,8 +112,10 @@ async function run({traceMode=false}={}) {
     if(dbStub)await new Promise(ok=>dbStub.close(()=>ok()));
     observed=capture.text;
     console.log("BOSTAN_WIN_IMPORT_ONLY_TRACE_CAPTURE_TRUNCATED="+capture.truncated);
-    console.log("BOSTAN_WIN_IMPORT_ONLY_COUNTS_COMPLETE="+(!capture.truncated));
-    if(capture.truncated)process.exitCode=1;
+    console.log("BOSTAN_WIN_IMPORT_ONLY_TRACE_INTERLEAVED="+Boolean(capture.interleaved));
+    console.log("BOSTAN_WIN_IMPORT_ONLY_COUNTS_COMPLETE="+
+      (!capture.truncated&&!capture.interleaved));
+    if(capture.truncated||capture.interleaved)process.exitCode=1;
     const stages=[...observed.matchAll(/BOSTAN_WIN_SERVER_STAGE=(static_import_start|static_import_pending|static_import_worker_alive|static_import_worker_pending|static_import_worker_failed|static_import_complete|runtime_start|runtime_ready|runtime_failed)/g)];
     console.log("BOSTAN_WIN_IMPORT_ONLY_OUTCOME="+boundedOutcome);
     console.log("BOSTAN_WIN_IMPORT_ONLY_FIRST_STAGE="+(stages[0]?.[1]||"not_observed"));
