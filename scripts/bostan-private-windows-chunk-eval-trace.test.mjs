@@ -30,7 +30,7 @@ test('owned packed ESM receives a fixed digest-only evaluation marker',async()=>
   }finally{await rm(root,{recursive:true,force:true});}
 });
 
-test('linked packed module escaping owned runtime fails closed',async()=>{
+test('linked packed module escaping owned runtime fails closed',async(t)=>{
   const root=await mkdtemp(join(tmpdir(),'bostan-private-chunk-link-'));
   try{
     const runtime=join(root,'server','dist-runtime');
@@ -38,7 +38,12 @@ test('linked packed module escaping owned runtime fails closed',async()=>{
     const outside=join(root,'outside.mjs');
     await writeFile(outside,'export default 1;');
     const linked=join(runtime,'chunk-ABCD1234.mjs');
-    await symlink(outside,linked);
+    try{await symlink(outside,linked);}catch(error){
+      if(process.platform==='win32' && error?.code==='EPERM'){
+        t.skip('Windows host lacks symlink creation privilege');return;
+      }
+      throw error;
+    }
     assert.throws(()=>instrumentPrivateRuntimeModule({
       root,url:pathToFileURL(linked).href,format:'module',source:'export default 1;',
     }),/linked runtime escape/);
