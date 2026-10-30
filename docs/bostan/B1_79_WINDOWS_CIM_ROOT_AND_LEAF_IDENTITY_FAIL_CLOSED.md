@@ -21,7 +21,7 @@ Use `path.win32` for the pinned `pg_ctl.exe` path checks and test fixture constr
 - Authorized Mac Node 26 / Vitest 5, one worker, 1024 MiB heap: **37 PASS / 0 FAIL / 1 SKIP** on 38 focused synthetic tests.
 - Targeted TypeScript 7 strict `--noEmit` from `packages/db`, 768 MiB: **EXIT 0**.
 - `git diff --check`: **PASS**.
-- Native Windows tests: **not yet executed for B1-79**. Prior B1-78 native Windows tests do not qualify this change.
+- Authorized native Windows 11 / Node 24.19.0: **4 PASS / 0 FAIL** in a bounded synthetic source-execution smoke test. Fetched exact commit `609008fd6266075311a2315aeccac7ea77f4ad9d` read-only into the existing QA Git object store, loaded its exact helper source in memory using Node `stripTypeScriptTypes`, and exercised root-relative rejection, wrong-leaf rejection, valid foreign UNC acceptance, and trailing-separator rejection with injected CIM rows. No tracked Windows QA files were changed; only a new, explicitly owned synthetic temporary `PG_VERSION` fixture was created and cleaned within the same test. **Not the full Windows Vitest suite, real PostgreSQL, or process ownership proof.**
 - Read-only Windows admission before this work: C **6.27 GiB**, D **12.17 GiB**, free RAM **5.34 GiB**, 0 postgres.exe. No heavy build, real PostgreSQL, or 180-second HTTP E2E was attempted.
 
 ## Unresolved gates
