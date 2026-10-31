@@ -1,3 +1,8 @@
+import { spawnSync } from "node:child_process";
+import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -73,4 +78,45 @@ test("fails closed if a required suite is duplicated", () => {
 test("fails closed on malformed or partial JSON data", () => {
   assert.throws(() => auditNativeSandboxReport(null), /missing/);
   assert.throws(() => auditNativeSandboxReport({ success: true }), /missing/);
+});
+
+test("auditor CLI actually runs from a checkout path containing percent and hash", () => {
+  const owned = mkdtempSync(path.join(os.tmpdir(), "bostan-b125-audit-%#-"));
+  try {
+    const source = fileURLToPath(new URL("./bostan-private-linux-vitest-report-audit.mjs", import.meta.url));
+    const auditor = path.join(owned, "auditor.mjs");
+    const report = path.join(owned, "report.json");
+    copyFileSync(source, auditor);
+    writeFileSync(report, JSON.stringify(fixture()));
+    const result = spawnSync(process.execPath, [auditor, report], {
+      encoding: "utf8", timeout: 4000,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /^BOSTAN_B124_VERIFIED_SUITES=4$/m);
+    assert.match(result.stdout, /^BOSTAN_B124_VERIFIED_ROOTLESS_CASES=4$/m);
+  } finally {
+    rmSync(owned, { recursive: true, force: true });
+  }
+});
+
+test("auditor CLI rejects skipped rootless tests from a percent/hash checkout path", () => {
+  const owned = mkdtempSync(path.join(os.tmpdir(), "bostan-b125-reject-%#-"));
+  try {
+    const source = fileURLToPath(new URL("./bostan-private-linux-vitest-report-audit.mjs", import.meta.url));
+    const auditor = path.join(owned, "auditor.mjs");
+    const report = path.join(owned, "report.json");
+    const skipped = fixture();
+    skipped.testResults[0].assertionResults[0].status = "pending";
+    copyFileSync(source, auditor);
+    writeFileSync(report, JSON.stringify(skipped));
+    const result = spawnSync(process.execPath, [auditor, report], {
+      encoding: "utf8", timeout: 4000,
+    });
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, /BOSTAN_B124_REPORT_REFUSED/);
+    assert.match(result.stderr, /skipped/);
+  } finally {
+    rmSync(owned, { recursive: true, force: true });
+  }
 });
