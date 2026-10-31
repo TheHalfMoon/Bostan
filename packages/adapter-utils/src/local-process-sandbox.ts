@@ -83,6 +83,15 @@ async function pathExists(candidate: string): Promise<boolean> {
   return fs.lstat(candidate).then(() => true).catch(() => false);
 }
 
+function isPathWithinRoot(root: string, candidate: string): boolean {
+  const relative = path.relative(root, candidate);
+  return relative === "" || (
+    relative !== ".." &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative)
+  );
+}
+
 function parentDirectories(candidate: string): string[] {
   const directories: string[] = [];
   let current = path.dirname(candidate);
@@ -459,23 +468,35 @@ export async function buildLocalProcessSandboxSpawnTarget(input: {
 
   const workspaceDir = normalizeAbsolutePath(input.options.workspaceDir, "Sandbox workspaceDir");
   const cwd = normalizeAbsolutePath(input.cwd, "Sandbox cwd");
+  let physicalWorkspace: string | null = null;
   if (filesystemScope === "workspace") {
-    const relativeCwd = path.relative(workspaceDir, cwd);
-    if (relativeCwd.startsWith("..") || path.isAbsolute(relativeCwd)) {
+    // Lexical path checks alone are insufficient: a symlink placed *inside*
+    // the workspace may resolve to files the sandbox was never authorized to
+    // mount. Resolve existing paths before issuing any bwrap --bind arguments.
+    physicalWorkspace = await fs.realpath(workspaceDir);
+    const physicalCwd = await fs.realpath(cwd);
+    if (!isPathWithinRoot(workspaceDir, cwd) || !isPathWithinRoot(physicalWorkspace, physicalCwd)) {
       throw new Error(`Sandbox cwd "${cwd}" must be inside workspaceDir "${workspaceDir}".`);
     }
     const outboundRestorePaths = (input.options.outboundRestorePaths ?? []).map((candidate, index) =>
       normalizeAbsolutePath(candidate, `Sandbox outboundRestorePaths[${index}]`));
+    const physicalRestorePaths = await Promise.all(outboundRestorePaths.map(async (candidate) =>
+      await fs.realpath(candidate).catch(() => null)));
     for (const [index, extraPath] of (input.options.extraPaths ?? []).entries()) {
       if (extraPath.access !== "rw") continue;
       const normalizedExtraPath = normalizeAbsolutePath(extraPath.path, `Sandbox extraPaths[${index}].path`);
-      const relativeToWorkspace = path.relative(workspaceDir, normalizedExtraPath);
-      const synchronized = !relativeToWorkspace.startsWith("..") && !path.isAbsolute(relativeToWorkspace);
-      const restored = outboundRestorePaths.some((restorePath) => {
-        const relative = path.relative(restorePath, normalizedExtraPath);
-        return !relative.startsWith("..") && !path.isAbsolute(relative);
-      });
-      if (!synchronized && !restored) {
+      const synchronized = isPathWithinRoot(workspaceDir, normalizedExtraPath);
+      const restored = outboundRestorePaths.some((restorePath) => isPathWithinRoot(restorePath, normalizedExtraPath));
+      // Preserve the existing behavior for unavailable optional paths: the
+      // mount() helper skips them. A dangling symlink still exists by lstat
+      // and must fail closed when realpath cannot resolve it.
+      let physicallyAllowed = true;
+      if (await pathExists(normalizedExtraPath)) {
+        const actualPath = await fs.realpath(normalizedExtraPath);
+        physicallyAllowed = isPathWithinRoot(physicalWorkspace, actualPath) ||
+          physicalRestorePaths.some((restorePath) => restorePath !== null && isPathWithinRoot(restorePath, actualPath));
+      }
+      if ((!synchronized && !restored) || !physicallyAllowed) {
         throw new Error(
           `Writable sandbox path "${normalizedExtraPath}" is outside synchronized workspace "${workspaceDir}" and has no outbound restore mapping.`,
         );
@@ -519,14 +540,15 @@ export async function buildLocalProcessSandboxSpawnTarget(input: {
     for (const [index, alias] of (input.options.pathAliases ?? []).entries()) {
       const aliasPath = normalizeAbsolutePath(alias.path, `Sandbox pathAliases[${index}].path`);
       const aliasTarget = normalizeAbsolutePath(alias.target, `Sandbox pathAliases[${index}].target`);
-      const relativeTarget = path.relative(workspaceDir, aliasTarget);
-      if (relativeTarget.startsWith("..") || path.isAbsolute(relativeTarget)) {
+      if (!(await pathExists(aliasTarget))) {
+        throw new Error(`Sandbox path alias target "${aliasTarget}" does not exist.`);
+      }
+      const physicalAliasTarget = await fs.realpath(aliasTarget);
+      if (!physicalWorkspace || !isPathWithinRoot(workspaceDir, aliasTarget) ||
+          !isPathWithinRoot(physicalWorkspace, physicalAliasTarget)) {
         throw new Error(
           `Sandbox path alias "${aliasPath}" must target the synchronized workspace "${workspaceDir}".`,
         );
-      }
-      if (!(await pathExists(aliasTarget))) {
-        throw new Error(`Sandbox path alias target "${aliasTarget}" does not exist.`);
       }
       addParentDirectories(args, created, aliasPath);
       args.push("--bind", aliasTarget, aliasPath);
