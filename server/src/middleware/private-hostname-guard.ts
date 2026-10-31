@@ -30,6 +30,13 @@ export function parsePrivateHostHeader(value: string | undefined): string | null
       return null;
     }
     const hostname = parsed.hostname.toLowerCase();
+    // WHATWG URL also rewrites legacy numeric IPv4 spellings (127.1,
+    // 0177.0.0.1, 0x7f000001, 2130706433) and trailing-dot IPv4 into
+    // 127.0.0.1. A caller-controlled Host must not become loopback by
+    // normalization. Preserve valid bracketed IPv6 address compression.
+    if (!match[1].startsWith("[") && hostname !== match[1].toLowerCase()) {
+      return null;
+    }
     // URL.hostname keeps IPv6 brackets; the allow-set uses bare ::1.
     return hostname.startsWith("[") && hostname.endsWith("]")
       ? hostname.slice(1, -1)
