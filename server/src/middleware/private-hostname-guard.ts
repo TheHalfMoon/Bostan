@@ -48,12 +48,23 @@ export function parsePrivateHostHeader(value: string | undefined): string | null
 }
 
 function extractHostname(req: Request): string | null {
-  // X-Forwarded-Host is client-supplied without independently verified proxy
-  // ancestry. Even when Express TRUST_PROXY is enabled it must not override
-  // the actual Host authority at this private network admission boundary.
-  // A trusted reverse proxy must preserve Host or use an explicitly allowed
-  // backend hostname; it must not make a forged forwarded value authoritative.
-  return parsePrivateHostHeader(req.header("host"));
+  // Node's req.headers / Express req.header() silently retain only the first
+  // Host when a raw HTTP/1.1 request repeats that field. A second, conflicting
+  // authority may be interpreted differently by a proxy or another consumer.
+  // Admit exactly one raw Host field; reject duplicates even if identical.
+  // Never use unverified X-Forwarded-Host as a fallback or override.
+  const rawHeaders = req.rawHeaders;
+  if (!Array.isArray(rawHeaders) || rawHeaders.length % 2 !== 0) return null;
+  let authority: string | undefined;
+  for (let i = 0; i < rawHeaders.length; i += 2) {
+    const name = rawHeaders[i];
+    const value = rawHeaders[i + 1];
+    if (typeof name !== "string" || typeof value !== "string") return null;
+    if (name.toLowerCase() !== "host") continue;
+    if (authority !== undefined) return null;
+    authority = value;
+  }
+  return parsePrivateHostHeader(authority);
 }
 
 function normalizeAllowedHostnames(values: string[]): string[] {
