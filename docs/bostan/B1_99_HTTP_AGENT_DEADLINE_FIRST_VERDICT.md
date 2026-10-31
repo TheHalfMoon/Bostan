@@ -21,3 +21,7 @@ Authorized Mac Node26, pinned Vitest5 with one worker and capped memory: **100/1
 ## Release remains NO-GO
 
 This closes a distinct HTTP timeout classification race, not end-to-end user-stop proof for all other adapter types, exact Windows packed backend/PG/Chromium, Linux installer, untrusted agent sandbox/effects consent, multi-tenant load or full security/privacy/license/NOTICE/provenance qualification. Keep repository PRIVATE, stacked PR DRAFT; no protected main merge, Actions, publish/deploy/release, paid model, customer data or unrelated host cleanup.
+
+## Native Windows focused QA
+
+On the authorized Windows 11 B144 device, a clean QA checkout fetched the exact verified B1-99 code commit 6ec8d5fcab4c92c30f538a32392862c50d687b8b. Resource gate: 5.53 GiB free RAM and 12.16 GiB free on D:, with no PostgreSQL process. The existing native Node24/Vitest5 toolchain ran four focused suites: HTTP execute (19), real local loopback socket (3), setup checks (4), guarded HTTP fetch (9). All **35/35 PASSED, zero skips, exit 0** in 11.21 seconds. The four previously failing deadline race cases were included. No external HTTP service, model provider, database, installer, browser or customer data was used. This is native Windows source qualification, not packed-app release approval.
