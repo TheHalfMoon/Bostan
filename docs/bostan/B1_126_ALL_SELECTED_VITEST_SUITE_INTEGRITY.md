@@ -24,13 +24,17 @@ The existing `scripts/bostan-private-linux-sandbox-gate.sh` now pins all three a
 
 For each file, the gate verifies the reviewed HEAD blob, ordinary non-symlink leaf, physical canonical path inside the QA checkout, clean Git status, and independently computed on-disk Git blob. All checks run **before** the Node/dependency/bwrap admissions and before any source-native tests. The existing source/test/auditor pins and exact four-rootless-case JSON audit remain intact.
 
-The checked-in `scripts/bostan-private-linux-sandbox-gate.test.sh` now creates three synthetic extra suite files, repins **only its disposable gate copy**, and tests hidden tampering under both `--assume-unchanged` and `--skip-worktree` for each of the three suites (six new expected refusals). It retains the earlier nine synthetic cases, so a complete future execution should show **15 synthetic admission cases**. No runtime dependency, production code, or license/NOTICE was changed.
+The checked-in `scripts/bostan-private-linux-sandbox-gate.test.sh` now creates three synthetic extra suite files, repins **only its disposable gate copy**, and tests hidden tampering under both `--assume-unchanged` and `--skip-worktree` for each of the three suites (six new expected refusals). A further regression now denies a required suite replaced by a byte-identical symlink while Git marks it `assume-unchanged`. It retains the earlier nine synthetic cases, so a complete future execution should show **16 synthetic admission cases** (nine prior plus six hidden edits and one suite symlink). No runtime dependency, production code, or license/NOTICE was changed.
 
 ## Objective execution and limits
 
 **RED, actually reproduced:** model-side native Linux Git 2.47.3 synthetic repository, one unpinned extra suite marked `--skip-worktree`, modified disk bytes, `git status` empty and HEAD/disk hashes unequal.
 
 **GREEN, actually executed:** an isolated owner-created Linux Git fixture running the new gate's five-check logic against three synthetic additional suite files. A clean baseline was admitted, and six hidden-tamper variants (three files × two Git index flags) were each rejected with the intended `additional suite working-tree bytes differ from pinned source` message. Extracted Bash check passed `bash -n`. Result: **6/6 PASS** for the extracted guard and synthetic Git fixture, with owner-created scratch removed.
+
+**Additional independent real Linux/Git check:** the second owner-contained synthetic fixture exercised all five new suite-admission predicates against the three listed test paths. **9/9 bounded scenarios passed**: one clean baseline, six hidden worktree tampering refusals across both index flags, one byte-identical symlink rejection, and one normal visible edit refusal. This is an isolated predicate reproduction, **not** an execution of the entire newly authored 16-case Bostan Bash script. Its Git fixture and scripts were deleted after execution.
+
+**Consolidated B1-126 regression:** a concurrent Draft for the same qualification defect was detected. The additional symlink-regression case was added to THIS existing B1-126 canonical branch to avoid carrying two competing implementations; source change commit `4ccb1f136afd9e7acfcb50875744ffaee0733634`. GitHub test file final verified blob `946372aafe20be32f580eadeada78ba9dc11f9ea`, production qualification gate blob unchanged `667d295a1c743f2dc7cc868baa68cca1d169e21f`.
 
 **Not executed:** the entire exact checked-in B1-126 Bash regression script, actual private Bostan four-suite Vitest, adapter-utils TypeScript7, real unprivileged bubblewrap integration, installed Windows/macOS/Linux products, or sustained PostgreSQL load. This Linux model container has Node 22, no full private checkout, no installed bwrap/Vitest/TypeScript; the authorized Desktop Commander quota previously instructed DO NOT RETRY. The six isolated checks must not be reported as source-native qualification.
 
@@ -46,6 +50,6 @@ bash scripts/bostan-private-linux-sandbox-gate.test.sh
 bash scripts/bostan-private-linux-sandbox-gate.sh --run
 ```
 
-Require 11/11 auditor tests, 15/15 synthetic gate cases, four genuine native bubblewrap tests present and passed in audited Vitest JSON, four full source-native suites green, and adapter-utils TypeScript7 green. Fail closed on any skipped, missing or failed required rootless case. Preserve exact logs and exit codes.
+Require 11/11 auditor tests, 16/16 synthetic gate cases, four genuine native bubblewrap tests present and passed in audited Vitest JSON, four full source-native suites green, and adapter-utils TypeScript7 green. Fail closed on any skipped, missing or failed required rootless case. Preserve exact logs and exit codes.
 
 **Release remains NO-GO.** Cross-platform installed qualification, governed agent side effects and consent, privacy/security, real repeated PostgreSQL stress issue #234, and upstream LICENSE/NOTICE/provenance remain open. No main merge, publication, deployment, release, npm pack, Actions enablement, paid service, customer data, or unowned cleanup.
