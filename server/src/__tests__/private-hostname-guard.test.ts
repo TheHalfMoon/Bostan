@@ -65,7 +65,9 @@ describe("privateHostnameGuard", () => {
     { label: "allowed Host second", lines: ["Host: blocked-host.invalid:3100", "hOSt: localhost:3100"] },
     { label: "identical repeated Host", lines: ["Host: localhost:3100", "HOST: localhost:3100"] },
   ])("rejects duplicate raw HTTP Host fields ($label)", async ({ lines }) => {
-    expect(await rawHttpStatus(lines)).toBe(403);
+    // Node versions may reject a duplicate Host in the HTTP parser (400)
+    // before Express receives it; either parser refusal or guard 403 is safe.
+    expect([400, 403]).toContain(await rawHttpStatus(lines));
   });
 
   it("admits one raw HTTP Host field", async () => {
