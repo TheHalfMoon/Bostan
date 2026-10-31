@@ -153,7 +153,7 @@ function pidMarkerPresent(marker: string): boolean {
 // The existence of postmaster.pid alone is not authority to run pg_ctl.
 // Verify a bounded, ordinary PostgreSQL PID line and the same opened file
 // identity before issuing the native shutdown request. Never log PID bytes.
-function assertValidPidMarkerBeforeStop(marker: string): void {
+function assertValidPidMarkerBeforeStop(marker: string, ownedDataDir: string): void {
   let fd: number | undefined;
   try {
     const before = fs.lstatSync(marker);
@@ -164,15 +164,36 @@ function assertValidPidMarkerBeforeStop(marker: string): void {
     if (!opened.isFile() || opened.dev !== before.dev
         || opened.ino !== before.ino || opened.birthtimeMs !== before.birthtimeMs)
       throw Error("changed");
-    const prefix = Buffer.alloc(32);
-    const length = fs.readSync(fd, prefix, 0, prefix.length, 0);
-    const newline = prefix.subarray(0, length).indexOf(10);
-    if (newline < 1) throw Error("invalid");
+    // PostgreSQL postmaster.pid line 2 names its cluster data directory.
+    // A numeric PID alone can point at an unrelated process; never invoke
+    // pg_ctl on a marker whose cluster path is absent, foreign or ambiguous.
+    const contents = Buffer.alloc(before.size);
+    const length = fs.readSync(fd, contents, 0, contents.length, 0);
+    if (length !== before.size) throw Error("changed");
+    const firstNewline = contents.indexOf(10);
+    const secondNewline = contents.indexOf(10, firstNewline + 1);
+    if (firstNewline < 1 || secondNewline <= firstNewline + 1)
+      throw Error("invalid");
     // Node Buffer "ascii" masks the high bit (0xB1 becomes "1"). Preserve
     // original byte values so the decimal-only PID check rejects non-ASCII.
-    const pidLine = prefix.subarray(0, newline).toString("latin1").replace(/\r$/, "");
+    const pidLine = contents.subarray(0, firstNewline).toString("latin1").replace(/\r$/, "");
     if (!/^[1-9]\d{0,9}$/.test(pidLine)
         || !Number.isSafeInteger(Number(pidLine))) throw Error("invalid");
+    const pathBytes = contents.subarray(firstNewline + 1, secondNewline);
+    const markerDataDir = new TextDecoder("utf-8", { fatal: true })
+      .decode(pathBytes).replace(/\r$/, "");
+    if (!markerDataDir || /[\x00-\x1f\x7f]/.test(markerDataDir)
+        || !path.isAbsolute(markerDataDir)) throw Error("invalid");
+    // On Windows, path.isAbsolute also accepts drive-less rooted paths.
+    // Require an anchored drive or UNC root, never the current-drive alias.
+    if (process.platform === "win32" &&
+        !(/^[a-z]:[\\/]/i.test(markerDataDir)
+          || /^\\\\[^\\]+\\[^\\]+[\\/]/.test(markerDataDir)))
+      throw Error("invalid");
+    const markerRealDir = fs.realpathSync(markerDataDir);
+    if (process.platform === "win32"
+      ? markerRealDir.toLowerCase() !== ownedDataDir.toLowerCase()
+      : markerRealDir !== ownedDataDir) throw Error("foreign");
     const after = fs.fstatSync(fd);
     if (after.dev !== before.dev || after.ino !== before.ino
         || after.size !== before.size || after.mtimeMs !== before.mtimeMs)
@@ -286,7 +307,7 @@ export async function stopOwnedWindowsEmbeddedPostgres(
     assertClusterIdentityUnchanged();
     return "already-stopped";
   }
-  assertValidPidMarkerBeforeStop(marker);
+  assertValidPidMarkerBeforeStop(marker, data);
   // PID validation may take place after a concurrent cluster mutation.
   // Verify the original PG_VERSION and directory again before pg_ctl runs;
   // a post-shutdown check alone would detect the change too late.

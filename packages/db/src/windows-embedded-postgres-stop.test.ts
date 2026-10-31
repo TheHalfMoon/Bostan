@@ -21,9 +21,50 @@ async function fixture(run: (data: string) => Promise<void>) {
   fs.writeFileSync(path.join(data, "PG_VERSION"), "18");
   try { await run(data); } finally { fs.rmSync(data, { recursive: true, force: true }); }
 }
+// Real postmaster.pid includes its absolute data-directory path on line 2.
+function validPidMarker(data: string, pid = 123): string {
+  return `${pid}\n${fs.realpathSync(data)}\n`;
+}
+
+it("rejects a postmaster PID marker pointing to a different data directory before pg_ctl", async () => {
+  await fixture(async (data) => {
+    // PostgreSQL writes its data-directory path on the second PID-marker line.
+    // A foreign marker must never authorize even a fake shutdown invocation.
+    fs.writeFileSync(path.join(data, "postmaster.pid"),
+      `123\n${fs.realpathSync(os.tmpdir())}\n`);
+    let shutdowns = 0;
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { shutdowns++; },
+      async () => { inspections++; return []; }, noWait))
+      .rejects.toThrow(/PID marker/);
+    expect(shutdowns).toBe(0);
+    expect(inspections).toBe(0);
+  });
+});
+it("rejects missing, relative and invalid-byte cluster paths in a PID marker", async () => {
+  const invalid = [
+    Buffer.from("123\n"),
+    Buffer.from("123\nrelative-cluster\n"),
+    Buffer.from([0x31, 0x32, 0x33, 0x0a, 0xff, 0x0a]),
+  ];
+  for (const bytes of invalid) {
+    await fixture(async (data) => {
+      fs.writeFileSync(path.join(data, "postmaster.pid"), bytes);
+      let shutdowns = 0;
+      let inspections = 0;
+      await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+        async () => { shutdowns++; },
+        async () => { inspections++; return []; }, noWait))
+        .rejects.toThrow(/PID marker/);
+      expect(shutdowns).toBe(0);
+      expect(inspections).toBe(0);
+    });
+  }
+});
 it("requires two clean snapshots after fixed graceful shutdown", async () => {
   await fixture(async (data) => {
-    fs.writeFileSync(path.join(data, "postmaster.pid"), "123\n");
+    fs.writeFileSync(path.join(data, "postmaster.pid"), validPidMarker(data));
     let calls = 0;
     let inspections = 0;
     expect(await stopOwnedWindowsEmbeddedPostgres(data, binary, async (file, args) => {
@@ -155,7 +196,7 @@ it("retains an absent-marker fixture when postmaster.pid reappears during verifi
 it("retains a stopped fixture when postmaster.pid reappears after pg_ctl", async () => {
   await fixture(async (data) => {
     const marker = path.join(data, "postmaster.pid");
-    fs.writeFileSync(marker, "123\n");
+    fs.writeFileSync(marker, validPidMarker(data));
     let inspections = 0;
     await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
       async () => { fs.unlinkSync(marker); },
@@ -216,7 +257,7 @@ it.skipIf(process.platform === "win32")("rejects a dangling PID symlink introduc
 });
 it("fails closed when postmaster marker survives graceful stop", async () => {
   await fixture(async (data) => {
-    fs.writeFileSync(path.join(data, "postmaster.pid"), "123\n");
+    fs.writeFileSync(path.join(data, "postmaster.pid"), validPidMarker(data));
     let inspected = false;
     await expect(stopOwnedWindowsEmbeddedPostgres(data, binary, async () => {},
       async () => { inspected = true; return []; }, noWait)).rejects.toThrow(/survived/);
@@ -225,7 +266,7 @@ it("fails closed when postmaster marker survives graceful stop", async () => {
 });
 it("refuses malformed postmaster.pid before calling native pg_ctl", async () => {
   const invalid = ["", "not-a-pid\n", "0\n", "-42\n", " 123\n",
-    "123\\n", "999999999999999999999999\n", "123"];
+    "123\\n", "999999999999999999999999\n", "123", "123\n"];
   for (const contents of invalid) {
     await fixture(async (data) => {
       fs.writeFileSync(path.join(data, "postmaster.pid"), contents);
@@ -244,7 +285,7 @@ it("refuses malformed postmaster.pid before calling native pg_ctl", async () => 
 it.skipIf(process.platform === "win32")("rejects postmaster PID path replacement during opened-file validation", async () => {
   await fixture(async (data) => {
     const marker = path.join(data, "postmaster.pid");
-    fs.writeFileSync(marker, "123\n");
+    fs.writeFileSync(marker, validPidMarker(data));
     const realFstat = fs.fstatSync.bind(fs);
     let stats = 0;
     let swapped = false;
@@ -254,7 +295,7 @@ it.skipIf(process.platform === "win32")("rejects postmaster PID path replacement
       const result = realFstat(fd);
       if (++stats === 2) {
         fs.renameSync(marker, marker + ".owned-original");
-        fs.writeFileSync(marker, "123\n");
+        fs.writeFileSync(marker, validPidMarker(data));
         swapped = true;
       }
       return result;
@@ -303,7 +344,7 @@ it("rejects ambiguous pg_ctl paths before invoking shutdown or process inspectio
   ];
   for (const unsafe of unsafeBinaries) {
     await fixture(async (data) => {
-      fs.writeFileSync(path.join(data, "postmaster.pid"), "123\n");
+      fs.writeFileSync(path.join(data, "postmaster.pid"), validPidMarker(data));
       let shutdowns = 0;
       let inspections = 0;
       await expect(stopOwnedWindowsEmbeddedPostgres(data, unsafe,
@@ -333,7 +374,7 @@ it("preserves valid extended-length and UNC pg_ctl paths for quiescence proof", 
 
 it("refuses unrelated shutdown binary and incomplete database identity", async () => {
   await fixture(async (data) => {
-    fs.writeFileSync(path.join(data, "postmaster.pid"), "123\n");
+    fs.writeFileSync(path.join(data, "postmaster.pid"), validPidMarker(data));
     await expect(stopOwnedWindowsEmbeddedPostgres(data, path.win32.join(path.win32.dirname(binary), "different.exe"),
       async () => {}, clean, noWait)).rejects.toThrow(/binary/);
     fs.unlinkSync(path.join(data, "PG_VERSION"));
@@ -402,7 +443,7 @@ it("rejects a replaced scratch directory with a fresh PG_VERSION", async () => {
 it("rejects cluster replacement after pg_ctl stop but before worker proof completes", async () => {
   await fixture(async (data) => {
     const marker = path.join(data, "postmaster.pid");
-    fs.writeFileSync(marker, "123\n");
+    fs.writeFileSync(marker, validPidMarker(data));
     const moved = data + "-owned-original";
     let scans = 0;
     try {
@@ -537,7 +578,7 @@ it("rejects PG_VERSION in-place modification after a real stop request", async (
   await fixture(async (data) => {
     const version = path.join(data, "PG_VERSION");
     const marker = path.join(data, "postmaster.pid");
-    fs.writeFileSync(marker, "123\n");
+    fs.writeFileSync(marker, validPidMarker(data));
     let inspections = 0;
     await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
       async () => { fs.unlinkSync(marker); },
@@ -664,7 +705,7 @@ it("refuses PG_VERSION mutation during PID verification before issuing pg_ctl", 
   await fixture(async (data) => {
     const pidMarker = path.join(data, "postmaster.pid");
     const versionMarker = path.join(data, "PG_VERSION");
-    fs.writeFileSync(pidMarker, "123\n");
+    fs.writeFileSync(pidMarker, validPidMarker(data));
     const realFstat = fs.fstatSync.bind(fs);
     let fstats = 0;
     let mutated = false;
