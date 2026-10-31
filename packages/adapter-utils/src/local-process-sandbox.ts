@@ -350,6 +350,10 @@ async function startNetworkAllowlistProxy(
       headers: buildLocalProcessProxyOriginHeaders(request.headers, target.host),
     }, (upstreamResponse) => {
       response.writeHead(upstreamResponse.statusCode ?? 502, filterLocalProcessProxyHopByHopHeaders(upstreamResponse.headers));
+      // Once origin headers arrive, errors are emitted by IncomingMessage,
+      // not necessarily by the ClientRequest. A truncated HTTP response
+      // otherwise leaves the downstream client waiting for its remaining bytes.
+      upstreamResponse.on("error", () => response.destroy());
       upstreamResponse.pipe(response);
     });
     upstream.on("error", (error) => response.destroy(error));
