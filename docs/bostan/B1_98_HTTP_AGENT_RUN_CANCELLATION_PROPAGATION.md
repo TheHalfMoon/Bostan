@@ -23,3 +23,7 @@ Do NOT loosen any network SSRF guard, exact-origin allowlist, pinned DNS, reques
 ## Still release NO-GO
 
 This fixes HTTP adapter lifecycle after the owner cancels the run. It does NOT prove installed Windows packed app startup, real PostgreSQL/Chrome full E2E, system-wide untrusted process sandbox/consent, native Linux release, installers, all-tenant isolation, security/privacy/license/NOTICE/provenance acceptance or autonomous completion. Repo PRIVATE, PR DRAFT, main unchanged, no Actions, publish/deploy, paid inference, customer data or unrelated host cleanup.
+
+## Actual native Windows regression — exact source, not a packed release proof
+
+Windows 11 B144 QA, independently verifying pinned head 7b0ad9ba7e4e2375526c23198f5bb04587176d92, had 5.85GiB available RAM, D: 12.16GiB free and zero PostgreSQL before admitting a focused source test run. Native Windows Node24 with existing Vitest5 dependencies ran the actual test suite over HTTP execution, real local TCP server, HTTP setup and guarded fetch: **31/31 PASS**, 0 skipped, EXIT 0 in 11.24 seconds. The local HTTP test proved the real on-wire socket closed after a synthetic owner cancellation, preserving distinct cancel vs timeout semantics. No downloads, PostgreSQL, Chromium, paid service, real data or installed-product claim.
