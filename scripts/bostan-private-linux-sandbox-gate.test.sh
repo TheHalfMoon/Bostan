@@ -102,7 +102,7 @@ git -C "$fixture" restore --worktree -- "$src"
 for item in bostan-private-linux-vitest-report-audit.mjs bostan-private-linux-vitest-report-audit.test.mjs; do
   qa_path="scripts/$item"
   git -C "$fixture" update-index --assume-unchanged -- "$qa_path"
-  printf '%s\\n' '// OWNED SYNTHETIC AUDITOR TAMPER' >> "$fixture/$qa_path"
+  printf '%s\n' '// OWNED SYNTHETIC AUDITOR TAMPER' >> "$fixture/$qa_path"
   [[ -z "$(git -C "$fixture" status --porcelain -- "$qa_path")" ]] || {
     echo "B124_FAIL: hidden audit modification unexpectedly visible" >&2
     exit 1
@@ -126,4 +126,4 @@ ln -s -- "$scratch/owned-external-tree" "$fixture/packages"
 refuse 'symlinked ancestor directory' 'source resolves through a symlink or outside QA checkout'
 
 printf 'BOSTAN_B116_REGRESSION=PASS (7 bounded cases, synthetic only)\n'
-printf 'BOSTAN_B124_AUDITOR_INTEGRITY=PASS (2 added, 9 total synthetic cases)\\n'
+printf 'BOSTAN_B124_AUDITOR_INTEGRITY=PASS (2 added, 9 total synthetic cases)\n'
