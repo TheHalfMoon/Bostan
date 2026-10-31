@@ -51,6 +51,11 @@ test_blob='b40fe2446a9c391b5fec30529e0be2cc9ea86f48'
 # not the Git object recorded at HEAD: pin BOTH independently, fail-closed.
 [[ -f "$root/$source_path" && ! -L "$root/$source_path" ]] || fail 'source must be an ordinary checkout file'
 [[ -f "$root/$test_path" && ! -L "$root/$test_path" ]] || fail 'test must be an ordinary checkout file'
+# The leaf may be regular while an ancestor directory is a symlink into
+# foreign storage. Check canonical paths as well as leaf types before tests.
+command -v realpath >/dev/null || fail 'realpath is missing'
+[[ "$(realpath -e -- "$root/$source_path" 2>/dev/null)" == "$root/$source_path" ]] || fail 'source resolves through a symlink or outside QA checkout'
+[[ "$(realpath -e -- "$root/$test_path" 2>/dev/null)" == "$root/$test_path" ]] || fail 'test resolves through a symlink or outside QA checkout'
 [[ "$(git -C "$root" hash-object -- "$root/$source_path" 2>/dev/null)" == "$source_blob" ]] || fail 'source working-tree bytes differ from pinned source'
 [[ "$(git -C "$root" hash-object -- "$root/$test_path" 2>/dev/null)" == "$test_blob" ]] || fail 'test working-tree bytes differ from pinned tests'
 
