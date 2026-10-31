@@ -710,6 +710,40 @@ describe("local process sandbox", () => {
     expect(target.args).toEqual(expect.arrayContaining(["--bind", inside, indirect]));
   });
 
+  it.runIf(process.platform === "linux")("pins the physical workspace bind source when its root symlink changes after validation", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-workspace-root-source-"));
+    cleanup.push(root);
+    const approved = path.join(root, "approved");
+    const outside = path.join(root, "outside");
+    const workspaceLink = path.join(root, "workspace");
+    await fs.mkdir(approved);
+    await fs.mkdir(outside);
+    await fs.symlink(approved, workspaceLink, "dir");
+
+    const target = await buildLocalProcessSandboxSpawnTarget({
+      executable: process.execPath,
+      args: ["-e", "process.exit(0)"],
+      cwd: workspaceLink,
+      options: {
+        workspaceDir: workspaceLink,
+        filesystemScope: "workspace",
+      },
+    });
+
+    // A writable parent can redirect the path spelling after policy approval
+    // but before bubblewrap starts. The host SOURCE must be the exact realpath
+    // approved for the root workspace, not the retargetable symlink.
+    await fs.unlink(workspaceLink);
+    await fs.symlink(outside, workspaceLink, "dir");
+    expect(await fs.realpath(workspaceLink)).toBe(outside);
+    const destinationIndex = target.args.findIndex((argument, index) =>
+      argument === workspaceLink && index >= 2 && target.args[index - 2] === "--bind");
+    expect(destinationIndex).toBeGreaterThanOrEqual(2);
+    const approvedBindSource = target.args[destinationIndex - 1];
+    expect(approvedBindSource).toBe(approved);
+    expect(await fs.realpath(approvedBindSource)).toBe(approved);
+  });
+
   it.runIf(process.platform === "linux")("pins alias and writable extra bind sources even if a workspace symlink changes afterward", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-bind-source-pin-"));
     cleanup.push(root);
