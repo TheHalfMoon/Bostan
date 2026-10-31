@@ -49,6 +49,11 @@ const SKIP_FILENAME_SUFFIXES = [".d.ts"];
 export const GIT_PUSH_PATTERNS = [
   /\bgit[\s_-]+push\b/i,
   /["'`]git["'`]\s*,\s*\[?\s*["'`]push["'`]/i,
+  // Git permits global options before 'push': git -C dir push,
+  // git -c key=value push, and git --git-dir=path push.
+  /\bgit\s+(?:(?:-C|-c|--git-dir|--work-tree)\s+(?:"[^"]*"|'[^']*'|`[^`]*`|\S+)\s+|(?:--git-dir|--work-tree)=\S+\s+)+push\b/i,
+  // Spawn/execFile can express the same arguments as a separate argv array.
+  /["'`]git["'`]\s*,\s*\[?\s*(?:(?:["'`](?:-C|-c|--git-dir|--work-tree)["'`]\s*,\s*["'`][^"'`]*["'`]\s*,\s*)|(?:["'`](?:--git-dir|--work-tree)=[^"'`]*["'`]\s*,\s*))+["'`]push["'`]/i,
 ];
 // Kept for backwards-compatibility with existing tests/importers.
 export const GIT_PUSH_PATTERN = GIT_PUSH_PATTERNS[0];
