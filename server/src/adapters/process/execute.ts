@@ -11,7 +11,6 @@ import {
   buildRuntimeToolsEnv,
   isForbiddenConfigEnvKey,
   isPaperclipRuntimeEnvKey,
-  buildInvocationEnvForLogs,
   ensurePathInEnv,
   resolveCommandForLogs,
   runChildProcess,
@@ -66,23 +65,26 @@ async function executeProcess(ctx: AdapterExecutionContext): Promise<AdapterExec
   // sanitizeInheritedPaperclipEnv(process.env) + env, so a PAPERCLIP_API_KEY
   // on the server process never reaches the child.
   const runtimeEnv = ensurePathInEnv({ ...process.env, ...env });
-  const resolvedCommand = await resolveCommandForLogs(command, cwd, runtimeEnv);
-  const loggedEnv = buildInvocationEnvForLogs(env, {
-    runtimeEnv,
-    includeRuntimeKeys: ["HOME"],
-    resolvedCommand,
-  });
+  // Preserve the original pre-spawn command validation and executable
+  // resolution, but do not reuse its user-controlled path as event metadata.
+  await resolveCommandForLogs(command, cwd, runtimeEnv);
 
   const timeoutSec = asNumber(config.timeoutSec, 0);
   const graceSec = asNumber(config.graceSec, 15);
 
   if (onMeta) {
+    // adapter.invoke events can be persisted and streamed to other company
+    // viewers. Unknown args, ordinary-looking environment variables, cwd and
+    // resolved executable paths can contain secrets that generic redaction
+    // heuristics cannot recognize. Only publish fixed metadata here.
+    // This does not alter the command, arguments, cwd or environment supplied
+    // to runChildProcess below.
     await onMeta({
       adapterType: "process",
-      command: resolvedCommand,
-      cwd,
-      commandArgs: args,
-      env: loggedEnv,
+      command: "[configured command hidden]",
+      cwd: "[configured directory hidden]",
+      commandArgs: args.map(() => "[argument hidden]"),
+      env: {},
     });
   }
 
