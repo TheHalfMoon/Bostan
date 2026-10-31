@@ -8,6 +8,7 @@ import {
   buildLocalProcessSandboxSpawnTarget,
   parseLocalProcessFilesystemScope,
   parseLocalProcessNetworkAllowlist,
+  isValidLocalProcessProxyConnectPort,
   parseLocalProcessNetworkScope,
   parseLocalProcessSandboxExtraPaths,
 } from "./local-process-sandbox.js";
@@ -114,6 +115,59 @@ describe("local process sandbox", () => {
       });
       expect(response).toContain("HTTP/1.1 403 Forbidden");
       expect(response).toContain("network_target_denied");
+    } finally {
+      await target.cleanup?.();
+    }
+  });
+
+  it("rejects out-of-range and noncanonical TCP CONNECT ports before socket creation", () => {
+    for (const allowed of ["1", "80", "443", "65535"]) {
+      expect(isValidLocalProcessProxyConnectPort(allowed)).toBe(true);
+    }
+    for (const denied of [
+      "", "0", "00", "080", "0443", "65536", "99999",
+      "99999999999999999999999999999999999999999999999999",
+      "-1", "+443", "443.0", "443 ", " 443", "443\\n", "0x1bb", "NaN", "Infinity",
+    ]) {
+      expect(isValidLocalProcessProxyConnectPort(denied)).toBe(false);
+    }
+  });
+
+  it.runIf(process.platform === "linux")("keeps sandbox proxy alive after an out-of-range CONNECT with a host-only allowlist", async () => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-sandbox-connect-guard-"));
+    cleanup.push(workspace);
+    const target = await buildLocalProcessSandboxSpawnTarget({
+      executable: process.execPath,
+      args: ["-e", "process.exit(0)"],
+      cwd: workspace,
+      options: {
+        workspaceDir: workspace,
+        networkScope: "allowlist",
+        networkAllowlist: ["127.0.0.1"],
+      },
+    });
+    const delimiter = target.args.indexOf("--");
+    const socketPath = target.args[delimiter + 3];
+    const send = async (authority: string) => new Promise<string>((resolve, reject) => {
+      const socket = net.createConnection(socketPath, () => {
+        socket.end(`CONNECT ${authority} HTTP/1.1\\r\\nHost: ${authority}\\r\\n\\r\\n`);
+      });
+      let output = "";
+      socket.setEncoding("utf8");
+      socket.on("data", (data) => { output += data; });
+      socket.on("end", () => resolve(output));
+      socket.on("error", reject);
+    });
+    try {
+      for (const invalid of ["127.0.0.1:65536", "127.0.0.1:99999", "127.0.0.1:000443"]) {
+        const response = await send(invalid);
+        expect(response).toContain("HTTP/1.1 403 Forbidden");
+        expect(response).toContain("network_target_denied");
+      }
+      // A later request must still get a normal policy response, proving
+      // that malformed inputs did not terminate the long-lived proxy.
+      const response = await send("example.invalid:443");
+      expect(response).toContain("HTTP/1.1 403 Forbidden");
     } finally {
       await target.cleanup?.();
     }
