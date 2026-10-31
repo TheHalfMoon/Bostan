@@ -397,30 +397,48 @@ async function startNetworkAllowlistProxy(
   };
 }
 
-async function createNetworkProxyBridge(): Promise<string> {
+// The source is executed within the Linux sandbox; an optional listen port
+// allows local regression tests to avoid competing for the production port.
+export async function createNetworkProxyBridge(listenPort = SANDBOX_PROXY_PORT): Promise<string> {
   const source = `
 const net = require("node:net");
 const { spawn } = require("node:child_process");
 const socketPath = process.argv[2];
 const executable = process.argv[3];
 const args = process.argv.slice(4);
+const sockets = new Set();
 const server = net.createServer((client) => {
   const upstream = net.connect(socketPath);
+  sockets.add(client);
+  sockets.add(upstream);
+  client.once("close", () => { sockets.delete(client); upstream.destroy(); });
+  upstream.once("close", () => { sockets.delete(upstream); client.destroy(); });
   client.pipe(upstream);
   upstream.pipe(client);
   const close = () => { client.destroy(); upstream.destroy(); };
   client.on("error", close);
   upstream.on("error", close);
 });
-server.listen(${SANDBOX_PROXY_PORT}, "127.0.0.1", () => {
+server.listen(${listenPort}, "127.0.0.1", () => {
   const child = spawn(executable, args, { stdio: "inherit", env: process.env });
   const forward = (signal) => { if (!child.killed) child.kill(signal); };
-  process.on("SIGTERM", () => forward("SIGTERM"));
-  process.on("SIGINT", () => forward("SIGINT"));
-  child.on("exit", (code, signal) => server.close(() => {
-    if (signal) process.kill(process.pid, signal);
-    else process.exit(code == null ? 1 : code);
-  }));
+  const forwardTerm = () => forward("SIGTERM");
+  const forwardInt = () => forward("SIGINT");
+  process.on("SIGTERM", forwardTerm);
+  process.on("SIGINT", forwardInt);
+  // Failed execs emit 'error' and may never emit 'exit'. 'close' always
+  // follows either path; ensure no unhandled process error or bridge hang.
+  child.on("error", (error) => { process.stderr.write("Bostan sandbox bridge spawn failed: " + error.message + "\\n"); });
+  child.once("close", (code, signal) => {
+    for (const socket of sockets) socket.destroy();
+    server.close(() => {
+      if (signal) {
+        process.off("SIGTERM", forwardTerm);
+        process.off("SIGINT", forwardInt);
+        process.kill(process.pid, signal);
+      } else process.exit(code == null || code < 0 ? 1 : code);
+    });
+  });
 });
 `;
   return source.trimStart();
