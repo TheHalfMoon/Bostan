@@ -55,3 +55,18 @@ An actual model-side **Debian Linux / Git 2.47.3** execution exercised **all 16 
 **Non-equivalence / restriction:** this is a fully **executed independent 16-case predicate reproduction**, **NOT** execution of the exact checked-in `bash scripts/bostan-private-linux-sandbox-gate.test.sh` file and **NOT** `bash scripts/bostan-private-linux-sandbox-gate.sh --run` against a complete source-native private Bostan checkout. The owner-marked source-native checkout, Node>=24.11, Vitest5, TypeScript7 and rootless `bwrap` remain unavailable in this isolated container. Thus real product release qualification remains NO-GO. The real GitHub SHA-pinned scripts and all source-native Linux tests have to run in the authorized QA environment.
 
 **Overall Bostan release: NO-GO.** Keep GitHub PRIVATE, PR DRAFT and UNMERGED, main unchanged, Actions disabled. No publish/deploy/release/npm pack/paid services/customer data/unowned cleanup or removal of upstream required attribution.
+
+## Exact checked-in QA-tool execution — 2026-10-31, later wave
+
+**New, stronger evidence than the independent predicate reproduction above.** On a model-side isolated native Debian Linux container with **Node v22.16.0** and **Git v2.47.3**, the four exact UTF-8 files fetched from private GitHub PR #386 at `7b97dc90e83a915bb730b8e216ab2315c86a55fe` were reconstructed byte-for-byte in a newly created owner-only `/tmp/bostan-b130-owned-*` scratch directory. Each local file was independently checked using the **actual installed `git hash-object`** against the fetched private GitHub blob:
+
+| Checked-in QA file | Verified Git blob |
+| --- | --- |
+| `scripts/bostan-private-linux-vitest-report-audit.mjs` | `b361b8563e1ab288c9f81710993a432e87866274` |
+| `scripts/bostan-private-linux-vitest-report-audit.test.mjs` | `66396962359d57d0c16df2bac04d87ee2080a58e` |
+| `scripts/bostan-private-linux-sandbox-gate.sh` | `6cfb02ceefae02f7ecf24f7fe2b5487862865495` |
+| `scripts/bostan-private-linux-sandbox-gate.test.sh` | `946372aafe20be32f580eadeada78ba9dc11f9ea` |
+
+**Actual commands and results:** `node --test scripts/bostan-private-linux-vitest-report-audit.test.mjs` **11 PASS / 0 FAIL / 0 SKIP**, including both percent/hash CLI path regressions; `bash -n` for both exact Bash files **PASS**; `bash scripts/bostan-private-linux-sandbox-gate.test.sh` **16/16 B114_PASS**, with final `BOSTAN_B116_REGRESSION=PASS`, `BOSTAN_B124_AUDITOR_INTEGRITY=PASS` and `BOSTAN_B126_ALL_SUITE_PINS=PASS` markers. The checked-in Bash test used only its own throwaway synthetic Git repository and repinned **only its copied gate**. **Total: 27/27 exact checked-in QA-tool regression cases executed and passed**; this supersedes the earlier independent 16-case predicate-only reproduction as the strongest evidence for these two QA-tool test scripts.
+
+**Strict limitation:** the runner remains **Node 22**, below the gate's **Node >=24.11** requirement; local Vitest5, TypeScript7, real rootless `bwrap` and a complete owner-marked private Bostan source checkout are not installed here. Therefore the production source-native `bash scripts/bostan-private-linux-sandbox-gate.sh --run`, four real Vitest suites, four real bubblewrap isolation cases, adapter-utils TypeScript7, and installed-product qualification **have NOT run**. No CI status is inferred. No downloads, paid services, Desktop Commander retries, external networking, customer data, or user-device modifications were used. Only this run's owned scratch was used, with cleanup required after verification. **RELEASE NO-GO**.
