@@ -117,11 +117,19 @@ export function privateHostnameGuard(opts: {
   });
 
   return (req, res, next) => {
-    const hostname = extractHostname(req);
+    // This app is an origin server, not a forward HTTP proxy. Node accepts
+    // absolute-form request targets (GET http://other-host/path HTTP/1.1),
+    // and Express may route their parsed pathname even when Host is allowed.
+    // Require origin-form before trusting the independently checked Host.
+    const requestTarget = req.originalUrl ?? req.url;
+    const validOriginForm = typeof requestTarget === "string" && requestTarget.startsWith("/");
+    const hostname = validOriginForm ? extractHostname(req) : null;
     const wantsJson = req.path.startsWith("/api") || req.accepts(["json", "html", "text"]) === "json";
 
     if (!hostname) {
-      const error = "Missing Host header. To allow a hostname, configure BOSTAN_ALLOWED_HOSTNAMES=<host> for the Bostan server and restart.";
+      const error = validOriginForm
+        ? "Missing Host header. To allow a hostname, configure BOSTAN_ALLOWED_HOSTNAMES=<host> for the Bostan server and restart."
+        : "Unsupported HTTP request target for this Bostan instance.";
       if (wantsJson) {
         res.status(403).json({ error });
       } else {
