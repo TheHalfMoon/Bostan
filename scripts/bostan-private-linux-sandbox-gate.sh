@@ -79,4 +79,4 @@ printf 'BOSTAN_B112_PACKAGE_TYPECHECK_BEGIN\n'
 timeout 180s ./node_modules/.bin/tsc --project packages/adapter-utils/tsconfig.json --noEmit \
   || fail 'actual source-native adapter-utils TypeScript is NOT green'
 printf 'BOSTAN_B112_PACKAGE_TYPECHECK=PASS\n'
-printf 'BOSTAN_B112_LINUX_GATE_PASS\n
+printf 'BOSTAN_B112_LINUX_GATE_PASS\n'
