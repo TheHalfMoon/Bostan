@@ -80,6 +80,66 @@ test("findGitPushOffenses does not flag args-array form when allow marker is pre
   assert.deepEqual(findGitPushOffenses(text), []);
 });
 
+test("findGitPushOffenses detects git push after shell Git scope and config flags", () => {
+  const calls = [
+    "execSync('git -C /tmp/work push origin main');",
+    "execSync('git -C \"/tmp/work space\" push origin main');",
+    "execSync('git -c core.hooksPath=/tmp/hooks push origin main');",
+    "execSync('git --git-dir /tmp/work/.git push origin main');",
+    "execSync('git --git-dir=/tmp/work/.git push origin main');",
+    "execSync('git --work-tree=/tmp/work push origin main');",
+  ];
+  for (const command of calls) {
+    assert.equal(findGitPushOffenses(command).length, 1, command);
+  }
+});
+
+test("findGitPushOffenses detects Git scope/config flags before push in spawn arrays", () => {
+  const calls = [
+    `spawn("git", ["-C", "/tmp/work", "push", "origin", "main"]);`,
+    `spawn("git", ["-c", "core.hooksPath=/tmp/hooks", "push", "origin", "main"]);`,
+    `execFile("git", ["--git-dir", "/tmp/work/.git", "push", "origin"]);`,
+    `execFile("git", ["--git-dir=/tmp/work/.git", "push", "origin"]);`,
+    `["git", "-C", "/tmp/work", "push"];`,
+  ];
+  for (const command of calls) {
+    assert.equal(findGitPushOffenses(command).length, 1, command);
+  }
+});
+
+test("findGitPushOffenses does not flag scoped Git read operations or unrelated text", () => {
+  const safe = [
+    "execSync('git -C /tmp/work fetch origin main');",
+    "execSync('git --git-dir /tmp/work/.git status');",
+    `spawn("git", ["-C", "/tmp/work", "fetch"]);`,
+    `spawn("git", ["-c", "core.hooksPath=/tmp/hooks", "pull"]);`,
+    `spawn("git", ["--git-dir", "/tmp/work/.git", "status"]);`,
+    "const note = 'git -C /tmp/work pushers';",
+  ];
+  for (const command of safe) assert.deepEqual(findGitPushOffenses(command), [], command);
+});
+
+test("runCheck rejects a flagged Git push in an adapter source file", () => {
+  const tmpRoot = mkdtempSync(path.join(os.tmpdir(), "bostan-no-git-push-flags-"));
+  try {
+    const sourceDir = path.join(tmpRoot, "packages/adapters/sample/src");
+    mkdirSync(sourceDir, { recursive: true });
+    writeFileSync(path.join(sourceDir, "index.ts"),
+      `import { spawn } from "node:child_process";\nspawn("git", ["-C", "/tmp/work", "push", "origin", "main"]);\n`);
+    const errors = [];
+    const exitCode = runCheck({
+      repoRoot: tmpRoot,
+      scanRoots: ["packages/adapters"],
+      log: () => {},
+      error: (message) => errors.push(message),
+    });
+    assert.equal(exitCode, 1);
+    assert.ok(errors.some((line) => line.includes("index.ts:2")));
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
 test("runCheck passes when scoped tree has no offenses", () => {
   const tmpRoot = mkdtempSync(path.join(os.tmpdir(), "no-git-push-pass-"));
   try {
