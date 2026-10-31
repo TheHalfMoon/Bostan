@@ -281,6 +281,80 @@ describe("local process sandbox", () => {
     }
   });
 
+  it.runIf(process.platform === "linux")("survives abrupt TCP resets from allowed CONNECT clients and accepts later tunnels", async () => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-connect-reset-"));
+    cleanup.push(workspace);
+    const originSockets = new Set<net.Socket>();
+    const origin = net.createServer((socket) => {
+      originSockets.add(socket);
+      socket.once("close", () => originSockets.delete(socket));
+      socket.on("error", () => {});
+    });
+    await new Promise<void>((resolve, reject) => {
+      origin.once("error", reject);
+      origin.listen(0, "127.0.0.1", () => { origin.off("error", reject); resolve(); });
+    });
+    const address = origin.address();
+    if (!address || typeof address === "string") throw new Error("Expected localhost TCP origin");
+    let target: Awaited<ReturnType<typeof buildLocalProcessSandboxSpawnTarget>> | undefined;
+    try {
+      target = await buildLocalProcessSandboxSpawnTarget({
+        executable: process.execPath,
+        args: ["-e", "process.exit(0)"],
+        cwd: workspace,
+        options: {
+          workspaceDir: workspace,
+          networkScope: "allowlist",
+          networkAllowlist: [`127.0.0.1:${address.port}`],
+        },
+      });
+      const delimiter = target.args.indexOf("--");
+      const socketPath = target.args[delimiter + 3]!;
+      for (let index = 0; index < 3; index++) {
+        await new Promise<void>((resolve, reject) => {
+          const client = net.createConnection(socketPath);
+          const guard = setTimeout(() => {
+            client.destroy();
+            reject(new Error("Timed out opening a test CONNECT tunnel"));
+          }, 2000);
+          client.once("connect", () => {
+            client.write(connectFixtureRequest(`127.0.0.1:${address.port}`));
+            // Force a TCP reset, not a graceful FIN. An unhandled ECONNRESET
+            // on the proxy's accepted client Socket crashes its Node worker.
+            setTimeout(() => {
+              clearTimeout(guard);
+              if (!client.destroyed) client.resetAndDestroy();
+              resolve();
+            }, 25);
+          });
+          client.once("error", (error) => { clearTimeout(guard); reject(error); });
+        });
+      }
+      await new Promise<void>((resolve) => setTimeout(resolve, 50));
+      // The same long-lived proxy must still serve a new, valid tunnel.
+      const statusLine = await new Promise<string>((resolve, reject) => {
+        const client = net.createConnection(socketPath, () => {
+          client.write(connectFixtureRequest(`127.0.0.1:${address.port}`));
+        });
+        const guard = setTimeout(() => {
+          client.destroy();
+          reject(new Error("CONNECT did not recover after client TCP resets"));
+        }, 2000);
+        client.once("data", (chunk) => {
+          clearTimeout(guard);
+          resolve(chunk.toString("utf8").split("\r\n", 1)[0]!);
+          client.destroy();
+        });
+        client.once("error", (error) => { clearTimeout(guard); reject(error); });
+      });
+      expect(statusLine).toBe("HTTP/1.1 200 Connection Established");
+    } finally {
+      await target?.cleanup?.();
+      for (const socket of originSockets) socket.destroy();
+      await new Promise<void>((resolve) => origin.close(() => resolve()));
+    }
+  });
+
   it("drops fixed and Connection-nominated hop-only headers before forwarding", () => {
     const incoming = {
       host: "local-proxy.example.test",
