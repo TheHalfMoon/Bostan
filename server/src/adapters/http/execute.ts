@@ -1,6 +1,7 @@
 import type { AdapterExecutionContext, AdapterExecutionResult } from "../types.js";
 import { asString, asNumber, parseObject } from "../utils.js";
 import { guardedHttpAdapterFetch } from "./remote-fetch.js";
+import { safeHttpAgentMethod, safeHttpAgentInvocationFailure } from "./safe-diagnostics.js";
 
 export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExecutionResult> {
   const { config, runId, agent, context } = ctx;
@@ -20,6 +21,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     ...(ctx.runtimeTools ? { paperclipRuntimeTools: ctx.runtimeTools } : {}),
   };
 
+  const diagnosticMethod = safeHttpAgentMethod(method);
+  let rejectedStatus: number | null = null;
   const controller = new AbortController();
   const timer = timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null;
 
@@ -39,14 +42,15 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     });
 
     if (!res.ok) {
-      throw new Error(`HTTP invoke failed with status ${res.status}`);
+      rejectedStatus = res.status;
+      throw new Error("HTTP adapter request rejected");
     }
 
     return {
       exitCode: 0,
       signal: null,
       timedOut: false,
-      summary: `HTTP ${method} ${url}`,
+      summary: `HTTP ${diagnosticMethod} request completed`,
     };
   } catch (err) {
     if (timer && err instanceof Error && err.name === "AbortError") {
@@ -54,11 +58,14 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         exitCode: null,
         signal: null,
         timedOut: true,
-        errorMessage: `HTTP ${method} ${url} timed out after ${timeoutMs}ms`,
+        errorMessage: `HTTP ${diagnosticMethod} request timed out after ${timeoutMs}ms`,
         errorCode: "timeout",
       };
     }
-    throw err;
+    if (rejectedStatus !== null) {
+      throw new Error("HTTP adapter request rejected with status " + rejectedStatus);
+    }
+    throw safeHttpAgentInvocationFailure(err);
   } finally {
     if (timer) clearTimeout(timer);
   }

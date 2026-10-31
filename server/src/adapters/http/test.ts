@@ -5,6 +5,7 @@ import type {
 } from "../types.js";
 import { asString, parseObject } from "../utils.js";
 import { guardedHttpAdapterFetch } from "./remote-fetch.js";
+import { safeHttpAgentMethod, safeHttpAgentErrorCode } from "./safe-diagnostics.js";
 
 function summarizeStatus(checks: AdapterEnvironmentCheck[]): AdapterEnvironmentTestResult["status"] {
   if (checks.some((check) => check.level === "error")) return "fail";
@@ -23,7 +24,7 @@ export async function testEnvironment(
   const checks: AdapterEnvironmentCheck[] = [];
   const config = parseObject(ctx.config);
   const urlValue = asString(config.url, "");
-  const method = normalizeMethod(asString(config.method, "POST"));
+  const method = safeHttpAgentMethod(normalizeMethod(asString(config.method, "POST")));
 
   if (!urlValue) {
     checks.push({
@@ -47,7 +48,7 @@ export async function testEnvironment(
     checks.push({
       code: "http_url_invalid",
       level: "error",
-      message: `Invalid URL: ${urlValue}`,
+      message: "Invalid HTTP adapter endpoint URL (address hidden).",
     });
   }
 
@@ -55,7 +56,7 @@ export async function testEnvironment(
     checks.push({
       code: "http_url_protocol_invalid",
       level: "error",
-      message: `Unsupported URL protocol: ${url.protocol}`,
+      message: "Unsupported HTTP adapter endpoint protocol (HTTP(S) required).",
       hint: "Use an http:// or https:// endpoint.",
     });
   }
@@ -64,7 +65,7 @@ export async function testEnvironment(
     checks.push({
       code: "http_url_valid",
       level: "info",
-      message: `Configured endpoint: ${url.toString()}`,
+      message: "Configured HTTP adapter endpoint (address hidden).",
     });
   }
 
@@ -100,7 +101,8 @@ export async function testEnvironment(
       checks.push({
         code: "http_endpoint_probe_failed",
         level: "warn",
-        message: err instanceof Error ? err.message : "Endpoint probe failed",
+        message: "HTTP adapter endpoint probe failed (" +
+          safeHttpAgentErrorCode(err) + ")",
         hint: "This may be expected in restricted networks; verify connectivity when invoking runs.",
       });
     } finally {

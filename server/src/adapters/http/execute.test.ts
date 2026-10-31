@@ -119,3 +119,62 @@ describe("http adapter execute", () => {
     expect(result.errorMessage).toContain("timed out after 1ms");
   });
 });
+
+  it("does not reveal credential-bearing endpoint in successful run summary", async () => {
+    const secretUrl = "https://user:PRIVATE_PASSWORD@example.test/hook/PRIVATE_PATH?token=PRIVATE_QUERY#PRIVATE_FRAGMENT";
+    guardedFetchMock.mockResolvedValue(new Response(null,{status:204}));
+    const result = await execute({
+      runId:"run-safe",agent:{id:"agent-safe",companyId:"company-safe",
+        name:"Agent",adapterType:"http",adapterConfig:{}},
+      runtime:{sessionId:null,sessionParams:null,sessionDisplayId:null,taskKey:null},
+      config:{url:secretUrl,method:"POST"},context:{},onLog:async()=>{},
+    });
+    expect(guardedFetchMock).toHaveBeenCalledWith(secretUrl,expect.any(Object));
+    expect(result.exitCode).toBe(0);
+    expect(JSON.stringify(result)).not.toMatch(/PRIVATE_PASSWORD|PRIVATE_PATH|PRIVATE_QUERY|PRIVATE_FRAGMENT|example\.test/);
+  });
+
+  it("does not expose URL or untrusted method on aborted HTTP runs", async () => {
+    const secretUrl = "https://example.test/PRIVATE_PATH?access_token=PRIVATE_QUERY";
+    guardedFetchMock.mockImplementation((_url:string,init?:RequestInit)=>
+      new Promise((_resolve,reject)=>init?.signal?.addEventListener("abort",()=>
+        reject(new DOMException("Aborted", "AbortError")))));
+    const result = await execute({
+      runId:"run-safe",agent:{id:"agent-safe",companyId:"company-safe",
+        name:"Agent",adapterType:"http",adapterConfig:{}},
+      runtime:{sessionId:null,sessionParams:null,sessionDisplayId:null,taskKey:null},
+      config:{url:secretUrl,method:"POST\nBearer PRIVATE_HEADER",timeoutMs:1},
+      context:{},onLog:async()=>{},
+    });
+    expect(result.timedOut).toBe(true);
+    expect(JSON.stringify(result)).not.toMatch(/PRIVATE_PATH|PRIVATE_QUERY|PRIVATE_HEADER|example\.test/);
+  });
+
+  it("redacts untrusted fetch errors and preserves only allowlisted rejection classes",async()=>{
+    const url="https://host.example/PRIVATE_PATH?token=PRIVATE_QUERY";
+    guardedFetchMock.mockRejectedValueOnce(Object.assign(
+      new Error("Bearer PRIVATE_SECRET in /PRIVATE_PATH"),{
+        code:"remote_http_private_endpoint",
+      }));
+    const ctx={
+      runId:"run-safe",agent:{id:"agent-safe",companyId:"company-safe",
+        name:"Agent",adapterType:"http" as const,adapterConfig:{}},
+      runtime:{sessionId:null,sessionParams:null,sessionDisplayId:null,taskKey:null},
+      config:{url},context:{},onLog:async()=>{},
+    };
+    await expect(execute(ctx)).rejects.toThrow("HTTP adapter request failed (remote_http_private_endpoint)");
+    guardedFetchMock.mockRejectedValueOnce(Object.assign(
+      new Error("PRIVATE_SECRET leaked from remote server"),{code:"PRIVATE_SECRET_CODE"}));
+    await expect(execute(ctx)).rejects.toThrow("HTTP adapter request failed (unclassified)");
+  });
+
+  it("reports rejected status without disclosing URL or response",async()=>{
+    const url="https://host.example/PRIVATE_PATH?token=PRIVATE_QUERY";
+    guardedFetchMock.mockResolvedValueOnce(new Response("PRIVATE_RESPONSE",{status:429}));
+    await expect(execute({
+      runId:"run-safe",agent:{id:"agent-safe",companyId:"company-safe",
+        name:"Agent",adapterType:"http",adapterConfig:{}},
+      runtime:{sessionId:null,sessionParams:null,sessionDisplayId:null,taskKey:null},
+      config:{url},context:{},onLog:async()=>{},
+    })).rejects.toThrow("HTTP adapter request rejected with status 429");
+  });
