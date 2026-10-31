@@ -43,6 +43,18 @@ test_sha="$(git -C "$fixture" hash-object -- "$fixture/$test")"
 # These substitutions affect ONLY the throwaway fixture, never the true gate.
 sed -i -E "s/^source_blob='[^']+'/source_blob='$source_sha'/" "$fixture/scripts/bostan-private-linux-sandbox-gate.sh"
 sed -i -E "s/^test_blob='[^']+'/test_blob='$test_sha'/" "$fixture/scripts/bostan-private-linux-sandbox-gate.sh"
+# Create the other three Vitest suite files in this private synthetic fixture.
+# Repin ONLY the copied gate; the real GitHub gate retains reviewed SHA pins.
+for item in execution-target-sandbox.test.ts paperclip-runner-permissions.test.ts sandbox-install-command.test.ts; do
+  qa_path="packages/adapter-utils/src/$item"
+  printf 'export const syntheticSuite = "%s";\n' "$item" > "$fixture/$qa_path"
+  qa_blob="$(git -C "$fixture" hash-object -- "$fixture/$qa_path")"
+  sed -i -E "s|($item:)[[:xdigit:]]{40}|\\1$qa_blob|" "$fixture/scripts/bostan-private-linux-sandbox-gate.sh"
+  grep -Fq -- "$item:$qa_blob" "$fixture/scripts/bostan-private-linux-sandbox-gate.sh" || {
+    echo "B126_FAIL: fixture suite pin substitution missing: $item" >&2
+    exit 1
+  }
+done
 git -C "$fixture" add .
 git -C "$fixture" commit -qm synthetic-base
 
@@ -112,6 +124,23 @@ for item in bostan-private-linux-vitest-report-audit.mjs bostan-private-linux-vi
   git -C "$fixture" restore --worktree -- "$qa_path"
 done
 
+# All three additional selected Vitest files must fail closed under BOTH
+# Git hidden-worktree flags, not just the original local-process sandbox test.
+for flag in assume-unchanged skip-worktree; do
+  for item in execution-target-sandbox.test.ts paperclip-runner-permissions.test.ts sandbox-install-command.test.ts; do
+    qa_path="packages/adapter-utils/src/$item"
+    git -C "$fixture" update-index --"$flag" -- "$qa_path"
+    printf '%s\n' '// SYNTHETIC HIDDEN EXTRA SUITE TAMPER' >> "$fixture/$qa_path"
+    [[ -z "$(git -C "$fixture" status --porcelain -- "$qa_path")" ]] || {
+      echo "B126_FAIL: Git $flag did not hide suite modification: $item" >&2
+      exit 1
+    }
+    refuse "$flag / extra suite $item" 'additional suite working-tree bytes differ from pinned source'
+    git -C "$fixture" update-index --no-"$flag" -- "$qa_path"
+    git -C "$fixture" restore --worktree -- "$qa_path"
+  done
+done
+
 # A symlinked ancestor can redirect both ordinary leaf files to a foreign
 # directory while Git's skip-worktree bits conceal the checkout replacement.
 git -C "$fixture" update-index --skip-worktree -- "$src" "$test"
@@ -127,3 +156,4 @@ refuse 'symlinked ancestor directory' 'source resolves through a symlink or outs
 
 printf 'BOSTAN_B116_REGRESSION=PASS (7 bounded cases, synthetic only)\n'
 printf 'BOSTAN_B124_AUDITOR_INTEGRITY=PASS (2 added, 9 total synthetic cases)\n'
+printf 'BOSTAN_B126_ALL_SUITE_PINS=PASS (6 additional hidden-suite cases, 15 total synthetic cases)\n'
