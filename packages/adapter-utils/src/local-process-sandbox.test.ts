@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import http from "node:http";
 import net from "node:net";
@@ -5,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  createNetworkProxyBridge,
   buildLocalProcessSandboxSpawnTarget,
   parseLocalProcessFilesystemScope,
   buildLocalProcessProxyOriginHeaders,
@@ -484,6 +486,91 @@ describe("local process sandbox", () => {
         networkTrustedUrls: ["file:///not-a-network-target"],
       },
     })).rejects.toThrow("valid networkAllowlist hostname or HTTP(S) networkTrustedUrl");
+  });
+
+  it.runIf(process.platform === "linux")("terminates the network proxy bridge after an agent exits with an active tunnel", async () => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-bridge-exit-"));
+    cleanup.push(workspace);
+    const socketPath = path.join(workspace, "origin.sock");
+    const heldOriginSockets = new Set<net.Socket>();
+    const origin = net.createServer((socket) => {
+      heldOriginSockets.add(socket);
+      socket.once("close", () => heldOriginSockets.delete(socket));
+    });
+    await new Promise<void>((resolve) => origin.listen(socketPath, resolve));
+    // Reserve an ephemeral loopback port so concurrent Vitest files cannot
+    // collide with the production bridge port 31337.
+    const portReservation = net.createServer();
+    await new Promise<void>((resolve) => portReservation.listen(0, "127.0.0.1", resolve));
+    const portAddress = portReservation.address();
+    if (!portAddress || typeof portAddress === "string") throw new Error("Expected TCP port");
+    const listenPort = portAddress.port;
+    await new Promise<void>((resolve) => portReservation.close(() => resolve()));
+
+    const scriptPath = path.join(workspace, "bridge.cjs");
+    await fs.writeFile(scriptPath, await createNetworkProxyBridge(listenPort));
+    const bridge = spawn(process.execPath, [
+      scriptPath, socketPath, process.execPath, "-e", "setTimeout(() => process.exit(0), 400)",
+    ], { stdio: "ignore" });
+    const bridgeClosed = new Promise<number | null>((resolve, reject) => {
+      bridge.once("error", reject);
+      bridge.once("close", (code) => resolve(code));
+    });
+    let heldClient: net.Socket | undefined;
+    try {
+      const deadline = Date.now() + 2000;
+      while (!heldClient && Date.now() < deadline) {
+        try {
+          heldClient = await new Promise<net.Socket>((resolve, reject) => {
+            const socket = net.connect(listenPort, "127.0.0.1");
+            socket.once("connect", () => resolve(socket));
+            socket.once("error", reject);
+          });
+        } catch {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+        }
+      }
+      expect(heldClient, "Expected an active agent proxy bridge tunnel").toBeDefined();
+      heldClient?.on("error", () => {});
+      const bridgeExited = await Promise.race([
+        bridgeClosed.then((code) => ({ closed: true, code })),
+        new Promise<{ closed: boolean; code: number | null }>((resolve) =>
+          setTimeout(() => resolve({ closed: false, code: null }), 2000)),
+      ]);
+      expect(bridgeExited).toEqual({ closed: true, code: 0 });
+    } finally {
+      heldClient?.destroy();
+      bridge.kill("SIGKILL");
+      for (const socket of heldOriginSockets) socket.destroy();
+      await new Promise<void>((resolve) => origin.close(() => resolve()));
+    }
+  });
+
+  it.runIf(process.platform === "linux")("does not hang after the bridge cannot spawn an agent executable", async () => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-bridge-spawn-error-"));
+    cleanup.push(workspace);
+    const scriptPath = path.join(workspace, "bridge.cjs");
+    await fs.writeFile(scriptPath, await createNetworkProxyBridge(0));
+    const bridge = spawn(process.execPath, [
+      scriptPath, path.join(workspace, "unused.sock"), path.join(workspace, "not-an-executable"),
+    ], { stdio: ["ignore", "ignore", "pipe"] });
+    let stderr = "";
+    bridge.stderr?.on("data", (chunk) => { stderr += String(chunk); });
+    try {
+      const result = await Promise.race([
+        new Promise<{ closed: boolean; code: number | null }>((resolve, reject) => {
+          bridge.once("error", reject);
+          bridge.once("close", (code) => resolve({ closed: true, code }));
+        }),
+        new Promise<{ closed: boolean; code: number | null }>((resolve) =>
+          setTimeout(() => resolve({ closed: false, code: null }), 2000)),
+      ]);
+      expect(result.closed).toBe(true);
+      expect(result.code).not.toBe(0);
+      expect(stderr).toContain("Bostan sandbox bridge spawn failed");
+    } finally {
+      bridge.kill("SIGKILL");
+    }
   });
 
   it.runIf(process.platform === "linux")("builds a fresh-root bubblewrap command with workspace access", async () => {
