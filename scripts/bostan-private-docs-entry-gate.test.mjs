@@ -24,6 +24,13 @@ function fixture() {
       "docs/deploy/docker.md": "Bostan Docker is not release-qualified.",
       "docs/cli/overview.md": "Bostan CLI is not release-qualified.",
       "docs/cli/setup-commands.md": "Bostan CLI setup is not release-qualified.",
+      "docs/deploy/local-development.md": "Bostan documentation is not release-qualified.",
+      "docs/deploy/tailscale-private-access.md": "Bostan documentation is not release-qualified.",
+      "docs/deploy/deployment-modes.md": "Bostan documentation is not release-qualified.",
+      "docs/deploy/database.md": "Bostan documentation is not release-qualified.",
+      "docs/deploy/storage.md": "Bostan documentation is not release-qualified.",
+      "docs/cli/control-plane-commands.md": "Bostan documentation is not release-qualified.",
+      "docs/adapters/overview.md": "Bostan documentation is not release-qualified.",
     },
   };
 }
@@ -155,6 +162,48 @@ test("requires an explicit release-qualification warning in CLI and deploy entry
 test("preserves compatibility variable references and warning prose without recommending install", () => {
   const { config, pages } = fixture();
   pages["docs/deploy/docker.md"] += "\nDo not execute `docker compose up`; check legacy `PAPERCLIP_HOME` for compatibility.";
+  assert.deepEqual(auditBostanDocsSnapshot(config, pages), []);
+});
+
+test("requires every additional source-preview docs page", () => {
+  const { config, pages } = fixture();
+  delete pages["docs/deploy/database.md"];
+  assert.ok(auditBostanDocsSnapshot(config, pages).some((e) => e.includes("Required Bostan docs page missing")));
+});
+
+test("refuses legacy donor product branding in a development guide", () => {
+  const { config, pages } = fixture();
+  pages["docs/deploy/local-development.md"] += "\nPaperclip is the recommended app.";
+  assert.ok(auditBostanDocsSnapshot(config, pages).some((e) => e.includes("Donor product name")));
+});
+
+test("refuses unqualified npx executable in control-plane CLI reference", () => {
+  const { config, pages } = fixture();
+  pages["docs/cli/control-plane-commands.md"] += "\n```console\n$ npx paperclipai agent list\n```";
+  assert.ok(auditBostanDocsSnapshot(config, pages).some((e) => e.includes("Unqualified donor")));
+});
+
+test("refuses database Docker Compose execution", () => {
+  const { config, pages } = fixture();
+  pages["docs/deploy/database.md"] += "\n```sh\ndocker compose up -d\n```";
+  assert.ok(auditBostanDocsSnapshot(config, pages).some((e) => e.includes("Docker deployment")));
+});
+
+test("refuses unsafe external adapter activation in its overview", () => {
+  const { config, pages } = fixture();
+  pages["docs/adapters/overview.md"] += "\n```bash\ncurl -X POST http://localhost:3102/api/adapters\n```";
+  assert.ok(auditBostanDocsSnapshot(config, pages).some((e) => e.includes("external adapter")));
+});
+
+test("requires release warning in private network guide", () => {
+  const { config, pages } = fixture();
+  pages["docs/deploy/tailscale-private-access.md"] = "Share the Bostan UI with the team.";
+  assert.ok(auditBostanDocsSnapshot(config, pages).some((e) => e.includes("missing release qualification")));
+});
+
+test("allows compatibility identifiers in safe non-shell explanatory prose", () => {
+  const { config, pages } = fixture();
+  pages["docs/deploy/storage.md"] += "\nThe internal PAPERCLIP_HOME compatibility key requires migration testing.";
   assert.deepEqual(auditBostanDocsSnapshot(config, pages), []);
 });
 

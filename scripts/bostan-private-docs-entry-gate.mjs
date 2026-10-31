@@ -15,6 +15,13 @@ export const SAFETY_ENTRY_DOCS = Object.freeze([
   "docs/deploy/docker.md",
   "docs/cli/overview.md",
   "docs/cli/setup-commands.md",
+  "docs/deploy/local-development.md",
+  "docs/deploy/tailscale-private-access.md",
+  "docs/deploy/deployment-modes.md",
+  "docs/deploy/database.md",
+  "docs/deploy/storage.md",
+  "docs/cli/control-plane-commands.md",
+  "docs/adapters/overview.md",
 ]);
 
 /** Pure admission check: callers may pass read-only GitHub documents or local files. */
@@ -102,6 +109,12 @@ export function auditBostanDocsSnapshot(config, pages) {
     }
     if (pathname.startsWith("docs/deploy/") && /(?:^|\n)[ \t]*(?:(?:\$|PS>|>)[ \t]*)?docker\s+(?:compose|run|build)\b/im.test(snippets)) {
       errors.push(`Unqualified Docker deployment command in entry page: ${pathname}`);
+    }
+    // Arbitrary plugins can execute code and carry credentials. A preview
+    // overview may describe the API but must not recommend installing them.
+    if (pathname === "docs/adapters/overview.md" &&
+        /(?:^|\n)[ \t]*(?:(?:\$|PS>|>)[ \t]*)?curl\b[^\n]*\/api\/adapters\b/im.test(snippets)) {
+      errors.push(`Unqualified external adapter API execution in entry page: ${pathname}`);
     }
   }
   return errors;
