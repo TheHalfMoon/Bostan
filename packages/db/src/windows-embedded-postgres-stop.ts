@@ -158,7 +158,9 @@ function assertValidPidMarkerBeforeStop(marker: string): void {
     const length = fs.readSync(fd, prefix, 0, prefix.length, 0);
     const newline = prefix.subarray(0, length).indexOf(10);
     if (newline < 1) throw Error("invalid");
-    const pidLine = prefix.subarray(0, newline).toString("ascii").replace(/\r$/, "");
+    // Node Buffer "ascii" masks the high bit (0xB1 becomes "1"). Preserve
+    // original byte values so the decimal-only PID check rejects non-ASCII.
+    const pidLine = prefix.subarray(0, newline).toString("latin1").replace(/\r$/, "");
     if (!/^[1-9]\d{0,9}$/.test(pidLine)
         || !Number.isSafeInteger(Number(pidLine))) throw Error("invalid");
     const after = fs.fstatSync(fd);

@@ -241,6 +241,28 @@ it("refuses malformed postmaster.pid before calling native pg_ctl", async () => 
   }
 });
 
+it("rejects high-bit PID bytes before invoking pg_ctl or process inspection", async () => {
+  // Buffer.toString("ascii") silently clears bit 7; 0xB1 maps to "1".
+  // A malformed marker must never authorize a native stop request.
+  for (const bytes of [
+    [0xb1, 0x32, 0x33, 0x0a],
+    [0x31, 0xb2, 0x33, 0x0a],
+    [0xb1, 0xb2, 0xb3, 0x0a],
+  ]) {
+    await fixture(async (data) => {
+      fs.writeFileSync(path.join(data, "postmaster.pid"), Buffer.from(bytes));
+      let shutdowns = 0;
+      let inspections = 0;
+      await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+        async () => { shutdowns++; },
+        async () => { inspections++; return []; }, noWait))
+        .rejects.toThrow(/PID marker/);
+      expect(shutdowns).toBe(0);
+      expect(inspections).toBe(0);
+    });
+  }
+});
+
 it("rejects ambiguous pg_ctl paths before invoking shutdown or process inspection", async () => {
   const unsafeBinaries = [
     "\\unanchored\\pg_ctl.exe",
