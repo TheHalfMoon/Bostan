@@ -36,7 +36,7 @@ export async function testEnvironment(
     checks.push({
       code: "process_command_present",
       level: "info",
-      message: `Configured command: ${command}`,
+      message: "Configured process command (value hidden).",
     });
   }
 
@@ -45,14 +45,13 @@ export async function testEnvironment(
     checks.push({
       code: "process_cwd_valid",
       level: "info",
-      message: `Working directory is valid: ${cwd}`,
+      message: "Configured process working directory is valid (path hidden).",
     });
-  } catch (err) {
+  } catch {
     checks.push({
       code: "process_cwd_invalid",
       level: "error",
-      message: err instanceof Error ? err.message : "Invalid working directory",
-      detail: cwd,
+      message: "Configured process working directory is invalid (path hidden).",
     });
   }
 
@@ -68,14 +67,13 @@ export async function testEnvironment(
       checks.push({
         code: "process_command_resolvable",
         level: "info",
-        message: `Command is executable: ${command}`,
+        message: "Configured process command is executable (value hidden).",
       });
     } catch (err) {
       checks.push({
         code: "process_command_unresolvable",
         level: "error",
-        message: err instanceof Error ? err.message : "Command is not executable",
-        detail: command,
+        message: "Configured process command is not executable (value hidden).",
       });
     }
   }

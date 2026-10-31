@@ -29,7 +29,10 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   } catch (error) {
     if (spawned) throw error;
     return { exitCode: 1, signal: null, timedOut: false,
-      errorMessage: error instanceof Error ? error.message : String(error),
+      // Filesystem, PATH lookup and extension-defined onMeta exceptions can
+      // contain access tokens, command arguments or private workspace paths.
+      // Do not persist an untrusted exception or its cause on a pre-spawn run.
+      errorMessage: "Process adapter bootstrap failed before process start",
       executionRecovery: { kind: "bootstrap", providerWorkStarted: false },
     };
   }
