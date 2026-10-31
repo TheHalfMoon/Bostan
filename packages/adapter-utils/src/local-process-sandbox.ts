@@ -469,6 +469,9 @@ export async function buildLocalProcessSandboxSpawnTarget(input: {
   const workspaceDir = normalizeAbsolutePath(input.options.workspaceDir, "Sandbox workspaceDir");
   const cwd = normalizeAbsolutePath(input.cwd, "Sandbox cwd");
   let physicalWorkspace: string | null = null;
+  // Snapshot approved physical mount sources during policy validation.
+  // A mutable symlink spelling must never become a later bwrap host source.
+  const validatedWritableExtraSources = new Map<string, string>();
   if (filesystemScope === "workspace") {
     // Lexical path checks alone are insufficient: a symlink placed *inside*
     // the workspace may resolve to files the sandbox was never authorized to
@@ -491,16 +494,20 @@ export async function buildLocalProcessSandboxSpawnTarget(input: {
       // mount() helper skips them. A dangling symlink still exists by lstat
       // and must fail closed when realpath cannot resolve it.
       let physicallyAllowed = true;
+      let physicalSource: string | null = null;
       if (await pathExists(normalizedExtraPath)) {
-        const actualPath = await fs.realpath(normalizedExtraPath);
-        physicallyAllowed = isPathWithinRoot(physicalWorkspace, actualPath) ||
-          physicalRestorePaths.some((restorePath) => restorePath !== null && isPathWithinRoot(restorePath, actualPath));
+        physicalSource = await fs.realpath(normalizedExtraPath);
+        physicallyAllowed = isPathWithinRoot(physicalWorkspace, physicalSource) ||
+          physicalRestorePaths.some((restorePath) => restorePath !== null && isPathWithinRoot(restorePath, physicalSource));
       }
       if ((!synchronized && !restored) || !physicallyAllowed) {
         throw new Error(
           `Writable sandbox path "${normalizedExtraPath}" is outside synchronized workspace "${workspaceDir}" and has no outbound restore mapping.`,
         );
       }
+      // Retain only a source already admitted above. A formerly absent
+      // optional path appearing later in setup must not be mounted unchecked.
+      if (physicalSource !== null) validatedWritableExtraSources.set(normalizedExtraPath, physicalSource);
     }
   }
 
@@ -521,11 +528,11 @@ export async function buildLocalProcessSandboxSpawnTarget(input: {
     );
     const created = new Set<string>(["/", "/proc", "/dev", "/tmp"]);
     const mounted = new Set<string>();
-    const mount = async (source: string, access: LocalProcessSandboxAccess) => {
+    const mount = async (source: string, access: LocalProcessSandboxAccess, validatedSource?: string) => {
       const normalized = normalizeAbsolutePath(source, "Sandbox path");
       if (mounted.has(normalized) || !(await pathExists(normalized))) return;
       addParentDirectories(args, created, normalized);
-      args.push(access === "rw" ? "--bind" : "--ro-bind", normalized, normalized);
+      args.push(access === "rw" ? "--bind" : "--ro-bind", validatedSource ?? normalized, normalized);
       mounted.add(normalized);
       created.add(normalized);
     };
@@ -535,7 +542,16 @@ export async function buildLocalProcessSandboxSpawnTarget(input: {
       for (const nodePath of await executableReadPaths(process.execPath)) await mount(nodePath, "ro");
     }
     for (const managedPath of input.options.managedPaths ?? []) await mount(managedPath.path, managedPath.access);
-    for (const extraPath of input.options.extraPaths ?? []) await mount(extraPath.path, extraPath.access);
+    for (const extraPath of input.options.extraPaths ?? []) {
+      if (extraPath.access === "rw") {
+        const normalized = normalizeAbsolutePath(extraPath.path, "Sandbox writable extra path");
+        const admittedSource = validatedWritableExtraSources.get(normalized);
+        if (!admittedSource) continue; // An optional path absent during validation.
+        await mount(extraPath.path, extraPath.access, admittedSource);
+      } else {
+        await mount(extraPath.path, extraPath.access);
+      }
+    }
     await mount(workspaceDir, "rw");
     for (const [index, alias] of (input.options.pathAliases ?? []).entries()) {
       const aliasPath = normalizeAbsolutePath(alias.path, `Sandbox pathAliases[${index}].path`);
@@ -551,7 +567,9 @@ export async function buildLocalProcessSandboxSpawnTarget(input: {
         );
       }
       addParentDirectories(args, created, aliasPath);
-      args.push("--bind", aliasTarget, aliasPath);
+      // Use the physical target actually checked above, not a symlink that
+      // may be redirected between validation and the bwrap process spawn.
+      args.push("--bind", physicalAliasTarget, aliasPath);
       created.add(aliasPath);
     }
 
