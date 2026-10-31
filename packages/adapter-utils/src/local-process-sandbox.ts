@@ -177,6 +177,14 @@ export function parseLocalProcessFilesystemScope(value: unknown): "workspace" | 
   throw new Error('filesystemScope must be "workspace".');
 }
 
+// CONNECT is untrusted proxy input. net.connect rejects ports outside the
+// valid TCP range synchronously; an exception inside the HTTP "connect"
+// callback can otherwise crash the entire process. Reject noncanonical
+// numbers (including 0 and leading zeros) before any network effect.
+export function isValidLocalProcessProxyConnectPort(value: string): boolean {
+  return /^[1-9][0-9]{0,4}$/.test(value) && Number(value) <= 65535;
+}
+
 function isNetworkTargetAllowed(hostname: string, port: string, rules: NetworkAllowlistRule[]): boolean {
   const normalizedHostname = hostname.toLowerCase().replace(/^\[|\]$/g, "");
   return rules.some((rule) => rule.hostname === normalizedHostname && (rule.port === null || rule.port === port));
@@ -290,7 +298,7 @@ async function startNetworkAllowlistProxy(
     const separator = request.url?.lastIndexOf(":") ?? -1;
     const hostname = separator > 0 ? request.url!.slice(0, separator).replace(/^\[|\]$/g, "") : "";
     const port = separator > 0 ? request.url!.slice(separator + 1) : "443";
-    if (!hostname || !/^\d+$/.test(port) || !isNetworkTargetAllowed(hostname, port, rules)) {
+    if (!hostname || !isValidLocalProcessProxyConnectPort(port) || !isNetworkTargetAllowed(hostname, port, rules)) {
       clientSocket.end(connectProxyError(
         "network_target_denied",
         "Network target denied by Paperclip sandbox policy.",
