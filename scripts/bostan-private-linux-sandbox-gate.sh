@@ -124,9 +124,9 @@ timeout 600s env BOSTAN_TEST_BWRAP="$bwrap_path" BOSTAN_TEST_SANDBOX_BUILD=1 \
 audit_output="$(node "$root/$audit_path" "$report_file")" || fail 'rootless bubblewrap cases were skipped, failed or absent'
 # Do not trust exit code alone. A CLI guard regression can exit zero without
 # executing the auditor; only its two exact PASS lines establish attestation.
-expected_audit_output="$(printf 'BOSTAN_B124_VERIFIED_SUITES=4\\nBOSTAN_B124_VERIFIED_ROOTLESS_CASES=4')"
+expected_audit_output="$(printf 'BOSTAN_B124_VERIFIED_SUITES=4\nBOSTAN_B124_VERIFIED_ROOTLESS_CASES=4')"
 [[ "$audit_output" == "$expected_audit_output" ]] || fail 'rootless bubblewrap JSON audit did not provide exact success evidence'
-printf '%s\\n' "$audit_output"
+printf '%s\n' "$audit_output"
 printf 'BOSTAN_B112_FOUR_TEST_SUITES=PASS\n'
 printf 'BOSTAN_B112_PACKAGE_TYPECHECK_BEGIN\n'
 timeout 180s ./node_modules/.bin/tsc --project packages/adapter-utils/tsconfig.json --noEmit \
