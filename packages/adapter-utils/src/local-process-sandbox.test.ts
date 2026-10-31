@@ -281,7 +281,7 @@ describe("local process sandbox", () => {
     }
   });
 
-  it.runIf(process.platform === "linux")("survives abrupt TCP resets from allowed CONNECT clients and accepts later tunnels", async () => {
+  it.runIf(process.platform === "linux")("survives abrupt Unix client disconnects from allowed CONNECT tunnels", async () => {
     const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-connect-reset-"));
     cleanup.push(workspace);
     const originSockets = new Set<net.Socket>();
@@ -319,11 +319,12 @@ describe("local process sandbox", () => {
           }, 2000);
           client.once("connect", () => {
             client.write(connectFixtureRequest(`127.0.0.1:${address.port}`));
-            // Force a TCP reset, not a graceful FIN. An unhandled ECONNRESET
-            // on the proxy's accepted client Socket crashes its Node worker.
+            // This client uses a Unix socket, not TCP: resetAndDestroy() throws
+            // ERR_INVALID_HANDLE_TYPE. Abrupt destroy() can still emit
+            // ECONNRESET on the proxy's accepted Unix socket.
             setTimeout(() => {
               clearTimeout(guard);
-              if (!client.destroyed) client.resetAndDestroy();
+              if (!client.destroyed) client.destroy();
               resolve();
             }, 25);
           });
@@ -352,6 +353,56 @@ describe("local process sandbox", () => {
       await target?.cleanup?.();
       for (const socket of originSockets) socket.destroy();
       await new Promise<void>((resolve) => origin.close(() => resolve()));
+    }
+  });
+
+  it.runIf(process.platform === "linux")("survives denied CONNECT client disconnects and serves a later policy response", async () => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-denied-connect-reset-"));
+    cleanup.push(workspace);
+    const target = await buildLocalProcessSandboxSpawnTarget({
+      executable: process.execPath,
+      args: ["-e", "process.exit(0)"],
+      cwd: workspace,
+      options: {
+        workspaceDir: workspace,
+        networkScope: "allowlist",
+        networkAllowlist: ["127.0.0.1:443"],
+      },
+    });
+    const delimiter = target.args.indexOf("--");
+    const socketPath = target.args[delimiter + 3]!;
+    try {
+      // Denied CONNECT returns before the allowed-tunnel error listener.
+      // A Unix peer closing mid-response can still deliver ECONNRESET on
+      // the accepted Socket, crashing an unprotected proxy.
+      for (let index = 0; index < 12; index++) {
+        await new Promise<void>((resolve, reject) => {
+          const client = net.createConnection(socketPath, () => {
+            client.write(connectFixtureRequest("denied.invalid:443"));
+            setTimeout(() => { client.destroy(); resolve(); }, 0);
+          });
+          client.once("error", reject);
+        });
+      }
+      await new Promise<void>((resolve) => setTimeout(resolve, 50));
+      const response = await new Promise<string>((resolve, reject) => {
+        const client = net.createConnection(socketPath, () => {
+          client.end(connectFixtureRequest("denied.invalid:443"));
+        });
+        let body = "";
+        const guard = setTimeout(() => {
+          client.destroy();
+          reject(new Error("Denied CONNECT proxy stopped responding after disconnects"));
+        }, 3000);
+        client.setEncoding("utf8");
+        client.on("data", (chunk) => { body += chunk; });
+        client.once("end", () => { clearTimeout(guard); resolve(body); });
+        client.once("error", (error) => { clearTimeout(guard); reject(error); });
+      });
+      expect(response).toContain("HTTP/1.1 403 Forbidden");
+      expect(response).toContain("network_target_denied");
+    } finally {
+      await target.cleanup?.();
     }
   });
 
