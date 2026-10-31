@@ -569,6 +569,78 @@ describe("local process sandbox", () => {
     expect(target.env?.HTTP_PROXY).toBeUndefined();
   });
 
+  it.runIf(process.platform === "linux")("closes an idle allowlisted upstream when the HTTP proxy client abandons its request", async () => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-abandoned-proxy-upstream-"));
+    cleanup.push(workspace);
+
+    let originRequestSeen!: () => void;
+    const seenOriginRequest = new Promise<void>((resolve) => { originRequestSeen = resolve; });
+    let originSocketClosed!: () => void;
+    const closedOriginSocket = new Promise<void>((resolve) => { originSocketClosed = resolve; });
+    const origin = http.createServer((_request, _response) => {
+      // Keep the response intentionally pending until the client disconnects.
+      originRequestSeen();
+    });
+    const originSockets = new Set<net.Socket>();
+    origin.on("connection", (socket) => {
+      originSockets.add(socket);
+      socket.once("close", () => {
+        originSockets.delete(socket);
+        originSocketClosed();
+      });
+    });
+    await new Promise<void>((resolve) => origin.listen(0, "127.0.0.1", resolve));
+    const address = origin.address();
+    if (!address || typeof address === "string") {
+      origin.closeAllConnections();
+      await new Promise<void>((resolve) => origin.close(() => resolve()));
+      throw new Error("Expected a local HTTP origin listener");
+    }
+
+    let target: Awaited<ReturnType<typeof buildLocalProcessSandboxSpawnTarget>> | undefined;
+    let client: http.ClientRequest | undefined;
+    try {
+      target = await buildLocalProcessSandboxSpawnTarget({
+        executable: process.execPath,
+        args: ["-e", "process.exit(0)"],
+        cwd: workspace,
+        options: {
+          workspaceDir: workspace,
+          networkScope: "allowlist",
+          networkAllowlist: [`127.0.0.1:${address.port}`],
+        },
+      });
+      const dash = target.args.indexOf("--");
+      const socketPath = target.args[dash + 3];
+      client = http.request({
+        socketPath,
+        path: `http://127.0.0.1:${address.port}/intentionally-idle`,
+        headers: { host: `127.0.0.1:${address.port}` },
+      });
+      client.on("error", () => { /* expected when the client disconnects */ });
+      client.end();
+
+      await Promise.race([
+        seenOriginRequest,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("HTTP proxy never forwarded the request to the allowed origin")), 2000)),
+      ]);
+      // The browser/agent abandons its request; the sandbox must not hold
+      // on to an idle, no-longer-needed connection to the origin.
+      client.destroy();
+      const closed = await Promise.race([
+        closedOriginSocket.then(() => true),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 2000)),
+      ]);
+      expect(closed, "The abandoned agent request must cancel the pending origin connection").toBe(true);
+    } finally {
+      client?.destroy();
+      for (const socket of originSockets) socket.destroy();
+      await target?.cleanup?.();
+      await new Promise<void>((resolve) => origin.close(() => resolve()));
+    }
+  });
+
   it.runIf(process.platform === "linux")("forwards allowed proxy targets with a deep TMPDIR and rejects other hosts", async () => {
     const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-network-proxy-"));
     cleanup.push(workspace);
