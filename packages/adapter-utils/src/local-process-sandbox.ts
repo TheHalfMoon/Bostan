@@ -125,11 +125,27 @@ function parseNetworkAllowlistEntry(entry: string, index: number): NetworkAllowl
   let port: string | null;
   try {
     const parsed = new URL(trimmed.includes("://") ? trimmed : `https://${trimmed}`);
-    if (parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash) {
+    if ((parsed.protocol !== "http:" && parsed.protocol !== "https:")
+      || parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash) {
       throw new Error("path");
     }
     hostname = parsed.hostname.toLowerCase();
-    port = parsed.port || null;
+    // URL.port omits a scheme's default port (e.g. HTTPS :443, HTTP :80).
+    // A missing port means ANY port to the proxy, so inspect the authority's
+    // original bytes rather than widening an explicitly pinned port.
+    const authority = trimmed.includes("://")
+      ? trimmed.slice(trimmed.indexOf("://") + 3).replace(/\/$/, "")
+      : trimmed.replace(/\/$/, "");
+    const explicitPort = /:(\d+)$/.exec(authority)?.[1];
+    if (explicitPort !== undefined) {
+      const numericPort = Number(explicitPort);
+      if (!Number.isInteger(numericPort) || numericPort < 1 || numericPort > 65535) {
+        throw new Error("port");
+      }
+      port = String(numericPort);
+    } else {
+      port = parsed.port || null;
+    }
   } catch {
     throw new Error(`networkAllowlist[${index}] must be a hostname, hostname:port, or origin URL.`);
   }
