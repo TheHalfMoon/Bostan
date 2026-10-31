@@ -836,3 +836,52 @@ it("accepts the actual PowerShell UTC round-trip CIM date precision", async () =
     expect(inspections).toBe(2);
   });
 });
+
+it("rechecks one transient missing CIM executable before verified owned postmaster shutdown", async () => {
+  await fixture(async (data) => {
+    const marker = path.join(data, "postmaster.pid");
+    fs.writeFileSync(marker, validPidMarker(data));
+    let inspections = 0, shutdowns = 0, pauses = 0;
+    const result = await stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { shutdowns++; fs.unlinkSync(marker); },
+      async () => {
+        inspections++;
+        if (inspections === 1) return [{...row(), ExecutablePath: null}];
+        if (inspections === 2) return [row()];
+        return [];
+      }, async () => { pauses++; });
+    expect(result).toBe("stopped");
+    expect(shutdowns).toBe(1);
+    expect(inspections).toBe(4);
+    expect(pauses).toBe(2); // one bounded reinspection, one clean-snapshot interval
+  });
+});
+it("rechecks transient missing CIM creation timestamp without authorizing pg_ctl", async () => {
+  await fixture(async (data) => {
+    let inspections = 0, pauses = 0;
+    const result = await stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("no postmaster marker: must not issue pg_ctl"); },
+      async () => {
+        inspections++;
+        return inspections === 1 ? [{...row(), CreationDate: null}] : [];
+      }, async () => { pauses++; });
+    expect(result).toBe("already-stopped");
+    expect(inspections).toBe(3);
+    expect(pauses).toBe(2);
+  });
+});
+it("never shuts down or deletes when every retry has ambiguous CIM metadata", async () => {
+  await fixture(async (data) => {
+    const marker = path.join(data, "postmaster.pid");
+    fs.writeFileSync(marker, validPidMarker(data));
+    let inspections = 0, shutdowns = 0, pauses = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { shutdowns++; },
+      async () => { inspections++; return [{...row(), ExecutablePath: null}]; },
+      async () => { pauses++; })).rejects.toThrow(/Ambiguous Windows PostgreSQL process identity/);
+    expect(inspections).toBe(4);
+    expect(pauses).toBe(3);
+    expect(shutdowns).toBe(0);
+    expect(fs.existsSync(marker)).toBe(true);
+  });
+});
