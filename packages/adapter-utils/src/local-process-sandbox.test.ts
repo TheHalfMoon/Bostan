@@ -649,8 +649,9 @@ describe("local process sandbox", () => {
     let closed!: () => void;
     const originClosed = new Promise<void>((resolve) => { closed = resolve; });
     const sockets = new Set<net.Socket>();
+    let originBodyWasComplete: boolean | undefined;
     const origin = http.createServer((request, _response) => {
-      expect(request.complete).toBe(false);
+      originBodyWasComplete = request.complete;
       request.on("data", () => {});
       seen();
     });
@@ -698,6 +699,7 @@ describe("local process sandbox", () => {
         new Promise<never>((_, reject) => setTimeout(() =>
           reject(new Error("HTTP proxy did not forward incomplete upload headers")), 2000)),
       ]);
+      expect(originBodyWasComplete, "The upload body must still be incomplete at abort time").toBe(false);
       client.destroy();
       const disconnected = await Promise.race([
         originClosed.then(() => true),
