@@ -125,7 +125,15 @@ try {
   }
   exit 0
 } catch {
+  # Keep diagnostics bounded and redact any unexpected exception details.
+  # In particular, distinguish an unstarted second round from a failed DB
+  # suite without exposing local paths, environment, command lines or SQL.
+  if ($_.Exception.Message -eq 'Safe heavy-suite resource admission refused') {
+    Write-Output 'BOSTAN_B105_RESOURCE_ADMISSION_REFUSED'
+  } else {
+    Write-Output 'BOSTAN_B105_UNQUALIFIED_ERROR'
+  }
   # No cleanup/kill: preserve any ambiguous fixture for later investigation.
-  Write-Error 'BOSTAN_B105_FAIL_CLOSED; retained fixtures, if any, were not removed'
+  Write-Output 'BOSTAN_B105_FAIL_CLOSED; no foreign files or processes were touched'
   exit 1
 }
