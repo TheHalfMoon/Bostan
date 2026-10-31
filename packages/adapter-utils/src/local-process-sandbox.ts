@@ -136,10 +136,10 @@ function parseNetworkAllowlistEntry(entry: string, index: number): NetworkAllowl
     const rawAuthority = trimmed.includes("://")
       ? trimmed.slice(trimmed.indexOf("://") + 3)
       : trimmed;
-    // WHATWG URL normalizes /., /.., encoded dot-segments, backslashes and
-    // empty query/hash delimiters. Do not let that normalization hide a
-    // supplied default port and turn it into an unrestricted host rule.
-    if (/[\\?#]/.test(rawAuthority)
+    // WHATWG URL normalizes dot-segments and backslashes, strips ASCII
+    // tabs/newlines, and can erase empty query/hash delimiters. Reject these
+    // raw bytes before they can hide a default port and grant any port.
+    if (/[\\?#\x00-\x20\x7f]/.test(rawAuthority)
       || (rawAuthority.includes("/") && !/^[^/]+\/$/.test(rawAuthority))) {
       throw new Error("noncanonical origin suffix");
     }
