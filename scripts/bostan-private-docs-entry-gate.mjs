@@ -25,9 +25,25 @@ export function auditBostanDocsSnapshot(config, pages) {
   if (config.footerSocials?.github !== expectedRepo) {
     errors.push("Footer GitHub link must point to the private Bostan repository");
   }
-  const navigation = JSON.stringify(config.navigation ?? {});
-  if (!navigation.includes('"start/what-is-bostan"') || navigation.includes('"start/what-is-paperclip"')) {
+  // Enumerate only real page routes; JSON string contains unrelated labels/URLs.
+  const navigationPages = [];
+  function collectPages(node, key = "") {
+    if (key === "pages" && Array.isArray(node)) {
+      for (const value of node) if (typeof value === "string") navigationPages.push(value);
+    }
+    if (Array.isArray(node)) {
+      for (const value of node) collectPages(value);
+    } else if (node && typeof node === "object") {
+      for (const [childKey, value] of Object.entries(node)) collectPages(value, childKey);
+    }
+  }
+  collectPages(config.navigation ?? {});
+  if (!navigationPages.includes("start/what-is-bostan") || navigationPages.includes("start/what-is-paperclip")) {
     errors.push("Canonical introduction must appear in docs navigation, not the legacy route");
+  }
+  const duplicatePages = [...new Set(navigationPages.filter((route, index) => navigationPages.indexOf(route) !== index))];
+  if (duplicatePages.length) {
+    errors.push(`Docs navigation contains duplicate page routes: ${duplicatePages.join(", ")}`);
   }
   for (const pathname of INTRO_DOCS) {
     if (typeof pages?.[pathname] !== "string" || pages[pathname].trim() === "") {
@@ -50,9 +66,12 @@ export function auditBostanDocsSnapshot(config, pages) {
   }
   const quickstart = pages?.["docs/start/quickstart.md"] ?? "";
   if (typeof quickstart === "string") {
-    const shellExamples = [...quickstart.matchAll(/```(?:sh|bash|shell)\s*\n([\s\S]*?)```/gi)]
+    // Check executable examples across common terminal fence labels, including unlabeled.
+    // Warning prose and non-shell source code are not shell execution instructions.
+    const shellExamples = [...quickstart.matchAll(/^[ \t]*```(?:sh|bash|shell|zsh|fish|console|terminal|powershell|pwsh|ps1|cmd|bat)?[ \t]*\r?\n([\s\S]*?)^[ \t]*```[ \t]*$/gim)]
       .map((match) => match[1]).join("\n");
-    if (/\b(?:npx\s+(?:paperclipai|bostan)|pnpm\s+paperclipai)\b/i.test(shellExamples)) {
+    const unsupportedInstaller = /(?:^|\n)[ \t]*(?:(?:\$|PS>|>)[ \t]*)?(?:npx\s+(?:(?:-y|--yes)\s+)?|pnpm\s+(?:dlx|exec)\s+|yarn\s+dlx\s+|bunx\s+|npm\s+exec\s+(?:--\s+)?)(?:paperclipai|bostan)(?=$|[\s@/;|&])/im;
+    if (unsupportedInstaller.test(shellExamples)) {
       errors.push("Quickstart must not install unqualified donor or unpublished Bostan packages");
     }
     if (!/not release-qualified|not yet passed Bostan qualification/i.test(quickstart)) {
