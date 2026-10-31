@@ -41,6 +41,17 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       ...(timer ? { signal: controller.signal } : {}),
     });
 
+    // The HTTP agent treats the remote HTTP status as the acknowledgement;
+    // it does not consume or persist response bytes. Without cancellation a
+    // peer can leave an unread, potentially endless stream/socket alive long
+    // after the run returned. Do not await cancellation, since a broken peer
+    // may never settle its body stream; suppress only cancellation errors.
+    try {
+      void res.body?.cancel().catch(() => {});
+    } catch {
+      // A hostile/mocked response object must not change the HTTP verdict.
+    }
+
     if (!res.ok) {
       rejectedStatus = res.status;
       throw new Error("HTTP adapter request rejected");

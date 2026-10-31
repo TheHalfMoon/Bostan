@@ -178,3 +178,69 @@ describe("http adapter execute", () => {
       config:{url},context:{},onLog:async()=>{},
     })).rejects.toThrow("HTTP adapter request rejected with status 429");
   });
+
+describe("HTTP adapter streaming response resource ownership", () => {
+  const run = () => execute({
+    runId: "synthetic-http-run",
+    agent: {
+      id: "synthetic-http-agent", companyId: "synthetic-company",
+      name: "Synthetic HTTP", adapterType: "http" as const, adapterConfig: {},
+    },
+    runtime: { sessionId: null, sessionParams: null, sessionDisplayId: null, taskKey: null },
+    config: { url: "https://public.example/PRIVATE_PATH?token=PRIVATE_QUERY" },
+    context: {}, onLog: async () => {},
+  });
+
+  it("cancels unread successful response body without buffering an infinite stream", async () => {
+    let cancelled = 0;
+    let pulled = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull() { pulled += 1; /* no chunks, remains open until cancelled */ },
+      cancel() { cancelled += 1; },
+    });
+    guardedFetchMock.mockResolvedValueOnce(new Response(body, { status: 200 }));
+    const result = await run();
+    expect(result.exitCode).toBe(0);
+    expect(cancelled).toBe(1);
+    expect(pulled).toBeLessThanOrEqual(1);
+    expect(JSON.stringify(result)).not.toMatch(/PRIVATE_PATH|PRIVATE_QUERY/);
+  });
+
+  it("cancels unread rejected status body before propagating safe numeric status", async () => {
+    let cancelled = 0;
+    const body = new ReadableStream<Uint8Array>({
+      cancel() { cancelled++; },
+    });
+    guardedFetchMock.mockResolvedValueOnce(new Response(body, { status: 429 }));
+    await expect(run()).rejects.toThrow("HTTP adapter request rejected with status 429");
+    expect(cancelled).toBe(1);
+  });
+
+  it("never waits for an untrusted response cancellation that stays pending", async () => {
+    let cancelled = 0;
+    const body = new ReadableStream<Uint8Array>({
+      cancel() {
+        cancelled++;
+        return new Promise<void>(() => { /* remote stream never settles */ });
+      },
+    });
+    guardedFetchMock.mockResolvedValueOnce(new Response(body, { status: 200 }));
+    const winner = await Promise.race([
+      run().then(result => result.exitCode),
+      new Promise<string>(resolve => setTimeout(() => resolve("blocked_on_cancel"), 300)),
+    ]);
+    expect(winner).toBe(0);
+    expect(cancelled).toBe(1);
+  });
+
+  it("does not turn a valid response into failure if its unusable body rejects cancellation", async () => {
+    let cancelled = 0;
+    const body = new ReadableStream<Uint8Array>({
+      cancel() { cancelled++; return Promise.reject(new Error("PRIVATE_CANCEL_DIAGNOSTIC")); },
+    });
+    guardedFetchMock.mockResolvedValueOnce(new Response(body, { status: 200 }));
+    const result = await run();
+    expect(result.exitCode).toBe(0);
+    expect(cancelled).toBe(1);
+  });
+});
