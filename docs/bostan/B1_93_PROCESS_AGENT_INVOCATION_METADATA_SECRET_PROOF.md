@@ -24,3 +24,9 @@ This does **not** claim child process stdout/stderr, process callback errors, ex
 ## Release remains NO-GO
 
 A sanitized metadata event is not an untrusted execution sandbox or permission/effects consent mechanism. Full Windows packed startup and PostgreSQL/Chromium E2E, native Linux/installer qualification, sustained concurrency, release security/privacy, NOTICE/licensing/provenance/branding remain open. Keep repo PRIVATE, stacked PR DRAFT; no main merge, Actions enablement, deployment, npm publishing or release.
+
+## Native Windows check on the same committed source
+
+The existing authorized Windows 11 device, in its strictly disposable `D:\Bostan-B144-qa` checkout, fetched the **exact committed candidate head** `f9e75b0ea3a1dd80934e25ba209d1eabfdc60060`. Read-only admission found **6.08 GiB free RAM**, **12.15 GiB D: free**, no pre-existing PostgreSQL; only a small native Node test was launched (not the heavy Windows Postgres/Chromium qualification).
+
+With native Windows Node and pre-existing pinned Vitest 5, `node .\node_modules\vitest\vitest.mjs run src/adapters/process/execute.test.ts src/adapters/process/test.test.ts --maxWorkers=1 --no-file-parallelism` **EXIT 0, 5/5 PASS, 0 skipped** in 13.71 seconds. This includes the real native Windows local child execution with original synthetic argv/env and strictly redacted `onMeta` output, as well as the pre-spawn exception and test-environment privacy gates. No new installation, remote model, DB, browser or real user data was involved. Independent postrun read-only scan observed **0 PostgreSQL** and **0 B144-owned Node** processes. This is native Windows **process-adapter focused QA only**, not a Windows installer/packed-server release qualification.
