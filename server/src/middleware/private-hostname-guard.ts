@@ -5,17 +5,48 @@ function isLoopbackHostname(hostname: string): boolean {
   return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1";
 }
 
-function extractHostname(req: Request): string | null {
-  const forwardedHost = req.header("x-forwarded-host")?.split(",")[0]?.trim();
-  const hostHeader = req.header("host")?.trim();
-  const raw = forwardedHost || hostHeader;
-  if (!raw) return null;
+/**
+ * A private-mode Host is an HTTP authority, not an arbitrary URL. WHATWG URL
+ * will quietly normalize userinfo, paths, percent escapes and backslashes:
+ * accepting those spellings could turn an unauthorized Host into localhost.
+ */
+export function parsePrivateHostHeader(value: string | undefined): string | null {
+  if (typeof value !== "string") return null;
+  const authority = value.trim();
+  if (!authority || /[\x00-\x20\x7f@\\/?#%]/.test(authority)) return null;
+
+  // Brackets are mandatory for IPv6 literals; ports must be canonical and
+  // positive. Reject URL default-port folding and invalid suffixes up front.
+  const match = /^(\[[0-9a-fA-F:.]+\]|[^\[\]:]+)(?::([0-9]+))?$/.exec(authority);
+  if (!match) return null;
+  const port = match[2];
+  if (port !== undefined && (!/^[1-9]\d{0,4}$/.test(port) || Number(port) > 65535)) {
+    return null;
+  }
 
   try {
-    return new URL(`http://${raw}`).hostname.trim().toLowerCase();
+    const parsed = new URL(`http://${authority}`);
+    if (parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash) {
+      return null;
+    }
+    const hostname = parsed.hostname.toLowerCase();
+    // URL.hostname keeps IPv6 brackets; the allow-set uses bare ::1.
+    return hostname.startsWith("[") && hostname.endsWith("]")
+      ? hostname.slice(1, -1)
+      : hostname;
   } catch {
-    return raw.trim().toLowerCase();
+    // An invalid Host must be refused, never interpreted as an allowed name.
+    return null;
   }
+}
+
+function extractHostname(req: Request): string | null {
+  // X-Forwarded-Host is client-supplied without independently verified proxy
+  // ancestry. Even when Express TRUST_PROXY is enabled it must not override
+  // the actual Host authority at this private network admission boundary.
+  // A trusted reverse proxy must preserve Host or use an explicitly allowed
+  // backend hostname; it must not make a forged forwarded value authoritative.
+  return parsePrivateHostHeader(req.header("host"));
 }
 
 function normalizeAllowedHostnames(values: string[]): string[] {
