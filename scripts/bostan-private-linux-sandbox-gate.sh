@@ -46,6 +46,13 @@ test_blob='fa96f8055107500cdc8b608740ac08a523637b3b'
 [[ "$(git -C "$root" rev-parse "HEAD:$source_path" 2>/dev/null)" == "$source_blob" ]] || fail 'source blob differs from B1-111 pinned source'
 [[ "$(git -C "$root" rev-parse "HEAD:$test_path" 2>/dev/null)" == "$test_blob" ]] || fail 'test blob differs from B1-111 pinned tests'
 [[ -z "$(git -C "$root" status --porcelain -- "$source_path" "$test_path")" ]] || fail 'source or test has uncommitted modifications'
+# Git status respects --assume-unchanged and --skip-worktree, so even a clean
+# status can conceal altered working-tree bytes. Tests execute files on disk,
+# not the Git object recorded at HEAD: pin BOTH independently, fail-closed.
+[[ -f "$root/$source_path" && ! -L "$root/$source_path" ]] || fail 'source must be an ordinary checkout file'
+[[ -f "$root/$test_path" && ! -L "$root/$test_path" ]] || fail 'test must be an ordinary checkout file'
+[[ "$(git -C "$root" hash-object -- "$root/$source_path" 2>/dev/null)" == "$source_blob" ]] || fail 'source working-tree bytes differ from pinned source'
+[[ "$(git -C "$root" hash-object -- "$root/$test_path" 2>/dev/null)" == "$test_blob" ]] || fail 'test working-tree bytes differ from pinned tests'
 
 node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit(major>24 || (major===24 && minor>=11) ? 0 : 1)' || fail 'Node >=24.11 required'
 [[ -x "$root/node_modules/.bin/vitest" ]] || fail 'installed local Vitest required (do not download)'
