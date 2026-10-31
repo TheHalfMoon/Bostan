@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import express from "express";
 import request from "supertest";
+import { connect } from "node:net";
 import { parsePrivateHostHeader, privateHostnameGuard } from "../middleware/private-hostname-guard.js";
 
 const unknownHostname = "blocked-host.invalid";
@@ -24,6 +25,53 @@ function createApp(opts: { enabled: boolean; allowedHostnames?: string[]; bindHo
 }
 
 describe("privateHostnameGuard", () => {
+
+  // Raw HTTP is required here: Supertest/Node's client normally canonicalizes
+  // Host, while Node's server keeps the first Host in req.headers and exposes
+  // every duplicate in req.rawHeaders. Both must be treated as ambiguous.
+  async function rawHttpStatus(hostLines: string[]): Promise<number> {
+    const app = createApp({ enabled: true });
+    const server = app.listen(0, "127.0.0.1");
+    try {
+      await new Promise<void>((resolve) => server.once("listening", resolve));
+      const address = server.address();
+      if (!address || typeof address === "string") throw new Error("missing test listener");
+      return await new Promise<number>((resolve, reject) => {
+        const client = connect(address.port, "127.0.0.1");
+        let response = "";
+        client.setTimeout(3_000, () => client.destroy(new Error("raw HTTP test timeout")));
+        client.once("connect", () => {
+          client.write(
+            "GET /api/health HTTP/1.1\\r\\n" +
+            hostLines.join("\\r\\n") +
+            "\\r\\nConnection: close\\r\\n\\r\\n",
+          );
+        });
+        client.on("data", (chunk) => { response += chunk.toString(); });
+        client.once("error", reject);
+        client.once("end", () => {
+          const status = /^HTTP\\/1\\.1 (\\d{3})/.exec(response);
+          if (!status) reject(new Error("missing HTTP status"));
+          else resolve(Number(status[1]));
+        });
+      });
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  }
+
+  it.each([
+    ["allowed Host first", ["Host: localhost:3100", "Host: blocked-host.invalid:3100"]],
+    ["allowed Host second", ["Host: blocked-host.invalid:3100", "hOSt: localhost:3100"]],
+    ["identical repeated Host", ["Host: localhost:3100", "HOST: localhost:3100"]],
+  ])("rejects duplicate raw HTTP Host fields (%s)", async (_label, lines) => {
+    expect(await rawHttpStatus(lines)).toBe(403);
+  });
+
+  it("admits one raw HTTP Host field", async () => {
+    expect(await rawHttpStatus(["Host: localhost:3100"])).toBe(200);
+  });
+
 
   it("rejects spoofed X-Forwarded-Host when the actual Host is forbidden", async () => {
     const app = createApp({ enabled: true });
