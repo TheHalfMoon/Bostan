@@ -384,6 +384,10 @@ async function startNetworkAllowlistProxy(
       clientSocket.pipe(upstream);
     });
     upstream.on("error", () => clientSocket.destroy());
+    // A tunneled client can send a TCP RST, e.g. after cancelling a request.
+    // Without an 'error' listener ECONNRESET is an uncaught EventEmitter
+    // exception and terminates the entire long-lived sandbox proxy.
+    clientSocket.on("error", () => upstream.destroy());
     clientSocket.on("close", () => upstream.destroy());
   });
   const sockets = new Set<net.Socket>();
