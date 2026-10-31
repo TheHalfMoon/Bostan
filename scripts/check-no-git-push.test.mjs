@@ -140,6 +140,29 @@ test("runCheck rejects a flagged Git push in an adapter source file", () => {
   }
 });
 
+test("findGitPushOffenses does not accept an opt-in marker inside ordinary source strings", () => {
+  const code = [
+    `const marker = "${ALLOW_MARKER}";`,
+    `spawn("git", ["push", "origin", "main"]);`,
+  ].join("\n");
+  assert.equal(findGitPushOffenses(code).length, 1);
+  const inline = `spawn("git", ["push", "origin", "main"]); const marker = "${ALLOW_MARKER}";`;
+  assert.equal(findGitPushOffenses(inline).length, 1);
+});
+
+test("findGitPushOffenses honors the legacy opt-in marker only inside a real comment", () => {
+  const legacy = "paperclip:allow-git-push";
+  const permitted = `// ${legacy}: existing operator-reviewed exception\nspawn("git", ["push", "origin", "main"]);\n`;
+  assert.deepEqual(findGitPushOffenses(permitted), []);
+  const denied = `const marker = "${legacy}";\nspawn("git", ["push", "origin", "main"]);\n`;
+  assert.equal(findGitPushOffenses(denied).length, 1);
+});
+
+test("findGitPushOffenses does not mistake URL text for an opt-in comment", () => {
+  const code = `const url = "https://example.invalid/${ALLOW_MARKER}";\nspawn("git", ["push", "origin", "main"]);\n`;
+  assert.equal(findGitPushOffenses(code).length, 1);
+});
+
 test("runCheck passes when scoped tree has no offenses", () => {
   const tmpRoot = mkdtempSync(path.join(os.tmpdir(), "no-git-push-pass-"));
   try {
