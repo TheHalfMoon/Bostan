@@ -103,7 +103,9 @@ async function run({traceMode=false}={}) {
       stream?.on("data",part=>{
         capture=appendPrivateWindowsImportCapture(capture,part,{source});
       });
-    boundedOutcome=await waitForPrivateWindowsImportProbeChild(child);
+    boundedOutcome=await waitForPrivateWindowsImportProbeChild(child,{
+      alreadyClosed:observer.closeSeen,
+    });
   } finally {
     // Snapshot the child status BEFORE intentional cleanup sends a signal.
     // A deadline race with an already-failed child must never be admitted.
