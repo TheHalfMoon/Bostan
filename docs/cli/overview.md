@@ -1,77 +1,16 @@
 ---
-title: CLI Overview
-summary: CLI installation and setup
+title: Bostan CLI — private source preview
+summary: CLI interface is being migrated and has no approved package installation
 ---
 
-The Paperclip CLI handles instance setup, diagnostics, and control-plane operations.
+**Bostan is not release-qualified.** Its CLI is a private source-level engineering preview, not an approved globally installable command or registry package. There is no verified public installer, so do not run donor CLI commands or assume an unpublished Bostan command is available from a registry.
 
-## Usage
+## Intended interface
 
-```sh
-pnpm paperclipai --help
-```
+The imported CLI architecture includes diagnostics, instance configuration, context profiles, and control-plane actions such as issue and agent operations. These categories describe code under review; they are not promises that every command currently works on all operating systems.
 
-## Global Options
+## Migration boundaries
 
-All commands support:
+Legacy data directories, environment variables and context-file identifiers may still exist for internal compatibility. Preserve them until migration tests prove that renaming will not destroy existing state or silently redirect secrets. Avoid using real credentials or persistent production instances during qualification.
 
-| Flag | Description |
-|------|-------------|
-| `--data-dir <path>` | Local Paperclip data root (isolates from `~/.paperclip`) |
-| `--api-base <url>` | API base URL |
-| `--api-key <token>` | API authentication token |
-| `--context <path>` | Context file path |
-| `--profile <name>` | Context profile name |
-| `--json` | Output as JSON |
-
-Company-scoped commands also accept `--company-id <id>`.
-
-For clean local instances, pass `--data-dir` on the command you run:
-
-```sh
-npx paperclipai run --data-dir ./tmp/paperclip-dev
-```
-
-## Context Profiles
-
-Store defaults to avoid repeating flags:
-
-```sh
-# Set defaults
-npx paperclipai context set --api-base http://localhost:3100 --company-id <id>
-
-# View current context
-pnpm paperclipai context show
-
-# List profiles
-pnpm paperclipai context list
-
-# Switch profile
-npx paperclipai context use default
-```
-
-To avoid storing secrets in context, use an env var:
-
-```sh
-npx paperclipai context set --api-key-env-var-name PAPERCLIP_API_KEY
-export PAPERCLIP_API_KEY=...
-```
-
-Secret operations are available under `paperclipai secrets`:
-
-```sh
-npx paperclipai secrets declarations --company-id <company-id> --kind secret
-npx paperclipai secrets create --company-id <company-id> --name anthropic-api-key --value-env ANTHROPIC_API_KEY
-npx paperclipai secrets link --company-id <company-id> --name prod-stripe-key --provider aws_secrets_manager --external-ref <provider-ref>
-npx paperclipai secrets doctor --company-id <company-id>
-npx paperclipai secrets migrate-inline-env --company-id <company-id> --apply
-```
-
-Context is stored at `~/.paperclip/context.json`.
-
-## Command Categories
-
-The CLI has two categories:
-
-1. **[Setup commands](/cli/setup-commands)** — instance bootstrap, diagnostics, configuration
-2. **[Control-plane commands](/cli/control-plane-commands)** — issues, agents, approvals, activity
+The local-source workflow, when independently verified, should use an owner-controlled disposable checkout and synthetic data. For the current limitations, read [development quickstart](/start/quickstart), [setup command concepts](/cli/setup-commands), and [control-plane API](/api/overview). No executable CLI installation commands are endorsed here.
