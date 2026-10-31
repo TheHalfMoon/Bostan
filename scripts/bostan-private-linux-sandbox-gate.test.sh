@@ -14,7 +14,7 @@ origin="$(cd -- "$(dirname -- "$0")/.." && pwd -P)"
 gate="$origin/scripts/bostan-private-linux-sandbox-gate.sh"
 [[ -f "$gate" ]] || { echo 'actual Bostan Linux gate missing' >&2; exit 2; }
 
-scratch="$(mktemp -d "\${TMPDIR:-/tmp}/bostan-b114-owned-git-XXXXXX")"
+scratch="$(mktemp -d "${TMPDIR:-/tmp}/bostan-b114-owned-git-XXXXXX")"
 [[ -d "$scratch" ]] || exit 2
 cleanup() { [[ -n "$scratch" && -d "$scratch" ]] && rm -rf -- "$scratch"; }
 trap cleanup EXIT
