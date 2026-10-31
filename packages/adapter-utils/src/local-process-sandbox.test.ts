@@ -620,6 +620,95 @@ describe("local process sandbox", () => {
     expect(target.args).toEqual(expect.arrayContaining(["--bind", workspace, "/app"]));
   });
 
+  it.runIf(process.platform === "linux")("rejects writable workspace extra paths that resolve outside via symlinks", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-workspace-rw-link-"));
+    cleanup.push(root);
+    const workspace = path.join(root, "workspace");
+    const outside = path.join(root, "outside");
+    await fs.mkdir(workspace);
+    await fs.mkdir(outside);
+    const indirect = path.join(workspace, "linked-outside");
+    await fs.symlink(outside, indirect, "dir");
+
+    await expect(buildLocalProcessSandboxSpawnTarget({
+      executable: process.execPath,
+      args: ["-e", "process.exit(0)"],
+      cwd: workspace,
+      options: {
+        workspaceDir: workspace,
+        filesystemScope: "workspace",
+        extraPaths: [{ path: indirect, access: "rw" }],
+      },
+    })).rejects.toThrow("has no outbound restore mapping");
+  });
+
+  it.runIf(process.platform === "linux")("rejects path alias targets that resolve outside the synchronized workspace", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-alias-link-"));
+    cleanup.push(root);
+    const workspace = path.join(root, "workspace");
+    const outside = path.join(root, "outside");
+    await fs.mkdir(workspace);
+    await fs.mkdir(outside);
+    const indirect = path.join(workspace, "linked-outside");
+    await fs.symlink(outside, indirect, "dir");
+
+    await expect(buildLocalProcessSandboxSpawnTarget({
+      executable: process.execPath,
+      args: ["-e", "process.exit(0)"],
+      cwd: workspace,
+      options: {
+        workspaceDir: workspace,
+        filesystemScope: "workspace",
+        pathAliases: [{ path: "/app", target: indirect }],
+      },
+    })).rejects.toThrow("must target the synchronized workspace");
+  });
+
+  it.runIf(process.platform === "linux")("rejects an apparent workspace cwd whose symlink resolves outside", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-cwd-link-"));
+    cleanup.push(root);
+    const workspace = path.join(root, "workspace");
+    const outside = path.join(root, "outside");
+    await fs.mkdir(workspace);
+    await fs.mkdir(outside);
+    const indirect = path.join(workspace, "linked-outside");
+    await fs.symlink(outside, indirect, "dir");
+
+    await expect(buildLocalProcessSandboxSpawnTarget({
+      executable: process.execPath,
+      args: ["-e", "process.exit(0)"],
+      cwd: indirect,
+      options: {
+        workspaceDir: workspace,
+        filesystemScope: "workspace",
+      },
+    })).rejects.toThrow("must be inside workspaceDir");
+  });
+
+  it.runIf(process.platform === "linux")("allows an alias symlink whose resolved target stays within the workspace", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-alias-internal-link-"));
+    cleanup.push(root);
+    const workspace = path.join(root, "workspace");
+    const inside = path.join(workspace, "inside");
+    const indirect = path.join(workspace, "alias");
+    await fs.mkdir(workspace);
+    await fs.mkdir(inside);
+    await fs.symlink(inside, indirect, "dir");
+
+    const target = await buildLocalProcessSandboxSpawnTarget({
+      executable: process.execPath,
+      args: ["-e", "process.exit(0)"],
+      cwd: workspace,
+      options: {
+        workspaceDir: workspace,
+        filesystemScope: "workspace",
+        pathAliases: [{ path: "/app", target: indirect }],
+        extraPaths: [{ path: indirect, access: "rw" }],
+      },
+    });
+    expect(target.args).toEqual(expect.arrayContaining(["--bind", indirect, "/app"]));
+  });
+
   it.runIf(process.platform === "linux")("rejects writable out-of-tree paths without an outbound restore mapping", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-fs-outbound-"));
     cleanup.push(root);
