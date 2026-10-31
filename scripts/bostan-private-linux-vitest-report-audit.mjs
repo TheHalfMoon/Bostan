@@ -1,6 +1,8 @@
 // B1-124: audit the exact Vitest JSON result, not just its exit status.
 // Vitest can succeed while all rootless bubblewrap integration tests skip.
 import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 export const REQUIRED_NATIVE_SANDBOX_CASES = Object.freeze([
   "prevents reads outside the workspace while allowing workspace writes",
@@ -55,7 +57,10 @@ export function auditNativeSandboxReport(report) {
   };
 }
 
-if (process.argv[1] && import.meta.url === new URL("file://" + process.argv[1]).href) {
+// Raw file:// string assembly treats # as a fragment and % as an escape.
+// In such checkout paths it can silently skip the entire CLI while exiting 0.
+if (process.argv[1] &&
+    path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1])) {
   try {
     const filename = process.argv[2];
     if (!filename) throw new Error("A concrete Vitest JSON report path is required");
