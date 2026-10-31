@@ -31,6 +31,9 @@ function fixture() {
       "docs/deploy/storage.md": "Bostan documentation is not release-qualified.",
       "docs/cli/control-plane-commands.md": "Bostan documentation is not release-qualified.",
       "docs/adapters/overview.md": "Bostan documentation is not release-qualified.",
+      "docs/deploy/secrets.md": "Bostan is not release-qualified. Do not enter API keys, credentials, or tokens. No paid providers or services.",
+      "docs/deploy/environment-variables.md": "Bostan is not release-qualified. Do not enter API keys, credentials, or tokens. No paid providers or services.",
+      "docs/adapters/claude-local.md": "Bostan is not release-qualified. Do not enter API keys, credentials, or tokens. No paid providers or services.",
     },
   };
 }
@@ -204,6 +207,48 @@ test("requires release warning in private network guide", () => {
 test("allows compatibility identifiers in safe non-shell explanatory prose", () => {
   const { config, pages } = fixture();
   pages["docs/deploy/storage.md"] += "\nThe internal PAPERCLIP_HOME compatibility key requires migration testing.";
+  assert.deepEqual(auditBostanDocsSnapshot(config, pages), []);
+});
+
+
+test("requires credential and provider preview pages", () => {
+  const { config, pages } = fixture();
+  delete pages["docs/deploy/secrets.md"];
+  assert.ok(auditBostanDocsSnapshot(config, pages).some(e => e.includes("Required Bostan docs page missing")));
+});
+test("refuses executable secrets migration", () => {
+  const { config, pages } = fixture();
+  pages["docs/deploy/secrets.md"] += "\n```bash\npnpm secrets:migrate-inline-env --apply\n```";
+  assert.ok(auditBostanDocsSnapshot(config, pages).some(e => e.includes("Executable credential")));
+});
+test("refuses exported provider credentials", () => {
+  const { config, pages } = fixture();
+  pages["docs/deploy/environment-variables.md"] += "\n```sh\nexport ANTHROPIC_API_KEY=synthetic-only\n```";
+  assert.ok(auditBostanDocsSnapshot(config, pages).some(e => e.includes("Executable credential")));
+});
+test("refuses a paid provider CLI launch", () => {
+  const { config, pages } = fixture();
+  pages["docs/adapters/claude-local.md"] += "\n```console\n$ claude --dangerously-skip-permissions\n```";
+  assert.ok(auditBostanDocsSnapshot(config, pages).some(e => e.includes("Executable credential")));
+});
+test("refuses missing credential and no-paid-provider disclosure", () => {
+  const { config, pages } = fixture();
+  pages["docs/deploy/secrets.md"] = "Bostan is not release-qualified.";
+  assert.ok(auditBostanDocsSnapshot(config, pages).some(e => e.includes("no-credentials policy")));
+});
+test("rejects annotated Bash terminal fences", () => {
+  const { config, pages } = fixture();
+  pages["docs/start/quickstart.md"] += "\n```bash title=\"terminal\"\nnpx paperclipai onboard\n```";
+  assert.ok(auditBostanDocsSnapshot(config, pages).some(e => e.includes("unqualified")));
+});
+test("rejects tilde-fenced Docker commands", () => {
+  const { config, pages } = fixture();
+  pages["docs/deploy/docker.md"] += "\n~~~bash\ndocker compose up --build\n~~~";
+  assert.ok(auditBostanDocsSnapshot(config, pages).some(e => e.includes("Docker deployment")));
+});
+test("preserves compatibility keys in warning prose", () => {
+  const { config, pages } = fixture();
+  pages["docs/deploy/environment-variables.md"] += "\nPAPERCLIP_HOME is an internal compatibility name only.";
   assert.deepEqual(auditBostanDocsSnapshot(config, pages), []);
 });
 

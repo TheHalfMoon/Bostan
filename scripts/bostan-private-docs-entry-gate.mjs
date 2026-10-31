@@ -22,7 +22,21 @@ export const SAFETY_ENTRY_DOCS = Object.freeze([
   "docs/deploy/storage.md",
   "docs/cli/control-plane-commands.md",
   "docs/adapters/overview.md",
+  "docs/deploy/secrets.md",
+  "docs/deploy/environment-variables.md",
+  "docs/adapters/claude-local.md",
 ]);
+
+/** Extract terminal code fences including tilde and annotated Bash fences. */
+function collectShellExamples(markdown) {
+  const snippets = [];
+  const terminal = new Set(["sh", "bash", "shell", "zsh", "fish", "console", "terminal", "powershell", "pwsh", "ps1", "cmd", "bat"]);
+  for (const match of markdown.matchAll(/^[ \t]*(\x60{3,}|~{3,})[ \t]*([^\r\n]*)\r?\n([\s\S]*?)^[ \t]*\1[ \t]*$/gm)) {
+    const language = match[2].trim().split(/\s+/)[0].toLowerCase();
+    if (!language || terminal.has(language)) snippets.push(match[3]);
+  }
+  return snippets.join("\n");
+}
 
 /** Pure admission check: callers may pass read-only GitHub documents or local files. */
 export function auditBostanDocsSnapshot(config, pages) {
@@ -82,8 +96,7 @@ export function auditBostanDocsSnapshot(config, pages) {
   if (typeof quickstart === "string") {
     // Check executable examples across common terminal fence labels, including unlabeled.
     // Warning prose and non-shell source code are not shell execution instructions.
-    const shellExamples = [...quickstart.matchAll(/^[ \t]*```(?:sh|bash|shell|zsh|fish|console|terminal|powershell|pwsh|ps1|cmd|bat)?[ \t]*\r?\n([\s\S]*?)^[ \t]*```[ \t]*$/gim)]
-      .map((match) => match[1]).join("\n");
+    const shellExamples = collectShellExamples(quickstart);
     const unsupportedInstaller = /(?:^|\n)[ \t]*(?:(?:\$|PS>|>)[ \t]*)?(?:npx\s+(?:(?:-y|--yes)\s+)?|pnpm\s+(?:dlx|exec)\s+|pnpm\s+|yarn\s+dlx\s+|bunx\s+|npm\s+exec\s+(?:--\s+)?)(?:paperclipai|bostan)(?=$|[\s@/;|&])/im;
     if (unsupportedInstaller.test(shellExamples)) {
       errors.push("Quickstart must not install unqualified donor or unpublished Bostan packages");
@@ -102,13 +115,21 @@ export function auditBostanDocsSnapshot(config, pages) {
     if (!/not release-qualified|not yet qualified/i.test(body)) {
       errors.push(`CLI/deployment entry page must disclose missing release qualification: ${pathname}`);
     }
-    const snippets = [...body.matchAll(/^[ \t]*```(?:sh|bash|shell|zsh|fish|console|terminal|powershell|pwsh|ps1|cmd|bat)?[ \t]*\r?\n([\s\S]*?)^[ \t]*```[ \t]*$/gim)]
-      .map((match) => match[1]).join("\n");
+    const snippets = collectShellExamples(body);
     if (/(?:^|\n)[ \t]*(?:(?:\$|PS>|>)[ \t]*)?(?:npx\s+(?:(?:-y|--yes)\s+)?|pnpm\s+(?:dlx|exec)\s+|pnpm\s+|yarn\s+dlx\s+|bunx\s+|npm\s+exec\s+(?:--\s+)?)(?:paperclipai|bostan)(?=$|[\s@/;|&])/im.test(snippets)) {
       errors.push(`Unqualified donor/unpublished Bostan CLI command in entry page: ${pathname}`);
     }
     if (pathname.startsWith("docs/deploy/") && /(?:^|\n)[ \t]*(?:(?:\$|PS>|>)[ \t]*)?docker\s+(?:compose|run|build)\b/im.test(snippets)) {
       errors.push(`Unqualified Docker deployment command in entry page: ${pathname}`);
+    }
+    // Do not present credential, paid provider, or agent execution instructions
+    // as qualified before real native sandbox and privacy verification.
+    if (["docs/deploy/secrets.md", "docs/deploy/environment-variables.md", "docs/adapters/claude-local.md"].includes(pathname)) {
+      if (snippets.trim()) errors.push("Executable credential/provider setup is not qualified: " + pathname);
+      if (!/do not enter api keys, credentials, or tokens/i.test(body) ||
+          !/no paid providers or services/i.test(body)) {
+        errors.push("Credential/provider page must disclose zero-cost and no-credentials policy: " + pathname);
+      }
     }
     // Arbitrary plugins can execute code and carry credentials. A preview
     // overview may describe the API but must not recommend installing them.
