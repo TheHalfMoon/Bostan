@@ -56,6 +56,9 @@ describe("local process sandbox", () => {
     expect(parseLocalProcessNetworkAllowlist(["api.openai.com", "https://api.anthropic.com", "gateway.test:8443"]))
       .toEqual(["api.openai.com", "api.anthropic.com", "gateway.test:8443"]);
     expect(() => parseLocalProcessNetworkAllowlist(["*.example.com"])).toThrow("exact hostname");
+    for (const malformedPort of ["https://api.example.test:", "https://api.example.test:/"]) {
+      expect(() => parseLocalProcessNetworkAllowlist([malformedPort])).toThrow("hostname, hostname:port, or origin URL");
+    }
     expect(() => parseLocalProcessNetworkScope("public")).toThrow('"deny" or "allowlist"');
   });
 
