@@ -659,3 +659,36 @@ it("rejects Windows CIM executable paths containing forbidden control characters
     });
   }
 });
+
+it("refuses PG_VERSION mutation during PID verification before issuing pg_ctl", async () => {
+  await fixture(async (data) => {
+    const pidMarker = path.join(data, "postmaster.pid");
+    const versionMarker = path.join(data, "PG_VERSION");
+    fs.writeFileSync(pidMarker, "123\n");
+    const realFstat = fs.fstatSync.bind(fs);
+    let fstats = 0;
+    let mutated = false;
+    let shutdowns = 0;
+    let inspections = 0;
+    const spy = vi.spyOn(fs, "fstatSync").mockImplementation((fd) => {
+      const stat = realFstat(fd);
+      if (++fstats === 2) {
+        fs.writeFileSync(versionMarker, "17");
+        mutated = true;
+      }
+      return stat;
+    });
+    try {
+      await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+        async () => { shutdowns++; fs.unlinkSync(pidMarker); },
+        async () => { inspections++; return []; }, noWait))
+        .rejects.toThrow(/cluster identity changed/);
+      expect(mutated).toBe(true);
+      expect(shutdowns).toBe(0);
+      expect(inspections).toBe(0);
+      expect(fs.readFileSync(versionMarker, "utf8")).toBe("17");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});

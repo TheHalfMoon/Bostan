@@ -277,6 +277,10 @@ export async function stopOwnedWindowsEmbeddedPostgres(
     return "already-stopped";
   }
   assertValidPidMarkerBeforeStop(marker);
+  // PID validation may take place after a concurrent cluster mutation.
+  // Verify the original PG_VERSION and directory again before pg_ctl runs;
+  // a post-shutdown check alone would detect the change too late.
+  assertClusterIdentityUnchanged();
   await run(pgCtlExe, ["-D", data, "-m", "fast", "-w", "-t", "40", "stop"]);
   if (pidMarkerPresent(marker))
     throw Error("PostgreSQL PID marker survived graceful shutdown");
