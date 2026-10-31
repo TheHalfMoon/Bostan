@@ -82,6 +82,36 @@ test("refuses donor branding in currently navigable concept content", () => {
   assert.ok(auditBostanDocsSnapshot(config, pages).some((e) => e.includes("Donor product")));
 });
 
+test("refuses donor package installation in console and pnpm dlx examples", () => {
+  const { config, pages } = fixture();
+  pages["docs/start/quickstart.md"] += "\n```console\n$ pnpm dlx paperclipai onboard\n```";
+  assert.ok(auditBostanDocsSnapshot(config, pages).some((e) => e.includes("unqualified")));
+});
+
+test("refuses npm exec and Bostan preview packaging in PowerShell examples", () => {
+  const { config, pages } = fixture();
+  pages["docs/start/quickstart.md"] += "\n```powershell\nPS> npm exec -- bostan\n```";
+  assert.ok(auditBostanDocsSnapshot(config, pages).some((e) => e.includes("unqualified")));
+});
+
+test("refuses unpublished npx with options in an unlabeled terminal block", () => {
+  const { config, pages } = fixture();
+  pages["docs/start/quickstart.md"] += "\n```\nnpx --yes paperclipai onboard\n```";
+  assert.ok(auditBostanDocsSnapshot(config, pages).some((e) => e.includes("unqualified")));
+});
+
+test("refuses duplicate documentation routes instead of silently showing duplicates", () => {
+  const { config, pages } = fixture();
+  config.navigation.tabs[0].groups[0].pages.push("start/quickstart");
+  assert.ok(auditBostanDocsSnapshot(config, pages).some((e) => e.includes("duplicate page routes")));
+});
+
+test("does not confuse non-shell code or warning prose with execution advice", () => {
+  const { config, pages } = fixture();
+  pages["docs/start/quickstart.md"] += "\nDo not run `pnpm dlx paperclipai`.\n```js\nconst example = 'npm exec -- bostan';\n```";
+  assert.deepEqual(auditBostanDocsSnapshot(config, pages), []);
+});
+
 test("verifies the actual checked-in Bostan preview docs on an authorized checkout", () => {
   const checkoutRoot = fileURLToPath(new URL("..", import.meta.url));
   assert.deepEqual(auditBostanDocsCheckout(checkoutRoot), []);
