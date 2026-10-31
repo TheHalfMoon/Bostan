@@ -79,6 +79,31 @@ describe("local process sandbox", () => {
     expect(parseLocalProcessNetworkAllowlist(["api.example.test"])).toEqual(["api.example.test"]);
   });
 
+  it("rejects normalized origin suffixes instead of widening explicit default ports", () => {
+    // WHATWG URL canonicalizes dot-segments and backslashes to '/', and
+    // empty query/hash delimiters can disappear from parsed properties.
+    // None may turn a :443 or :80 allowlist into unrestricted any-port.
+    for (const entry of [
+      "https://api.example.test:443/.",
+      "https://api.example.test:443/..",
+      "https://api.example.test:443/%2e",
+      "https://api.example.test:443\\",
+      "http://api.example.test:80/.",
+      "api.example.test:443/.",
+      "https://api.example.test:443?",
+      "https://api.example.test:443#",
+    ]) {
+      expect(() => parseLocalProcessNetworkAllowlist([entry])).toThrow(
+        "hostname, hostname:port, or origin URL",
+      );
+    }
+    expect(parseLocalProcessNetworkAllowlist([
+      "https://api.example.test:443/",
+      "http://api.example.test:80/",
+      "api.example.test",
+    ])).toEqual(["api.example.test:443", "api.example.test:80", "api.example.test"]);
+  });
+
   it("rejects non-HTTP protocols in sandbox network origins", () => {
     for (const entry of ["ftp://api.example.test", "file://api.example.test", "ws://api.example.test"]) {
       expect(() => parseLocalProcessNetworkAllowlist([entry])).toThrow(
