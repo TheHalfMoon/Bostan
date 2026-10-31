@@ -94,36 +94,73 @@ function isValidProcess(value: unknown): value is WindowsPostgresProcess {
     && typeof p.ExecutablePath === "string" && p.ExecutablePath.trim().length > 0
     && typeof p.CreationDate === "string" && isCanonicalUtcCimDate(p.CreationDate);
 }
-// Use the same strict CIM identity validation before and after shutdown.
-type VerifiedPostgresProcess = { pid: number; executable: string };
-async function inspectVerifiedPostgresProcesses(inspect: Inspector): Promise<VerifiedPostgresProcess[]> {
-  let snapshot: unknown;
-  try { snapshot = await inspect(); } catch {
-    throw Error("Unable to inspect Windows PostgreSQL processes; retaining fixture");
+// CIM can enumerate a PostgreSQL process just as it exits, returning a null
+// executable or creation timestamp. Reinspect only this narrow incomplete
+// observation; malformed paths, duplicates, foreign identities and inspector
+// errors must still fail closed. No pg_ctl call or fixture deletion is allowed
+// based on any incomplete snapshot.
+function isTransientIncompleteCimSnapshot(value: unknown): boolean {
+  if (!Array.isArray(value) || value.length === 0) return false;
+  const pids = new Set<number>();
+  let missing = false;
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") return false;
+    const p = entry as Partial<WindowsPostgresProcess>;
+    if (!Number.isSafeInteger(p.ProcessId) || (p.ProcessId ?? 0) <= 0
+        || !Number.isSafeInteger(p.ParentProcessId) || (p.ParentProcessId ?? -1) < 0
+        || pids.has(p.ProcessId!)) return false;
+    pids.add(p.ProcessId!);
+    if (p.ExecutablePath === null || p.CreationDate === null) missing = true;
+    else if (!isValidProcess(entry)) return false;
+    if (p.ExecutablePath !== null
+        && (typeof p.ExecutablePath !== "string"
+            || normalizedExecutable(p.ExecutablePath) === null)) return false;
+    if (p.CreationDate !== null
+        && (typeof p.CreationDate !== "string"
+            || !isCanonicalUtcCimDate(p.CreationDate))) return false;
   }
-  if (!Array.isArray(snapshot) || !snapshot.every(isValidProcess))
-    throw Error("Ambiguous Windows PostgreSQL process identity; retaining fixture");
-  const processes = snapshot as WindowsPostgresProcess[];
-  const pids = new Set(processes.map(p => p.ProcessId));
-  if (pids.size !== processes.length)
-    throw Error("Ambiguous duplicate Windows PostgreSQL PID; retaining fixture");
-  const executables = processes.map(p => normalizedExecutable(p.ExecutablePath!));
-  if (executables.some(executable => executable === null))
-    throw Error("Ambiguous Windows PostgreSQL process identity; retaining fixture");
-  return processes.map((p, index) => ({
-    pid: p.ProcessId, executable: executables[index]!,
-  }));
+  return missing;
+}
+// Use the same strict CIM identity validation before and after shutdown.
+// A bounded fresh CIM reinspection is NOT permission to proceed on ambiguity.
+type VerifiedPostgresProcess = { pid: number; executable: string };
+async function inspectVerifiedPostgresProcesses(
+  inspect: Inspector, pause: Pause,
+): Promise<VerifiedPostgresProcess[]> {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    let snapshot: unknown;
+    try { snapshot = await inspect(); } catch {
+      throw Error("Unable to inspect Windows PostgreSQL processes; retaining fixture");
+    }
+    if (!Array.isArray(snapshot) || !snapshot.every(isValidProcess)) {
+      if (attempt === 3 || !isTransientIncompleteCimSnapshot(snapshot))
+        throw Error("Ambiguous Windows PostgreSQL process identity; retaining fixture");
+      await pause(125);
+      continue;
+    }
+    const processes = snapshot as WindowsPostgresProcess[];
+    const pids = new Set(processes.map(p => p.ProcessId));
+    if (pids.size !== processes.length)
+      throw Error("Ambiguous duplicate Windows PostgreSQL PID; retaining fixture");
+    const executables = processes.map(p => normalizedExecutable(p.ExecutablePath!));
+    if (executables.some(executable => executable === null))
+      throw Error("Ambiguous Windows PostgreSQL process identity; retaining fixture");
+    return processes.map((p, index) => ({
+      pid: p.ProcessId, executable: executables[index]!,
+    }));
+  }
+  throw Error("Ambiguous Windows PostgreSQL process identity; retaining fixture");
 }
 // A postmaster.pid path alone cannot authorize pg_ctl to signal its PID.
 // Confirm the marker PID is an observed process from the exact pinned binary;
 // missing/foreign/ambiguous identity retains the fixture without shutdown.
 async function provePinnedPostmasterBeforeStop(
-  pid: number, pgCtlExe: string, inspect: Inspector,
+  pid: number, pgCtlExe: string, inspect: Inspector, pause: Pause,
 ): Promise<void> {
   const expected = normalizedPgCtlBinary(pgCtlExe);
   if (!expected)
     throw Error("Ambiguous pinned Windows PostgreSQL binary identity; retaining fixture");
-  const processes = await inspectVerifiedPostgresProcesses(inspect);
+  const processes = await inspectVerifiedPostgresProcesses(inspect, pause);
   if (!processes.some(process => process.pid === pid && process.executable === expected))
     throw Error("Unable to prove pinned PostgreSQL postmaster identity; retaining fixture");
 }
@@ -141,7 +178,7 @@ async function provePinnedBinaryQuiescent(
     throw Error("Ambiguous pinned Windows PostgreSQL binary identity; retaining fixture");
   let clean = 0;
   for (let attempt = 0; attempt < 20; attempt += 1) {
-    const processes = await inspectVerifiedPostgresProcesses(inspect);
+    const processes = await inspectVerifiedPostgresProcesses(inspect, pause);
     if (processes.some(process => process.executable === expected)) {
       clean = 0;
     } else if (++clean === 2) {
@@ -328,7 +365,7 @@ export async function stopOwnedWindowsEmbeddedPostgres(
     throw Error("Ambiguous PostgreSQL PID marker identity; retaining fixture");
   }
   const postmasterPid = assertValidPidMarkerBeforeStop(marker, data);
-  await provePinnedPostmasterBeforeStop(postmasterPid, pgCtlExe, inspect);
+  await provePinnedPostmasterBeforeStop(postmasterPid, pgCtlExe, inspect, pause);
   // A process scan is asynchronous. Recheck the same marker identity and
   // PID before issuing pg_ctl, not merely the cluster version marker.
   if (assertValidPidMarkerBeforeStop(marker, data) !== postmasterPid)
