@@ -11,10 +11,10 @@
  * developer scripts that legitimately push are out of scope because they
  * live outside the directories scanned here.
  *
- * Opt-in mechanism: a line containing `paperclip:allow-git-push` (typically
- * inside a `// paperclip:allow-git-push: <reason>` comment on the line itself
- * or the line immediately above) suppresses the match. This is reserved for
- * operator-configured paths that legitimately push and must be reviewed.
+ * Opt-in mechanism: only a real source line comment containing
+ * `bostan:allow-git-push: <reason>` (or the legacy Paperclip spelling)
+ * on the invocation or immediately preceding line can suppress a match.
+ * An identifier or string literal must never grant itself permission.
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -57,7 +57,8 @@ export const GIT_PUSH_PATTERNS = [
 ];
 // Kept for backwards-compatibility with existing tests/importers.
 export const GIT_PUSH_PATTERN = GIT_PUSH_PATTERNS[0];
-export const ALLOW_MARKER = "paperclip:allow-git-push";
+export const ALLOW_MARKER = "bostan:allow-git-push";
+const LEGACY_ALLOW_MARKER = "paperclip:allow-git-push";
 
 function lineMatchesGitPush(line) {
   return GIT_PUSH_PATTERNS.some((pattern) => pattern.test(line));
@@ -94,6 +95,15 @@ function stripLineComment(line) {
   return line;
 }
 
+function hasReviewedOptInComment(line) {
+  // stripLineComment stops only on // that appears outside quoted strings.
+  // Anything before that boundary is code, not authorization.
+  const withoutComment = stripLineComment(line);
+  if (withoutComment.length === line.length) return false;
+  const comment = line.slice(withoutComment.length);
+  return comment.includes(ALLOW_MARKER) || comment.includes(LEGACY_ALLOW_MARKER);
+}
+
 export function findGitPushOffenses(text) {
   const lines = text.split("\n");
   const offenses = [];
@@ -104,7 +114,7 @@ export function findGitPushOffenses(text) {
     if (!lineMatchesGitPush(stripped)) continue;
 
     const previousLine = index > 0 ? lines[index - 1] : "";
-    const isAllowed = line.includes(ALLOW_MARKER) || previousLine.includes(ALLOW_MARKER);
+    const isAllowed = hasReviewedOptInComment(line) || hasReviewedOptInComment(previousLine);
     if (isAllowed) continue;
 
     offenses.push({ lineNumber: index + 1, line: line.trimEnd() });
