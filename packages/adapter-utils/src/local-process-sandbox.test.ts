@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   buildLocalProcessSandboxSpawnTarget,
   parseLocalProcessFilesystemScope,
+  buildLocalProcessProxyOriginHeaders,
   parseLocalProcessNetworkAllowlist,
   isValidLocalProcessProxyConnectPort,
   parseLocalProcessNetworkScope,
@@ -198,6 +199,86 @@ describe("local process sandbox", () => {
       expect(response).toContain("HTTP/1.1 403 Forbidden");
     } finally {
       await target.cleanup?.();
+    }
+  });
+
+  it("does not send client proxy credentials to the HTTP origin", () => {
+    const incoming = {
+      host: "local-proxy.example.test",
+      "proxy-authorization": "Basic SYNTHETIC_PROXY_SECRET",
+      "proxy-connection": "keep-alive",
+      authorization: "Bearer SYNTHETIC_ORIGIN_TOKEN",
+      "x-bostan-fixture": "allowed",
+    };
+    const forwarded = buildLocalProcessProxyOriginHeaders(incoming, "api.example.test:8443");
+    expect(forwarded).toEqual({
+      host: "api.example.test:8443",
+      authorization: "Bearer SYNTHETIC_ORIGIN_TOKEN",
+      "x-bostan-fixture": "allowed",
+    });
+    // Do not mutate the request object, which may be used for audit/policy.
+    expect(incoming["proxy-authorization"]).toBe("Basic SYNTHETIC_PROXY_SECRET");
+    expect(incoming["proxy-connection"]).toBe("keep-alive");
+  });
+
+  it.runIf(process.platform === "linux")("never forwards proxy credentials to an allowed local HTTP origin", async () => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-proxy-origin-header-"));
+    cleanup.push(workspace);
+    const origin = http.createServer((request, response) => {
+      response.setHeader("content-type", "application/json");
+      response.end(JSON.stringify(request.headers));
+    });
+    await new Promise<void>((resolve) => origin.listen(0, "127.0.0.1", resolve));
+    const address = origin.address();
+    if (!address || typeof address === "string") {
+      await new Promise<void>((resolve) => origin.close(() => resolve()));
+      throw new Error("Expected loopback test server.");
+    }
+    let target: Awaited<ReturnType<typeof buildLocalProcessSandboxSpawnTarget>> | undefined;
+    try {
+      target = await buildLocalProcessSandboxSpawnTarget({
+        executable: process.execPath,
+        args: ["-e", "process.exit(0)"],
+        cwd: workspace,
+        options: {
+          workspaceDir: workspace,
+          networkScope: "allowlist",
+          networkAllowlist: [`127.0.0.1:${address.port}`],
+        },
+      });
+      const separator = target.args.indexOf("--");
+      const socketPath = target.args[separator + 3];
+      const received = await new Promise<Record<string, string>>((resolve, reject) => {
+        const request = http.request({
+          socketPath,
+          path: `http://127.0.0.1:${address.port}/fixture`,
+          headers: {
+            host: "local-proxy.example.test",
+            "proxy-authorization": "Basic SYNTHETIC_PROXY_SECRET",
+            "proxy-connection": "keep-alive",
+            authorization: "Bearer SYNTHETIC_ORIGIN_TOKEN",
+            "x-bostan-fixture": "allowed",
+          },
+        }, (response) => {
+          let data = "";
+          response.setEncoding("utf8");
+          response.on("data", (part) => { data += part; });
+          response.on("end", () => {
+            try { resolve(JSON.parse(data) as Record<string, string>); }
+            catch (error) { reject(error); }
+          });
+        });
+        request.on("error", reject);
+        request.end();
+      });
+      expect(received["proxy-authorization"]).toBeUndefined();
+      expect(received["proxy-connection"]).toBeUndefined();
+      expect(received.authorization).toBe("Bearer SYNTHETIC_ORIGIN_TOKEN");
+      expect(received["x-bostan-fixture"]).toBe("allowed");
+      expect(received.host).toBe(`127.0.0.1:${address.port}`);
+    } finally {
+      await target?.cleanup?.();
+      await new Promise<void>((resolve) => origin.close(() => resolve()));
     }
   });
 
