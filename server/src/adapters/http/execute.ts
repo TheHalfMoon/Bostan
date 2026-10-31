@@ -24,6 +24,13 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const diagnosticMethod = safeHttpAgentMethod(method);
   let rejectedStatus: number | null = null;
   let timedOutByDeadline = false;
+  const timeoutResult = (): AdapterExecutionResult => ({
+    exitCode: null,
+    signal: null,
+    timedOut: true,
+    errorMessage: `HTTP ${diagnosticMethod} request timed out after ${timeoutMs}ms`,
+    errorCode: "timeout",
+  });
   const controller = new AbortController();
   // The heartbeat owns ctx.signal. A cancelled run must not leave an HTTP
   // adapter request running just because timeoutMs was not configured.
@@ -56,6 +63,14 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     // before starting the remote request so dispatch gates can release without
     // waiting for the endpoint to respond.
     ctx.onDispatch?.();
+    // Dispatch hooks may synchronously cancel the owning heartbeat. Never
+    // enter the transport with an already-cancelled request in that case.
+    if (ctx.signal?.aborted) {
+      return {
+        exitCode: 1, signal: null, timedOut: false,
+        errorCode: "cancelled", errorMessage: "HTTP adapter run cancelled",
+      };
+    }
     const res = await guardedHttpAdapterFetch(url, {
       method,
       headers: {
@@ -76,6 +91,10 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     } catch {
       // A hostile/mocked response object must not change the HTTP verdict.
     }
+
+    // A noncompliant transport may resolve after its AbortSignal deadline.
+    // Never accept a late success or rejection as if the timeout did not fire.
+    if (timedOutByDeadline) return timeoutResult();
 
     // A mock, custom transport or peer may resolve just as the run is
     // cancelled. Do not accept even a 2xx after the owner signalled stop.
@@ -98,15 +117,9 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       summary: `HTTP ${diagnosticMethod} request completed`,
     };
   } catch (err) {
-    if (timedOutByDeadline && err instanceof Error && err.name === "AbortError") {
-      return {
-        exitCode: null,
-        signal: null,
-        timedOut: true,
-        errorMessage: `HTTP ${diagnosticMethod} request timed out after ${timeoutMs}ms`,
-        errorCode: "timeout",
-      };
-    }
+    // The configured deadline fired first. A transport may ignore abort and
+    // later reject with a non-AbortError; its untrusted error is not the verdict.
+    if (timedOutByDeadline) return timeoutResult();
     if (ctx.signal?.aborted) {
       return {
         exitCode: 1, signal: null, timedOut: false,
