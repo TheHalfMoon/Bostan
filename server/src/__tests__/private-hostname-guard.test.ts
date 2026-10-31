@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import express from "express";
 import request from "supertest";
-import { privateHostnameGuard } from "../middleware/private-hostname-guard.js";
+import { parsePrivateHostHeader, privateHostnameGuard } from "../middleware/private-hostname-guard.js";
 
 const unknownHostname = "blocked-host.invalid";
 
@@ -24,6 +24,71 @@ function createApp(opts: { enabled: boolean; allowedHostnames?: string[]; bindHo
 }
 
 describe("privateHostnameGuard", () => {
+
+  it("rejects spoofed X-Forwarded-Host when the actual Host is forbidden", async () => {
+    const app = createApp({ enabled: true });
+    const res = await request(app)
+      .get("/api/health")
+      .set("Host", "blocked-host.invalid:3100")
+      .set("X-Forwarded-Host", "localhost:3100");
+    expect(res.status).toBe(403);
+    expect(res.body.error).toContain("BOSTAN_ALLOWED_HOSTNAMES=<host>");
+  });
+
+  it("does not use an allowed X-Forwarded-Host to override a denied Host", async () => {
+    const app = createApp({ enabled: true, allowedHostnames: ["approved.internal"] });
+    const res = await request(app)
+      .get("/api/health")
+      .set("Host", "blocked-host.invalid:3100")
+      .set("X-Forwarded-Host", "approved.internal:3100");
+    expect(res.status).toBe(403);
+  });
+
+  it.each([
+    "malicious@localhost:3100",
+    "localhost:3100/private",
+    "local%68ost:3100",
+    "localhost:00080",
+    "localhost:0",
+    "localhost:65536",
+    "[::1]x:3100",
+  ])("refuses an ambiguous or malformed Host authority (%s)", async (authority) => {
+    expect(parsePrivateHostHeader(authority)).toBeNull();
+    const app = createApp({ enabled: true });
+    const res = await request(app).get("/api/health").set("Host", authority);
+    expect(res.status).toBe(403);
+  });
+
+  it("admits canonical bracketed IPv6 loopback Host", async () => {
+    const app = createApp({ enabled: true });
+    const res = await request(app).get("/api/health").set("Host", "[::1]:3100");
+    expect(res.status).toBe(200);
+    expect(parsePrivateHostHeader("[::1]:3100")).toBe("::1");
+  });
+
+  it("admits configured ordinary Host while disregarding forged forwarded values", async () => {
+    const app = createApp({ enabled: true, allowedHostnames: ["approved.internal"] });
+    const res = await request(app)
+      .get("/api/health")
+      .set("Host", "approved.internal:3100")
+      .set("X-Forwarded-Host", "blocked-host.invalid:3100");
+    expect(res.status).toBe(200);
+  });
+
+  it("rejects a missing Host even when forwarded host claims localhost", () => {
+    const middleware = privateHostnameGuard({ enabled: true, allowedHostnames: [], bindHost: "0.0.0.0" });
+    const req = {
+      path: "/api/health",
+      header: (name: string) => name.toLowerCase() === "x-forwarded-host" ? "localhost" : undefined,
+      accepts: () => "json",
+    } as any;
+    const res = { status: vi.fn().mockReturnThis(), json: vi.fn(), type: vi.fn(), send: vi.fn() } as any;
+    const next = vi.fn();
+    middleware(req, res, next);
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
   it("allows requests when disabled", async () => {
     const app = createApp({ enabled: false });
     const res = await request(app).get("/api/health").set("Host", "dotta-macbook-pro:3100");
