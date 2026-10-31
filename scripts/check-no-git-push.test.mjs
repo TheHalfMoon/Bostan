@@ -140,6 +140,14 @@ test("runCheck rejects a flagged Git push in an adapter source file", () => {
   }
 });
 
+test("standalone reviewed-marker strings do not masquerade as Git push commands", () => {
+  const values = [ALLOW_MARKER, "paperclip:allow-git-push"];
+  for (const marker of values) {
+    assert.deepEqual(findGitPushOffenses(`const marker = "${marker}";\n`), []);
+    assert.deepEqual(findGitPushOffenses(`const url = "https://example.invalid/${marker}";\n`), []);
+  }
+});
+
 test("findGitPushOffenses does not accept an opt-in marker inside ordinary source strings", () => {
   const code = [
     `const marker = "${ALLOW_MARKER}";`,
