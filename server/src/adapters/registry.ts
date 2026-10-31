@@ -494,7 +494,10 @@ const paperclipRunnerAdapter: ServerAdapterModule = {
           const codes = ["COPILOT_AUTH_REQUIRED", "COPILOT_ENTITLEMENT_DENIED", "COPILOT_MODEL_UNAVAILABLE", "COPILOT_INSTALLATION_INVALID", "COPILOT_REQUEST_FAILED"];
           const code = typeof details.code === "string" && codes.includes(details.code) ? details.code : "COPILOT_REQUEST_FAILED";
           return { adapterType: "paperclip_runner", status: "fail" as const, testedAt: new Date().toISOString(),
-            checks: [{ code, level: "error" as const, message: error instanceof HttpError ? error.message : "Copilot metadata verification failed." }] };
+            // Remote provider error messages are untrusted and may contain
+            // a selected token, signed URL, account host or private path.
+            // Preserve the allowlisted machine-readable code, not raw text.
+            checks: [{ code, level: "error" as const, message: "Copilot metadata verification failed." }] };
         }
         return {
           adapterType: "paperclip_runner", status: "fail" as const, testedAt: new Date().toISOString(),
@@ -502,7 +505,9 @@ const paperclipRunnerAdapter: ServerAdapterModule = {
             code: error instanceof Error && "code" in error && error.code === "ACPX_RUNTIME_PACKAGE_MISSING"
               ? "acpx_runtime_package_missing" : "acpx_runtime_unavailable",
             level: "error" as const,
-            message: error instanceof Error ? error.message : "The ACPX runtime could not be verified.",
+            // ACPX package/probe exceptions may carry local filesystem
+            // paths and external provider output. Never store raw messages.
+            message: "The ACPX runtime could not be verified.",
           }],
         };
       }
