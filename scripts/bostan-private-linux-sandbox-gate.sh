@@ -65,7 +65,7 @@ command -v realpath >/dev/null || fail 'realpath is missing'
 # production files; never execute a modified report verifier.
 audit_path='scripts/bostan-private-linux-vitest-report-audit.mjs'
 audit_test_path='scripts/bostan-private-linux-vitest-report-audit.test.mjs'
-audit_blob='99f480a1419f55e7f63263fc480527bcb6036a72'
+audit_blob='eaa2461adfee2599aafad9e470b1c6b0da5e9fa2'
 audit_test_blob='0a28db2adcff5169147ef1c5b71246afd462999b'
 for pair in "$audit_path:$audit_blob" "$audit_test_path:$audit_test_blob"; do
   qa_path="${pair%%:*}"
