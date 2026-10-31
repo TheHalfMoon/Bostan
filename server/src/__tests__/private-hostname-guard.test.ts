@@ -59,6 +59,29 @@ describe("privateHostnameGuard", () => {
     expect(res.status).toBe(403);
   });
 
+  it.each([
+    "127.1:3100",
+    "0177.0.0.1:3100",
+    "0x7f000001:3100",
+    "2130706433:3100",
+    "127.000.000.001:3100",
+    "127.0.0.1.:3100",
+  ])("rejects URL-normalized noncanonical IPv4 Host (%s)", async (authority) => {
+    // WHATWG URL turns these spellings into 127.0.0.1; a private Host
+    // authority must not gain loopback admission through that normalization.
+    expect(parsePrivateHostHeader(authority)).toBeNull();
+    const app = createApp({ enabled: true });
+    const res = await request(app).get("/api/health").set("Host", authority);
+    expect(res.status).toBe(403);
+  });
+
+  it("admits canonical dotted-decimal IPv4 loopback Host", async () => {
+    const app = createApp({ enabled: true });
+    const res = await request(app).get("/api/health").set("Host", "127.0.0.1:3100");
+    expect(res.status).toBe(200);
+    expect(parsePrivateHostHeader("127.0.0.1:3100")).toBe("127.0.0.1");
+  });
+
   it("admits canonical bracketed IPv6 loopback Host", async () => {
     const app = createApp({ enabled: true });
     const res = await request(app).get("/api/health").set("Host", "[::1]:3100");
