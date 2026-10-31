@@ -17,7 +17,7 @@ The existing self-contained synthetic Git regression was extended by one case: `
 - Native model-side Linux (Git 2.47.3, Node 22.16), no user device or customer data: ancestor-symlink bypass reproduced on the old gate; the new guard rejected with `source resolves through a symlink or outside QA checkout`.
 - **Tests-first RED:** extended seven-case regression returned nonzero on the exact original B1-115 gate; the seventh case was incorrectly admitted to the later Node-version check.
 - **GREEN:** extended seven-case regression on the patched gate: **7 PASS / 0 FAIL**, including the original six cases. `bash -n` passed for both files.
-- The parent gate's exact Git blob was verified locally before patching; the resulting patched gate Git blob is `09bcd3f16bd8c27a9a64c617c2bfc5bee6805630` and the extended regression blob is `f5bbc14e4c69cc50981c6df54d88b402b13a9bdf`. Both match the actual committed GitHub content blobs.
+- The parent gate's exact Git blob was verified locally before patching; the resulting patched gate Git blob is `09bcd3f16bd8c27a9a64c617c2bfc5bee6805630` and the extended regression blob is `8a33e21bff8dc07f464e3a21d27ae0406ab36e7a`. Both match the actual committed GitHub content blobs.
 - All model-side temporary synthetic fixtures are owned by this test; no remote Desktop Commander calls, no downloads, no paid services, no changes to Mac/Windows machines.
 
 ## Remaining limitations and NO-GO
