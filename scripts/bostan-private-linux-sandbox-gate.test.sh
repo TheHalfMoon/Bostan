@@ -22,6 +22,12 @@ trap cleanup EXIT
 fixture="$scratch/repo"
 mkdir -p "$fixture/scripts" "$fixture/packages/adapter-utils/src"
 cp -- "$gate" "$fixture/scripts/bostan-private-linux-sandbox-gate.sh"
+# B1-124 audit files are themselves HEAD/worktree-pinned by the real gate.
+# Copy real checked-in files into this owned synthetic repository so the
+# existing clean-checkout fixture reaches the later Node/dependency refusal.
+for item in bostan-private-linux-vitest-report-audit.mjs bostan-private-linux-vitest-report-audit.test.mjs; do
+  cp -- "$origin/scripts/$item" "$fixture/scripts/$item"
+done
 src='packages/adapter-utils/src/local-process-sandbox.ts'
 test='packages/adapter-utils/src/local-process-sandbox.test.ts'
 printf '%s\n' 'export const syntheticSource = "pinned";' > "$fixture/$src"
@@ -91,6 +97,21 @@ rm -- "$fixture/$src"
 git -C "$fixture" update-index --no-assume-unchanged -- "$src"
 git -C "$fixture" restore --worktree -- "$src"
 
+# New B1-124 verifier inputs must also fail closed if Git hides a changed
+# auditor or its own test file; do not relax the audit to make this pass.
+for item in bostan-private-linux-vitest-report-audit.mjs bostan-private-linux-vitest-report-audit.test.mjs; do
+  qa_path="scripts/$item"
+  git -C "$fixture" update-index --assume-unchanged -- "$qa_path"
+  printf '%s\\n' '// OWNED SYNTHETIC AUDITOR TAMPER' >> "$fixture/$qa_path"
+  [[ -z "$(git -C "$fixture" status --porcelain -- "$qa_path")" ]] || {
+    echo "B124_FAIL: hidden audit modification unexpectedly visible" >&2
+    exit 1
+  }
+  refuse "hidden B1-124 QA auditor: $item" 'QA report auditor worktree differs from pinned source'
+  git -C "$fixture" update-index --no-assume-unchanged -- "$qa_path"
+  git -C "$fixture" restore --worktree -- "$qa_path"
+done
+
 # A symlinked ancestor can redirect both ordinary leaf files to a foreign
 # directory while Git's skip-worktree bits conceal the checkout replacement.
 git -C "$fixture" update-index --skip-worktree -- "$src" "$test"
@@ -105,3 +126,4 @@ ln -s -- "$scratch/owned-external-tree" "$fixture/packages"
 refuse 'symlinked ancestor directory' 'source resolves through a symlink or outside QA checkout'
 
 printf 'BOSTAN_B116_REGRESSION=PASS (7 bounded cases, synthetic only)\n'
+printf 'BOSTAN_B124_AUDITOR_INTEGRITY=PASS (2 added, 9 total synthetic cases)\\n'
