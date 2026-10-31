@@ -61,7 +61,13 @@ export const ALLOW_MARKER = "bostan:allow-git-push";
 const LEGACY_ALLOW_MARKER = "paperclip:allow-git-push";
 
 function lineMatchesGitPush(line) {
-  return GIT_PUSH_PATTERNS.some((pattern) => pattern.test(line));
+  // These policy marker identifiers contain "git-push" as a substring.
+  // Mask only the identifier token during detection, not the rest of the
+  // source line, so a real push beside a marker still triggers a refusal.
+  const withoutMarkerTokens = line
+    .replaceAll(ALLOW_MARKER, "reviewed-opt-in")
+    .replaceAll(LEGACY_ALLOW_MARKER, "reviewed-opt-in");
+  return GIT_PUSH_PATTERNS.some((pattern) => pattern.test(withoutMarkerTokens));
 }
 
 function stripLineComment(line) {
