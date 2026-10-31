@@ -223,6 +223,42 @@ it("fails closed when postmaster marker survives graceful stop", async () => {
     expect(inspected).toBe(false);
   });
 });
+it("rejects ambiguous pg_ctl paths before invoking shutdown or process inspection", async () => {
+  const unsafeBinaries = [
+    "\\unanchored\\pg_ctl.exe",
+    "C:\\owned\\..\\pg_ctl.exe",
+    "\\\\.\\C:\\owned\\pg_ctl.exe",
+  ];
+  for (const unsafe of unsafeBinaries) {
+    await fixture(async (data) => {
+      fs.writeFileSync(path.join(data, "postmaster.pid"), "123\n");
+      let shutdowns = 0;
+      let inspections = 0;
+      await expect(stopOwnedWindowsEmbeddedPostgres(data, unsafe,
+        async () => { shutdowns++; },
+        async () => { inspections++; return []; }, noWait))
+        .rejects.toThrow(/shutdown binary/);
+      expect(shutdowns).toBe(0);
+      expect(inspections).toBe(0);
+    });
+  }
+});
+
+it("preserves valid extended-length and UNC pg_ctl paths for quiescence proof", async () => {
+  for (const valid of [
+    "\\\\?\\C:\\bostan-test\\pg_ctl.exe",
+    "\\\\server\\share\\pg_ctl.exe",
+  ]) {
+    await fixture(async (data) => {
+      let inspections = 0;
+      expect(await stopOwnedWindowsEmbeddedPostgres(data, valid,
+        async () => { throw Error("must not stop without a PID marker"); },
+        async () => { inspections++; return []; }, noWait)).toBe("already-stopped");
+      expect(inspections).toBe(2);
+    });
+  }
+});
+
 it("refuses unrelated shutdown binary and incomplete database identity", async () => {
   await fixture(async (data) => {
     fs.writeFileSync(path.join(data, "postmaster.pid"), "123\n");
