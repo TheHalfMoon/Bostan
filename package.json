@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "check:bostan-docs": "node scripts/bostan-private-docs-entry-gate.mjs",
+    "test:bostan-docs": "node --test scripts/bostan-private-docs-entry-gate.test.mjs",
     "perf:workspace-admission": "node --import ./server/node_modules/tsx/dist/loader.mjs server/scripts/benchmark-workspace-admission.ts",
     "postinstall": "node scripts/link-plugin-dev-sdk.mjs",
     "preflight:workspace-links": "node cli/node_modules/tsx/dist/cli.mjs scripts/ensure-workspace-package-links.ts",
