@@ -8,7 +8,7 @@ The private hostname middleware previously called `req.header("host")`. Node's H
 
 ## Test-first and minimal change
 
-Added four source-native Vitest cases in `server/src/__tests__/private-hostname-guard.test.ts` that send actual HTTP/1.1 wire frames through an ephemeral loopback Express listener: allowed-first / denied-second, denied-first / allowed-second, identical duplicate allowed Hosts (all require 403), and one canonical allowed Host (200). This avoids a Supertest client silently coalescing headers. The test uses a bounded socket timeout and closes its own listener; it does not contact an external host.
+Added four source-native Vitest cases in `server/src/__tests__/private-hostname-guard.test.ts` that send actual HTTP/1.1 wire frames through an ephemeral loopback Express listener: allowed-first / denied-second, denied-first / allowed-second, identical duplicate allowed Hosts (all require HTTP 400 or 403, since a stricter Node parser may reject duplicates before Express), and one canonical allowed Host (200). This avoids a Supertest client silently coalescing headers. The test uses a bounded socket timeout and closes its own listener; it does not contact an external host.
 
 Updated `extractHostname` in `server/src/middleware/private-hostname-guard.ts` to scan the original alternating `req.rawHeaders` name/value array, reject missing/malformed arrays and any second case-insensitive Host field, then parse exactly the sole raw authority through the existing strict B1-138/B1-139 parser. It never trusts `X-Forwarded-Host`. No dependencies, allowlist expansion, authentication change or user data. Two preexisting direct middleware mocks now carry explicit rawHeaders for accurate behavior.
 
@@ -25,7 +25,7 @@ On isolated model-side Debian Linux Node **22.16.0**, using the real built-in `h
 ## Frozen review inputs
 
 - Production source Git blob: `78d608eeda697db8a515dad18bfe377cbb01aba0`.
-- Test source Git blob: `46b8c5e41a7c0ea2d0f16c4884ca8f17321c8f27`.
+- Test source Git blob: `74478f0262db2597d07823c73f2513ee1eef76be`.
 - Parent PR #396: https://github.com/TheHalfMoon/Bostan/pull/396.
 
 ## Mandatory qualification before release
