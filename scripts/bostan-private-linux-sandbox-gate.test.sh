@@ -141,6 +141,18 @@ for flag in assume-unchanged skip-worktree; do
   done
 done
 
+# A byte-identical required suite symlink leaf must also fail even if Git
+# marks it assume-unchanged and status hides the changed checkout type.
+qa_path='packages/adapter-utils/src/execution-target-sandbox.test.ts'
+git -C "$fixture" update-index --assume-unchanged -- "$qa_path"
+cp -- "$fixture/$qa_path" "$scratch/owned-external-suite.ts"
+rm -- "$fixture/$qa_path"
+ln -s -- "$scratch/owned-external-suite.ts" "$fixture/$qa_path"
+refuse 'required suite replaced by symlink' 'additional suite must be an ordinary checkout file'
+rm -- "$fixture/$qa_path"
+git -C "$fixture" update-index --no-assume-unchanged -- "$qa_path"
+git -C "$fixture" restore --worktree -- "$qa_path"
+
 # A symlinked ancestor can redirect both ordinary leaf files to a foreign
 # directory while Git's skip-worktree bits conceal the checkout replacement.
 git -C "$fixture" update-index --skip-worktree -- "$src" "$test"
@@ -156,4 +168,4 @@ refuse 'symlinked ancestor directory' 'source resolves through a symlink or outs
 
 printf 'BOSTAN_B116_REGRESSION=PASS (7 bounded cases, synthetic only)\n'
 printf 'BOSTAN_B124_AUDITOR_INTEGRITY=PASS (2 added, 9 total synthetic cases)\n'
-printf 'BOSTAN_B126_ALL_SUITE_PINS=PASS (6 additional hidden-suite cases, 15 total synthetic cases)\n'
+printf 'BOSTAN_B126_ALL_SUITE_PINS=PASS (7 additional suite integrity cases, 16 total synthetic cases)\n'
