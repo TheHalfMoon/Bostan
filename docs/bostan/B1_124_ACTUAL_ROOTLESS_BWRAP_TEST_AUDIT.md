@@ -38,6 +38,18 @@ Model-side native Node22 validation copied the exact committed audit JS and regr
 
 The audited Vitest JSON/reporting CLI and report's `testResults[].assertionResults[].title/status` schema are consistent with Vitest's official JSON reporter documentation. This is **format validation against documentation and synthetic report fixtures**; actual Vitest5 source-native report generation is still UNRUN. The temporary model-side verification directory was removed.
 
+## Compatibility repair: legacy admission synthetic fixtures
+
+The existing `scripts/bostan-private-linux-sandbox-gate.test.sh` creates an owner-contained synthetic Git repository to verify that the fail-closed admission logic rejects Git-hidden source edits, symlink leaves and symlink ancestors. B1-124 now requires both the JSON audit and its own test file to exist with frozen HEAD/worktree hashes, so an unchanged synthetic fixture would be refused **before** reaching its expected Node/dependency admission boundary.
+
+The committed follow-up fixes this without weakening the gate:
+- Copy both actual pinned JSON auditor files from the private checkout into **only the synthetic owned Git fixture**, before `git add/commit`. The fixture does not alter upstream files, source code or frozen production/test hashes.
+- Extend the fixture's refusal checks to detect modifications hidden by Git `assume-unchanged` on each audit script independently. Expected failure is `QA report auditor worktree differs from pinned source`.
+- Keep all 7 previous source/test and symlink cases, plus 2 new audit integrity cases (9 synthetic cases total). Retain the existing B1-116 output marker and append `BOSTAN_B124_AUDITOR_INTEGRITY` when the extra checks pass.
+- The fixture correction was committed at `a5f2a1e724570edbe709dc3b6e35a7e9b5d198e8`, newline/diagnostic correction at `f30f32867397e75cc65d8eaf62706b6756ff00e4`. Final fetched Git blob: `86e0f001e74df6afcb05d186bcaa2177508bfaf2`.
+
+**Important execution boundary:** the two new regression cases were inspected in the GitHub file, but the complete 9-case admission script was **not executed against an actual private checkout** in this wave. The **9/9 PASS** reported above applies only to the byte-identical Node JSON audit test script. Do not conflate these distinct results.
+
 ## Next necessary gates
 
 On a **separately owned disposable native Linux checkout of this private exact PR SHA**, with existing Node>=24.11, Vitest5, TypeScript7, unprivileged bwrap and >=2 GiB free RAM/disk, first run `bash scripts/bostan-private-linux-sandbox-gate.test.sh` (existing source integrity fixture), then run `bash scripts/bostan-private-linux-sandbox-gate.sh --run`. Record source SHA, the four verified bubblewrap case markers, actual exit statuses and package typecheck; do not override failed namespace permissions or skip any case. Then perform installed Windows/macOS/Linux qualification, controlled agent effects/consent, repeated real PostgreSQL stress #234, privacy/tenant isolation, and third-party license/NOTICE/provenance checks.
