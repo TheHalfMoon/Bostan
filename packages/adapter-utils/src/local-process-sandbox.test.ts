@@ -8,6 +8,7 @@ import {
   buildLocalProcessSandboxSpawnTarget,
   parseLocalProcessFilesystemScope,
   buildLocalProcessProxyOriginHeaders,
+  filterLocalProcessProxyHopByHopHeaders,
   parseLocalProcessNetworkAllowlist,
   isValidLocalProcessProxyConnectPort,
   parseLocalProcessNetworkScope,
@@ -199,6 +200,120 @@ describe("local process sandbox", () => {
       expect(response).toContain("HTTP/1.1 403 Forbidden");
     } finally {
       await target.cleanup?.();
+    }
+  });
+
+  it("drops fixed and Connection-nominated hop-only headers before forwarding", () => {
+    const incoming = {
+      host: "local-proxy.example.test",
+      connection: "keep-alive, X-Bostan-Hop-Token, Authorization-Local",
+      "x-bostan-hop-token": "SYNTHETIC_HOP_SECRET",
+      "authorization-local": "SYNTHETIC_LOCAL_ONLY",
+      "proxy-authorization": "Basic SYNTHETIC_PROXY_ONLY",
+      "proxy-connection": "keep-alive",
+      "keep-alive": "timeout=5",
+      "proxy-authenticate": "Basic realm=synthetic",
+      te: "trailers",
+      trailer: "x-test-trailer",
+      "transfer-encoding": "chunked",
+      upgrade: "websocket",
+      authorization: "Bearer SYNTHETIC_ORIGIN_TOKEN",
+      "x-origin-metadata": "retained",
+    };
+    expect(buildLocalProcessProxyOriginHeaders(incoming, "origin.example.test:80")).toEqual({
+      host: "origin.example.test:80",
+      authorization: "Bearer SYNTHETIC_ORIGIN_TOKEN",
+      "x-origin-metadata": "retained",
+    });
+    expect(incoming["x-bostan-hop-token"]).toBe("SYNTHETIC_HOP_SECRET");
+    expect(incoming.connection).toContain("X-Bostan-Hop-Token");
+  });
+
+  it("removes upstream response hop-only headers including dynamically named values", () => {
+    const incoming = {
+      connection: "close, X-Bostan-Origin-Hop-Token",
+      "x-bostan-origin-hop-token": "SYNTHETIC_HOP_SECRET",
+      "proxy-authenticate": "Basic realm=synthetic",
+      "keep-alive": "timeout=3",
+      "transfer-encoding": "chunked",
+      "content-type": "application/json",
+      "content-length": "2",
+      "x-origin-response": "retained",
+    };
+    expect(filterLocalProcessProxyHopByHopHeaders(incoming)).toEqual({
+      "content-type": "application/json",
+      "content-length": "2",
+      "x-origin-response": "retained",
+    });
+    expect(incoming["x-bostan-origin-hop-token"]).toBe("SYNTHETIC_HOP_SECRET");
+  });
+
+  it.runIf(process.platform === "linux")("does not forward Connection-nominated secrets in either HTTP proxy direction", async () => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-hop-header-proxy-"));
+    cleanup.push(workspace);
+    const origin = http.createServer((request, response) => {
+      const body = JSON.stringify(request.headers);
+      response.writeHead(200, {
+        "content-type": "application/json",
+        "connection": "close, x-bostan-origin-hop-token",
+        "x-bostan-origin-hop-token": "SYNTHETIC_ORIGIN_HOP_TOKEN",
+        "x-origin-response": "allowed",
+      });
+      response.end(body);
+    });
+    await new Promise<void>((resolve) => origin.listen(0, "127.0.0.1", resolve));
+    const address = origin.address();
+    if (!address || typeof address === "string") {
+      await new Promise<void>((resolve) => origin.close(() => resolve()));
+      throw new Error("Expected localhost test origin");
+    }
+    let target: Awaited<ReturnType<typeof buildLocalProcessSandboxSpawnTarget>> | undefined;
+    try {
+      target = await buildLocalProcessSandboxSpawnTarget({
+        executable: process.execPath,
+        args: ["-e", "process.exit(0)"],
+        cwd: workspace,
+        options: {
+          workspaceDir: workspace,
+          networkScope: "allowlist",
+          networkAllowlist: [`127.0.0.1:${address.port}`],
+        },
+      });
+      const dash = target.args.indexOf("--");
+      const socketPath = target.args[dash + 3];
+      const got = await new Promise<{ status: number; headers: http.IncomingHttpHeaders; body: Record<string, string> }>((resolve, reject) => {
+        const request = http.request({
+          socketPath,
+          path: `http://127.0.0.1:${address.port}/fixture`,
+          headers: {
+            "connection": "close, x-bostan-hop-token",
+            "x-bostan-hop-token": "SYNTHETIC_LOCAL_HOP_TOKEN",
+            "proxy-authorization": "Basic SYNTHETIC_PROXY_ONLY",
+            "authorization": "Bearer SYNTHETIC_ORIGIN_TOKEN",
+            "x-app-metadata": "retained",
+          },
+        }, (response) => {
+          let data = "";
+          response.setEncoding("utf8");
+          response.on("data", (part) => { data += part; });
+          response.on("end", () => {
+            try { resolve({ status: response.statusCode ?? 0, headers: response.headers, body: JSON.parse(data) }); }
+            catch (error) { reject(error); }
+          });
+        });
+        request.on("error", reject);
+        request.end();
+      });
+      expect(got.status).toBe(200);
+      expect(got.body["x-bostan-hop-token"]).toBeUndefined();
+      expect(got.body["proxy-authorization"]).toBeUndefined();
+      expect(got.body.authorization).toBe("Bearer SYNTHETIC_ORIGIN_TOKEN");
+      expect(got.body["x-app-metadata"]).toBe("retained");
+      expect(got.headers["x-bostan-origin-hop-token"]).toBeUndefined();
+      expect(got.headers["x-origin-response"]).toBe("allowed");
+    } finally {
+      await target?.cleanup?.();
+      await new Promise<void>((resolve) => origin.close(() => resolve()));
     }
   });
 
