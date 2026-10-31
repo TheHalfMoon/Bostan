@@ -1,141 +1,25 @@
 ---
-title: Setup Commands
-summary: Onboard, run, doctor, and configure
+title: Bostan setup commands — engineering preview
+summary: Setup and diagnostics interfaces require source-native verification
 ---
 
-Instance setup and diagnostics commands.
+**Bostan is not release-qualified.** Do not interpret imported CLI usage examples or upstream registry commands as approved Bostan installation instructions.
 
-## `paperclipai run`
+## Commands under review
 
-One-command bootstrap and start:
+| Interface concept | Intended behavior | Critical qualification |
+|-------------------|------------------|------------------------|
+| `run` | Start a configured source instance | No unapproved auto-onboarding or external effects |
+| `onboard` | Create initial configuration | Disposable synthetic-only state and explicit consent |
+| `doctor` | Inspect dependencies and configuration | Read-only checks distinguished from repairs |
+| `configure` | Change local server, secrets or storage settings | Correct instance ownership and secret boundaries |
+| `env` | Display resolved configuration | Redaction of credentials and sensitive paths |
+| `allowed-hostname` | Change accepted hostnames | No unauthorized network exposure |
 
-```sh
-pnpm paperclipai run
-```
+The actual command names and flags must be matched against checked-in Bostan CLI source and validated by source-native tests before end-user instructions are released. In particular, diagnostic repair flags may modify files and configuration, so do not run them against existing environments without proven ownership and a reviewed rollback procedure.
 
-Does:
+## Filesystem and environment compatibility
 
-1. Auto-onboards if config is missing
-2. Runs `paperclipai doctor` with repair enabled
-3. Starts the server when checks pass
+Some source-internal configuration roots still use inherited paths and variable names. Do not rename or delete those files in-place until migration tests and rollback are verified. Never include API keys, personal data or customer workloads in qualification tests.
 
-Choose a specific instance:
-
-```sh
-npx paperclipai run --instance dev
-```
-
-## `paperclipai onboard`
-
-Interactive first-time setup:
-
-```sh
-pnpm paperclipai onboard
-```
-
-If Paperclip is already configured, rerunning `onboard` keeps the existing config in place. Use `paperclipai configure` to change settings on an existing install.
-
-First prompt:
-
-1. `Quickstart` (recommended): local defaults (embedded database, no LLM provider, local disk storage, default secrets)
-2. `Advanced setup`: full interactive configuration
-
-Start immediately after onboarding:
-
-```sh
-pnpm paperclipai onboard --run
-```
-
-Quickstart defaults + immediate start:
-
-```sh
-pnpm paperclipai onboard --yes
-```
-
-When onboarding starts Paperclip from an interactive terminal, it opens the
-onboarding page in your browser once. Non-interactive terminals stay silent.
-Suppress browser opening explicitly for headless or automated runs with either
-environment variable:
-
-```sh
-PAPERCLIP_NO_BROWSER=1 pnpm paperclipai onboard --yes
-PAPERCLIP_OPEN_ON_LISTEN=false pnpm paperclipai onboard --yes
-```
-
-On an existing install, `--yes` now preserves the current config and just starts Paperclip with that setup.
-
-## `paperclipai doctor`
-
-Health checks with optional auto-repair:
-
-```sh
-pnpm paperclipai doctor
-pnpm paperclipai doctor --repair
-```
-
-Validates:
-
-- Server configuration
-- Database connectivity
-- Secrets adapter configuration, including AWS Secrets Manager non-secret env
-  config when selected
-- Storage configuration
-- Missing key files
-
-## `paperclipai configure`
-
-Update configuration sections:
-
-```sh
-pnpm paperclipai configure --section server
-pnpm paperclipai configure --section secrets
-pnpm paperclipai configure --section storage
-```
-
-`--section secrets` updates the deployment-level provider used as the fallback
-for secrets that do not target a specific company vault. Per-company provider
-vaults (named instances, default vault selection, multiple vaults per provider,
-coming-soon GCP/Vault) live in the board UI under
-`Company Settings → Secrets → Provider vaults` and the
-`/api/companies/{companyId}/secret-provider-configs` API.
-
-## `paperclipai env`
-
-Show resolved environment configuration:
-
-```sh
-pnpm paperclipai env
-```
-
-This now includes bind-oriented deployment settings such as `PAPERCLIP_BIND` and `PAPERCLIP_BIND_HOST` when configured.
-
-## `paperclipai allowed-hostname`
-
-Allow a private hostname for authenticated/private mode:
-
-```sh
-npx paperclipai allowed-hostname my-tailscale-host
-```
-
-## Local Storage Paths
-
-| Data | Default Path |
-|------|-------------|
-| Config | `~/.paperclip/instances/default/config.json` |
-| Database | `~/.paperclip/instances/default/db` |
-| Logs | `~/.paperclip/instances/default/logs` |
-| Storage | `~/.paperclip/instances/default/data/storage` |
-| Secrets key | `~/.paperclip/instances/default/secrets/master.key` |
-
-Override with:
-
-```sh
-PAPERCLIP_HOME=/custom/home PAPERCLIP_INSTANCE_ID=dev pnpm paperclipai run
-```
-
-Or pass `--data-dir` directly on any command:
-
-```sh
-npx paperclipai run --data-dir ./tmp/paperclip-dev
-npx paperclipai doctor --data-dir ./tmp/paperclip-dev
-```
+See the [CLI preview](/cli/overview), [development quickstart](/start/quickstart) and [security-conscious deployment overview](/deploy/overview). **No public or container-based setup is authorized.**
