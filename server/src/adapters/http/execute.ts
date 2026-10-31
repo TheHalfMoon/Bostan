@@ -23,10 +23,35 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
 
   const diagnosticMethod = safeHttpAgentMethod(method);
   let rejectedStatus: number | null = null;
+  let timedOutByDeadline = false;
   const controller = new AbortController();
-  const timer = timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  // The heartbeat owns ctx.signal. A cancelled run must not leave an HTTP
+  // adapter request running just because timeoutMs was not configured.
+  // Never pass the caller's possibly secret-bearing AbortSignal.reason to
+  // the network layer or persisted diagnostics.
+  const onRunAbort = () => controller.abort();
+  if (ctx.signal?.aborted) onRunAbort();
+  else ctx.signal?.addEventListener("abort", onRunAbort, { once: true });
+  const timer = timeoutMs > 0 ? setTimeout(() => {
+    // First abort wins: a cancellation followed by a later deadline must
+    // never turn a user-initiated stop into a timeout/billing diagnosis.
+    if (!controller.signal.aborted) {
+      timedOutByDeadline = true;
+      controller.abort();
+    }
+  }, timeoutMs) : null;
 
   try {
+    if (controller.signal.aborted) {
+      return {
+        exitCode: 1,
+        signal: null,
+        timedOut: false,
+        errorCode: "cancelled",
+        errorMessage: "HTTP adapter run cancelled before dispatch",
+        executionRecovery: { kind: "bootstrap", providerWorkStarted: false },
+      };
+    }
     // HTTP adapters have no child-process spawn event. Signal immediately
     // before starting the remote request so dispatch gates can release without
     // waiting for the endpoint to respond.
@@ -38,7 +63,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         ...headers,
       },
       body: JSON.stringify(body),
-      ...(timer ? { signal: controller.signal } : {}),
+      signal: controller.signal,
     });
 
     // The HTTP agent treats the remote HTTP status as the acknowledgement;
@@ -50,6 +75,15 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       void res.body?.cancel().catch(() => {});
     } catch {
       // A hostile/mocked response object must not change the HTTP verdict.
+    }
+
+    // A mock, custom transport or peer may resolve just as the run is
+    // cancelled. Do not accept even a 2xx after the owner signalled stop.
+    if (ctx.signal?.aborted) {
+      return {
+        exitCode: 1, signal: null, timedOut: false,
+        errorCode: "cancelled", errorMessage: "HTTP adapter run cancelled",
+      };
     }
 
     if (!res.ok) {
@@ -64,7 +98,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       summary: `HTTP ${diagnosticMethod} request completed`,
     };
   } catch (err) {
-    if (timer && err instanceof Error && err.name === "AbortError") {
+    if (timedOutByDeadline && err instanceof Error && err.name === "AbortError") {
       return {
         exitCode: null,
         signal: null,
@@ -73,11 +107,18 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         errorCode: "timeout",
       };
     }
+    if (ctx.signal?.aborted) {
+      return {
+        exitCode: 1, signal: null, timedOut: false,
+        errorCode: "cancelled", errorMessage: "HTTP adapter run cancelled",
+      };
+    }
     if (rejectedStatus !== null) {
       throw new Error("HTTP adapter request rejected with status " + rejectedStatus);
     }
     throw safeHttpAgentInvocationFailure(err);
   } finally {
     if (timer) clearTimeout(timer);
+    ctx.signal?.removeEventListener("abort", onRunAbort);
   }
 }

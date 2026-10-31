@@ -244,3 +244,90 @@ describe("HTTP adapter streaming response resource ownership", () => {
     expect(cancelled).toBe(1);
   });
 });
+
+describe("HTTP adapter heartbeat-run cancellation", () => {
+  function run(signal: AbortSignal, onDispatch = vi.fn(), timeoutMs = 0) {
+    return execute({
+      runId: "synthetic-cancel-run",
+      agent: { id: "synthetic-cancel-agent", companyId: "synthetic-company",
+        name: "Synthetic", adapterType: "http", adapterConfig: {} },
+      runtime: { sessionId: null, sessionParams: null,
+        sessionDisplayId: null, taskKey: null },
+      config: {
+        url: "https://public.example/PRIVATE_PATH?token=PRIVATE_QUERY",
+        timeoutMs,
+      },
+      context: {}, onLog: async () => {}, signal, onDispatch,
+    });
+  }
+
+  it("rejects already-aborted runs before marking provider dispatch or making a request", async () => {
+    const controller = new AbortController();
+    controller.abort(new Error("PRIVATE_ABORT_REASON"));
+    guardedFetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const onDispatch = vi.fn();
+    const result = await run(controller.signal, onDispatch);
+    expect(result).toMatchObject({
+      timedOut: false, errorCode: "cancelled", exitCode: 1,
+      executionRecovery: { kind: "bootstrap", providerWorkStarted: false },
+    });
+    expect(onDispatch).not.toHaveBeenCalled();
+    expect(guardedFetchMock).not.toHaveBeenCalled();
+    expect(JSON.stringify(result)).not.toMatch(/PRIVATE_ABORT_REASON|PRIVATE_PATH|PRIVATE_QUERY/);
+  });
+
+  it("forwards in-flight run cancellation even without configured timeout", async () => {
+    const controller = new AbortController();
+    let sawSignal = false;
+    guardedFetchMock.mockImplementation(async (_url: string, init?: RequestInit) => {
+      sawSignal = init?.signal instanceof AbortSignal;
+      return await new Promise<Response>(resolve => {
+        if (init?.signal?.aborted) return resolve(new Response(null, { status: 204 }));
+        init?.signal?.addEventListener("abort",
+          () => resolve(new Response(null, { status: 204 })), { once: true });
+        setTimeout(() => resolve(new Response(null, { status: 204 })), 40);
+      });
+    });
+    const onDispatch = vi.fn();
+    const pending = run(controller.signal, onDispatch);
+    controller.abort(new Error("PRIVATE_INFLIGHT_ABORT_REASON"));
+    const result = await pending;
+    expect(sawSignal).toBe(true);
+    expect(result).toMatchObject({
+      timedOut: false, errorCode: "cancelled", exitCode: 1,
+    });
+    expect(onDispatch).toHaveBeenCalledOnce();
+    expect(JSON.stringify(result)).not.toContain("PRIVATE_INFLIGHT_ABORT_REASON");
+  });
+
+  it("does not relabel an earlier run cancellation as timeout after deadline", async () => {
+    const caller = new AbortController();
+    guardedFetchMock.mockImplementation((_url: string, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => {
+          // A slow transport reports its AbortError after the timer has
+          // elapsed; the first cancellation must retain its own verdict.
+          setTimeout(() => reject(new DOMException("PRIVATE_ABORT_REASON", "AbortError")), 25);
+        }, { once: true });
+      }));
+    const pending = run(caller.signal, vi.fn(), 10);
+    caller.abort();
+    const result = await pending;
+    expect(result).toMatchObject({
+      timedOut: false, errorCode: "cancelled", exitCode: 1,
+    });
+    expect(JSON.stringify(result)).not.toContain("PRIVATE_ABORT_REASON");
+  });
+
+  it("reports a request timeout as timeout, not a run cancellation", async () => {
+    const caller = new AbortController();
+    guardedFetchMock.mockImplementation((_url: string, init?: RequestInit) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () =>
+          reject(new DOMException("Request aborted", "AbortError")), { once: true });
+      }));
+    const result = await run(caller.signal, vi.fn(), 2);
+    expect(result).toMatchObject({ timedOut: true, errorCode: "timeout" });
+    expect(caller.signal.aborted).toBe(false);
+  });
+});

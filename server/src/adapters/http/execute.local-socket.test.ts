@@ -18,6 +18,57 @@ afterEach(async () => {
 });
 
 describe("private local HTTP stream lifecycle, actual Node socket", () => {
+  it("aborts an in-flight owned HTTP socket on heartbeat cancellation", async () => {
+    let arrived!: () => void;
+    let closed!: () => void;
+    const received = new Promise<void>(resolve => { arrived = resolve; });
+    const socketClosed = new Promise<void>(resolve => { closed = resolve; });
+    const server = createServer((_req, res) => {
+      res.on("close", closed);
+      arrived();
+      // Headers never arrive: the owner must cancel this pending request.
+    });
+    active = server;
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(0, "127.0.0.1", resolve);
+    });
+    const address = server.address();
+    if (!address || typeof address === "string") throw Error("No local test port");
+    const origin = `http://127.0.0.1:${address.port}`;
+    process.env[ALLOWLIST_ENV] = origin;
+    const controller = new AbortController();
+    const onDispatch = () => {};
+    const pending = execute({
+      runId: "synthetic-cancel-test",
+      agent: { id: "synthetic-agent", companyId: "synthetic-company",
+        name: "Synthetic", adapterType: "http", adapterConfig: {} },
+      runtime: { sessionId: null, sessionParams: null,
+        sessionDisplayId: null, taskKey: null },
+      config: { url: origin + "/synthetic-cancel", method: "POST" },
+      context: {}, onLog: async () => {}, signal: controller.signal, onDispatch,
+    });
+    const arrival = await Promise.race([
+      received.then(() => "received"),
+      new Promise<string>(resolve => setTimeout(() => resolve("no_request"), 1250)),
+    ]);
+    expect(arrival).toBe("received");
+    controller.abort(new Error("PRIVATE_ABORT_REASON"));
+    const result = await Promise.race([
+      pending,
+      new Promise<"pending">(resolve => setTimeout(() => resolve("pending"), 1250)),
+    ]);
+    expect(result).not.toBe("pending");
+    expect(result).toMatchObject({
+      timedOut: false, errorCode: "cancelled", exitCode: 1,
+    });
+    expect(JSON.stringify(result)).not.toContain("PRIVATE_ABORT_REASON");
+    expect(await Promise.race([
+      socketClosed.then(() => "closed"),
+      new Promise<string>(resolve => setTimeout(() => resolve("still_open"), 1250)),
+    ])).toBe("closed");
+  }, 6500);
+
   for (const status of [200, 429]) {
     it(`closes an unread long-lived response stream for HTTP ${status}`, async () => {
       let resolveClosed!: () => void;
