@@ -319,6 +319,21 @@ describe("HTTP adapter heartbeat-run cancellation", () => {
     expect(JSON.stringify(result)).not.toContain("PRIVATE_ABORT_REASON");
   });
 
+  it("does not send HTTP when dispatch hook synchronously cancels its owner", async () => {
+    const owner = new AbortController();
+    const onDispatch = vi.fn(() =>
+      owner.abort(new Error("PRIVATE_DISPATCH_ABORT_TOKEN")));
+    guardedFetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const result = await run(owner.signal, onDispatch);
+    expect(onDispatch).toHaveBeenCalledOnce();
+    expect(guardedFetchMock).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      exitCode: 1, signal: null, timedOut: false, errorCode: "cancelled",
+    });
+    expect(result.executionRecovery).toBeUndefined();
+    expect(JSON.stringify(result)).not.toContain("PRIVATE_DISPATCH_ABORT_TOKEN");
+  });
+
   it("reports a request timeout as timeout, not a run cancellation", async () => {
     const caller = new AbortController();
     guardedFetchMock.mockImplementation((_url: string, init?: RequestInit) =>

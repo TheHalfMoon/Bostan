@@ -71,6 +71,17 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     // before starting the remote request so dispatch gates can release without
     // waiting for the endpoint to respond.
     ctx.onDispatch?.();
+    // The dispatch observer may synchronously cancel the owner. Do not
+    // initiate a network effect after that cancellation. Dispatch has
+    // already been reported, so do not assert the stronger pre-dispatch
+    // no-provider-work accounting proof in this case.
+    if (abortOrigin === "deadline") return deadlineResult();
+    if (abortOrigin === "owner") {
+      return {
+        exitCode: 1, signal: null, timedOut: false,
+        errorCode: "cancelled", errorMessage: "HTTP adapter run cancelled",
+      };
+    }
     const res = await guardedHttpAdapterFetch(url, {
       method,
       headers: {
