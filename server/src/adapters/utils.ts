@@ -93,6 +93,9 @@ export async function runChildProcess(
 ): Promise<RunProcessResult> {
   return _runChildProcess(runId, command, args, {
     ...opts,
-    onLogError: (err, id, msg) => logger.warn({ err, runId: id }, msg),
+    // Adapter callbacks can throw arbitrary provider/user text containing
+    // credentials or private paths. Preserve the run correlation only.
+    onLogError: (_err, id, _msg) =>
+      logger.warn({ runId: id }, "process adapter child callback failed"),
   });
 }
