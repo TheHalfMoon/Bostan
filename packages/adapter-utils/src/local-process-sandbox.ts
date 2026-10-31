@@ -552,7 +552,10 @@ export async function buildLocalProcessSandboxSpawnTarget(input: {
         await mount(extraPath.path, extraPath.access);
       }
     }
-    await mount(workspaceDir, "rw");
+    // The workspace itself may be a symlink; use the exact realpath already
+    // admitted above, not a mutable host link that could be retargeted before
+    // the bwrap command executes. Keep the in-sandbox destination unchanged.
+    await mount(workspaceDir, "rw", physicalWorkspace ?? undefined);
     for (const [index, alias] of (input.options.pathAliases ?? []).entries()) {
       const aliasPath = normalizeAbsolutePath(alias.path, `Sandbox pathAliases[${index}].path`);
       const aliasTarget = normalizeAbsolutePath(alias.target, `Sandbox pathAliases[${index}].target`);
