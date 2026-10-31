@@ -10,6 +10,13 @@ export const INTRO_DOCS = Object.freeze([
   "docs/start/what-is-paperclip.md", // legacy path, link only
 ]);
 
+export const SAFETY_ENTRY_DOCS = Object.freeze([
+  "docs/deploy/overview.md",
+  "docs/deploy/docker.md",
+  "docs/cli/overview.md",
+  "docs/cli/setup-commands.md",
+]);
+
 /** Pure admission check: callers may pass read-only GitHub documents or local files. */
 export function auditBostanDocsSnapshot(config, pages) {
   const errors = [];
@@ -45,7 +52,7 @@ export function auditBostanDocsSnapshot(config, pages) {
   if (duplicatePages.length) {
     errors.push(`Docs navigation contains duplicate page routes: ${duplicatePages.join(", ")}`);
   }
-  for (const pathname of INTRO_DOCS) {
+  for (const pathname of [...INTRO_DOCS, ...SAFETY_ENTRY_DOCS]) {
     if (typeof pages?.[pathname] !== "string" || pages[pathname].trim() === "") {
       errors.push(`Required Bostan docs page missing: ${pathname}`);
     }
@@ -70,12 +77,31 @@ export function auditBostanDocsSnapshot(config, pages) {
     // Warning prose and non-shell source code are not shell execution instructions.
     const shellExamples = [...quickstart.matchAll(/^[ \t]*```(?:sh|bash|shell|zsh|fish|console|terminal|powershell|pwsh|ps1|cmd|bat)?[ \t]*\r?\n([\s\S]*?)^[ \t]*```[ \t]*$/gim)]
       .map((match) => match[1]).join("\n");
-    const unsupportedInstaller = /(?:^|\n)[ \t]*(?:(?:\$|PS>|>)[ \t]*)?(?:npx\s+(?:(?:-y|--yes)\s+)?|pnpm\s+(?:dlx|exec)\s+|yarn\s+dlx\s+|bunx\s+|npm\s+exec\s+(?:--\s+)?)(?:paperclipai|bostan)(?=$|[\s@/;|&])/im;
+    const unsupportedInstaller = /(?:^|\n)[ \t]*(?:(?:\$|PS>|>)[ \t]*)?(?:npx\s+(?:(?:-y|--yes)\s+)?|pnpm\s+(?:dlx|exec)\s+|pnpm\s+|yarn\s+dlx\s+|bunx\s+|npm\s+exec\s+(?:--\s+)?)(?:paperclipai|bostan)(?=$|[\s@/;|&])/im;
     if (unsupportedInstaller.test(shellExamples)) {
       errors.push("Quickstart must not install unqualified donor or unpublished Bostan packages");
     }
     if (!/not release-qualified|not yet passed Bostan qualification/i.test(quickstart)) {
       errors.push("Quickstart must explicitly disclose missing runtime qualification");
+    }
+  }
+  // Keep navigable CLI/deployment entry pages preview-only until actual runtime QA.
+  for (const pathname of SAFETY_ENTRY_DOCS) {
+    const body = pages?.[pathname];
+    if (typeof body !== "string") continue;
+    if (/\bPaperclip\b/.test(body)) {
+      errors.push(`Donor product name must not be recommended as Bostan: ${pathname}`);
+    }
+    if (!/not release-qualified|not yet qualified/i.test(body)) {
+      errors.push(`CLI/deployment entry page must disclose missing release qualification: ${pathname}`);
+    }
+    const snippets = [...body.matchAll(/^[ \t]*```(?:sh|bash|shell|zsh|fish|console|terminal|powershell|pwsh|ps1|cmd|bat)?[ \t]*\r?\n([\s\S]*?)^[ \t]*```[ \t]*$/gim)]
+      .map((match) => match[1]).join("\n");
+    if (/(?:^|\n)[ \t]*(?:(?:\$|PS>|>)[ \t]*)?(?:npx\s+(?:(?:-y|--yes)\s+)?|pnpm\s+(?:dlx|exec)\s+|pnpm\s+|yarn\s+dlx\s+|bunx\s+|npm\s+exec\s+(?:--\s+)?)(?:paperclipai|bostan)(?=$|[\s@/;|&])/im.test(snippets)) {
+      errors.push(`Unqualified donor/unpublished Bostan CLI command in entry page: ${pathname}`);
+    }
+    if (pathname.startsWith("docs/deploy/") && /(?:^|\n)[ \t]*(?:(?:\$|PS>|>)[ \t]*)?docker\s+(?:compose|run|build)\b/im.test(snippets)) {
+      errors.push(`Unqualified Docker deployment command in entry page: ${pathname}`);
     }
   }
   return errors;
@@ -84,7 +110,7 @@ export function auditBostanDocsSnapshot(config, pages) {
 export function auditBostanDocsCheckout(root) {
   const config = JSON.parse(readFileSync(path.join(root, "docs/docs.json"), "utf8"));
   const pages = {};
-  for (const pathname of INTRO_DOCS) {
+  for (const pathname of [...INTRO_DOCS, ...SAFETY_ENTRY_DOCS]) {
     try { pages[pathname] = readFileSync(path.join(root, pathname), "utf8"); }
     catch { pages[pathname] = null; }
   }
