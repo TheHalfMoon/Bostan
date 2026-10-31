@@ -32,6 +32,28 @@ src='packages/adapter-utils/src/local-process-sandbox.ts'
 test='packages/adapter-utils/src/local-process-sandbox.test.ts'
 printf '%s\n' 'export const syntheticSource = "pinned";' > "$fixture/$src"
 printf '%s\n' 'export const syntheticTest = "pinned";' > "$fixture/$test"
+# Mirror the three additional exact Vitest source filenames in the synthetic
+# checkout. Rewrite ONLY this copy's frozen suite blob pins, using our own Git
+# fixture blobs, so the real fail-closed suite admission code can be exercised.
+suite_specs=(
+  'packages/adapter-utils/src/execution-target-sandbox.test.ts:377be29a853dc9189a280c62cc8177248281d220'
+  'packages/adapter-utils/src/paperclip-runner-permissions.test.ts:fcaeea10fca499b98543a218f502809fde44fb48'
+  'packages/adapter-utils/src/sandbox-install-command.test.ts:882634137621026b645e8f77d6e4355a571717ba'
+)
+suite_paths=()
+for spec in "${suite_specs[@]}"; do
+  suite_path="${spec%%:*}"
+  pinned_suite_blob="${spec#*:}"
+  [[ "$pinned_suite_blob" =~ ^[a-f0-9]{40}$ ]] || exit 1
+  grep -Fq -- "$suite_path:$pinned_suite_blob" "$gate" || {
+    echo "B126_FAIL: expected real suite pin is missing: $suite_path" >&2
+    exit 1
+  }
+  printf '%s\n' 'export const syntheticSuite = "pinned";' > "$fixture/$suite_path"
+  fixture_suite_blob="$(git -C "$fixture" hash-object -- "$fixture/$suite_path")"
+  sed -i "s/$pinned_suite_blob/$fixture_suite_blob/g" "$fixture/scripts/bostan-private-linux-sandbox-gate.sh"
+  suite_paths+=("$suite_path")
+done
 printf '%s\n' '{"name":"bostan","private":true}' > "$fixture/package.json"
 printf '%s\n' 'BOSTAN_QA_OWNED' > "$fixture/.bostan-linux-qa-owned"
 git -C "$fixture" init -q
@@ -112,6 +134,33 @@ for item in bostan-private-linux-vitest-report-audit.mjs bostan-private-linux-vi
   git -C "$fixture" restore --worktree -- "$qa_path"
 done
 
+# The additional three Vitest suites must be protected against Git-hidden
+# changed bytes too. Both index flags can mask damage from git status.
+for flag in assume-unchanged skip-worktree; do
+  for suite_path in "${suite_paths[@]}"; do
+    git -C "$fixture" update-index --"$flag" -- "$suite_path"
+    printf '%s\n' '// OWNED SYNTHETIC SUITE TAMPER' >> "$fixture/$suite_path"
+    [[ -z "$(git -C "$fixture" status --porcelain -- "$suite_path")" ]] || {
+      echo "B126_FAIL: suite edit not hidden under $flag" >&2
+      exit 1
+    }
+    refuse "$flag / $suite_path" 'required suite working-tree bytes differ from pinned test'
+    git -C "$fixture" update-index --no-"$flag" -- "$suite_path"
+    git -C "$fixture" restore --worktree -- "$suite_path"
+  done
+done
+
+# A byte-identical symlink leaf is still not an ordinary test checkout.
+suite_path="${suite_paths[0]}"
+git -C "$fixture" update-index --assume-unchanged -- "$suite_path"
+cp -- "$fixture/$suite_path" "$scratch/owned-external-suite.ts"
+rm -- "$fixture/$suite_path"
+ln -s -- "$scratch/owned-external-suite.ts" "$fixture/$suite_path"
+refuse 'symlinked required suite' 'required suite must be an ordinary checkout file'
+rm -- "$fixture/$suite_path"
+git -C "$fixture" update-index --no-assume-unchanged -- "$suite_path"
+git -C "$fixture" restore --worktree -- "$suite_path"
+
 # A symlinked ancestor can redirect both ordinary leaf files to a foreign
 # directory while Git's skip-worktree bits conceal the checkout replacement.
 git -C "$fixture" update-index --skip-worktree -- "$src" "$test"
@@ -127,3 +176,4 @@ refuse 'symlinked ancestor directory' 'source resolves through a symlink or outs
 
 printf 'BOSTAN_B116_REGRESSION=PASS (7 bounded cases, synthetic only)\n'
 printf 'BOSTAN_B124_AUDITOR_INTEGRITY=PASS (2 added, 9 total synthetic cases)\n'
+printf 'BOSTAN_B126_SUITE_PINNING=PASS (7 added, 16 total synthetic cases)\n'
