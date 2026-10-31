@@ -16,6 +16,16 @@ const row = (exe = pinnedExe): WindowsPostgresProcess => ({
   ProcessId: 123, ParentProcessId: 456,
   ExecutablePath: exe, CreationDate: "2026-10-30T12:00:00Z",
 });
+// Pre-stop inspection proves PID 123 belongs to the pinned postgres.exe.
+// Preserve the original post-stop callback counters in existing tests.
+function withOwnedPostmaster(inspect: () => Promise<WindowsPostgresProcess[]>) {
+  let first = true;
+  return async () => {
+    if (first) { first = false; return [row()]; }
+    return inspect();
+  };
+}
+
 async function fixture(run: (data: string) => Promise<void>) {
   const data = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-windows-pg-stop-"));
   fs.writeFileSync(path.join(data, "PG_VERSION"), "18");
@@ -62,6 +72,63 @@ it("rejects missing, relative and invalid-byte cluster paths in a PID marker", a
     });
   }
 });
+it("rejects a foreign PID in an otherwise valid owned cluster marker before shutdown", async () => {
+  await fixture(async (data) => {
+    const marker = path.join(data, "postmaster.pid");
+    fs.writeFileSync(marker, validPidMarker(data, 123));
+    for (const processRow of [
+      { ...row(), ProcessId: 999 },
+      { ...row("C:\\foreign\\postgres.exe"), ProcessId: 123 },
+    ]) {
+      let shutdowns = 0;
+      let inspections = 0;
+      await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+        async () => { shutdowns++; fs.unlinkSync(marker); },
+        async () => { inspections++; return [processRow]; }, noWait))
+        .rejects.toThrow(/postmaster identity/i);
+      expect(shutdowns).toBe(0);
+      expect(inspections).toBe(1);
+      expect(fs.existsSync(marker)).toBe(true);
+    }
+  });
+});
+
+it("rejects duplicate or ambiguous CIM process identities before pg_ctl", async () => {
+  await fixture(async (data) => {
+    const marker = path.join(data, "postmaster.pid");
+    fs.writeFileSync(marker, validPidMarker(data));
+    for (const snapshot of [
+      [row(), { ...row(), CreationDate: "2026-10-30T12:00:01Z" }],
+      [{ ...row(), ExecutablePath: null }],
+    ]) {
+      let shutdowns = 0;
+      await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+        async () => { shutdowns++; },
+        async () => snapshot, noWait)).rejects.toThrow(/Ambiguous/);
+      expect(shutdowns).toBe(0);
+      expect(fs.existsSync(marker)).toBe(true);
+    }
+  });
+});
+it("rejects postmaster PID marker replacement during asynchronous process inspection", async () => {
+  await fixture(async (data) => {
+    const marker = path.join(data, "postmaster.pid");
+    fs.writeFileSync(marker, validPidMarker(data, 123));
+    let shutdowns = 0;
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { shutdowns++; },
+      async () => {
+        inspections++;
+        fs.writeFileSync(marker, validPidMarker(data, 124));
+        return [row()];
+      }, noWait)).rejects.toThrow(/PID marker identity/);
+    expect(inspections).toBe(1);
+    expect(shutdowns).toBe(0);
+    expect(fs.existsSync(marker)).toBe(true);
+  });
+});
+
 it("requires two clean snapshots after fixed graceful shutdown", async () => {
   await fixture(async (data) => {
     fs.writeFileSync(path.join(data, "postmaster.pid"), validPidMarker(data));
@@ -72,7 +139,7 @@ it("requires two clean snapshots after fixed graceful shutdown", async () => {
       expect(args).toEqual(["-D", fs.realpathSync(data), "-m", "fast", "-w", "-t", "40", "stop"]);
       calls++;
       fs.unlinkSync(path.join(data, "postmaster.pid"));
-    }, async () => { inspections++; return []; }, noWait)).toBe("stopped");
+    }, withOwnedPostmaster(async () => { inspections++; return []; }), noWait)).toBe("stopped");
     expect(calls).toBe(1);
     expect(inspections).toBe(2);
   });
@@ -200,10 +267,10 @@ it("retains a stopped fixture when postmaster.pid reappears after pg_ctl", async
     let inspections = 0;
     await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
       async () => { fs.unlinkSync(marker); },
-      async () => {
+      withOwnedPostmaster(async () => {
         if (++inspections === 2) fs.writeFileSync(marker, "999\\n");
         return [];
-      }, noWait)).rejects.toThrow(/reappeared/);
+      }), noWait)).rejects.toThrow(/reappeared/);
     expect(inspections).toBe(2);
     expect(fs.existsSync(marker)).toBe(true);
   });
@@ -260,7 +327,7 @@ it("fails closed when postmaster marker survives graceful stop", async () => {
     fs.writeFileSync(path.join(data, "postmaster.pid"), validPidMarker(data));
     let inspected = false;
     await expect(stopOwnedWindowsEmbeddedPostgres(data, binary, async () => {},
-      async () => { inspected = true; return []; }, noWait)).rejects.toThrow(/survived/);
+      withOwnedPostmaster(async () => { inspected = true; return []; }), noWait)).rejects.toThrow(/survived/);
     expect(inspected).toBe(false);
   });
 });
@@ -449,14 +516,14 @@ it("rejects cluster replacement after pg_ctl stop but before worker proof comple
     try {
       await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
         async () => { fs.unlinkSync(marker); },
-        async () => {
+        withOwnedPostmaster(async () => {
           if (++scans === 2) {
             fs.renameSync(data, moved);
             fs.mkdirSync(data);
             fs.writeFileSync(path.join(data, "PG_VERSION"), "18");
           }
           return [];
-        }, noWait)).rejects.toThrow(/cluster identity changed/);
+        }), noWait)).rejects.toThrow(/cluster identity changed/);
       expect(scans).toBe(2);
     } finally {
       if (fs.existsSync(moved)) {
@@ -582,10 +649,10 @@ it("rejects PG_VERSION in-place modification after a real stop request", async (
     let inspections = 0;
     await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
       async () => { fs.unlinkSync(marker); },
-      async () => {
+      withOwnedPostmaster(async () => {
         if (++inspections === 2) fs.writeFileSync(version, "19");
         return [];
-      }, noWait)).rejects.toThrow(/version|identity|cluster/i);
+      }), noWait)).rejects.toThrow(/version|identity|cluster/i);
     expect(inspections).toBe(2);
   });
 });
@@ -722,7 +789,7 @@ it("refuses PG_VERSION mutation during PID verification before issuing pg_ctl", 
     try {
       await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
         async () => { shutdowns++; fs.unlinkSync(pidMarker); },
-        async () => { inspections++; return []; }, noWait))
+        withOwnedPostmaster(async () => { inspections++; return []; }), noWait))
         .rejects.toThrow(/cluster identity changed/);
       expect(mutated).toBe(true);
       expect(shutdowns).toBe(0);

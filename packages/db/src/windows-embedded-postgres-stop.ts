@@ -94,6 +94,39 @@ function isValidProcess(value: unknown): value is WindowsPostgresProcess {
     && typeof p.ExecutablePath === "string" && p.ExecutablePath.trim().length > 0
     && typeof p.CreationDate === "string" && isCanonicalUtcCimDate(p.CreationDate);
 }
+// Use the same strict CIM identity validation before and after shutdown.
+type VerifiedPostgresProcess = { pid: number; executable: string };
+async function inspectVerifiedPostgresProcesses(inspect: Inspector): Promise<VerifiedPostgresProcess[]> {
+  let snapshot: unknown;
+  try { snapshot = await inspect(); } catch {
+    throw Error("Unable to inspect Windows PostgreSQL processes; retaining fixture");
+  }
+  if (!Array.isArray(snapshot) || !snapshot.every(isValidProcess))
+    throw Error("Ambiguous Windows PostgreSQL process identity; retaining fixture");
+  const processes = snapshot as WindowsPostgresProcess[];
+  const pids = new Set(processes.map(p => p.ProcessId));
+  if (pids.size !== processes.length)
+    throw Error("Ambiguous duplicate Windows PostgreSQL PID; retaining fixture");
+  const executables = processes.map(p => normalizedExecutable(p.ExecutablePath!));
+  if (executables.some(executable => executable === null))
+    throw Error("Ambiguous Windows PostgreSQL process identity; retaining fixture");
+  return processes.map((p, index) => ({
+    pid: p.ProcessId, executable: executables[index]!,
+  }));
+}
+// A postmaster.pid path alone cannot authorize pg_ctl to signal its PID.
+// Confirm the marker PID is an observed process from the exact pinned binary;
+// missing/foreign/ambiguous identity retains the fixture without shutdown.
+async function provePinnedPostmasterBeforeStop(
+  pid: number, pgCtlExe: string, inspect: Inspector,
+): Promise<void> {
+  const expected = normalizedPgCtlBinary(pgCtlExe);
+  if (!expected)
+    throw Error("Ambiguous pinned Windows PostgreSQL binary identity; retaining fixture");
+  const processes = await inspectVerifiedPostgresProcesses(inspect);
+  if (!processes.some(process => process.pid === pid && process.executable === expected))
+    throw Error("Unable to prove pinned PostgreSQL postmaster identity; retaining fixture");
+}
 /**
  * Conservative policy: a process from the pinned PostgreSQL executable is
  * ambiguous across simultaneous suites. Never delete a cluster until every
@@ -108,26 +141,8 @@ async function provePinnedBinaryQuiescent(
     throw Error("Ambiguous pinned Windows PostgreSQL binary identity; retaining fixture");
   let clean = 0;
   for (let attempt = 0; attempt < 20; attempt += 1) {
-    let snapshot: unknown;
-    try { snapshot = await inspect(); } catch {
-      throw Error("Unable to inspect Windows PostgreSQL processes; retaining fixture");
-    }
-    if (!Array.isArray(snapshot) || !snapshot.every(isValidProcess)) {
-      throw Error("Ambiguous Windows PostgreSQL process identity; retaining fixture");
-    }
-    // A CIM process snapshot must have a unique PID per observed process.
-    // Even two rows with the same metadata are ambiguous: a colliding/reused
-    // ID could otherwise falsely prove the pinned executable is quiescent.
-    const pids = new Set((snapshot as WindowsPostgresProcess[]).map(p => p.ProcessId));
-    if (pids.size !== snapshot.length)
-      throw Error("Ambiguous duplicate Windows PostgreSQL PID; retaining fixture");
-    // Normalize every row before deciding the pinned binary is absent.
-    // Unknown namespace/relative/whitespace paths cannot prove quiescence.
-    const executables = (snapshot as WindowsPostgresProcess[])
-      .map(p => normalizedExecutable(p.ExecutablePath!));
-    if (executables.some(executable => executable === null))
-      throw Error("Ambiguous Windows PostgreSQL process identity; retaining fixture");
-    if (executables.includes(expected)) {
+    const processes = await inspectVerifiedPostgresProcesses(inspect);
+    if (processes.some(process => process.executable === expected)) {
       clean = 0;
     } else if (++clean === 2) {
       return;
@@ -153,7 +168,7 @@ function pidMarkerPresent(marker: string): boolean {
 // The existence of postmaster.pid alone is not authority to run pg_ctl.
 // Verify a bounded, ordinary PostgreSQL PID line and the same opened file
 // identity before issuing the native shutdown request. Never log PID bytes.
-function assertValidPidMarkerBeforeStop(marker: string, ownedDataDir: string): void {
+function assertValidPidMarkerBeforeStop(marker: string, ownedDataDir: string): number {
   let fd: number | undefined;
   try {
     const before = fs.lstatSync(marker);
@@ -206,6 +221,7 @@ function assertValidPidMarkerBeforeStop(marker: string, ownedDataDir: string): v
         || atPath.birthtimeMs !== opened.birthtimeMs
         || atPath.size !== opened.size || atPath.mtimeMs !== opened.mtimeMs)
       throw Error("changed");
+    return Number(pidLine);
   } catch {
     throw Error("Ambiguous PostgreSQL PID marker identity; retaining fixture");
   } finally {
@@ -307,7 +323,24 @@ export async function stopOwnedWindowsEmbeddedPostgres(
     assertClusterIdentityUnchanged();
     return "already-stopped";
   }
-  assertValidPidMarkerBeforeStop(marker, data);
+  let markerBefore: fs.Stats;
+  try { markerBefore = fs.lstatSync(marker); } catch {
+    throw Error("Ambiguous PostgreSQL PID marker identity; retaining fixture");
+  }
+  const postmasterPid = assertValidPidMarkerBeforeStop(marker, data);
+  await provePinnedPostmasterBeforeStop(postmasterPid, pgCtlExe, inspect);
+  // A process scan is asynchronous. Recheck the same marker identity and
+  // PID before issuing pg_ctl, not merely the cluster version marker.
+  if (assertValidPidMarkerBeforeStop(marker, data) !== postmasterPid)
+    throw Error("Ambiguous PostgreSQL PID marker identity; retaining fixture");
+  let markerAfter: fs.Stats;
+  try { markerAfter = fs.lstatSync(marker); } catch {
+    throw Error("Ambiguous PostgreSQL PID marker identity; retaining fixture");
+  }
+  if (markerAfter.dev !== markerBefore.dev || markerAfter.ino !== markerBefore.ino
+      || markerAfter.birthtimeMs !== markerBefore.birthtimeMs
+      || markerAfter.size !== markerBefore.size || markerAfter.mtimeMs !== markerBefore.mtimeMs)
+    throw Error("Ambiguous PostgreSQL PID marker identity; retaining fixture");
   // PID validation may take place after a concurrent cluster mutation.
   // Verify the original PG_VERSION and directory again before pg_ctl runs;
   // a post-shutdown check alone would detect the change too late.
