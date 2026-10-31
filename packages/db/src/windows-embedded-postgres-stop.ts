@@ -137,6 +137,41 @@ function pidMarkerPresent(marker: string): boolean {
     throw Error("Ambiguous PostgreSQL PID marker; retaining fixture");
   return true;
 }
+// The existence of postmaster.pid alone is not authority to run pg_ctl.
+// Verify a bounded, ordinary PostgreSQL PID line and the same opened file
+// identity before issuing the native shutdown request. Never log PID bytes.
+function assertValidPidMarkerBeforeStop(marker: string): void {
+  let fd: number | undefined;
+  try {
+    const before = fs.lstatSync(marker);
+    if (!before.isFile() || before.isSymbolicLink()
+        || before.size < 2 || before.size > 4096) throw Error("invalid");
+    fd = fs.openSync(marker, "r"); // fstat below detects a link/replacement race.
+    const opened = fs.fstatSync(fd);
+    if (!opened.isFile() || opened.dev !== before.dev
+        || opened.ino !== before.ino || opened.birthtimeMs !== before.birthtimeMs)
+      throw Error("changed");
+    const prefix = Buffer.alloc(32);
+    const length = fs.readSync(fd, prefix, 0, prefix.length, 0);
+    const newline = prefix.subarray(0, length).indexOf(10);
+    if (newline < 1) throw Error("invalid");
+    const pidLine = prefix.subarray(0, newline).toString("ascii").replace(/\r$/, "");
+    if (!/^[1-9]\d{0,9}$/.test(pidLine)
+        || !Number.isSafeInteger(Number(pidLine))) throw Error("invalid");
+    const after = fs.fstatSync(fd);
+    if (after.dev !== before.dev || after.ino !== before.ino
+        || after.size !== before.size || after.mtimeMs !== before.mtimeMs)
+      throw Error("changed");
+  } catch {
+    throw Error("Ambiguous PostgreSQL PID marker identity; retaining fixture");
+  } finally {
+    if (fd !== undefined) {
+      try { fs.closeSync(fd); } catch {
+        throw Error("Unable to close PostgreSQL PID marker; retaining fixture");
+      }
+    }
+  }
+}
 // Read at most 33 bytes, including a sentinel byte for an oversized marker.
 // The path may change between lstat and open; never read an unbounded file.
 function readBoundedVersionMarker(marker: string): Buffer {
@@ -228,6 +263,7 @@ export async function stopOwnedWindowsEmbeddedPostgres(
     assertClusterIdentityUnchanged();
     return "already-stopped";
   }
+  assertValidPidMarkerBeforeStop(marker);
   await run(pgCtlExe, ["-D", data, "-m", "fast", "-w", "-t", "40", "stop"]);
   if (pidMarkerPresent(marker))
     throw Error("PostgreSQL PID marker survived graceful shutdown");

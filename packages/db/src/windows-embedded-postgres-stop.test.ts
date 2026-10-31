@@ -155,7 +155,7 @@ it("retains an absent-marker fixture when postmaster.pid reappears during verifi
 it("retains a stopped fixture when postmaster.pid reappears after pg_ctl", async () => {
   await fixture(async (data) => {
     const marker = path.join(data, "postmaster.pid");
-    fs.writeFileSync(marker, "123\\n");
+    fs.writeFileSync(marker, "123\n");
     let inspections = 0;
     await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
       async () => { fs.unlinkSync(marker); },
@@ -223,6 +223,24 @@ it("fails closed when postmaster marker survives graceful stop", async () => {
     expect(inspected).toBe(false);
   });
 });
+it("refuses malformed postmaster.pid before calling native pg_ctl", async () => {
+  const invalid = ["", "not-a-pid\n", "0\n", "-42\n", " 123\n",
+    "123\\n", "999999999999999999999999\n", "123"];
+  for (const contents of invalid) {
+    await fixture(async (data) => {
+      fs.writeFileSync(path.join(data, "postmaster.pid"), contents);
+      let shutdowns = 0;
+      let inspections = 0;
+      await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+        async () => { shutdowns++; fs.unlinkSync(path.join(data, "postmaster.pid")); },
+        async () => { inspections++; return []; }, noWait))
+        .rejects.toThrow(/PID marker/);
+      expect(shutdowns).toBe(0);
+      expect(inspections).toBe(0);
+    });
+  }
+});
+
 it("rejects ambiguous pg_ctl paths before invoking shutdown or process inspection", async () => {
   const unsafeBinaries = [
     "\\unanchored\\pg_ctl.exe",
