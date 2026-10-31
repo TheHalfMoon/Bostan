@@ -1,30 +1,15 @@
 # @bostan/ui
 
-Published static assets for the Paperclip board UI.
+Private Bostan board UI source and assets.
 
-## What gets published
+**Bostan is not release-qualified.** This package is an internal, unpublished development preview, not an approved public npm distribution. The private source contains the React interface and its local storybook/test fixtures; installed Windows/macOS/Linux journeys, service-worker behavior, isolation and third-party provenance still require qualification.
 
-The npm package contains the production build under `dist/`. It does not ship the UI source tree or workspace-only dependencies.
+## Development-only workflow
 
-## Storybook
+Any source-level UI development must occur in an owner-authorized disposable checkout after reviewing package scripts and provider/network effects. Do not publish the package, distribute artifacts, execute paid agents or attach real customer data. The repository's root release scripts are intentionally disabled.
 
-Storybook config, stories, and fixtures live under `ui/storybook/`.
+## Branding compatibility
 
-```sh
-pnpm --filter @bostan/ui storybook
-pnpm --filter @bostan/ui build-storybook
-```
+The active board-chat thinking indicator uses `/bostan-thinking.svg`. The old legacy asset URL is retained for compatibility but serves the same Bostan artwork, so stale cached clients cannot display a donor symbol.
 
-## Typical use
-
-Install the package, then serve or copy the built files from `node_modules/@bostan/ui/dist`.
-
-## Editor dependency identity
-
-Keep the root and workspace overrides for `@codemirror/state`,
-`@codemirror/view`, and `@lezer/common` aligned. CodeMirror requires shared
-extension identity, while Lezer parsers and syntax highlighters require shared
-`NodeProp` IDs. Multiple Lezer copies can crash code-block highlighting with
-`tags is not iterable`. `src/lib/codemirror-single-instance.test.ts` checks the
-installed dependency graph and highlights sample code through the editor's real
-language dependencies. GitHub Actions owns regeneration of `pnpm-lock.yaml`.
+See `docs/bostan/` for current private qualification evidence and release blockers.
