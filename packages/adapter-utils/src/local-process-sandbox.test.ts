@@ -641,6 +641,77 @@ describe("local process sandbox", () => {
     }
   });
 
+  it.runIf(process.platform === "linux")("closes origin socket when an HTTP proxy client aborts mid-upload", async () => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-aborted-proxy-upload-"));
+    cleanup.push(workspace);
+    let seen!: () => void;
+    const originSawHeaders = new Promise<void>((resolve) => { seen = resolve; });
+    let closed!: () => void;
+    const originClosed = new Promise<void>((resolve) => { closed = resolve; });
+    const sockets = new Set<net.Socket>();
+    const origin = http.createServer((request, _response) => {
+      expect(request.complete).toBe(false);
+      request.on("data", () => {});
+      seen();
+    });
+    origin.on("connection", (socket) => {
+      sockets.add(socket);
+      socket.once("close", () => {
+        sockets.delete(socket);
+        closed();
+      });
+    });
+    await new Promise<void>((resolve) => origin.listen(0, "127.0.0.1", resolve));
+    const address = origin.address();
+    if (!address || typeof address === "string") {
+      await new Promise<void>((resolve) => origin.close(() => resolve()));
+      throw new Error("Expected local HTTP origin");
+    }
+    let target: Awaited<ReturnType<typeof buildLocalProcessSandboxSpawnTarget>> | undefined;
+    let client: http.ClientRequest | undefined;
+    try {
+      target = await buildLocalProcessSandboxSpawnTarget({
+        executable: process.execPath,
+        args: ["-e", "process.exit(0)"],
+        cwd: workspace,
+        options: {
+          workspaceDir: workspace,
+          networkScope: "allowlist",
+          networkAllowlist: [`127.0.0.1:${address.port}`],
+        },
+      });
+      const dash = target.args.indexOf("--");
+      const socketPath = target.args[dash + 3];
+      client = http.request({
+        method: "POST",
+        socketPath,
+        path: `http://127.0.0.1:${address.port}/unfinished-upload`,
+        headers: {
+          host: `127.0.0.1:${address.port}`,
+          "content-length": 100000,
+        },
+      });
+      client.on("error", () => { /* expected after early socket close */ });
+      client.write("only-a-small-part-of-the-declared-body");
+      await Promise.race([
+        originSawHeaders,
+        new Promise<never>((_, reject) => setTimeout(() =>
+          reject(new Error("HTTP proxy did not forward incomplete upload headers")), 2000)),
+      ]);
+      client.destroy();
+      const disconnected = await Promise.race([
+        originClosed.then(() => true),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 2000)),
+      ]);
+      expect(disconnected, "Client abort during upload must tear down the origin request").toBe(true);
+    } finally {
+      client?.destroy();
+      for (const socket of sockets) socket.destroy();
+      await target?.cleanup?.();
+      await new Promise<void>((resolve) => origin.close(() => resolve()));
+    }
+  });
+
   it.runIf(process.platform === "linux")("forwards allowed proxy targets with a deep TMPDIR and rejects other hosts", async () => {
     const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-network-proxy-"));
     cleanup.push(workspace);
