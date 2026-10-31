@@ -549,7 +549,13 @@ export async function buildLocalProcessSandboxSpawnTarget(input: {
         if (!admittedSource) continue; // An optional path absent during validation.
         await mount(extraPath.path, extraPath.access, admittedSource);
       } else {
-        await mount(extraPath.path, extraPath.access);
+        // Read-only extras may intentionally be outside the workspace, but
+        // their host SOURCE must not remain a mutable symlink after approval.
+        // Preserve optional missing-path behavior; fail closed on dangling links.
+        const normalized = normalizeAbsolutePath(extraPath.path, "Sandbox read-only extra path");
+        if (!(await pathExists(normalized))) continue;
+        const physicalSource = await fs.realpath(normalized);
+        await mount(extraPath.path, extraPath.access, physicalSource);
       }
     }
     // The workspace itself may be a symlink; use the exact realpath already

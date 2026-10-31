@@ -784,6 +784,40 @@ describe("local process sandbox", () => {
     expect(await fs.realpath(findSource(indirect)!)).toBe(inside);
   });
 
+  it.runIf(process.platform === "linux")("pins read-only extra bind sources when an authorized symlink is retargeted", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-readonly-source-pin-"));
+    cleanup.push(root);
+    const workspace = path.join(root, "workspace");
+    const approved = path.join(root, "approved-readonly");
+    const foreign = path.join(root, "foreign-readonly");
+    const link = path.join(root, "read-only-link");
+    await fs.mkdir(workspace);
+    await fs.mkdir(approved);
+    await fs.mkdir(foreign);
+    await fs.symlink(approved, link, "dir");
+
+    const target = await buildLocalProcessSandboxSpawnTarget({
+      executable: process.execPath,
+      args: ["-e", "process.exit(0)"],
+      cwd: workspace,
+      options: {
+        workspaceDir: workspace,
+        filesystemScope: "workspace",
+        extraPaths: [{ path: link, access: "ro" }],
+      },
+    });
+
+    await fs.unlink(link);
+    await fs.symlink(foreign, link, "dir");
+    expect(await fs.realpath(link)).toBe(foreign);
+    const destinationIndex = target.args.findIndex((argument, index) =>
+      argument === link && index >= 2 && target.args[index - 2] === "--ro-bind");
+    expect(destinationIndex).toBeGreaterThanOrEqual(2);
+    const pinnedSource = target.args[destinationIndex - 1];
+    expect(pinnedSource).toBe(approved);
+    expect(await fs.realpath(pinnedSource)).toBe(approved);
+  });
+
   it.runIf(process.platform === "linux")("permits an explicitly restored writable path outside the workspace", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-explicit-restore-"));
     cleanup.push(root);
