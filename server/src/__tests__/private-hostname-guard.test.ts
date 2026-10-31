@@ -61,10 +61,10 @@ describe("privateHostnameGuard", () => {
   }
 
   it.each([
-    ["allowed Host first", ["Host: localhost:3100", "Host: blocked-host.invalid:3100"]],
-    ["allowed Host second", ["Host: blocked-host.invalid:3100", "hOSt: localhost:3100"]],
-    ["identical repeated Host", ["Host: localhost:3100", "HOST: localhost:3100"]],
-  ])("rejects duplicate raw HTTP Host fields (%s)", async (_label, lines) => {
+    { label: "allowed Host first", lines: ["Host: localhost:3100", "Host: blocked-host.invalid:3100"] },
+    { label: "allowed Host second", lines: ["Host: blocked-host.invalid:3100", "hOSt: localhost:3100"] },
+    { label: "identical repeated Host", lines: ["Host: localhost:3100", "HOST: localhost:3100"] },
+  ])("rejects duplicate raw HTTP Host fields ($label)", async ({ lines }) => {
     expect(await rawHttpStatus(lines)).toBe(403);
   });
 
@@ -150,6 +150,7 @@ describe("privateHostnameGuard", () => {
     const middleware = privateHostnameGuard({ enabled: true, allowedHostnames: [], bindHost: "0.0.0.0" });
     const req = {
       path: "/api/health",
+      rawHeaders: ["X-Forwarded-Host", "localhost"],
       header: (name: string) => name.toLowerCase() === "x-forwarded-host" ? "localhost" : undefined,
       accepts: () => "json",
     } as any;
@@ -196,6 +197,7 @@ describe("privateHostnameGuard", () => {
     });
     const req = {
       path: "/dashboard",
+      rawHeaders: ["Host", `${unknownHostname}:3100`],
       header: (name: string) => (name.toLowerCase() === "host" ? `${unknownHostname}:3100` : undefined),
       accepts: () => "html",
     } as any;
