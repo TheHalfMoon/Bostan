@@ -136,6 +136,7 @@ function parseNetworkAllowlistEntry(entry: string, index: number): NetworkAllowl
     const authority = trimmed.includes("://")
       ? trimmed.slice(trimmed.indexOf("://") + 3).replace(/\/$/, "")
       : trimmed.replace(/\/$/, "");
+    if (authority.endsWith(":")) throw new Error("missing explicit port");
     const explicitPort = /:(\d+)$/.exec(authority)?.[1];
     if (explicitPort !== undefined) {
       const numericPort = Number(explicitPort);
