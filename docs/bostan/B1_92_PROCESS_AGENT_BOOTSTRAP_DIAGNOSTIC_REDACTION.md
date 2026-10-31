@@ -28,3 +28,7 @@ On authorized Mac Node 26 and existing pinned Vitest 5 with one worker and no de
 ## Outstanding release blockers
 
 This closes only the **identified process-adapter diagnostic and bootstrap-result leakage**. The independently observable `onMeta` command-argument payload, child stdout/stderr logging, untrusted agent command sandbox/effects consent, native Windows packed app startup/PG/Chrome, native Linux runtime/installers, complete security/privacy and licensing/NOTICE/provenance audits remain release **NO-GO**. Repo PRIVATE, stacked PR DRAFT; no protected-main merge, GitHub Actions, release, deployment, npm publishing, paid compute or customer data.
+
+## Additional route and registry compatibility checks
+
+After the implementation at `fd4ff2838c2c57535750ac58df2a1fc558b6dac2`, ran a second, fully successful, independent native Mac Node26 / Vitest5 suite with a 1280MiB heap and one worker: `adapter-registry.test.ts` (33 PASS), `adapter-routes.test.ts` (30 PASS), `process/execute.test.ts` (1 PASS) and `process/test.test.ts` (2 PASS): **66/66 PASS**, no skips or failures. This strengthens the negative/positive evidence for adapter discovery, route integration and process setup privacy. It does NOT resolve the separate vendor adapter-utils resolution failure (27 other broad tests) and is not a Windows/Linux live installed-binary qualification.
