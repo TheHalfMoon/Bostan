@@ -451,6 +451,79 @@ describe("local process sandbox", () => {
     expect(incoming["x-bostan-origin-hop-token"]).toBe("SYNTHETIC_HOP_SECRET");
   });
 
+  it.runIf(process.platform === "linux")("closes truncated HTTP responses and remains usable after an allowed origin resets", async () => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-aborted-http-origin-"));
+    cleanup.push(workspace);
+    const origin = http.createServer((request, response) => {
+      if (request.url === "/aborted") {
+        response.writeHead(200, { "Content-Length": "4096", "Content-Type": "text/plain" });
+        response.write("partial");
+        const socket = response.socket;
+        setTimeout(() => socket?.destroy(), 20);
+      } else {
+        response.end("healthy");
+      }
+    });
+    await new Promise<void>((resolve, reject) => {
+      origin.once("error", reject);
+      origin.listen(0, "127.0.0.1", () => { origin.off("error", reject); resolve(); });
+    });
+    const address = origin.address();
+    if (!address || typeof address === "string") throw new Error("Expected loopback HTTP origin");
+    let target: Awaited<ReturnType<typeof buildLocalProcessSandboxSpawnTarget>> | undefined;
+    try {
+      target = await buildLocalProcessSandboxSpawnTarget({
+        executable: process.execPath,
+        args: ["-e", "process.exit(0)"],
+        cwd: workspace,
+        options: {
+          workspaceDir: workspace,
+          networkScope: "allowlist",
+          networkAllowlist: [`127.0.0.1:${address.port}`],
+        },
+      });
+      const delimiter = target.args.indexOf("--");
+      const socketPath = target.args[delimiter + 3]!;
+      let sawPartialBody = false;
+      const truncated = await new Promise<boolean>((resolve, reject) => {
+        const request = http.request({
+          socketPath, agent: false, path: `http://127.0.0.1:${address.port}/aborted`,
+        }, (reply) => {
+          reply.on("data", (chunk: Buffer) => { if (chunk.length > 0) sawPartialBody = true; });
+          // A truncated Content-Length can legitimately report ECONNRESET.
+          // The proxy MUST still close, rather than retain a stalled client.
+          reply.on("error", () => {});
+          reply.once("close", () => { clearTimeout(guard); resolve(!reply.complete); });
+        });
+        const guard = setTimeout(() => {
+          request.destroy();
+          reject(new Error("Proxy left a truncated HTTP origin response open"));
+        }, 2000);
+        request.once("error", (error) => { clearTimeout(guard); reject(error); });
+        request.end();
+      });
+      expect(sawPartialBody).toBe(true);
+      expect(truncated).toBe(true);
+      const healthy = await new Promise<{ status: number; body: string }>((resolve, reject) => {
+        const request = http.request({
+          socketPath, agent: false, path: `http://127.0.0.1:${address.port}/healthy`,
+        }, (reply) => {
+          let body = "";
+          reply.setEncoding("utf8");
+          reply.on("data", (chunk) => { body += chunk; });
+          reply.once("end", () => resolve({ status: reply.statusCode ?? 0, body }));
+          reply.once("error", reject);
+        });
+        request.once("error", reject);
+        request.end();
+      });
+      expect(healthy).toEqual({ status: 200, body: "healthy" });
+    } finally {
+      await target?.cleanup?.();
+      await new Promise<void>((resolve) => origin.close(() => resolve()));
+    }
+  });
+
   it.runIf(process.platform === "linux")("does not forward Connection-nominated secrets in either HTTP proxy direction", async () => {
     const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-hop-header-proxy-"));
     cleanup.push(workspace);
