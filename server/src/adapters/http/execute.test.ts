@@ -396,8 +396,64 @@ describe("HTTP adapter late-settling transport after deadline", () => {
         }, { once: true });
       }));
     const result = await run(owner.signal);
+    // The adapter now returns at the deadline without waiting for a slow
+    // transport. Let the deliberately later owner timer fire before checking.
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(owner.signal.aborted).toBe(true);
     expect(result).toMatchObject({ timedOut: true, errorCode: "timeout", exitCode: null });
     expect(JSON.stringify(result)).not.toContain("PRIVATE_LATE_OWNER_REASON");
+  });
+});
+
+
+describe("HTTP adapter nonsettling transport abort", () => {
+  function run(signal?: AbortSignal, timeoutMs = 0) {
+    return execute({
+      runId: "synthetic-unsettled-run",
+      agent: { id: "synthetic-unsettled-agent", companyId: "synthetic-company",
+        name: "Synthetic", adapterType: "http", adapterConfig: {} },
+      runtime: { sessionId: null, sessionParams: null,
+        sessionDisplayId: null, taskKey: null },
+      config: { url: "https://example.test/PRIVATE_PATH?token=PRIVATE_QUERY", timeoutMs },
+      context: {}, onLog: async () => {}, signal, onDispatch: vi.fn(),
+    });
+  }
+
+  it("nonsettling deadline completes without waiting for transport to acknowledge abort", async () => {
+    guardedFetchMock.mockImplementation(() => new Promise<Response>(() => {}));
+    const outcome = await Promise.race([
+      run(undefined, 5),
+      new Promise<"still_pending">(resolve => setTimeout(() => resolve("still_pending"), 120)),
+    ]);
+    expect(outcome).toMatchObject({ errorCode: "timeout", timedOut: true, exitCode: null });
+    expect(JSON.stringify(outcome)).not.toMatch(/PRIVATE_PATH|PRIVATE_QUERY/);
+  });
+
+  it("cancels a late response body after returning a deadline verdict", async () => {
+    let resolveLate!: (response: Response) => void;
+    let bodyCancelled = 0;
+    guardedFetchMock.mockImplementation(() => new Promise<Response>(resolve => {
+      resolveLate = resolve;
+    }));
+    const result = await run(undefined, 5);
+    expect(result).toMatchObject({ errorCode: "timeout", timedOut: true });
+    resolveLate(new Response(new ReadableStream<Uint8Array>({
+      cancel() { bodyCancelled++; },
+    }), { status: 200 }));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(bodyCancelled).toBe(1);
+  });
+
+  it("nonsettling transport exits on owner cancellation without a configured timeout", async () => {
+    const owner = new AbortController();
+    guardedFetchMock.mockImplementation(() => new Promise<Response>(() => {}));
+    const pending = run(owner.signal);
+    owner.abort(new Error("PRIVATE_ABORT_REASON"));
+    const outcome = await Promise.race([
+      pending,
+      new Promise<"still_pending">(resolve => setTimeout(() => resolve("still_pending"), 120)),
+    ]);
+    expect(outcome).toMatchObject({ errorCode: "cancelled", timedOut: false, exitCode: 1 });
+    expect(JSON.stringify(outcome)).not.toContain("PRIVATE_ABORT_REASON");
   });
 });

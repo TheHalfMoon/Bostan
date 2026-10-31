@@ -82,7 +82,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         errorCode: "cancelled", errorMessage: "HTTP adapter run cancelled",
       };
     }
-    const res = await guardedHttpAdapterFetch(url, {
+    const transport = guardedHttpAdapterFetch(url, {
       method,
       headers: {
         "content-type": "application/json",
@@ -91,6 +91,38 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       body: JSON.stringify(body),
       signal: controller.signal,
     });
+    // An injected transport can ignore AbortSignal indefinitely. Complete
+    // owner cancellation and configured deadlines without trusting it to
+    // settle. Promise.race observes late rejections; best-effort cancel any
+    // late response body so it cannot keep a streaming connection alive.
+    let abortedWhilePending = false;
+    let detachPendingAbort = () => {};
+    const stopped = new Promise<never>((_resolve, reject) => {
+      const onAbort = () => {
+        abortedWhilePending = true;
+        reject(new Error("HTTP adapter transport aborted"));
+      };
+      detachPendingAbort = () => controller.signal.removeEventListener("abort", onAbort);
+      if (controller.signal.aborted) onAbort();
+      else controller.signal.addEventListener("abort", onAbort, { once: true });
+    });
+    void transport.then((lateResponse) => {
+      if (abortedWhilePending) {
+        try {
+          void lateResponse.body?.cancel().catch(() => {});
+        } catch {
+          // Never expose remote stream cleanup failures.
+        }
+      }
+    }, () => {
+      // Promise.race also observes late rejection. Do not leak transport data.
+    });
+    let res: Response;
+    try {
+      res = await Promise.race([transport, stopped]);
+    } finally {
+      detachPendingAbort();
+    }
 
     // The HTTP agent treats the remote HTTP status as the acknowledgement;
     // it does not consume or persist response bytes. Without cancellation a
