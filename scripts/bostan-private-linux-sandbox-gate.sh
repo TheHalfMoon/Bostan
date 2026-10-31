@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Bostan B1-112 — Linux source-native sandbox QA. No downloads, writes or cleanup.
+# Bostan B1-124 — Linux source-native sandbox QA; no downloads/installs.
+# --run creates only an owned temporary Vitest JSON report, then deletes it.
 set -euo pipefail
 umask 077
 
@@ -8,7 +9,7 @@ usage() {
     'Usage: bash scripts/bostan-private-linux-sandbox-gate.sh [--plan | --run]' \
     'Default: --plan. --run requires an existing owner-marked QA checkout,' \
     'matching pinned code/test blobs, local dependencies, unprivileged bwrap,' \
-    'and adequate memory/disk. No install, download, cleanup or publication.'
+    'and adequate memory/disk. One owned JSON report is removed after QA.'
 }
 
 mode="--plan"
@@ -59,11 +60,31 @@ command -v realpath >/dev/null || fail 'realpath is missing'
 [[ "$(git -C "$root" hash-object -- "$root/$source_path" 2>/dev/null)" == "$source_blob" ]] || fail 'source working-tree bytes differ from pinned source'
 [[ "$(git -C "$root" hash-object -- "$root/$test_path" 2>/dev/null)" == "$test_blob" ]] || fail 'test working-tree bytes differ from pinned tests'
 
+# The JSON audit itself decides whether rootless integration cases actually
+# executed. Pin its checked-in source and regression tests as strictly as the
+# production files; never execute a modified report verifier.
+audit_path='scripts/bostan-private-linux-vitest-report-audit.mjs'
+audit_test_path='scripts/bostan-private-linux-vitest-report-audit.test.mjs'
+audit_blob='99f480a1419f55e7f63263fc480527bcb6036a72'
+audit_test_blob='0a28db2adcff5169147ef1c5b71246afd462999b'
+for pair in "$audit_path:$audit_blob" "$audit_test_path:$audit_test_blob"; do
+  qa_path="${pair%%:*}"
+  qa_blob="${pair#*:}"
+  [[ "$(git -C "$root" rev-parse "HEAD:$qa_path" 2>/dev/null)" == "$qa_blob" ]] || fail 'QA report auditor blob differs from pinned identity'
+  [[ -z "$(git -C "$root" status --porcelain -- "$qa_path")" ]] || fail 'QA report auditor contains uncommitted modifications'
+  [[ -f "$root/$qa_path" && ! -L "$root/$qa_path" ]] || fail 'QA report auditor must be an ordinary file'
+  [[ "$(realpath -e -- "$root/$qa_path" 2>/dev/null)" == "$root/$qa_path" ]] || fail 'QA report auditor resolves through symlink or outside checkout'
+  [[ "$(git -C "$root" hash-object -- "$root/$qa_path" 2>/dev/null)" == "$qa_blob" ]] || fail 'QA report auditor worktree differs from pinned source'
+done
+
 node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit(major>24 || (major===24 && minor>=11) ? 0 : 1)' || fail 'Node >=24.11 required'
 [[ -x "$root/node_modules/.bin/vitest" ]] || fail 'installed local Vitest required (do not download)'
 [[ -x "$root/node_modules/.bin/tsc" ]] || fail 'installed local TypeScript required (do not download)'
 command -v bwrap >/dev/null || fail 'bwrap is missing (do not install automatically)'
+bwrap_path="$(command -v bwrap)"
+[[ "$bwrap_path" == /* && -x "$bwrap_path" ]] || fail 'bwrap must resolve to an existing executable path'
 command -v timeout >/dev/null || fail 'GNU timeout is missing'
+command -v mktemp >/dev/null || fail 'mktemp is missing'
 [[ -r /proc/meminfo ]] || fail '/proc/meminfo missing'
 mem_kb="$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)"
 [[ "$mem_kb" =~ ^[0-9]+$ && "$mem_kb" -ge 2097152 ]] || fail 'less than 2 GiB available RAM'
@@ -72,20 +93,35 @@ disk_kb="$(df -Pk "$root" | awk 'END {print $4}')"
 
 # Reject kernels that cannot establish an unprivileged network namespace.
 # Never add --privileged or alter machine-wide namespace settings to pass.
-timeout 15s bwrap --die-with-parent --unshare-net --ro-bind / / -- /usr/bin/true \
+timeout 15s "$bwrap_path" --die-with-parent --unshare-net --ro-bind / / -- /usr/bin/true \
   || fail 'unprivileged bwrap namespace probe failed'
 
 cd "$root"
 printf 'BOSTAN_B112_SOURCE_SHA=%s\n' "$(git rev-parse HEAD)"
 printf 'BOSTAN_B112_BWRAP_PROBE=PASS\n'
+# Run the native result-audit regression before trusting any JSON success.
+timeout 20s node --test "$root/$audit_test_path" || fail 'native JSON audit regression is NOT green'
+report_file="$(mktemp "${TMPDIR:-/tmp}/bostan-b124-owned-vitest-XXXXXXXX.json")" || fail 'cannot create owned JSON report'
+cleanup_report() {
+  [[ -n "${report_file:-}" && -f "$report_file" ]] && rm -f -- "$report_file"
+}
+trap cleanup_report EXIT
+
 printf 'BOSTAN_B112_FOUR_TEST_SUITES_BEGIN\n'
-timeout 360s ./node_modules/.bin/vitest run \
+# Without these flags, the crucial real-bwrap suites use it.runIf(false)
+# and Vitest may return exit 0 despite performing ZERO rootless tests.
+# The TypeScript build inside bwrap is distinct from the ordinary tsc below.
+timeout 600s env BOSTAN_TEST_BWRAP="$bwrap_path" BOSTAN_TEST_SANDBOX_BUILD=1 \
+  ./node_modules/.bin/vitest run \
   packages/adapter-utils/src/local-process-sandbox.test.ts \
   packages/adapter-utils/src/execution-target-sandbox.test.ts \
   packages/adapter-utils/src/paperclip-runner-permissions.test.ts \
   packages/adapter-utils/src/sandbox-install-command.test.ts \
-  --pool=forks --maxWorkers=1 --testTimeout=15000 --hookTimeout=15000 \
-  --reporter=dot --silent || fail 'actual source-native Linux Vitest is NOT green'
+  --pool=forks --maxWorkers=1 --testTimeout=90000 --hookTimeout=15000 \
+  --reporter=json --outputFile="$report_file" --silent \
+  || fail 'actual source-native Linux Vitest is NOT green'
+[[ -s "$report_file" ]] || fail 'Vitest JSON report absent or empty'
+node "$root/$audit_path" "$report_file" || fail 'rootless bubblewrap cases were skipped, failed or absent'
 printf 'BOSTAN_B112_FOUR_TEST_SUITES=PASS\n'
 printf 'BOSTAN_B112_PACKAGE_TYPECHECK_BEGIN\n'
 timeout 180s ./node_modules/.bin/tsc --project packages/adapter-utils/tsconfig.json --noEmit \
