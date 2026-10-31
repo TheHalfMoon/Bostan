@@ -77,6 +77,24 @@ for pair in "$audit_path:$audit_blob" "$audit_test_path:$audit_test_blob"; do
   [[ "$(git -C "$root" hash-object -- "$root/$qa_path" 2>/dev/null)" == "$qa_blob" ]] || fail 'QA report auditor worktree differs from pinned source'
 done
 
+
+# The other three selected Vitest suites were previously unpinned. Git can
+# conceal changes to them with --skip-worktree/--assume-unchanged, so an
+# altered/no-op test suite could still be reported as green. Bind all four
+# actual suite files to their reviewed HEAD and on-disk Git blob identities.
+for pair in \
+  'packages/adapter-utils/src/execution-target-sandbox.test.ts:377be29a853dc9189a280c62cc8177248281d220' \
+  'packages/adapter-utils/src/paperclip-runner-permissions.test.ts:fcaeea10fca499b98543a218f502809fde44fb48' \
+  'packages/adapter-utils/src/sandbox-install-command.test.ts:882634137621026b645e8f77d6e4355a571717ba'; do
+  suite_path="${pair%%:*}"
+  suite_blob="${pair#*:}"
+  [[ "$(git -C "$root" rev-parse "HEAD:$suite_path" 2>/dev/null)" == "$suite_blob" ]] || fail 'additional suite HEAD differs from pinned identity'
+  [[ -z "$(git -C "$root" status --porcelain -- "$suite_path")" ]] || fail 'additional suite has uncommitted modifications'
+  [[ -f "$root/$suite_path" && ! -L "$root/$suite_path" ]] || fail 'additional suite must be an ordinary checkout file'
+  [[ "$(realpath -e -- "$root/$suite_path" 2>/dev/null)" == "$root/$suite_path" ]] || fail 'additional suite resolves through symlink or outside checkout'
+  [[ "$(git -C "$root" hash-object -- "$root/$suite_path" 2>/dev/null)" == "$suite_blob" ]] || fail 'additional suite working-tree bytes differ from pinned source'
+done
+
 node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit(major>24 || (major===24 && minor>=11) ? 0 : 1)' || fail 'Node >=24.11 required'
 [[ -x "$root/node_modules/.bin/vitest" ]] || fail 'installed local Vitest required (do not download)'
 [[ -x "$root/node_modules/.bin/tsc" ]] || fail 'installed local TypeScript required (do not download)'
