@@ -541,7 +541,15 @@ export async function buildLocalProcessSandboxSpawnTarget(input: {
     if (networkScope === "allowlist") {
       for (const nodePath of await executableReadPaths(process.execPath)) await mount(nodePath, "ro");
     }
-    for (const managedPath of input.options.managedPaths ?? []) await mount(managedPath.path, managedPath.access);
+    for (const [index, managedPath] of (input.options.managedPaths ?? []).entries()) {
+      const normalized = normalizeAbsolutePath(managedPath.path, `Sandbox managedPaths[${index}].path`);
+      // Managed read-write and read-only paths can intentionally be outside
+      // the workspace. Pin their approved physical SOURCE before constructing
+      // bwrap argv; a mutable symlink must never redirect that host mount.
+      if (!(await pathExists(normalized))) continue;
+      const physicalSource = await fs.realpath(normalized);
+      await mount(normalized, managedPath.access, physicalSource);
+    }
     for (const extraPath of input.options.extraPaths ?? []) {
       if (extraPath.access === "rw") {
         const normalized = normalizeAbsolutePath(extraPath.path, "Sandbox writable extra path");
