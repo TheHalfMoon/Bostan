@@ -20,6 +20,10 @@ function fixture() {
       "docs/start/quickstart.md": "Bostan is not release-qualified.\n```sh\npnpm install\npnpm dev\n```",
       "docs/start/core-concepts.md": "Bostan work is governed.",
       "docs/start/architecture.md": "Bostan uses local compatibility skill paths.",
+      "docs/deploy/overview.md": "Bostan deployment is not release-qualified.",
+      "docs/deploy/docker.md": "Bostan Docker is not release-qualified.",
+      "docs/cli/overview.md": "Bostan CLI is not release-qualified.",
+      "docs/cli/setup-commands.md": "Bostan CLI setup is not release-qualified.",
     },
   };
 }
@@ -109,6 +113,48 @@ test("refuses duplicate documentation routes instead of silently showing duplica
 test("does not confuse non-shell code or warning prose with execution advice", () => {
   const { config, pages } = fixture();
   pages["docs/start/quickstart.md"] += "\nDo not run `pnpm dlx paperclipai`.\n```js\nconst example = 'npm exec -- bostan';\n```";
+  assert.deepEqual(auditBostanDocsSnapshot(config, pages), []);
+});
+
+test("refuses missing navigable deployment and CLI preview pages", () => {
+  const { config, pages } = fixture();
+  delete pages["docs/deploy/overview.md"];
+  assert.ok(auditBostanDocsSnapshot(config, pages).some((e) => e.includes("missing")));
+});
+
+test("refuses donor installer in the active CLI overview", () => {
+  const { config, pages } = fixture();
+  pages["docs/cli/overview.md"] += "\n```console\n$ npx paperclipai run\n```";
+  assert.ok(auditBostanDocsSnapshot(config, pages).some((e) => e.includes("Unqualified donor")));
+});
+
+test("refuses pnpm donor invocation in a Bostan CLI setup shell example", () => {
+  const { config, pages } = fixture();
+  pages["docs/cli/setup-commands.md"] += "\n```sh\npnpm paperclipai onboard\n```";
+  assert.ok(auditBostanDocsSnapshot(config, pages).some((e) => e.includes("Unqualified donor")));
+});
+
+test("refuses unsupported Docker Compose instructions in the deploy guide", () => {
+  const { config, pages } = fixture();
+  pages["docs/deploy/docker.md"] += "\n```bash\ndocker compose up --build\n```";
+  assert.ok(auditBostanDocsSnapshot(config, pages).some((e) => e.includes("Docker deployment")));
+});
+
+test("refuses donor branding on the active deployment overview", () => {
+  const { config, pages } = fixture();
+  pages["docs/deploy/overview.md"] += "\nJust try Paperclip instead.";
+  assert.ok(auditBostanDocsSnapshot(config, pages).some((e) => e.includes("Donor product name")));
+});
+
+test("requires an explicit release-qualification warning in CLI and deploy entry pages", () => {
+  const { config, pages } = fixture();
+  pages["docs/cli/overview.md"] = "Install and run the CLI now.";
+  assert.ok(auditBostanDocsSnapshot(config, pages).some((e) => e.includes("missing release qualification")));
+});
+
+test("preserves compatibility variable references and warning prose without recommending install", () => {
+  const { config, pages } = fixture();
+  pages["docs/deploy/docker.md"] += "\nDo not execute `docker compose up`; check legacy `PAPERCLIP_HOME` for compatibility.";
   assert.deepEqual(auditBostanDocsSnapshot(config, pages), []);
 });
 
