@@ -62,6 +62,7 @@ async function run({traceMode=false}={}) {
   let childClosed=false,observed="",boundedOutcome="not_started";
   let capture={text:"",truncated:false};
   let forced=false;
+  let childExitAtObservation=null,childSignalAtObservation=null;
   try {
     // Hold this port for the whole run; its handler immediately destroys all
     // connections. It is impossible to contact a real local PostgreSQL on it.
@@ -104,6 +105,10 @@ async function run({traceMode=false}={}) {
       });
     boundedOutcome=await waitForPrivateWindowsImportProbeChild(child);
   } finally {
+    // Snapshot the child status BEFORE intentional cleanup sends a signal.
+    // A deadline race with an already-failed child must never be admitted.
+    childExitAtObservation=child?.exitCode??null;
+    childSignalAtObservation=child?.signalCode??null;
     if(observer){
       const state=await observer.stop({graceMs:6000,forceMs:3000});
       childClosed=state.closed&&!state.spawnError;
@@ -150,7 +155,8 @@ async function run({traceMode=false}={}) {
     console.log("BOSTAN_WIN_IMPORT_ONLY_HEARTBEAT="+
       JSON.stringify(classifyPrivateWindowsImportHeartbeat(observed)));
     const childExitAdmitted=admitPrivateWindowsProbeChildExit({
-      outcome:boundedOutcome,exitCode:child?.exitCode,
+      outcome:boundedOutcome,exitCode:childExitAtObservation,
+      signalCode:childSignalAtObservation,finalExitCode:child?.exitCode,
     });
     console.log("BOSTAN_WIN_IMPORT_ONLY_CHILD_EXIT_ADMITTED="+childExitAdmitted);
     if(!childExitAdmitted)process.exitCode=1;
