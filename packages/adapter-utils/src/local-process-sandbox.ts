@@ -371,6 +371,10 @@ async function startNetworkAllowlistProxy(
     const hostname = separator > 0 ? request.url!.slice(0, separator).replace(/^\[|\]$/g, "") : "";
     const port = separator > 0 ? request.url!.slice(separator + 1) : "443";
     if (!hostname || !isValidLocalProcessProxyConnectPort(port) || !isNetworkTargetAllowed(hostname, port, rules)) {
+      // A denied CONNECT is still an accepted socket. Peers that disconnect
+      // while the 403 is being written can emit ECONNRESET; without a client
+      // error listener this otherwise terminates the long-lived proxy.
+      clientSocket.on("error", () => clientSocket.destroy());
       clientSocket.end(connectProxyError(
         "network_target_denied",
         "Network target denied by Bostan sandbox policy.",
