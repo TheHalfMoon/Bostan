@@ -74,7 +74,7 @@ export function auditBostanDocsCheckout(root) {
 
 if (process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1])) {
   try {
-    const errors = auditBostanDocsCheckout(path.resolve(new URL("..", import.meta.url).pathname));
+    const errors = auditBostanDocsCheckout(fileURLToPath(new URL("..", import.meta.url)));
     if (errors.length) {
       for (const issue of errors) process.stderr.write(`BOSTAN_DOCS_PREVIEW_REFUSED: ${issue}\n`);
       process.exitCode = 1;
