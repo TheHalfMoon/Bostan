@@ -21,3 +21,7 @@ In server/src/adapters/http/execute.ts, immediately after guardedHttpAdapterFetc
 ## Limits, still NO-GO
 
 This repairs a distinct HTTP-agent unused-response socket lifecycle, **not** complete streamed-body buffering limits in other request consumers, installed Windows packaging or general SSRF/authorization security. It does not qualify full Linux native runtime, Windows PostgreSQL/Chromium, agent command sandbox/effects consent, sustained high-load resource behavior or legal/license/NOTICE/provenance audits. Keep Bostan PRIVATE, Draft, zero-cost, without main merge, release, deployment, Actions, customer data or paid models.
+
+## Actual native Windows focused QA
+
+Authorized Windows 11 B144 QA fetched the exact pinned source commit bf24dc4f9c4e45a4f8b2eefb130cabe7ce80ab0a after confirming the tracked checkout was clean. Free RAM was **6.04 GiB**, D: **11.83 GiB**, with no existing PostgreSQL processes. Existing native Windows Node24 / Vitest5 dependencies ran four focused suites on real Windows: HTTP execute (11 cases), actual 127.0.0.1 loopback socket cancellation (2), HTTP setup (4), and guarded remote fetch (9). **26/26 PASS, no skips, EXIT 0** in 11.87s. Both success and rejection response sockets closed without a real remote network request. No browser, DB, model inference or software installation was attempted. This is native Windows source/localhost HTTP QA and does NOT qualify the packaged Windows Bostan backend or its full PostgreSQL/Chromium E2E.
