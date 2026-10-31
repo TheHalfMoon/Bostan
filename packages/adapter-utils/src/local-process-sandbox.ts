@@ -260,19 +260,39 @@ function connectProxyError(code: string, message: string): string {
   ].join("\r\n");
 }
 
-/**
- * A proxy credential authenticates the agent to the local proxy. It MUST NOT
- * be forwarded as an origin credential to an allowed destination server.
- * IncomingHttpHeaders uses lowercase keys on Node's HTTP server.
- */
+// RFC 9110: these fields describe a single transport hop. Connection may
+// nominate *additional* hop-local headers, including secrets provisioned by
+// a client or origin. Never copy any of them into the next HTTP hop.
+const HOP_BY_HOP_HEADER_NAMES = [
+  "connection",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "proxy-connection",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+] as const;
+
+export function filterLocalProcessProxyHopByHopHeaders(
+  incoming: http.IncomingHttpHeaders,
+): http.OutgoingHttpHeaders {
+  const forwarded: http.OutgoingHttpHeaders = { ...incoming };
+  for (const name of HOP_BY_HOP_HEADER_NAMES) delete forwarded[name];
+  for (const name of (incoming.connection ?? "").split(",")) {
+    const normalized = name.trim().toLowerCase();
+    if (normalized) delete forwarded[normalized];
+  }
+  return forwarded;
+}
+
+/** Keep origin authorization, never forward proxy credentials or hop fields. */
 export function buildLocalProcessProxyOriginHeaders(
   incoming: http.IncomingHttpHeaders,
   targetHost: string,
 ): http.OutgoingHttpHeaders {
-  const forwarded: http.OutgoingHttpHeaders = { ...incoming, host: targetHost };
-  delete forwarded["proxy-authorization"];
-  delete forwarded["proxy-connection"];
-  return forwarded;
+  return { ...filterLocalProcessProxyHopByHopHeaders(incoming), host: targetHost };
 }
 
 async function startNetworkAllowlistProxy(
@@ -311,7 +331,7 @@ async function startNetworkAllowlistProxy(
       method: request.method,
       headers: buildLocalProcessProxyOriginHeaders(request.headers, target.host),
     }, (upstreamResponse) => {
-      response.writeHead(upstreamResponse.statusCode ?? 502, upstreamResponse.headers);
+      response.writeHead(upstreamResponse.statusCode ?? 502, filterLocalProcessProxyHopByHopHeaders(upstreamResponse.headers));
       upstreamResponse.pipe(response);
     });
     upstream.on("error", (error) => response.destroy(error));
