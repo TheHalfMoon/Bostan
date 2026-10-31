@@ -573,6 +573,69 @@ describe("local process sandbox", () => {
     }
   });
 
+  it.runIf(process.platform === "linux")("pins managed read-write and read-only host sources when a symlink retargets", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-managed-sources-"));
+    cleanup.push(root);
+    const workspace = path.join(root, "workspace");
+    const approved = path.join(root, "approved");
+    const foreign = path.join(root, "foreign");
+    const managedLink = path.join(root, "managed-link");
+    await fs.mkdir(workspace);
+    await fs.mkdir(approved);
+    await fs.mkdir(foreign);
+    await fs.symlink(approved, managedLink, "dir");
+
+    const targets = await Promise.all((["rw", "ro"] as const).map((access) =>
+      buildLocalProcessSandboxSpawnTarget({
+        executable: process.execPath,
+        args: ["-e", "process.exit(0)"],
+        cwd: workspace,
+        options: {
+          workspaceDir: workspace,
+          filesystemScope: "workspace",
+          managedPaths: [{ path: managedLink, access }],
+        },
+      }),
+    ));
+    await fs.unlink(managedLink);
+    await fs.symlink(foreign, managedLink, "dir");
+    expect(await fs.realpath(managedLink)).toBe(foreign);
+    for (const [index, access] of (["rw", "ro"] as const).entries()) {
+      const argv = targets[index]!.args;
+      const operation = access === "rw" ? "--bind" : "--ro-bind";
+      const destination = argv.findIndex((arg, offset) =>
+        arg === managedLink && offset >= 2 && argv[offset - 2] === operation);
+      expect(destination).toBeGreaterThanOrEqual(2);
+      expect(argv[destination - 1]).toBe(approved);
+      expect(await fs.realpath(argv[destination - 1]!)).toBe(approved);
+    }
+  });
+
+  it.runIf(process.platform === "linux")("skips missing optional managed paths and rejects dangling managed symlinks", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-managed-absence-"));
+    cleanup.push(root);
+    const workspace = path.join(root, "workspace");
+    const missing = path.join(root, "absent");
+    const link = path.join(root, "dangling");
+    await fs.mkdir(workspace);
+    const options = {
+      workspaceDir: workspace,
+      filesystemScope: "workspace" as const,
+      managedPaths: [{ path: missing, access: "rw" as const }],
+    };
+    const target = await buildLocalProcessSandboxSpawnTarget({
+      executable: process.execPath, args: ["-e", "process.exit(0)"], cwd: workspace, options,
+    });
+    expect(target.args).not.toContain(missing);
+    await fs.symlink(missing, link, "dir");
+    await expect(buildLocalProcessSandboxSpawnTarget({
+      executable: process.execPath,
+      args: ["-e", "process.exit(0)"],
+      cwd: workspace,
+      options: { ...options, managedPaths: [{ path: link, access: "rw" }] },
+    })).rejects.toThrow();
+  });
+
   it.runIf(process.platform === "linux")("builds a fresh-root bubblewrap command with workspace access", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-fs-sandbox-"));
     cleanup.push(root);
