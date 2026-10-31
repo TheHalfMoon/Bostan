@@ -150,6 +150,65 @@ describe("local process sandbox", () => {
     }
   });
 
+  it("retains exact bracketed IPv6 allowlist host and explicit ports", () => {
+    expect(parseLocalProcessNetworkAllowlist(["http://[::1]:80", "https://[::1]:443", "[::1]:8443"]))
+      .toEqual(["[::1]:80", "[::1]:443", "[::1]:8443"]);
+  });
+
+  it.runIf(process.platform === "linux")("allows an exact IPv6 origin while denying other IPv6 hosts and ports", async () => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-ipv6-network-allowlist-"));
+    cleanup.push(workspace);
+    const origin = http.createServer((_request, response) => response.end("ipv6-allowed"));
+    await new Promise<void>((resolve, reject) => {
+      origin.once("error", reject);
+      origin.listen(0, "::1", () => { origin.off("error", reject); resolve(); });
+    });
+    const address = origin.address();
+    if (!address || typeof address === "string") {
+      await new Promise<void>((resolve) => origin.close(() => resolve()));
+      throw new Error("Expected native IPv6 loopback listener");
+    }
+    let target: Awaited<ReturnType<typeof buildLocalProcessSandboxSpawnTarget>> | undefined;
+    try {
+      target = await buildLocalProcessSandboxSpawnTarget({
+        executable: process.execPath,
+        args: ["-e", "process.exit(0)"],
+        cwd: workspace,
+        options: {
+          workspaceDir: workspace,
+          networkScope: "allowlist",
+          networkAllowlist: [`[::1]:${address.port}`],
+        },
+      });
+      const dash = target.args.indexOf("--");
+      const socketPath = target.args[dash + 3];
+      const request = (url: string) => new Promise<{ status: number; body: string }>((resolve, reject) => {
+        const outgoing = http.request({
+          socketPath,
+          path: url,
+          headers: { host: new URL(url).host },
+        }, (incoming) => {
+          let body = "";
+          incoming.setEncoding("utf8");
+          incoming.on("data", (chunk) => { body += chunk; });
+          incoming.on("end", () => resolve({ status: incoming.statusCode ?? 0, body }));
+        });
+        outgoing.on("error", reject);
+        outgoing.end();
+      });
+      expect(await request(`http://[::1]:${address.port}/allowed`)).toEqual({
+        status: 200,
+        body: "ipv6-allowed",
+      });
+      const otherPort = address.port === 65535 ? 65534 : address.port + 1;
+      expect((await request(`http://[::1]:${otherPort}/denied-port`)).status).toBe(403);
+      expect((await request(`http://[::2]:${address.port}/denied-host`)).status).toBe(403);
+    } finally {
+      await target?.cleanup?.();
+      await new Promise<void>((resolve) => origin.close(() => resolve()));
+    }
+  });
+
   it("rejects out-of-range and noncanonical TCP CONNECT ports before socket creation", () => {
     for (const allowed of ["1", "80", "443", "65535"]) {
       expect(isValidLocalProcessProxyConnectPort(allowed)).toBe(true);
