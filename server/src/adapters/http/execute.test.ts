@@ -331,3 +331,58 @@ describe("HTTP adapter heartbeat-run cancellation", () => {
     expect(caller.signal.aborted).toBe(false);
   });
 });
+
+describe("HTTP adapter late-settling transport after deadline", () => {
+  function run(signal?: AbortSignal, timeoutMs = 2) {
+    return execute({
+      runId: "synthetic-deadline-race-run",
+      agent: { id: "synthetic-deadline-agent", companyId: "synthetic-company",
+        name: "Synthetic", adapterType: "http", adapterConfig: {} },
+      runtime: { sessionId: null, sessionParams: null,
+        sessionDisplayId: null, taskKey: null },
+      config: { url: "https://example.test/PRIVATE_PATH?token=PRIVATE_QUERY", timeoutMs },
+      context: {}, onLog: async () => {}, signal, onDispatch: vi.fn(),
+    });
+  }
+
+  for (const status of [204, 429]) {
+    it(`never accepts late HTTP ${status} when request deadline fired first`, async () => {
+      guardedFetchMock.mockImplementation((_url: string, init?: RequestInit) =>
+        new Promise<Response>(resolve => {
+          init?.signal?.addEventListener("abort", () =>
+            setTimeout(() => resolve(new Response(null, { status })), 5), { once: true });
+        }));
+      const result = await run();
+      expect(result).toMatchObject({ timedOut: true, errorCode: "timeout", exitCode: null });
+      expect(JSON.stringify(result)).not.toMatch(/PRIVATE_PATH|PRIVATE_QUERY/);
+    });
+  }
+
+  it("preserves deadline timeout when an abort yields a non-AbortError", async () => {
+    guardedFetchMock.mockImplementation((_url: string, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () =>
+          reject(new Error("PRIVATE_PROVIDER_ERROR_TOKEN")), { once: true });
+      }));
+    const result = await run();
+    expect(result).toMatchObject({ timedOut: true, errorCode: "timeout", exitCode: null });
+    expect(JSON.stringify(result)).not.toContain("PRIVATE_PROVIDER_ERROR_TOKEN");
+  });
+
+  it("later owner cancellation cannot rewrite a deadline that already fired", async () => {
+    const owner = new AbortController();
+    guardedFetchMock.mockImplementation((_url: string, init?: RequestInit) =>
+      new Promise<Response>(resolve => {
+        init?.signal?.addEventListener("abort", () => {
+          // This listener runs synchronously when the adapter deadline
+          // fires, so ownership cancellation is provably second.
+          setTimeout(() => owner.abort(new Error("PRIVATE_LATE_OWNER_REASON")), 0);
+          setTimeout(() => resolve(new Response(null, { status: 204 })), 12);
+        }, { once: true });
+      }));
+    const result = await run(owner.signal);
+    expect(owner.signal.aborted).toBe(true);
+    expect(result).toMatchObject({ timedOut: true, errorCode: "timeout", exitCode: null });
+    expect(JSON.stringify(result)).not.toContain("PRIVATE_LATE_OWNER_REASON");
+  });
+});

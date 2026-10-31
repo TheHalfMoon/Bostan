@@ -23,20 +23,35 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
 
   const diagnosticMethod = safeHttpAgentMethod(method);
   let rejectedStatus: number | null = null;
-  let timedOutByDeadline = false;
+  // Freeze the first run-stop origin. Late transport completions and late
+  // operator signals must not change a deadline into success/cancel, or a
+  // user cancellation into a timeout.
+  let abortOrigin: "owner" | "deadline" | null = null;
   const controller = new AbortController();
+  const deadlineResult = (): AdapterExecutionResult => ({
+    exitCode: null,
+    signal: null,
+    timedOut: true,
+    errorMessage: `HTTP ${diagnosticMethod} request timed out after ${timeoutMs}ms`,
+    errorCode: "timeout",
+  });
   // The heartbeat owns ctx.signal. A cancelled run must not leave an HTTP
   // adapter request running just because timeoutMs was not configured.
   // Never pass the caller's possibly secret-bearing AbortSignal.reason to
   // the network layer or persisted diagnostics.
-  const onRunAbort = () => controller.abort();
+  const onRunAbort = () => {
+    if (!controller.signal.aborted) {
+      abortOrigin = "owner";
+      controller.abort();
+    }
+  };
   if (ctx.signal?.aborted) onRunAbort();
   else ctx.signal?.addEventListener("abort", onRunAbort, { once: true });
   const timer = timeoutMs > 0 ? setTimeout(() => {
     // First abort wins: a cancellation followed by a later deadline must
     // never turn a user-initiated stop into a timeout/billing diagnosis.
     if (!controller.signal.aborted) {
-      timedOutByDeadline = true;
+      abortOrigin = "deadline";
       controller.abort();
     }
   }, timeoutMs) : null;
@@ -79,7 +94,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
 
     // A mock, custom transport or peer may resolve just as the run is
     // cancelled. Do not accept even a 2xx after the owner signalled stop.
-    if (ctx.signal?.aborted) {
+    if (abortOrigin === "deadline") return deadlineResult();
+    if (abortOrigin === "owner") {
       return {
         exitCode: 1, signal: null, timedOut: false,
         errorCode: "cancelled", errorMessage: "HTTP adapter run cancelled",
@@ -98,16 +114,11 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       summary: `HTTP ${diagnosticMethod} request completed`,
     };
   } catch (err) {
-    if (timedOutByDeadline && err instanceof Error && err.name === "AbortError") {
-      return {
-        exitCode: null,
-        signal: null,
-        timedOut: true,
-        errorMessage: `HTTP ${diagnosticMethod} request timed out after ${timeoutMs}ms`,
-        errorCode: "timeout",
-      };
-    }
-    if (ctx.signal?.aborted) {
+    // No diagnostic data from a late provider error may supersede the
+    // already-recorded stop reason, even if the provider reports TypeError
+    // instead of AbortError or resolves a 2xx after abort.
+    if (abortOrigin === "deadline") return deadlineResult();
+    if (abortOrigin === "owner") {
       return {
         exitCode: 1, signal: null, timedOut: false,
         errorCode: "cancelled", errorMessage: "HTTP adapter run cancelled",
