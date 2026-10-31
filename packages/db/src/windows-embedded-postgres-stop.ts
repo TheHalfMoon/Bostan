@@ -65,6 +65,14 @@ function normalizedExecutable(value: string): string | null {
       || path.win32.basename(candidate).toLowerCase() !== "postgres.exe") return null;
   return path.win32.normalize(candidate).toLowerCase();
 }
+// Validate the original pg_ctl path before any shutdown request. Deriving
+// postgres.exe via path.join would erase unsafe dot segments or drive-less
+// roots before they could be rejected.
+function normalizedPgCtlBinary(value: string): string | null {
+  if (path.win32.basename(value).toLowerCase() !== "pg_ctl.exe"
+      || !/pg_ctl\.exe$/i.test(value)) return null;
+  return normalizedExecutable(value.replace(/pg_ctl\.exe$/i, "postgres.exe"));
+}
 function isValidProcess(value: unknown): value is WindowsPostgresProcess {
   if (!value || typeof value !== "object") return false;
   const p = value as Partial<WindowsPostgresProcess>;
@@ -82,7 +90,7 @@ function isValidProcess(value: unknown): value is WindowsPostgresProcess {
 async function provePinnedBinaryQuiescent(
   pgCtlExe: string, inspect: Inspector, pause: Pause,
 ): Promise<void> {
-  const expected = normalizedExecutable(path.win32.join(path.win32.dirname(pgCtlExe), "postgres.exe"));
+  const expected = normalizedPgCtlBinary(pgCtlExe);
   if (!expected)
     throw Error("Ambiguous pinned Windows PostgreSQL binary identity; retaining fixture");
   let clean = 0;
@@ -210,7 +218,7 @@ export async function stopOwnedWindowsEmbeddedPostgres(
       throw Error("Owned PostgreSQL cluster identity changed during worker verification; retaining fixture");
     }
   }
-  if (!path.win32.isAbsolute(pgCtlExe) || path.win32.basename(pgCtlExe).toLowerCase() !== "pg_ctl.exe")
+  if (!normalizedPgCtlBinary(pgCtlExe))
     throw Error("Refusing unknown PostgreSQL shutdown binary");
   const marker = path.join(data, "postmaster.pid");
   if (!pidMarkerPresent(marker)) {
