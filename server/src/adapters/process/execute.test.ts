@@ -28,7 +28,9 @@ describe("process adapter pre-spawn diagnostics",()=>{
 describe("process invocation metadata privacy",()=>{
   it("never sends the process command, cwd, args, or arbitrary env values to persisted onMeta",async()=>{
     const onSpawn=vi.fn();
-    const onMeta=vi.fn(async()=>{throw new Error("SYNTHETIC_DECLINE_BEFORE_SPAWN");});
+    // A zero-argument mock is typed as a [] call tuple, but below we verify
+    // the first real invocation argument. Declare that callback parameter.
+    const onMeta=vi.fn(async(_meta: unknown)=>{throw new Error("SYNTHETIC_DECLINE_BEFORE_SPAWN");});
     const result=await execute({
       runId:"synthetic-metadata-run",agent:{
         id:"synthetic-agent",companyId:"synthetic-company",name:"Synthetic Agent",
