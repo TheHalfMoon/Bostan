@@ -18,6 +18,12 @@ import { runChildProcess } from "./server-utils.js";
 
 const cleanup: string[] = [];
 
+// Build real HTTP/1.1 wire bytes. Literal backslash-r/backslash-n sequences
+// do not terminate an HTTP line and cannot exercise the sandbox CONNECT path.
+function connectFixtureRequest(authority: string): string {
+  return `CONNECT ${authority} HTTP/1.1\r\nHost: ${authority}\r\n\r\n`;
+}
+
 async function withTmpDir<T>(tmpDir: string, run: () => Promise<T>): Promise<T> {
   const previousTmpDir = process.env.TMPDIR;
   process.env.TMPDIR = tmpDir;
@@ -34,6 +40,13 @@ afterEach(async () => {
 });
 
 describe("local process sandbox", () => {
+  it("builds CONNECT request fixtures with real CRLF wire delimiters", () => {
+    const frame = connectFixtureRequest("api.example.test:443");
+    expect(frame).toBe("CONNECT api.example.test:443 HTTP/1.1\r\nHost: api.example.test:443\r\n\r\n");
+    expect(frame.includes(String.raw`\r\n`)).toBe(false);
+    expect(Buffer.from(frame).subarray(-4)).toEqual(Buffer.from([13, 10, 13, 10]));
+  });
+
   it.runIf(process.platform !== "linux")("rejects sandbox scopes on unsupported hosts", async () => {
     await expect(buildLocalProcessSandboxSpawnTarget({
       executable: process.execPath, args: ["-e", "process.exit(0)"], cwd: process.cwd(),
@@ -135,7 +148,7 @@ describe("local process sandbox", () => {
       const proxySocket = target.args[dashIndex + 3];
       const response = await new Promise<string>((resolve, reject) => {
         const socket = net.createConnection(proxySocket, () => {
-          socket.end("CONNECT 127.0.0.1:444 HTTP/1.1\\r\\nHost: 127.0.0.1:444\\r\\n\\r\\n");
+          socket.end(connectFixtureRequest("127.0.0.1:444"));
         });
         let text = "";
         socket.setEncoding("utf8");
@@ -239,7 +252,7 @@ describe("local process sandbox", () => {
     const socketPath = target.args[delimiter + 3];
     const send = async (authority: string) => new Promise<string>((resolve, reject) => {
       const socket = net.createConnection(socketPath, () => {
-        socket.end(`CONNECT ${authority} HTTP/1.1\\r\\nHost: ${authority}\\r\\n\\r\\n`);
+        socket.end(connectFixtureRequest(authority));
       });
       let output = "";
       socket.setEncoding("utf8");
@@ -613,7 +626,7 @@ describe("local process sandbox", () => {
       });
       const connectResponse = await new Promise<string>((resolve, reject) => {
         const socket = net.createConnection(socketPath, () => {
-          socket.end("CONNECT example.com:443 HTTP/1.1\r\nHost: example.com:443\r\n\r\n");
+          socket.end(connectFixtureRequest("example.com:443"));
         });
         let response = "";
         socket.setEncoding("utf8");
