@@ -92,6 +92,9 @@ describe("local process sandbox", () => {
       "api.example.test:443/.",
       "https://api.example.test:443?",
       "https://api.example.test:443#",
+      "https://api.example.test:443\t/",
+      "https://api.example.test:443\n/",
+      "https://api.example.test:443\r/",
     ]) {
       expect(() => parseLocalProcessNetworkAllowlist([entry])).toThrow(
         "hostname, hostname:port, or origin URL",
