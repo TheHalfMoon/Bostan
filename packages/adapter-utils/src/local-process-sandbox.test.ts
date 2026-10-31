@@ -709,6 +709,47 @@ describe("local process sandbox", () => {
     expect(target.args).toEqual(expect.arrayContaining(["--bind", indirect, "/app"]));
   });
 
+  it.runIf(process.platform === "linux")("permits an explicitly restored writable path outside the workspace", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-explicit-restore-"));
+    cleanup.push(root);
+    const workspace = path.join(root, "workspace");
+    const outside = path.join(root, "outbound");
+    await fs.mkdir(workspace);
+    await fs.mkdir(outside);
+    const target = await buildLocalProcessSandboxSpawnTarget({
+      executable: process.execPath,
+      args: ["-e", "process.exit(0)"],
+      cwd: workspace,
+      options: {
+        workspaceDir: workspace,
+        filesystemScope: "workspace",
+        extraPaths: [{ path: outside, access: "rw" }],
+        outboundRestorePaths: [outside],
+      },
+    });
+    expect(target.args).toEqual(expect.arrayContaining(["--bind", outside, outside]));
+  });
+
+  it.runIf(process.platform === "linux")("rejects dangling path alias links before constructing bubblewrap mounts", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-dangling-alias-"));
+    cleanup.push(root);
+    const workspace = path.join(root, "workspace");
+    await fs.mkdir(workspace);
+    const missing = path.join(root, "does-not-exist");
+    const indirect = path.join(workspace, "dangling");
+    await fs.symlink(missing, indirect, "dir");
+    await expect(buildLocalProcessSandboxSpawnTarget({
+      executable: process.execPath,
+      args: ["-e", "process.exit(0)"],
+      cwd: workspace,
+      options: {
+        workspaceDir: workspace,
+        filesystemScope: "workspace",
+        pathAliases: [{ path: "/app", target: indirect }],
+      },
+    })).rejects.toThrow();
+  });
+
   it.runIf(process.platform === "linux")("rejects writable out-of-tree paths without an outbound restore mapping", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-fs-outbound-"));
     cleanup.push(root);
