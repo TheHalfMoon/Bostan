@@ -1,3 +1,4 @@
+import { BOSTAN_USER_AGENT } from "./bostan-user-agents.js";
 import { request as httpRequest, type IncomingMessage } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { connect as netConnect, isIP, type Socket } from "node:net";
@@ -293,7 +294,7 @@ async function sendRequest(input: {
   // OAuth service sees the request (Coda returns 403 instead of its 401 OAuth
   // challenge), so give every guarded request a stable, non-identifying client
   // token while preserving an explicit caller value.
-  if (!headers.has("user-agent")) headers.set("user-agent", "Paperclip/1.0");
+  if (!headers.has("user-agent")) headers.set("user-agent", BOSTAN_USER_AGENT);
   if (body !== undefined && !headers.has("content-length") && !headers.has("transfer-encoding")) {
     headers.set("content-length", String(body.byteLength));
   }

@@ -1,3 +1,4 @@
+import { BOSTAN_USER_AGENT } from "../../bostan-user-agents.js";
 import { HttpError } from "../../../errors.js";
 import { redactSensitiveText } from "../../../redaction.js";
 import { VERCEL_API_URL, vercelOperations, vercelTeamIdSchema } from "./catalog.js";
@@ -61,7 +62,7 @@ export function vercelClient(headers: Record<string, string>, request: VercelReq
     if (serialized && Buffer.byteLength(serialized) > MAX_BYTES) throw failure(422, "vercel_input_limit", "The Vercel request exceeds 4 MiB. Use a Git deployment for larger projects.");
     let response: Response;
     try {
-      response = await withinDeadline(() => request(url.href, { method, headers: { Authorization: authorization!, "Content-Type": "application/json", "User-Agent": "Paperclip" },
+      response = await withinDeadline(() => request(url.href, { method, headers: { Authorization: authorization!, "Content-Type": "application/json", "User-Agent": BOSTAN_USER_AGENT },
         redirect: "error", signal, ...(serialized === undefined ? {} : { body: serialized }) }));
     } catch (error) {
       if (error === deadlineError || signal.aborted || Date.now() >= deadlineAt) throw deadlineError;

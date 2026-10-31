@@ -296,7 +296,10 @@ describe("GitHub external object provider", () => {
 
   it("uses a configured token without storing it in the resolved snapshot", async () => {
     const fetch = vi.fn(async (_url: string, init?: RequestInit) => {
-      expect(init?.headers).toEqual(expect.objectContaining({ authorization: "Bearer ghp_secret" }));
+      expect(init?.headers).toEqual(expect.objectContaining({
+        authorization: "Bearer ghp_secret",
+        "user-agent": "Bostan/ExternalObjectResolver",
+      }));
       return response({ state: "open", draft: false, merged: false, title: "Private PR" });
     });
     const provider = createGitHubExternalObjectProvider({} as any, {
