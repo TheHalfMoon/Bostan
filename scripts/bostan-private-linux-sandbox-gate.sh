@@ -60,6 +60,25 @@ command -v realpath >/dev/null || fail 'realpath is missing'
 [[ "$(git -C "$root" hash-object -- "$root/$source_path" 2>/dev/null)" == "$source_blob" ]] || fail 'source working-tree bytes differ from pinned source'
 [[ "$(git -C "$root" hash-object -- "$root/$test_path" 2>/dev/null)" == "$test_blob" ]] || fail 'test working-tree bytes differ from pinned tests'
 
+# Do not accept a four-suite Vitest PASS if any of its *other three*
+# checked-in test files has been replaced, skipped in a hidden index state,
+# or redirected by a symlink. The JSON auditor only knows case titles;
+# it cannot attest to the bytes that defined every executed suite.
+suite_specs=(
+  'packages/adapter-utils/src/execution-target-sandbox.test.ts:377be29a853dc9189a280c62cc8177248281d220'
+  'packages/adapter-utils/src/paperclip-runner-permissions.test.ts:fcaeea10fca499b98543a218f502809fde44fb48'
+  'packages/adapter-utils/src/sandbox-install-command.test.ts:882634137621026b645e8f77d6e4355a571717ba'
+)
+for spec in "${suite_specs[@]}"; do
+  suite_path="${spec%%:*}"
+  suite_blob="${spec#*:}"
+  [[ "$(git -C "$root" rev-parse "HEAD:$suite_path" 2>/dev/null)" == "$suite_blob" ]] || fail 'required suite Git blob differs from pinned test'
+  [[ -z "$(git -C "$root" status --porcelain -- "$suite_path")" ]] || fail 'required suite contains uncommitted modifications'
+  [[ -f "$root/$suite_path" && ! -L "$root/$suite_path" ]] || fail 'required suite must be an ordinary checkout file'
+  [[ "$(realpath -e -- "$root/$suite_path" 2>/dev/null)" == "$root/$suite_path" ]] || fail 'required suite resolves through symlink or outside checkout'
+  [[ "$(git -C "$root" hash-object -- "$root/$suite_path" 2>/dev/null)" == "$suite_blob" ]] || fail 'required suite working-tree bytes differ from pinned test'
+done
+
 # The JSON audit itself decides whether rootless integration cases actually
 # executed. Pin its checked-in source and regression tests as strictly as the
 # production files; never execute a modified report verifier.
