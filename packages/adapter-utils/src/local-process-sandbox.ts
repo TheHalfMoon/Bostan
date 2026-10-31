@@ -133,9 +133,17 @@ function parseNetworkAllowlistEntry(entry: string, index: number): NetworkAllowl
     // URL.port omits a scheme's default port (e.g. HTTPS :443, HTTP :80).
     // A missing port means ANY port to the proxy, so inspect the authority's
     // original bytes rather than widening an explicitly pinned port.
-    const authority = trimmed.includes("://")
-      ? trimmed.slice(trimmed.indexOf("://") + 3).replace(/\/$/, "")
-      : trimmed.replace(/\/$/, "");
+    const rawAuthority = trimmed.includes("://")
+      ? trimmed.slice(trimmed.indexOf("://") + 3)
+      : trimmed;
+    // WHATWG URL normalizes /., /.., encoded dot-segments, backslashes and
+    // empty query/hash delimiters. Do not let that normalization hide a
+    // supplied default port and turn it into an unrestricted host rule.
+    if (/[\\?#]/.test(rawAuthority)
+      || (rawAuthority.includes("/") && !/^[^/]+\/$/.test(rawAuthority))) {
+      throw new Error("noncanonical origin suffix");
+    }
+    const authority = rawAuthority.endsWith("/") ? rawAuthority.slice(0, -1) : rawAuthority;
     if (authority.endsWith(":")) throw new Error("missing explicit port");
     const explicitPort = /:(\d+)$/.exec(authority)?.[1];
     if (explicitPort !== undefined) {
