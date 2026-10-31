@@ -91,4 +91,17 @@ rm -- "$fixture/$src"
 git -C "$fixture" update-index --no-assume-unchanged -- "$src"
 git -C "$fixture" restore --worktree -- "$src"
 
-printf 'BOSTAN_B114_REGRESSION=PASS (6 bounded cases, synthetic only)\n'
+# A symlinked ancestor can redirect both ordinary leaf files to a foreign
+# directory while Git's skip-worktree bits conceal the checkout replacement.
+git -C "$fixture" update-index --skip-worktree -- "$src" "$test"
+mkdir -p "$scratch/owned-external-tree/adapter-utils/src"
+cp -- "$fixture/$src" "$scratch/owned-external-tree/adapter-utils/src/"
+cp -- "$fixture/$test" "$scratch/owned-external-tree/adapter-utils/src/"
+mv -- "$fixture/packages" "$scratch/owned-original-packages"
+ln -s -- "$scratch/owned-external-tree" "$fixture/packages"
+[[ -f "$fixture/$src" && ! -L "$fixture/$src" ]] || { echo 'B115_FAIL: source leaf is not regular' >&2; exit 1; }
+[[ -f "$fixture/$test" && ! -L "$fixture/$test" ]] || { echo 'B115_FAIL: test leaf is not regular' >&2; exit 1; }
+[[ -z "$(git -C "$fixture" status --porcelain -- "$src" "$test")" ]] || { echo 'B115_FAIL: parent symlink not hidden by Git' >&2; exit 1; }
+refuse 'symlinked ancestor directory' 'source resolves through a symlink or outside QA checkout'
+
+printf 'BOSTAN_B115_REGRESSION=PASS (7 bounded cases, synthetic only)\n'
