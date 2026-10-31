@@ -33,3 +33,13 @@ Authorized Mac Node26 with existing Vitest5 dependencies and 1 capped test worke
 ## Explicit rebrand boundaries and remaining work
 
 Do not globally replace upstream skill IDs, package names, existing cloud resource identifiers, Git reference namespaces, backcompat environment-variable keys or names in upstream license/NOTICE/provenance without an explicit migration strategy. Some of those are persisted references whose blind changes could strand user data or break integrations. Full Bostan copy/rebrand qualification remains incomplete. Native Windows installed app/PG/Chrome acceptance, Linux runtime/installers, untrusted-agent sandbox/consent, release security/privacy, licensing/NOTICE/provenance and external cost checks remain **NO-GO**. Repository remains PRIVATE, stacked PR DRAFT, protected main untouched; no GitHub Actions enablement, publication, deployment or customer data.
+
+## Native Windows source qualification and independent PostgreSQL fixture blocker
+
+At exact commit 9a5ac47aac78e1107ddfded01d36762c871a6e8a, Windows 11 B144 QA had 5.26GiB free RAM, 11.90GiB free on D: and no PostgreSQL before admission. Its five-suite native Node24/Vitest5 run returned **EXIT 1**, not PASS: **156 tests PASS, 16 skipped**, plus one failing suite because the external-objects-service real embedded PostgreSQL beforeAll fixture **exceeded the original 20,000ms hook timeout**. The remaining non-PostgreSQL checks ran, but this is a genuine Windows fixture qualification blocker. Do not claim 172/172 PASS on Windows or lower safety gates to disguise it.
+
+A separate native Windows rerun intentionally excludes only the PostgreSQL-dependent external-objects-service suite and checks the four source contracts (transport, attachment, commits, outbound identity). Its result will be recorded only after the process finishes with a verified exit code. Neither the original partial result nor a focused run establishes a packaged Windows product release.
+
+### Scoped native Windows no-database regression — PASS
+
+Using the exact same Windows checked-out source commit 9a5ac47aac78e1107ddfded01d36762c871a6e8a, with 4.69 GiB free RAM, 12.11 GiB free D: and zero pre-existing PostgreSQL, reran four native Windows Node24/Vitest5 source suites that do **not** start PostgreSQL. Real loopback guarded transport 27, GitHub chat attachments 100, GitHub commits 3, and identity source/constant contracts 7: **137/137 PASS, zero skipped, EXIT 0** in 64.84 seconds. The DNS-pinned real loopback test explicitly proves Bostan/1.0, and an explicit Caller/2.0 remains unchanged. All four suites are qualified on the native Windows source checkout, but the distinct external-object embedded PostgreSQL hook remains RED and the packaged app release remains NO-GO.
