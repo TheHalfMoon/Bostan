@@ -706,7 +706,48 @@ describe("local process sandbox", () => {
         extraPaths: [{ path: indirect, access: "rw" }],
       },
     });
-    expect(target.args).toEqual(expect.arrayContaining(["--bind", indirect, "/app"]));
+    expect(target.args).toEqual(expect.arrayContaining(["--bind", inside, "/app"]));
+    expect(target.args).toEqual(expect.arrayContaining(["--bind", inside, indirect]));
+  });
+
+  it.runIf(process.platform === "linux")("pins alias and writable extra bind sources even if a workspace symlink changes afterward", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-bind-source-pin-"));
+    cleanup.push(root);
+    const workspace = path.join(root, "workspace");
+    const inside = path.join(workspace, "inside");
+    const outside = path.join(root, "outside");
+    const indirect = path.join(workspace, "retargetable");
+    await fs.mkdir(inside, { recursive: true });
+    await fs.mkdir(outside);
+    await fs.symlink(inside, indirect, "dir");
+
+    const target = await buildLocalProcessSandboxSpawnTarget({
+      executable: process.execPath,
+      args: ["-e", "process.exit(0)"],
+      cwd: workspace,
+      options: {
+        workspaceDir: workspace,
+        filesystemScope: "workspace",
+        extraPaths: [{ path: indirect, access: "rw" }],
+        pathAliases: [{ path: "/app", target: indirect }],
+      },
+    });
+
+    // After the policy decision but before bubblewrap executes, a writable
+    // workspace link may be retargeted. The selected host source must remain
+    // the previously validated physical directory, not this mutable link.
+    await fs.unlink(indirect);
+    await fs.symlink(outside, indirect, "dir");
+    expect(await fs.realpath(indirect)).toBe(outside);
+    const findSource = (destination: string): string | undefined => {
+      const offset = target.args.findIndex((item, index) => item === destination && index > 0
+        && (target.args[index - 2] === "--bind" || target.args[index - 2] === "--ro-bind"));
+      return offset >= 2 ? target.args[offset - 1] : undefined;
+    };
+    expect(findSource("/app")).toBe(inside);
+    expect(findSource(indirect)).toBe(inside);
+    expect(await fs.realpath(findSource("/app")!)).toBe(inside);
+    expect(await fs.realpath(findSource(indirect)!)).toBe(inside);
   });
 
   it.runIf(process.platform === "linux")("permits an explicitly restored writable path outside the workspace", async () => {
