@@ -46,7 +46,7 @@ export function auditNativeSandboxReport(report) {
       (entry) => entry && entry.title === title,
     );
     if (matching.length !== 1 || matching[0].status !== "passed") {
-      throw new Error(`Required rootless bubblewrap test missing, skipped, or failed: ${title}`);
+      throw new Error(`Required rootless bubblewrap test missing, duplicated, skipped, or failed: ${title}`);
     }
   }
   return {
