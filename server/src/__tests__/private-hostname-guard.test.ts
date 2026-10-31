@@ -29,7 +29,7 @@ describe("privateHostnameGuard", () => {
   // Raw HTTP is required here: Supertest/Node's client normally canonicalizes
   // Host, while Node's server keeps the first Host in req.headers and exposes
   // every duplicate in req.rawHeaders. Both must be treated as ambiguous.
-  async function rawHttpStatus(hostLines: string[]): Promise<number> {
+  async function rawHttpStatus(hostLines: string[], requestTarget = "/api/health"): Promise<number> {
     const app = createApp({ enabled: true });
     const server = app.listen(0, "127.0.0.1");
     try {
@@ -42,7 +42,7 @@ describe("privateHostnameGuard", () => {
         client.setTimeout(3_000, () => client.destroy(new Error("raw HTTP test timeout")));
         client.once("connect", () => {
           client.write(
-            "GET /api/health HTTP/1.1\r\n" +
+            `GET ${requestTarget} HTTP/1.1\r\n` +
             hostLines.join("\r\n") +
             "\r\nConnection: close\r\n\r\n",
           );
@@ -59,6 +59,21 @@ describe("privateHostnameGuard", () => {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
   }
+
+  // Node accepts proxy-style absolute-form request targets. Bostan is an
+  // origin server: an allowed Host must not authorize a different authority
+  // in the request line, even if Express routes the parsed pathname.
+  it.each([
+    "http://blocked-host.invalid/api/health",
+    "http://localhost:3100/api/health",
+    "https://blocked-host.invalid/api/health",
+  ])("rejects absolute-form HTTP request target (%s)", async (requestTarget) => {
+    expect([400, 403]).toContain(await rawHttpStatus(["Host: localhost:3100"], requestTarget));
+  });
+
+  it("keeps normal origin-form paths and query strings working", async () => {
+    expect(await rawHttpStatus(["Host: localhost:3100"], "/api/health?source=qa")).toBe(200);
+  });
 
   it.each([
     { label: "allowed Host first", lines: ["Host: localhost:3100", "Host: blocked-host.invalid:3100"] },
@@ -152,6 +167,7 @@ describe("privateHostnameGuard", () => {
     const middleware = privateHostnameGuard({ enabled: true, allowedHostnames: [], bindHost: "0.0.0.0" });
     const req = {
       path: "/api/health",
+      url: "/api/health",
       rawHeaders: ["X-Forwarded-Host", "localhost"],
       header: (name: string) => name.toLowerCase() === "x-forwarded-host" ? "localhost" : undefined,
       accepts: () => "json",
@@ -199,6 +215,7 @@ describe("privateHostnameGuard", () => {
     });
     const req = {
       path: "/dashboard",
+      url: "/dashboard",
       rawHeaders: ["Host", `${unknownHostname}:3100`],
       header: (name: string) => (name.toLowerCase() === "host" ? `${unknownHostname}:3100` : undefined),
       accepts: () => "html",
