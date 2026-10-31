@@ -59,6 +59,63 @@ describe("local process sandbox", () => {
     expect(() => parseLocalProcessNetworkScope("public")).toThrow('"deny" or "allowlist"');
   });
 
+  it("preserves an explicitly pinned default port instead of granting every port", () => {
+    expect(parseLocalProcessNetworkAllowlist([
+      "https://api.example.test:443",
+      "http://api.example.test:80/",
+      "gateway.example.test:443",
+      "gateway.example.test:8443",
+    ])).toEqual([
+      "api.example.test:443",
+      "api.example.test:80",
+      "gateway.example.test:443",
+      "gateway.example.test:8443",
+    ]);
+    // An unqualified hostname intentionally retains the legacy any-port policy.
+    expect(parseLocalProcessNetworkAllowlist(["api.example.test"])).toEqual(["api.example.test"]);
+  });
+
+  it("rejects non-HTTP protocols in sandbox network origins", () => {
+    for (const entry of ["ftp://api.example.test", "file://api.example.test", "ws://api.example.test"]) {
+      expect(() => parseLocalProcessNetworkAllowlist([entry])).toThrow(
+        "hostname, hostname:port, or origin URL",
+      );
+    }
+  });
+
+  it.runIf(process.platform === "linux")("denies CONNECT to another port when HTTPS 443 is explicitly pinned", async () => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "bostan-network-port-pin-"));
+    cleanup.push(workspace);
+    const target = await buildLocalProcessSandboxSpawnTarget({
+      executable: process.execPath,
+      args: ["-e", "process.exit(0)"],
+      cwd: workspace,
+      options: {
+        workspaceDir: workspace,
+        networkScope: "allowlist",
+        networkAllowlist: ["https://127.0.0.1:443"],
+      },
+    });
+    try {
+      const dashIndex = target.args.indexOf("--");
+      const proxySocket = target.args[dashIndex + 3];
+      const response = await new Promise<string>((resolve, reject) => {
+        const socket = net.createConnection(proxySocket, () => {
+          socket.end("CONNECT 127.0.0.1:444 HTTP/1.1\\r\\nHost: 127.0.0.1:444\\r\\n\\r\\n");
+        });
+        let text = "";
+        socket.setEncoding("utf8");
+        socket.on("data", (chunk) => { text += chunk; });
+        socket.on("end", () => resolve(text));
+        socket.on("error", reject);
+      });
+      expect(response).toContain("HTTP/1.1 403 Forbidden");
+      expect(response).toContain("network_target_denied");
+    } finally {
+      await target.cleanup?.();
+    }
+  });
+
   it.runIf(process.platform === "linux")("describes every valid allowlist input when no proxy rules remain", async () => {
     const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-network-rules-"));
     cleanup.push(workspace);
