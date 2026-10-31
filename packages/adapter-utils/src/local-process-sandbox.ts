@@ -344,6 +344,17 @@ async function startNetworkAllowlistProxy(
       upstreamResponse.pipe(response);
     });
     upstream.on("error", (error) => response.destroy(error));
+    // The agent can disconnect while an allowlisted HTTP origin remains idle.
+    // Abort the origin request rather than retaining a dangling TCP connection
+    // indefinitely after the downstream response is no longer deliverable.
+    response.once("close", () => {
+      if (!response.writableEnded) upstream.destroy();
+    });
+    // A client can also disconnect halfway through uploading the request body.
+    // 'close' after a fully received body is normal; never cancel for that.
+    request.once("close", () => {
+      if (!request.complete) upstream.destroy();
+    });
     request.pipe(upstream);
   });
   server.on("connect", (request, clientSocket, head) => {
