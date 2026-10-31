@@ -69,7 +69,7 @@ const SYSTEM_READ_PATHS = [
 const PROXY_ENV_KEYS = ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"] as const;
 const SANDBOX_PROXY_PORT = 31_337;
 const UNIX_SOCKET_PATH_MAX_BYTES = 107;
-const NETWORK_PROXY_TEMP_PREFIX = "paperclip-network-sandbox-";
+const NETWORK_PROXY_TEMP_PREFIX = "bostan-network-sandbox-";
 
 function normalizeAbsolutePath(candidate: string, label: string): string {
   const trimmed = candidate.trim();
@@ -220,7 +220,7 @@ function assertUnixSocketPathLength(socketPath: string): void {
   const pathBytes = Buffer.byteLength(socketPath);
   if (pathBytes > UNIX_SOCKET_PATH_MAX_BYTES) {
     throw new Error(
-      `Paperclip sandbox proxy socket path is ${pathBytes} bytes, exceeding the Linux limit of ${UNIX_SOCKET_PATH_MAX_BYTES}: ${socketPath}`,
+      `Bostan sandbox proxy socket path is ${pathBytes} bytes, exceeding the Linux limit of ${UNIX_SOCKET_PATH_MAX_BYTES}: ${socketPath}`,
     );
   }
 }
@@ -242,7 +242,7 @@ async function createNetworkProxyTempDir(): Promise<string> {
       lastError = error;
     }
   }
-  throw new Error("Unable to create a Linux-safe Paperclip sandbox proxy socket directory.", { cause: lastError });
+  throw new Error("Unable to create a Linux-safe Bostan sandbox proxy socket directory.", { cause: lastError });
 }
 
 function parseTrustedNetworkUrl(value: string): NetworkAllowlistRule | null {
@@ -333,16 +333,16 @@ async function startNetworkAllowlistProxy(
     try {
       target = new URL(request.url ?? "");
     } catch {
-      writeProxyError(response, 400, "invalid_request_url", "Paperclip sandbox proxy requires an absolute request URL.");
+      writeProxyError(response, 400, "invalid_request_url", "Bostan sandbox proxy requires an absolute request URL.");
       return;
     }
     const port = target.port || (target.protocol === "https:" ? "443" : "80");
     if (target.protocol !== "http:") {
-      writeProxyError(response, 400, "https_requires_connect", "HTTPS targets must use CONNECT through the Paperclip sandbox proxy.");
+      writeProxyError(response, 400, "https_requires_connect", "HTTPS targets must use CONNECT through the Bostan sandbox proxy.");
       return;
     }
     if (!isNetworkTargetAllowed(target.hostname, port, rules)) {
-      writeProxyError(response, 403, "network_target_denied", "Network target denied by Paperclip sandbox policy.");
+      writeProxyError(response, 403, "network_target_denied", "Network target denied by Bostan sandbox policy.");
       return;
     }
     const upstream = http.request(target, {
@@ -373,7 +373,7 @@ async function startNetworkAllowlistProxy(
     if (!hostname || !isValidLocalProcessProxyConnectPort(port) || !isNetworkTargetAllowed(hostname, port, rules)) {
       clientSocket.end(connectProxyError(
         "network_target_denied",
-        "Network target denied by Paperclip sandbox policy.",
+        "Network target denied by Bostan sandbox policy.",
       ));
       return;
     }
