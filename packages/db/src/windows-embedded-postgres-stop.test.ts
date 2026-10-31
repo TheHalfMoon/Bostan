@@ -587,3 +587,21 @@ it("rejects ambiguous device namespace CIM paths", async () => {
       .rejects.toThrow(/Ambiguous/);
   });
 });
+
+it("rejects Windows CIM executable paths containing forbidden control characters or alternate streams", async () => {
+  const ambiguousPaths = [
+    path.win32.join("C:\\", "foreign", "bad\tsegment", "postgres.exe"),
+    path.win32.join("C:\\", "foreign", "bad\u0007segment", "postgres.exe"),
+    path.win32.join("C:\\", "foreign:stream", "postgres.exe"),
+  ];
+  for (const ambiguous of ambiguousPaths) {
+    await fixture(async (data) => {
+      let inspections = 0;
+      await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+        async () => { throw Error("must not stop an ambiguous process"); },
+        async () => { inspections++; return [row(ambiguous)]; }, noWait))
+        .rejects.toThrow(/Ambiguous/);
+      expect(inspections).toBe(1);
+    });
+  }
+});

@@ -44,7 +44,7 @@ const actualPause: Pause = async (ms) => {
 // Reject unresolvable device namespaces and dot-segments instead of mistaking
 // an ambiguous PostgreSQL process for an unrelated one.
 function normalizedExecutable(value: string): string | null {
-  if (!value || value !== value.trim() || /[\0\r\n]/.test(value)) return null;
+  if (!value || value !== value.trim() || /[\x00-\x1f\x7f]/.test(value)) return null;
   let candidate = value.replace(/\//g, "\\");
   if (candidate.startsWith("\\\\?\\")) {
     const rest = candidate.slice(4);
@@ -61,6 +61,9 @@ function normalizedExecutable(value: string): string | null {
   // A process queried by Name='postgres.exe' must resolve to that exact leaf.
   const driveRooted = /^[a-z]:\\/i.test(candidate);
   const uncRooted = /^\\\\[^\\]+\\[^\\]+\\/.test(candidate);
+  // An extra colon is not a valid executable path segment (NTFS ADS).
+  // Do not mistake it for an unrelated postgres.exe process.
+  if ((driveRooted ? candidate.slice(2) : candidate).includes(":")) return null;
   if ((!driveRooted && !uncRooted) || candidate.endsWith("\\")
       || path.win32.basename(candidate).toLowerCase() !== "postgres.exe") return null;
   return path.win32.normalize(candidate).toLowerCase();
