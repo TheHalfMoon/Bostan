@@ -38,3 +38,7 @@ Targeted TypeScript 7 strict `--noEmit --ignoreConfig` on the modified adapter c
 ## Still unqualified
 
 This resolves only the identified HTTP agent diagnostic leakage. A full adversarial agent effect sandbox/consent review, permission-bounded tool execution, cross-company abuse E2E, pinned Windows packed runtime HTTP startup, native Windows/Linux installer qualification, PostgreSQL multi-suite ownership, security/privacy/license/NOTICE/provenance audit and product-wide acceptance remain release **NO-GO**. The real Windows device had under the established resource admission on C:/RAM during this round; no heavy live Windows PostgreSQL/Chromium E2E was executed. Keep repo PRIVATE, stacked PR DRAFT, do not merge protected main, publish/deploy/release/npm pack, enable Actions, use customer data or paid inference.
+
+## Broader adapter compatibility regression
+
+After the initial exact-head commit `69fb632e15ac6d48f2e7942f925c72fa42c62da8`, also ran **108/108 PASS** native Mac Node26 / Vitest5 tests, with one worker and 1536MiB V8 memory cap, across `server/src/__tests__/adapter-registry.test.ts` (33 cases), `adapter-routes.test.ts` (30), and `built-in-agents.test.ts` (45). This validates route setup and adapter discovery/overrides compatibility after the HTTP adapter diagnostic wording change. These are source integration tests using local test fixtures, not complete Windows/Linux real installed-product E2E or adversarial sandbox qualification. The tracked source checkout remained clean and no new package installation was performed.
