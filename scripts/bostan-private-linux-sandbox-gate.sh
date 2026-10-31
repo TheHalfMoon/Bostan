@@ -65,8 +65,8 @@ command -v realpath >/dev/null || fail 'realpath is missing'
 # production files; never execute a modified report verifier.
 audit_path='scripts/bostan-private-linux-vitest-report-audit.mjs'
 audit_test_path='scripts/bostan-private-linux-vitest-report-audit.test.mjs'
-audit_blob='eaa2461adfee2599aafad9e470b1c6b0da5e9fa2'
-audit_test_blob='0a28db2adcff5169147ef1c5b71246afd462999b'
+audit_blob='b361b8563e1ab288c9f81710993a432e87866274'
+audit_test_blob='66396962359d57d0c16df2bac04d87ee2080a58e'
 for pair in "$audit_path:$audit_blob" "$audit_test_path:$audit_test_blob"; do
   qa_path="${pair%%:*}"
   qa_blob="${pair#*:}"
@@ -121,7 +121,12 @@ timeout 600s env BOSTAN_TEST_BWRAP="$bwrap_path" BOSTAN_TEST_SANDBOX_BUILD=1 \
   --reporter=json --outputFile="$report_file" --silent \
   || fail 'actual source-native Linux Vitest is NOT green'
 [[ -s "$report_file" ]] || fail 'Vitest JSON report absent or empty'
-node "$root/$audit_path" "$report_file" || fail 'rootless bubblewrap cases were skipped, failed or absent'
+audit_output="$(node "$root/$audit_path" "$report_file")" || fail 'rootless bubblewrap cases were skipped, failed or absent'
+# Do not trust exit code alone. A CLI guard regression can exit zero without
+# executing the auditor; only its two exact PASS lines establish attestation.
+expected_audit_output="$(printf 'BOSTAN_B124_VERIFIED_SUITES=4\\nBOSTAN_B124_VERIFIED_ROOTLESS_CASES=4')"
+[[ "$audit_output" == "$expected_audit_output" ]] || fail 'rootless bubblewrap JSON audit did not provide exact success evidence'
+printf '%s\\n' "$audit_output"
 printf 'BOSTAN_B112_FOUR_TEST_SUITES=PASS\n'
 printf 'BOSTAN_B112_PACKAGE_TYPECHECK_BEGIN\n'
 timeout 180s ./node_modules/.bin/tsc --project packages/adapter-utils/tsconfig.json --noEmit \
