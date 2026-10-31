@@ -193,9 +193,18 @@ export function isValidLocalProcessProxyConnectPort(value: string): boolean {
   return /^[1-9][0-9]{0,4}$/.test(value) && Number(value) <= 65535;
 }
 
+function normalizeProxyNetworkHostname(hostname: string): string {
+  const lower = hostname.toLowerCase();
+  // WHATWG URL.hostname preserves brackets around IPv6 literals, while
+  // CONNECT authority parsing removes them. Compare both sides identically.
+  return lower.startsWith("[") && lower.endsWith("]") ? lower.slice(1, -1) : lower;
+}
+
 function isNetworkTargetAllowed(hostname: string, port: string, rules: NetworkAllowlistRule[]): boolean {
-  const normalizedHostname = hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  return rules.some((rule) => rule.hostname === normalizedHostname && (rule.port === null || rule.port === port));
+  const normalizedHostname = normalizeProxyNetworkHostname(hostname);
+  return rules.some((rule) =>
+    normalizeProxyNetworkHostname(rule.hostname) === normalizedHostname
+    && (rule.port === null || rule.port === port));
 }
 
 function assertUnixSocketPathLength(socketPath: string): void {
