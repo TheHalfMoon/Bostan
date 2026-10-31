@@ -20,3 +20,7 @@ The callback is now explicitly defined with one parameter (_meta: unknown), matc
 ## Release remains NO-GO
 
 This is a source-level typecheck repair, not native Windows packed app/Chrome/PostgreSQL qualification, full Linux install validation, untrusted-agent sandbox/effects consent, or complete security/privacy/NOTICE/license/provenance acceptance. Keep PRIVATE and DRAFT. Never merge protected main, publish, deploy, enable GitHub Actions, install paid services or delete unrelated user files.
+
+## Independent native Windows source regression
+
+On the authorized Windows 11 D:/Bostan-B144-qa worktree, the source was fetched and its exact head aa4839a9167c8abb5ee610cec026575a9368b649 verified before checkout. Resource admission: 5.13GiB free RAM and 11.98GiB D: free, zero PostgreSQL. Native Windows Node24 with existing Vitest 5 dependencies ran 3 focused source suites: process execute (3), process setup (2), adapter registry (35), **40/40 PASS, 0 skipped, EXIT 0** in 30.55s. No real database or browser, no downloads or installations. These are native Windows tests of the source change, NOT proof the installed Windows packed product or PostgreSQL/Chrome E2E is release-qualified.
