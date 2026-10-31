@@ -167,6 +167,14 @@ function assertValidPidMarkerBeforeStop(marker: string): void {
     if (after.dev !== before.dev || after.ino !== before.ino
         || after.size !== before.size || after.mtimeMs !== before.mtimeMs)
       throw Error("changed");
+    // An open descriptor can remain valid after its pathname is replaced.
+    // Recheck the marker at its original path before authorizing pg_ctl.
+    const atPath = fs.lstatSync(marker);
+    if (!atPath.isFile() || atPath.isSymbolicLink()
+        || atPath.dev !== opened.dev || atPath.ino !== opened.ino
+        || atPath.birthtimeMs !== opened.birthtimeMs
+        || atPath.size !== opened.size || atPath.mtimeMs !== opened.mtimeMs)
+      throw Error("changed");
   } catch {
     throw Error("Ambiguous PostgreSQL PID marker identity; retaining fixture");
   } finally {

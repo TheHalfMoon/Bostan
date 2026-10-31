@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -239,6 +239,38 @@ it("refuses malformed postmaster.pid before calling native pg_ctl", async () => 
       expect(inspections).toBe(0);
     });
   }
+});
+
+it.skipIf(process.platform === "win32")("rejects postmaster PID path replacement during opened-file validation", async () => {
+  await fixture(async (data) => {
+    const marker = path.join(data, "postmaster.pid");
+    fs.writeFileSync(marker, "123\n");
+    const realFstat = fs.fstatSync.bind(fs);
+    let stats = 0;
+    let swapped = false;
+    let shutdowns = 0;
+    let inspections = 0;
+    const spy = vi.spyOn(fs, "fstatSync").mockImplementation((fd) => {
+      const result = realFstat(fd);
+      if (++stats === 2) {
+        fs.renameSync(marker, marker + ".owned-original");
+        fs.writeFileSync(marker, "123\n");
+        swapped = true;
+      }
+      return result;
+    });
+    try {
+      await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+        async () => { shutdowns++; fs.unlinkSync(marker); },
+        async () => { inspections++; return []; }, noWait))
+        .rejects.toThrow(/PID marker/);
+      expect(swapped).toBe(true);
+      expect(shutdowns).toBe(0);
+      expect(inspections).toBe(0);
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });
 
 it("rejects high-bit PID bytes before invoking pg_ctl or process inspection", async () => {
