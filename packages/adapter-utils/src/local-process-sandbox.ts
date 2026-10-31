@@ -260,6 +260,21 @@ function connectProxyError(code: string, message: string): string {
   ].join("\r\n");
 }
 
+/**
+ * A proxy credential authenticates the agent to the local proxy. It MUST NOT
+ * be forwarded as an origin credential to an allowed destination server.
+ * IncomingHttpHeaders uses lowercase keys on Node's HTTP server.
+ */
+export function buildLocalProcessProxyOriginHeaders(
+  incoming: http.IncomingHttpHeaders,
+  targetHost: string,
+): http.OutgoingHttpHeaders {
+  const forwarded: http.OutgoingHttpHeaders = { ...incoming, host: targetHost };
+  delete forwarded["proxy-authorization"];
+  delete forwarded["proxy-connection"];
+  return forwarded;
+}
+
 async function startNetworkAllowlistProxy(
   allowlist: string[],
   trustedUrls: string[],
@@ -294,7 +309,7 @@ async function startNetworkAllowlistProxy(
     }
     const upstream = http.request(target, {
       method: request.method,
-      headers: { ...request.headers, host: target.host },
+      headers: buildLocalProcessProxyOriginHeaders(request.headers, target.host),
     }, (upstreamResponse) => {
       response.writeHead(upstreamResponse.statusCode ?? 502, upstreamResponse.headers);
       upstreamResponse.pipe(response);
