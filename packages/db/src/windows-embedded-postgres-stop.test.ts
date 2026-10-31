@@ -692,3 +692,39 @@ it("refuses PG_VERSION mutation during PID verification before issuing pg_ctl", 
     }
   });
 });
+
+it("rejects ambiguous Windows CIM process creation dates before a clean receipt", async () => {
+  // PowerShell's pinned inspector emits UTC round-trip ISO dates. JavaScript's
+  // Date.parse accepts unrelated strings such as "1" and normalizes invalid days.
+  for (const creationDate of [
+    "1",
+    "2026-02-31T12:00:00Z",
+    "2026-10-30T12:00:00",
+    "2026-10-30T12:00:00+03:00",
+    "2026-10-30",
+  ]) {
+    await fixture(async (data) => {
+      let inspections = 0;
+      await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+        async () => { throw Error("must not stop any PostgreSQL process"); },
+        async () => {
+          inspections++;
+          return [{ ...row("C:\\foreign\\postgres.exe"), CreationDate: creationDate }];
+        }, noWait)).rejects.toThrow(/Ambiguous Windows PostgreSQL process identity/);
+      expect(inspections).toBe(1);
+    });
+  }
+});
+
+it("accepts the actual PowerShell UTC round-trip CIM date precision", async () => {
+  await fixture(async (data) => {
+    let inspections = 0;
+    expect(await stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { throw Error("must not run pg_ctl"); },
+      async () => {
+        inspections++;
+        return [{ ...row("C:\\foreign\\postgres.exe"), CreationDate: "2026-10-30T12:00:00.1234567Z" }];
+      }, noWait)).toBe("already-stopped");
+    expect(inspections).toBe(2);
+  });
+});

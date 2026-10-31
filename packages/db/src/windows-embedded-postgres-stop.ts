@@ -76,13 +76,23 @@ function normalizedPgCtlBinary(value: string): string | null {
       || !/pg_ctl\.exe$/i.test(value)) return null;
   return normalizedExecutable(value.replace(/pg_ctl\.exe$/i, "postgres.exe"));
 }
+// The pinned PowerShell CIM inspector emits a UTC round-trip ISO timestamp.
+// Date.parse alone accepts locale-dependent shorthand and normalizes impossible
+// calendar days, neither of which proves the identity of a process snapshot.
+function isCanonicalUtcCimDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?Z$/.test(value))
+    return false;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp)
+    && new Date(timestamp).toISOString().slice(0, 19) === value.slice(0, 19);
+}
 function isValidProcess(value: unknown): value is WindowsPostgresProcess {
   if (!value || typeof value !== "object") return false;
   const p = value as Partial<WindowsPostgresProcess>;
   return Number.isSafeInteger(p.ProcessId) && (p.ProcessId ?? 0) > 0
     && Number.isSafeInteger(p.ParentProcessId) && (p.ParentProcessId ?? -1) >= 0
     && typeof p.ExecutablePath === "string" && p.ExecutablePath.trim().length > 0
-    && typeof p.CreationDate === "string" && Number.isFinite(Date.parse(p.CreationDate));
+    && typeof p.CreationDate === "string" && isCanonicalUtcCimDate(p.CreationDate);
 }
 /**
  * Conservative policy: a process from the pinned PostgreSQL executable is
