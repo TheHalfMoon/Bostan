@@ -42,15 +42,15 @@ describe("privateHostnameGuard", () => {
         client.setTimeout(3_000, () => client.destroy(new Error("raw HTTP test timeout")));
         client.once("connect", () => {
           client.write(
-            "GET /api/health HTTP/1.1\\r\\n" +
-            hostLines.join("\\r\\n") +
-            "\\r\\nConnection: close\\r\\n\\r\\n",
+            "GET /api/health HTTP/1.1\r\n" +
+            hostLines.join("\r\n") +
+            "\r\nConnection: close\r\n\r\n",
           );
         });
         client.on("data", (chunk) => { response += chunk.toString(); });
         client.once("error", reject);
         client.once("end", () => {
-          const status = /^HTTP\\/1\\.1 (\\d{3})/.exec(response);
+          const status = /^HTTP\/1\.1 (\d{3})/.exec(response);
           if (!status) reject(new Error("missing HTTP status"));
           else resolve(Number(status[1]));
         });
