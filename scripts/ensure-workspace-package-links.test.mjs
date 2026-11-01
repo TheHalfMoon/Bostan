@@ -70,7 +70,7 @@ test('wrong link is retained and target left untouched',t=>{
   const foreign=path.join(f.root,'foreign');
   fs.mkdirSync(foreign);
   fs.writeFileSync(path.join(foreign,'KEEP'),'external');
-  try { fs.symlinkSync(foreign,f.link,'dir'); }
+  try { fs.symlinkSync(foreign,f.link,process.platform === 'win32' ? 'junction' : 'dir'); }
   catch (error) { if (error.code === 'EPERM') { t.skip('native symlink privilege unavailable'); return; } throw error; }
   expectRefuse(f.run,'foreign_link');
   assert.equal(fs.realpathSync(f.link),foreign);
@@ -78,7 +78,7 @@ test('wrong link is retained and target left untouched',t=>{
 });
 test('dangling link is not replaced',t=>{
   const f=make(t);
-  try { fs.symlinkSync(path.join(f.root,'no-such-target'),f.link,'dir'); }
+  try { fs.symlinkSync(path.join(f.root,'no-such-target'),f.link,process.platform === 'win32' ? 'junction' : 'dir'); }
   catch (error) { if (error.code === 'EPERM') { t.skip('native symlink privilege unavailable'); return; } throw error; }
   expectRefuse(f.run,'dangling_link');
   assert(fs.lstatSync(f.link).isSymbolicLink());
@@ -87,7 +87,7 @@ test('linked scope refuses, never writes through it',t=>{
   const f=make(t,{missingScope:true});
   const external=path.join(f.root,'other-scope');
   fs.mkdirSync(external);
-  try { fs.symlinkSync(external,path.dirname(f.link),'dir'); }
+  try { fs.symlinkSync(external,path.dirname(f.link),process.platform === 'win32' ? 'junction' : 'dir'); }
   catch (error) { if (error.code === 'EPERM') { t.skip('native symlink privilege unavailable'); return; } throw error; }
   expectRefuse(f.run,'linked_or_untrusted_scope');
   assert.equal(fs.readdirSync(external).length,0);
@@ -96,7 +96,7 @@ test('linked node_modules refuses, never writes through it',t=>{
   const f=make(t,{missingNodeModules:true});
   const external=path.join(f.root,'other-modules');
   fs.mkdirSync(external);
-  try { fs.symlinkSync(external,path.join(f.consumerRoot,'node_modules'),'dir'); }
+  try { fs.symlinkSync(external,path.join(f.consumerRoot,'node_modules'),process.platform === 'win32' ? 'junction' : 'dir'); }
   catch (error) { if (error.code === 'EPERM') { t.skip('native symlink privilege unavailable'); return; } throw error; }
   expectRefuse(f.run,'missing_or_linked_node_modules');
   assert.equal(fs.readdirSync(external).length,0);
