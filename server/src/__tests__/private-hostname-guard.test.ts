@@ -46,6 +46,7 @@ describe("privateHostnameGuard", () => {
             `GET ${requestTarget} HTTP/1.1\r\n` +
             hostLines.join("\r\n") +
             "\r\nConnection: close\r\n\r\n",
+            "latin1",
           );
         });
         client.on("data", (chunk) => { response += chunk.toString(); });
@@ -95,6 +96,17 @@ describe("privateHostnameGuard", () => {
   it("admits one raw HTTP Host field", async () => {
     expect(await rawHttpStatus(["Host: localhost:3100"])).toBe(200);
   });
+
+  it.each([
+    "\u00a0localhost:3100",
+    "localhost:3100\u00a0",
+  ])("refuses Latin-1 obs-text whitespace in raw Host authority (%s)", async (authority) => {
+    // Node preserves HTTP obs-text 0xA0 in req.rawHeaders. String.trim()
+    // must not turn that attacker-controlled value into allowed localhost.
+    expect(parsePrivateHostHeader(authority)).toBeNull();
+    expect(await rawHttpStatus([`Host: ${authority}`])).toBe(403);
+  });
+
 
 
   it("rejects spoofed X-Forwarded-Host when the actual Host is forbidden", async () => {
