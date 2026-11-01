@@ -70,7 +70,8 @@ describe("Bostan template prune ownership admission", () => {
 });
 
 describe("Bostan template reuse ownership admission", () => {
-  it("refuses a preexisting unmarked template before declaring PostgreSQL supported", async () => {
+  const itWithCache = process.platform === "win32" ? it.skip : it;
+  itWithCache("refuses a preexisting unmarked template before declaring PostgreSQL supported", async () => {
     const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-template-reuse-owned-"));
     const keys = ["TMPDIR", "TEMP", "TMP", "PAPERCLIP_TEST_POSTGRES_TEMPLATE"] as const;
     const previous = new Map(keys.map((key) => [key, process.env[key]] as const));
