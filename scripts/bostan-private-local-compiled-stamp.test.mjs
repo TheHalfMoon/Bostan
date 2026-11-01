@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -80,6 +80,18 @@ test("real checkout admission accepts owned matching bytes and rejects both tamp
     assert.equal(checkLocalCompiledBuildStamp(workspace), true);
     writeFileSync(runner, runnerBytes + "-unexpected");
     assert.equal(checkLocalCompiledBuildStamp(workspace), false);
+    writeFileSync(runner, runnerBytes);
+    assert.equal(checkLocalCompiledBuildStamp(workspace), true);
+    // A linked intermediate directory must never redirect private QA to
+    // compiled files outside its owned dist tree, even with matching hashes.
+    const externalRunner = join(workspace, "external-runner");
+    mkdirSync(externalRunner);
+    writeFileSync(join(externalRunner, "index.js"), runnerBytes);
+    rmSync(vendor, {recursive: true});
+    symlinkSync(externalRunner, vendor, "dir");
+    assert.equal(checkLocalCompiledBuildStamp(workspace), false);
+    rmSync(vendor);
+    mkdirSync(vendor);
     writeFileSync(runner, runnerBytes);
     assert.equal(checkLocalCompiledBuildStamp(workspace), true);
     writeFileSync(stamp, JSON.stringify({
