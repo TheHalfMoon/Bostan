@@ -3,7 +3,11 @@ export type EmbeddedPostgresExitListener = (code: number | null, signal: NodeJS.
 export interface SupervisedEmbeddedPostgres {
   start(): Promise<void>;
   stop(): Promise<void>;
-  process?: { once(event: "exit", listener: EmbeddedPostgresExitListener): unknown };
+  process?: {
+    once(event: "exit", listener: EmbeddedPostgresExitListener): unknown;
+    exitCode?: number | null;
+    signalCode?: NodeJS.Signals | null;
+  };
 }
 
 export interface EmbeddedPostgresSupervisor {
@@ -89,9 +93,41 @@ export function createEmbeddedPostgresSupervisor(options: Options): EmbeddedPost
           await replacement.stop();
           return;
         }
+        // A resolved start is not proof that the replacement can be monitored:
+        // the native child may already have exited, or the library may have
+        // failed to expose/register its exit listener. Do not adopt it until
+        // monitoring is established; first stop this owned replacement on
+        // admission failure before any further recovery attempt.
+        try {
+          const child = replacement.process;
+          if (!child || typeof child.once !== "function") {
+            throw new Error("Embedded PostgreSQL recovery replacement has no exit monitor");
+          }
+          if (child.exitCode != null || child.signalCode != null) {
+            throw new Error("Embedded PostgreSQL recovery replacement exited before monitoring");
+          }
+          monitor(replacement);
+          if (child.exitCode != null || child.signalCode != null) {
+            throw new Error("Embedded PostgreSQL recovery replacement exited during monitor admission");
+          }
+        } catch (monitorError) {
+          try {
+            await replacement.stop();
+          } catch (stopError) {
+            const unsafe = new Error(
+              "Embedded PostgreSQL recovery replacement stop unverified after monitor admission failure",
+              { cause: stopError },
+            );
+            unverifiedReplacementStop = unsafe;
+            reportRecoveryExhausted(unsafe);
+            if (shuttingDown) throw unsafe;
+            return;
+          }
+          if (shuttingDown) return;
+          throw monitorError;
+        }
         activeInstance = replacement;
         activeInstanceExited = false;
-        monitor(replacement);
         // A diagnostic observer cannot turn an already-running replacement
         // into a failed attempt: retrying would create a second live cluster.
         try {
