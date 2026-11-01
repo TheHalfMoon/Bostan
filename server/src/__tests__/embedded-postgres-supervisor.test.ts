@@ -308,4 +308,73 @@ describe("embedded PostgreSQL supervisor", () => {
     expect(onRecoveryExhausted).toHaveBeenCalledOnce();
   });
 
+
+  it("stops a started replacement without a monitor before allowing another attempt", async () => {
+    const initial = createInstance();
+    const unmonitored = createInstance();
+    delete unmonitored.instance.process;
+    const stopGate = deferred();
+    unmonitored.instance.stop = vi.fn(() => stopGate.promise);
+    const healthy = createInstance();
+    const createReplacement = vi.fn()
+      .mockReturnValueOnce(unmonitored.instance)
+      .mockReturnValueOnce(healthy.instance);
+    const supervisor = createEmbeddedPostgresSupervisor({
+      initialInstance: initial.instance,
+      createInstance: createReplacement,
+      restartDelaysMs: [0, 0],
+    });
+
+    initial.process.emit("exit", 1, null);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(unmonitored.instance.start).toHaveBeenCalledOnce();
+    expect(unmonitored.instance.stop).toHaveBeenCalledOnce();
+    expect(createReplacement).toHaveBeenCalledTimes(1);
+
+    stopGate.resolve();
+    await supervisor.waitForRecovery();
+    expect(createReplacement).toHaveBeenCalledTimes(2);
+    expect(supervisor.current()).toBe(healthy.instance);
+  });
+
+  it("fails closed if a started unmonitored replacement cannot be stopped", async () => {
+    const initial = createInstance();
+    const unmonitored = createInstance();
+    delete unmonitored.instance.process;
+    const stopFailure = new Error("synthetic unmonitored native stop refusal");
+    unmonitored.instance.stop = vi.fn(async () => { throw stopFailure; });
+    const createReplacement = vi.fn(() => unmonitored.instance);
+    const supervisor = createEmbeddedPostgresSupervisor({
+      initialInstance: initial.instance,
+      createInstance: createReplacement,
+      restartDelaysMs: [0, 0],
+    });
+
+    initial.process.emit("exit", 1, null);
+    await expect(supervisor.waitForRecovery()).rejects.toThrow("stop unverified");
+    expect(unmonitored.instance.stop).toHaveBeenCalledOnce();
+    expect(createReplacement).toHaveBeenCalledOnce();
+    await expect(supervisor.shutdown()).rejects.toThrow("stop unverified");
+  });
+
+  it("refuses a replacement whose child exited before monitor registration", async () => {
+    const initial = createInstance();
+    const exited = createInstance();
+    Object.assign(exited.process, { exitCode: 137, signalCode: null });
+    const healthy = createInstance();
+    const createReplacement = vi.fn()
+      .mockReturnValueOnce(exited.instance)
+      .mockReturnValueOnce(healthy.instance);
+    const supervisor = createEmbeddedPostgresSupervisor({
+      initialInstance: initial.instance,
+      createInstance: createReplacement,
+      restartDelaysMs: [0, 0],
+    });
+
+    initial.process.emit("exit", 1, null);
+    await supervisor.waitForRecovery();
+    expect(exited.instance.stop).toHaveBeenCalledOnce();
+    expect(createReplacement).toHaveBeenCalledTimes(2);
+    expect(supervisor.current()).toBe(healthy.instance);
+  });
 });
