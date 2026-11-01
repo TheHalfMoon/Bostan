@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, unlinkSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, unlinkSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -96,6 +96,18 @@ test("real checkout admission accepts owned matching bytes and rejects both tamp
     assert.equal(checkLocalCompiledBuildStamp(workspace), true);
     writeFileSync(runner, runnerBytes + "-unexpected");
     assert.equal(checkLocalCompiledBuildStamp(workspace), false);
+    writeFileSync(runner, runnerBytes);
+    assert.equal(checkLocalCompiledBuildStamp(workspace), true);
+    // An ignored symlinked compiled directory can otherwise evade clean-Git
+    // status and still match both SHA-256 hashes.
+    const externalRunner = join(workspace, "external-runner");
+    mkdirSync(externalRunner);
+    writeFileSync(join(externalRunner, "index.js"), runnerBytes);
+    rmSync(vendor, {recursive: true});
+    symlinkSync(externalRunner, vendor, "dir");
+    assert.equal(checkLocalCompiledBuildStamp(workspace), false);
+    rmSync(vendor);
+    mkdirSync(vendor);
     writeFileSync(runner, runnerBytes);
     assert.equal(checkLocalCompiledBuildStamp(workspace), true);
     writeFileSync(stamp, JSON.stringify({
