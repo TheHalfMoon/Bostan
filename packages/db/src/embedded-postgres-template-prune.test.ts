@@ -2,7 +2,14 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { __pruneStaleTemplatesForTests as pruneStaleTemplates } from "./test-embedded-postgres.js";
+import {
+  __embeddedPostgresTemplateRootDirForTests as templateRootDir,
+  __pruneStaleTemplatesForTests as pruneStaleTemplates,
+  __resetEmbeddedPostgresTemplateStateForTests as resetTemplateState,
+  __setEmbeddedPostgresCtorProviderForTests as setCtorProvider,
+  computeEmbeddedPostgresTemplateKey,
+  getEmbeddedPostgresTestSupport,
+} from "./test-embedded-postgres.js";
 
 const AGE_MS = 10 * 24 * 60 * 60 * 1000;
 const OWNER_MARKER = ".bostan-template-owner";
@@ -58,6 +65,46 @@ describe("Bostan template prune ownership admission", () => {
       expect(fs.existsSync(keepDir)).toBe(true);
     } finally {
       cleanup();
+    }
+  });
+});
+
+describe("Bostan template reuse ownership admission", () => {
+  it("refuses a preexisting unmarked template before declaring PostgreSQL supported", async () => {
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-template-reuse-owned-"));
+    const keys = ["TMPDIR", "TEMP", "TMP", "PAPERCLIP_TEST_POSTGRES_TEMPLATE"] as const;
+    const previous = new Map(keys.map((key) => [key, process.env[key]] as const));
+    try {
+      for (const key of ["TMPDIR", "TEMP", "TMP"]) process.env[key] = scratch;
+      delete process.env.PAPERCLIP_TEST_POSTGRES_TEMPLATE;
+      const key = computeEmbeddedPostgresTemplateKey();
+      const root = templateRootDir();
+      fs.mkdirSync(root, { mode: 0o700 });
+      const template = agedTemplate(root, key);
+      // The fake provider must never start a native cluster or touch foreign data.
+      setCtorProvider(async () => { throw new Error("synthetic native unavailable"); });
+      resetTemplateState();
+      expect((await getEmbeddedPostgresTestSupport()).supported).toBe(false);
+      expect(fs.readFileSync(path.join(template, "synthetic-owned-test-sentinel"), "utf8")).toBe("keep\n");
+
+      // The exact stopped-template ownership marker permits reuse without a
+      // native constructor. This remains a synthetic admission test, not PG QA.
+      fs.writeFileSync(
+        path.join(template, OWNER_MARKER),
+        `bostan-test-template-v1:${key}\n`,
+        { flag: "wx", mode: 0o600 },
+      );
+      resetTemplateState();
+      expect(await getEmbeddedPostgresTestSupport()).toEqual({ supported: true });
+    } finally {
+      setCtorProvider(null);
+      resetTemplateState();
+      for (const key of keys) {
+        const value = previous.get(key);
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+      fs.rmSync(scratch, { recursive: true, force: true });
     }
   });
 });
