@@ -553,7 +553,6 @@ export async function createApp(
   },
 ) {
   const app = express();
-  app.use(idleAdmissionMiddleware);
   const staticUi = express.Router();
   app.locals.paperclipDb = db;
   const isWarmStandby = opts.cloudWarmStandby ?? (() => false);
@@ -596,6 +595,10 @@ export async function createApp(
       bindHost: opts.bindHost,
     }),
   );
+  // A rejected private Host must not increment idle-work generation or keep
+  // the instance awake. Track only admitted ingress; retain idle tracking
+  // before every body parser, authentication handler, and route.
+  app.use(idleAdmissionMiddleware);
 
   app.use(
     COMPANY_IMPORT_API_PATH,
