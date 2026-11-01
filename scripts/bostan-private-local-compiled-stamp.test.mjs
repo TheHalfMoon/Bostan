@@ -6,15 +6,16 @@ import { fileURLToPath } from "node:url";
 import { matchesLocalCompiledSourceCommit as matches } from "./bostan-private-local-compiled-stamp.mjs";
 
 const sha = "a".repeat(40);
-const valid = JSON.stringify({ commit: sha }) + "\n";
+const actual = Object.freeze({indexSha256: "b".repeat(64), vendorSha256: "c".repeat(64)});
+const valid = JSON.stringify({ commit: sha, ...actual }) + "\n";
 const sourceFile = fileURLToPath(new URL("./bostan-local-http-postgres-smoke.sh", import.meta.url));
 const admissionFile = fileURLToPath(new URL("./bostan-private-local-compiled-stamp.mjs", import.meta.url));
 
 test("exact 40-digit lowercase built commit qualifies only same Git HEAD", () => {
-  assert.equal(matches(valid, sha), true);
-  assert.equal(matches(valid, "b".repeat(40)), false);
-  assert.equal(matches(valid, sha.slice(0, 7)), false);
-  assert.equal(matches(valid, sha.toUpperCase()), false);
+  assert.equal(matches(valid, sha, actual), true);
+  assert.equal(matches(valid, "b".repeat(40), actual), false);
+  assert.equal(matches(valid, sha.slice(0, 7), actual), false);
+  assert.equal(matches(valid, sha.toUpperCase(), actual), false);
 });
 
 test("invalid, ambiguous or oversized build-info never qualifies", () => {
@@ -27,9 +28,19 @@ test("invalid, ambiguous or oversized build-info never qualifies", () => {
     JSON.stringify({ __proto__: "ignored", commit: sha, extra: true }),
     " ".repeat(257) + valid,
     7, null, undefined,
-  ]) assert.equal(matches(value, sha), false);
-  assert.equal(matches(valid, 17), false);
-  assert.equal(matches(valid, " ".repeat(40)), false);
+  ]) assert.equal(matches(value, sha, actual), false);
+  assert.equal(matches(valid, 17, actual), false);
+  assert.equal(matches(valid, " ".repeat(40), actual), false);
+});
+
+test("compiled entry hashes must match both real executable digests", () => {
+  assert.equal(matches(valid, sha, undefined), false);
+  assert.equal(matches(valid, sha, {indexSha256: actual.indexSha256}), false);
+  assert.equal(matches(valid, sha, {...actual, indexSha256: "d".repeat(64)}), false);
+  assert.equal(matches(valid, sha, {...actual, vendorSha256: "e".repeat(64)}), false);
+  assert.equal(matches(JSON.stringify({commit: sha}), sha, actual), false);
+  assert.equal(matches(JSON.stringify({...actual,commit: sha, extra:"unexpected"}), sha, actual), false);
+  assert.equal(matches(JSON.stringify({commit: sha,indexSha256:"x",vendorSha256:actual.vendorSha256}), sha, actual), false);
 });
 
 test("compiled and packed private smoke reject stale build before mktemp, source mode unaffected", () => {
