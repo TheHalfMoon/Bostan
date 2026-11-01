@@ -37,6 +37,39 @@ describe("parseTrustProxyEnv", () => {
     expect(appWithEnv("2").get("trust proxy")).toBe(2);
   });
 
+  it.each([
+    "9007199254740992",
+    "999999999999999999999999",
+    "9".repeat(400),
+  ])("rejects unsafe or infinite numeric trusted-proxy hop counts (%s)", (raw) => {
+    // Number(raw) may round an unsafe integer or become Infinity, which
+    // effectively trusts every X-Forwarded-For hop.
+    expect(() => parseTrustProxyEnv(raw)).toThrow(/invalid integer/);
+    expect(() => parseTrustProxyEnv(raw)).toThrow(/safe positive integer/);
+  });
+
+  it("retains exact safe integer hop counts without floating-point rounding", () => {
+    expect(parseTrustProxyEnv("9007199254740991")).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  it.each([
+    "999.999.999.999",
+    "010.0.0.1",
+    ":::",
+    "2001:db8:::1",
+    "loopback,999.999.999.999",
+    "loopback,:::",
+  ])("rejects malformed trusted proxy IP/subnet tokens (%s)", (raw) => {
+    expect(() => parseTrustProxyEnv(raw)).toThrow(/unrecognized token/);
+  });
+
+  it("retains valid IPv4 and IPv6 CIDR trust-proxy configuration", () => {
+    expect(parseTrustProxyEnv("192.0.2.0/24,2001:db8::/32")).toEqual([
+      "192.0.2.0/24",
+      "2001:db8::/32",
+    ]);
+  });
+
   it("'01' throws (strict integer, no leading zeros)", () => {
     expect(() => parseTrustProxyEnv("01")).toThrow(/invalid integer/);
   });
