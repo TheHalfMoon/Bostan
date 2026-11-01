@@ -512,7 +512,24 @@ function prepareTemplateRootDir(): string | null {
 // template is never copied from a directory this user does not own.
 function isUsableTemplate(dir: string): boolean {
   if (describePrivateDirectoryProblem(dir) !== null) return false;
-  return fs.existsSync(path.join(dir, "PG_VERSION")) && !fs.existsSync(path.join(dir, "postmaster.pid"));
+  // existsSync follows symlinks: a linked PG_VERSION could copy external
+  // files, while a dangling postmaster.pid symlink looks like an absent PID
+  // marker. Neither proves a self-contained, stopped native cluster.
+  try {
+    const version = fs.lstatSync(path.join(dir, "PG_VERSION"));
+    if (!version.isFile() || version.isSymbolicLink() || version.nlink !== 1 ||
+        version.size < 1 || version.size > 32) return false;
+    try {
+      // Any object at this path, even a dangling symlink, is not proof that
+      // the postmaster exited. Never reuse or prune the uncertain template.
+      fs.lstatSync(path.join(dir, "postmaster.pid"));
+      return false;
+    } catch (error) {
+      return (error as NodeJS.ErrnoException).code === "ENOENT";
+    }
+  } catch {
+    return false;
+  }
 }
 
 // Records a use of the template so `pruneStaleTemplates` measures idle time,
