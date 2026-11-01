@@ -214,8 +214,8 @@ function cleanupEmbeddedPostgresTestDirs(dataDir: string) {
   fs.rmSync(dataDir, { recursive: true, force: true });
 }
 
-// Upper bound (ms) on how long we wait for the embedded Postgres cluster to
-// stop gracefully before abandoning the wait and returning from the hook.
+// Upper bound (ms) on how long we await a graceful POSIX PostgreSQL stop
+// before reporting an unverified shutdown and retaining the active fixture.
 const EMBEDDED_POSTGRES_STOP_TIMEOUT_MS = 5000;
 
 // `embedded-postgres@18.1.0-beta.16` exposes only `stop(): Promise<void>` — no
@@ -223,21 +223,21 @@ const EMBEDDED_POSTGRES_STOP_TIMEOUT_MS = 5000;
 // PostgreSQL "fast shutdown") and resolves *only* on the child's `exit` event,
 // with no time bound of its own. Under the loaded serial server shard a slow
 // shutdown checkpoint can push that past vitest's hookTimeout and hang the
-// afterAll hook. So we bound the graceful stop: if it overruns, we stop waiting
-// and return so the hook completes. The SIGINT has already been delivered, so
-// the abandoned process still exits on its own (and again when the runner exits).
-// Errors are swallowed, matching prior behavior.
+// afterAll hook. If stop exceeds the bound we reject rather than falsely
+// reporting quiescence; the stop Promise still owns the deferred cleanup
+// callback and only runs it after native stop actually fulfills.
 //
 // `cleanupFn` (data-dir reclaim) is chained on the raw `stop()` promise, not on
 // the timeout race, so the disposable data dir is removed *only after* `stop()`
-// actually settles — i.e. once the child Postgres process has exited. Removing
+// fulfills — i.e. once the child Postgres process has exited. Removing
 // it on the timeout path would pull the data files out from under a still-running
 // cluster and provoke checkpoint / WAL I/O errors. In the fast path `cleanupFn`
-// has run by the time this resolves; in the timeout path it runs asynchronously
-// once the abandoned process finally exits.
+// has run by the time this resolves; on timeout this function rejects while
+// cleanup may run later only if the original stop fulfills.
 async function stopEmbeddedPostgresBounded(
   instance: EmbeddedPostgresInstance | null,
   cleanupFn?: () => void,
+  timeoutMs: number = EMBEDDED_POSTGRES_STOP_TIMEOUT_MS,
 ): Promise<void> {
   if (!instance) {
     cleanupFn?.();
@@ -277,8 +277,11 @@ async function stopEmbeddedPostgresBounded(
   try {
     await Promise.race([
       stopped,
-      new Promise<void>((resolve) => {
-        timer = setTimeout(resolve, EMBEDDED_POSTGRES_STOP_TIMEOUT_MS);
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("POSIX embedded PostgreSQL stop timeout; retaining fixture")),
+          timeoutMs,
+        );
         timer.unref?.();
       }),
     ]);
@@ -697,6 +700,7 @@ let lastStartMode: EmbeddedPostgresStartMode | null = null;
 // or `getEmbeddedPostgresTestSupport`. A test drives the bounded retry directly
 // so it does not need a real Postgres connection.
 export const __startEmbeddedPostgresWithRetryForTests = startEmbeddedPostgresWithRetry;
+export const __stopEmbeddedPostgresBoundedForTests = stopEmbeddedPostgresBounded;
 export const __embeddedPostgresStartMaxAttemptsForTests = EMBEDDED_POSTGRES_START_MAX_ATTEMPTS;
 export const __embeddedPostgresTemplateRootDirForTests = templateRootDir;
 export const __isUsableEmbeddedPostgresTemplateForTests = isUsableTemplate;
