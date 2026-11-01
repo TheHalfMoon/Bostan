@@ -16,6 +16,7 @@ import {waitForWindowsPrivateHealth} from "./bostan-private-windows-health-wait.
 import {evaluateWindowsPgOrphanCheck} from "./bostan-private-windows-pg-orphan-proof.mjs";
 import {resolvePrivateWindowsPowerShellBinary} from "./bostan-private-windows-powershell-binary.mjs";
 import {resolvePrivateWindowsQaServerCommand} from "./bostan-private-windows-server-command.mjs";
+import {checkPrivateWindowsSourceWorkspaceDependencies} from "./bostan-private-windows-source-workspace-admission.mjs";
 import {classifyPrivateWindowsImportHeartbeat} from "./bostan-private-windows-import-heartbeat-classifier.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
@@ -80,6 +81,16 @@ try {
 } catch {
   console.error("BOSTAN_WINDOWS_LIVE_COMPILED_RUNTIME_REFUSED");
   process.exit(2);
+}
+// A clean source checkout with only root/server dependencies can still fail
+// deep inside Runner's static imports. Refuse absent workspace-scoped packages
+// before creating an owned PostgreSQL cluster, and never disclose local paths.
+if(serverMode==="source"){
+  const dependencies=checkPrivateWindowsSourceWorkspaceDependencies({root:resolve(root)});
+  if(!dependencies.allowed){
+    console.error("BOSTAN_WINDOWS_LIVE_SOURCE_DEPENDENCIES_REFUSED="+dependencies.reason);
+    process.exit(2);
+  }
 }
 if(browserMode){
   // Fail closed BEFORE creating a PostgreSQL fixture or any application data.
