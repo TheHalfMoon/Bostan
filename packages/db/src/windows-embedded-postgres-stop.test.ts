@@ -36,6 +36,111 @@ function validPidMarker(data: string, pid = 123): string {
   return `${pid}\n${fs.realpathSync(data)}\n`;
 }
 
+it("refuses a hardlinked PG_VERSION before any process inspection or shutdown", async () => {
+  await fixture(async (data) => {
+    const externalRoot = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-owned-version-link-"));
+    const external = path.join(externalRoot, "version-alias");
+    try {
+      fs.linkSync(path.join(data, "PG_VERSION"), external);
+      let inspections = 0;
+      let shutdowns = 0;
+      await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+        async () => { shutdowns++; },
+        async () => { inspections++; return []; }, noWait))
+        .rejects.toThrow(/version marker/i);
+      expect(shutdowns).toBe(0);
+      expect(inspections).toBe(0);
+      expect(fs.readFileSync(external, "utf8")).toBe("18");
+    } finally {
+      fs.unlinkSync(external);
+      fs.rmdirSync(externalRoot);
+    }
+  });
+});
+
+it("refuses a hardlinked postmaster.pid before signaling the pinned binary", async () => {
+  await fixture(async (data) => {
+    const marker = path.join(data, "postmaster.pid");
+    fs.writeFileSync(marker, validPidMarker(data));
+    const externalRoot = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-owned-pid-link-"));
+    const external = path.join(externalRoot, "pid-alias");
+    try {
+      fs.linkSync(marker, external);
+      let shutdowns = 0;
+      let inspections = 0;
+      await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+        async () => { shutdowns++; fs.unlinkSync(marker); },
+        async () => { inspections++; return inspections === 1 ? [row()] : []; }, noWait))
+        .rejects.toThrow(/PID marker/i);
+      expect(shutdowns).toBe(0);
+      expect(fs.existsSync(marker)).toBe(true);
+      expect(inspections).toBe(0);
+      expect(fs.readFileSync(external, "utf8")).toBe(validPidMarker(data));
+    } finally {
+      fs.unlinkSync(external);
+      fs.rmdirSync(externalRoot);
+    }
+  });
+});
+
+it("refuses a newly hardlinked PG_VERSION during asynchronous process inspection", async () => {
+  await fixture(async (data) => {
+    const marker = path.join(data, "postmaster.pid");
+    fs.writeFileSync(marker, validPidMarker(data));
+    const externalRoot = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-owned-version-race-"));
+    const external = path.join(externalRoot, "version-alias");
+    try {
+      let shutdowns = 0;
+      let inspections = 0;
+      await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+        async () => { shutdowns++; fs.unlinkSync(marker); },
+        async () => {
+          if (++inspections === 1) {
+            fs.linkSync(path.join(data, "PG_VERSION"), external);
+            return [row()];
+          }
+          return [];
+        }, noWait))
+        .rejects.toThrow(/cluster identity changed/i);
+      expect(inspections).toBe(1);
+      expect(shutdowns).toBe(0);
+      expect(fs.existsSync(marker)).toBe(true);
+    } finally {
+      fs.unlinkSync(external);
+      fs.rmdirSync(externalRoot);
+    }
+  });
+});
+
+it("refuses a newly hardlinked postmaster.pid during asynchronous process inspection", async () => {
+  await fixture(async (data) => {
+    const marker = path.join(data, "postmaster.pid");
+    fs.writeFileSync(marker, validPidMarker(data));
+    const externalRoot = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-owned-pid-race-"));
+    const external = path.join(externalRoot, "pid-alias");
+    try {
+      let shutdowns = 0;
+      let inspections = 0;
+      await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+        async () => { shutdowns++; fs.unlinkSync(marker); },
+        async () => {
+          if (++inspections === 1) {
+            fs.linkSync(marker, external);
+            return [row()];
+          }
+          return [];
+        }, noWait))
+        .rejects.toThrow(/PID marker/i);
+      expect(inspections).toBe(1);
+      expect(shutdowns).toBe(0);
+      expect(fs.existsSync(marker)).toBe(true);
+    } finally {
+      fs.unlinkSync(external);
+      fs.rmdirSync(externalRoot);
+    }
+  });
+});
+
 it("rejects a postmaster PID marker pointing to a different data directory before pg_ctl", async () => {
   await fixture(async (data) => {
     // PostgreSQL writes its data-directory path on the second PID-marker line.
