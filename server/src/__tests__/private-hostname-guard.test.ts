@@ -384,8 +384,13 @@ describe("private WebSocket upgrade request framing", () => {
     { label: "valid ASCII tab OWS before keep-alive token", connection: "Upgrade,\tkeep-alive", allow: true },
   ])("enforces strict Connection token lexical framing for $label", ({ connection, allow }) => {
     const rawHeaders = ["Host", "localhost:3100", "Connection", connection, "Upgrade", "websocket"];
+    // Reuse the canonical request factory: HTTP/1.1 is mandatory in the
+    // production admission gate. Omitting its httpVersion makes every
+    // lexical negative pass for the WRONG reason, and the ASCII-tab positive
+    // fail before Connection token parsing is reached.
     expect(isPrivateUpgradeRequestAllowed({
-      method: "GET", url: "/api/events/ws", rawHeaders,
+      ...makeRequest("GET"),
+      rawHeaders,
     }, opts)).toBe(allow);
   });
 
