@@ -28,6 +28,12 @@ $env:NODE_OPTIONS = '--max-old-space-size=1152'
 
 After-run independent read-only checks: Git checkout **CLEAN**, `postgres.exe` **0**, **0 remaining** unique `bostan-pg-(prestart|nonempty)-owned-*` test scratch roots in the process temporary directory. The pre-existing B177 test checkout was returned to **exact original detached SHA `e02229502d664a3594174886752e794a3a43edaf`**, original sparse scope `packages/db`, and verified CLEAN and zero PostgreSQL processes. No unrelated files, processes or global Cargo cache changed.
 
+## Follow-up: test fixture's own teardown now also nonrecursive
+
+After the successful native Windows source test at `2d188eca7e70337ccc1a174d2079dca6a20fb9f9`, the already-existing first regression test's `finally` path was tightened from `fs.rmSync(...,{recursive:true,force:true})` to `fs.rmdirSync(owned)` for an empty directory. This prevents that test harness itself from erasing unexpected nested data. Only test code changed; the previously qualified production-facing fixture fix and the new nonempty-sentinel test are unchanged. New code commit **`e3a501cea319e3b373b074c71668775e73a825a5`**.
+
+**Important evidence boundary:** a further exact-final-commit Windows checkout/test request was refused by the remote computer control safety checks. We did NOT circumvent that refusal and did NOT run Vitest on `e3a501ce...`. The 2/2 native test PASS remains an authentic receipt **only for the earlier source commit `2d188eca...`**. The final test cleanup edit has been code-reviewed but still requires a genuine exact-commit rerun before claiming final-source qualification. A subsequent read-only PC check confirmed B177 is still at original detached SHA `e02229502d664a3594174886752e794a3a43edaf`, original sparse `packages/db`, clean, with 0 postgres.exe processes. All PRs remain DRAFT/NO-GO.
+
 ## Qualification limits / release blockers
 
 This is a **security/data-loss guard against nonempty scratch deletion** in the test fixture, proved using a synthetic constructor failure. It is NOT a real PostgreSQL `io_worker` forced-crash, multi-worker stress, compiled server, Chromium integration, or installed-app qualification. Issue #234 remains OPEN for repeated crash/worker orphan evidence; #237 remains OPEN for compiled Windows runtime and real Chromium signup/role/tenant journeys. Full TypeScript7/root Vitest, Linux unprivileged bwrap, all installed OS journeys, side-effect consent, tenant privacy and legal provenance remain outstanding.
