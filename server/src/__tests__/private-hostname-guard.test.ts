@@ -283,7 +283,7 @@ describe("private WebSocket upgrade authority admission", () => {
 
 
 describe("private HTTP listener WebSocket upgrade admission", () => {
-  async function probeUpgrade(host: string, enabled: boolean) {
+  async function probeUpgrade(host: string, enabled: boolean, requestTarget = "/api/companies/00000000-0000-4000-8000-000000000001/events/ws") {
     const server = createPaperclipHttpServer((_req, res) => res.end("HTTP only"), {
       apiUrl: "http://127.0.0.1:3100",
       privateHostAdmission: { enabled, allowedHostnames: [], bindHost: "0.0.0.0" },
@@ -303,7 +303,7 @@ describe("private HTTP listener WebSocket upgrade admission", () => {
         let data = "";
         client.setTimeout(3_000, () => client.destroy(new Error("upgrade test timeout")));
         client.once("connect", () => client.write(
-          "GET /api/companies/00000000-0000-4000-8000-000000000001/events/ws HTTP/1.1\\r\\n" +
+          `GET ${requestTarget} HTTP/1.1\\r\\n` +
           `Host: ${host}\\r\\nConnection: Upgrade\\r\\nUpgrade: websocket\\r\\nSec-WebSocket-Key: dGVzdC1rZXk=\\r\\nSec-WebSocket-Version: 13\\r\\n\\r\\n`,
         ));
         client.on("data", (chunk) => { data += chunk.toString(); });
@@ -318,6 +318,12 @@ describe("private HTTP listener WebSocket upgrade admission", () => {
 
   it("refuses a forbidden private Host before any WebSocket listener handles it", async () => {
     const result = await probeUpgrade("blocked.invalid", true);
+    expect(result.downstream).toBe(0);
+    expect(result.response).not.toContain("101 Switching Protocols");
+  });
+
+  it("rejects malformed absolute-form upgrades before runner URL parsing", async () => {
+    const result = await probeUpgrade("blocked.invalid", true, "http://%");
     expect(result.downstream).toBe(0);
     expect(result.response).not.toContain("101 Switching Protocols");
   });
