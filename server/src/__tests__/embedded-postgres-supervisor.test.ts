@@ -151,6 +151,85 @@ describe("embedded PostgreSQL supervisor", () => {
     expect(replacement.instance.stop).toHaveBeenCalledOnce();
   });
 
+  it("stops a failed-start owned replacement before retrying recovery", async () => {
+    const initial = createInstance();
+    const failed = createInstance(new Error("synthetic start failure"));
+    const next = createInstance();
+    const stopGate = deferred();
+    failed.instance.stop = vi.fn(() => stopGate.promise);
+    const createReplacement = vi.fn()
+      .mockReturnValueOnce(failed.instance)
+      .mockReturnValueOnce(next.instance);
+    const supervisor = createEmbeddedPostgresSupervisor({
+      initialInstance: initial.instance,
+      createInstance: createReplacement,
+      restartDelaysMs: [0, 0],
+    });
+
+    initial.process.emit("exit", 1, null);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(failed.instance.start).toHaveBeenCalledOnce();
+    expect(failed.instance.stop).toHaveBeenCalledOnce();
+    expect(createReplacement).toHaveBeenCalledTimes(1);
+
+    stopGate.resolve();
+    await supervisor.waitForRecovery();
+    expect(createReplacement).toHaveBeenCalledTimes(2);
+    expect(next.instance.start).toHaveBeenCalledOnce();
+    expect(supervisor.current()).toBe(next.instance);
+  });
+
+  it("fails closed when a failed-start replacement cannot be verified stopped", async () => {
+    const initial = createInstance();
+    const failed = createInstance(new Error("synthetic start failure"));
+    const stopError = new Error("synthetic native stop refusal");
+    failed.instance.stop = vi.fn(async () => { throw stopError; });
+    const createReplacement = vi.fn(() => failed.instance);
+    const onRecoveryExhausted = vi.fn();
+    const supervisor = createEmbeddedPostgresSupervisor({
+      initialInstance: initial.instance,
+      createInstance: createReplacement,
+      restartDelaysMs: [0, 0, 0],
+      onRecoveryExhausted,
+    });
+
+    initial.process.emit("exit", 1, null);
+    await expect(supervisor.waitForRecovery()).rejects.toThrow("replacement stop unverified");
+    expect(failed.instance.stop).toHaveBeenCalledOnce();
+    expect(createReplacement).toHaveBeenCalledOnce();
+    expect(onRecoveryExhausted).toHaveBeenCalledOnce();
+    await expect(supervisor.shutdown()).rejects.toThrow("replacement stop unverified");
+  });
+
+  it("does not report shutdown complete while a failed-start replacement stop is pending", async () => {
+    const initial = createInstance();
+    const failed = createInstance(new Error("synthetic start failure"));
+    const stopGate = deferred();
+    failed.instance.stop = vi.fn(() => stopGate.promise);
+    const createReplacement = vi.fn(() => failed.instance);
+    const supervisor = createEmbeddedPostgresSupervisor({
+      initialInstance: initial.instance,
+      createInstance: createReplacement,
+      restartDelaysMs: [0, 0],
+    });
+
+    initial.process.emit("exit", 1, null);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    const first = supervisor.shutdown();
+    const second = supervisor.shutdown();
+    expect(second).toBe(first);
+    let settled = false;
+    void first.then(() => { settled = true; });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(failed.instance.stop).toHaveBeenCalledOnce();
+    expect(settled).toBe(false);
+
+    stopGate.resolve();
+    await Promise.all([first, second]);
+    expect(createReplacement).toHaveBeenCalledOnce();
+    expect(initial.instance.stop).not.toHaveBeenCalled();
+  });
+
   it("bounds recovery attempts and reports the final failure", async () => {
     const initial = createInstance();
     const failures = [new Error("first"), new Error("second"), new Error("third")];
