@@ -34,6 +34,7 @@ export function createEmbeddedPostgresSupervisor(options: Options): EmbeddedPost
   let shuttingDown = false;
   let recoveryPromise: Promise<void> | null = null;
   let shutdownPromise: Promise<void> | null = null;
+  let unverifiedReplacementStop: Error | null = null;
 
   const recover = async () => {
     let lastError: unknown = new Error("Embedded PostgreSQL exited unexpectedly");
@@ -46,7 +47,31 @@ export function createEmbeddedPostgresSupervisor(options: Options): EmbeddedPost
       try {
         await options.beforeRestart?.(attempt);
         const replacement = options.createInstance();
-        await replacement.start();
+        try {
+          await replacement.start();
+        } catch (startError) {
+          // A rejected start does not prove that the owned native process
+          // never launched. Verify its stop before starting another cluster.
+          try {
+            await replacement.stop();
+          } catch (stopError) {
+            const unsafe = new Error(
+              "Embedded PostgreSQL recovery replacement stop unverified after failed start",
+              { cause: stopError },
+            );
+            unverifiedReplacementStop = unsafe;
+            options.onRecoveryExhausted?.(unsafe);
+            // Stop retries: another cluster could collide with a still-live
+            // failed replacement. Shutdown and waitForRecovery fail closed.
+            if (shuttingDown) throw unsafe;
+            return;
+          }
+          // Shutdown during the failed start waits for the owned stop above;
+          // the old instance already emitted exit, so there is no live owner
+          // left to stop and no reason to retry.
+          if (shuttingDown) return;
+          throw startError;
+        }
         if (shuttingDown) {
           await replacement.stop();
           return;
@@ -85,7 +110,10 @@ export function createEmbeddedPostgresSupervisor(options: Options): EmbeddedPost
   monitor(activeInstance);
   return {
     current: () => activeInstance,
-    waitForRecovery: async () => { await recoveryPromise; },
+    waitForRecovery: async () => {
+      await recoveryPromise;
+      if (unverifiedReplacementStop) throw unverifiedReplacementStop;
+    },
     shutdown: () => {
       if (shutdownPromise) return shutdownPromise;
       shuttingDown = true;
@@ -93,6 +121,7 @@ export function createEmbeddedPostgresSupervisor(options: Options): EmbeddedPost
       // An early "already shutting down" return is not proof of quiescence.
       shutdownPromise = (async () => {
         await recoveryPromise;
+        if (unverifiedReplacementStop) throw unverifiedReplacementStop;
         if (!activeInstanceExited) await activeInstance.stop();
       })();
       return shutdownPromise;
