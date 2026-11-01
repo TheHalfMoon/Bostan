@@ -52,6 +52,16 @@ export function checkLocalCompiledBuildStamp(repoRoot = root) {
       timeout: 3000, maxBuffer: 256, encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
+    // A matching HEAD alone is not source provenance when tracked source
+    // files were modified or new untracked files entered the checkout.
+    // Build outputs are gitignored; refuse any other dirty QA checkout.
+    const changes = execFileSync("git", [
+      "-C", repoRoot, "status", "--porcelain=v1", "--untracked-files=normal",
+    ], {
+      timeout: 3000, maxBuffer: 64 * 1024, encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    if (changes.length !== 0) return false;
     const actualDigests = {};
     for (const [i, name] of ENTRIES.entries()) {
       const file = join(repoRoot, "server", "dist", ...name.split("/"));
