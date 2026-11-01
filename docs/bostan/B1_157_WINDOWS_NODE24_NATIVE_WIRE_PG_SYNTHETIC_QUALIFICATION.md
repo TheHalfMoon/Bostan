@@ -52,9 +52,24 @@ node --test scripts/bostan-private-workflow-admission.test.mjs scripts/bostan-pr
 
 The assertion failures must **NOT** be called source regressions or a passed full Bostan admission suite. Source-negative fixtures and workflow contract regression cases passed; full checkout needs re-run. An attempt to expand sparse scope to `docs` and `ui` was denied by a tool safety check and **was not retried or bypassed**.
 
+## Qualification 4 — exact full-checkout docs/UI workflow admission **PASS 58/58**
+
+A second **previously existing, fully materialized, CLEAN** private Windows 11 checkout was found at `D:\Bostan-B111-qa`, original detached HEAD `4a367c57e4a40c06dad2befd7de5a6ff43bd6081`. The checkout already included `docs/docs.json`, the six required `ui` assets, scripts, dependencies, and the full Git tree. No blocked sparse scope expansion was retried.
+
+Git fetched exactly the same private B1-156 commit `78839ebeaeeef9a4239ed1b18593b899aa4a79fe`, checked out detached with git hooks disabled, and verified the full checkout remained clean. On **Node v24.19.0 / Windows 11**, both commands ran against the actual checked-in files:
+
+```powershell
+node --test scripts/bostan-private-workflow-admission.test.mjs scripts/bostan-private-preflight.test.mjs scripts/bostan-private-docs-entry-gate.test.mjs scripts/bostan-private-ui-brand-gate.test.mjs
+pnpm run test:bostan-admission
+```
+
+**Both commands PASS 58/58, FAIL 0, SKIP 0, EXIT 0**. Direct Node run completed in approximately **261 ms**, root pnpm command in approximately **275 ms** of Node test time. This verifies **actual** source-backed docs and UI navigation/status assets, independent negative fixtures, private combined preflight including CLI entry, and root script admission contract.
+
+The earlier **55 PASS / 3 FAIL** on the *sparse* checkout above remains accurately recorded as an incomplete first attempt, **superseded for docs/UI admission qualification by this successful full-checkout result**. It does not imply full Vitest/TypeScript or installed app readiness.
+
 ## Remaining release NO-GO gates
 
-- Re-run combined docs/UI admission on a **fully materialized authorized private checkout**; validate exact 58 cases with zero failures, then full root Vitest and TypeScript7.
+- Combined docs/UI admission: **now satisfied for this exact B1-156 source SHA on native Windows Node24**. Still requires full root Vitest/TypeScript7 and a release-frozen cross-OS qualification.
 - Genuine unprivileged Linux `bwrap` isolation; repeat/stress/forced-crash native PostgreSQL on Windows and verify all owned worker processes exit after teardown (#234).
 - Fully booted compiled Windows authenticated HTTP/BetterAuth and browser/Chromium #237; installed Windows/macOS/Linux app journeys.
 - Agent permission/side-effect consent, workspace/tenant isolation, LICENSE/NOTICE/provenance review.
