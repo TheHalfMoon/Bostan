@@ -57,7 +57,7 @@ test("real checkout admission accepts owned matching bytes and rejects both tamp
     git("init", "--quiet");
     // Keep generated compiled assets ignored but enforce a genuinely clean
     // tracked and untracked source checkout at admission.
-    writeFileSync(join(workspace, ".gitignore"), "server/dist/\n");
+    writeFileSync(join(workspace, ".gitignore"), "server/dist/\nexternal-runner/\n");
     const readme = join(workspace, "README.md");
     const originalReadme = "synthetic owned source\n";
     writeFileSync(readme, originalReadme);
