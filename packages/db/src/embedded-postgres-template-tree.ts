@@ -7,6 +7,12 @@ import path from "node:path";
 // This check cannot replace an atomic snapshot; repeat after copying.
 const MAX_TEMPLATE_ENTRIES = 16384;
 const MAX_TEMPLATE_DEPTH = 32;
+// Test-only migrated cluster cache: cap the logical bytes copied even when
+// an adversarial or stale template contains sparse or oversized files.
+// A normal fresh initdb + migrations is far smaller; oversized templates
+// must fall back to an independently created fresh cluster.
+const MAX_TEMPLATE_FILE_BYTES = 256 * 1024 * 1024;
+const MAX_TEMPLATE_TOTAL_BYTES = 512 * 1024 * 1024;
 
 export function isSelfContainedPostgresTemplateTree(root: string): boolean {
   if (typeof root !== "string" || !path.isAbsolute(root)) return false;
@@ -16,6 +22,7 @@ export function isSelfContainedPostgresTemplateTree(root: string): boolean {
     const uid = process.getuid?.();
     const stack: Array<{ dir: string; depth: number }> = [{ dir: root, depth: 0 }];
     let entries = 0;
+    let totalBytes = 0;
     while (stack.length) {
       const { dir, depth } = stack.pop()!;
       const info = fs.lstatSync(dir);
@@ -34,8 +41,13 @@ export function isSelfContainedPostgresTemplateTree(root: string): boolean {
         if (stat.isDirectory()) {
           if (depth >= MAX_TEMPLATE_DEPTH) return false;
           stack.push({ dir: file, depth: depth + 1 });
-        } else if (!stat.isFile() || stat.nlink !== 1) {
+        } else if (!stat.isFile() || stat.nlink !== 1 ||
+                   !Number.isSafeInteger(stat.size) || stat.size < 0 ||
+                   stat.size > MAX_TEMPLATE_FILE_BYTES) {
           return false;
+        } else {
+          totalBytes += stat.size;
+          if (totalBytes > MAX_TEMPLATE_TOTAL_BYTES) return false;
         }
       }
     }
