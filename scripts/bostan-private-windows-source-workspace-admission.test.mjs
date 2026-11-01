@@ -32,12 +32,19 @@ test('refuses a missing installed dependency in any of the three workspace scope
 
 test('reports pass only after each declared dependency resolves from its own scope', async t => {
   const root = await fixture(t);
+  for (const scope of scopes) {
+    const mod = join(root, scope, 'node_modules', 'smol-toml');
+    await mkdir(mod, {recursive: true});
+    await writeFile(join(mod, 'package.json'), '{"name":"smol-toml","version":"1.9.1","main":"index.js"}');
+    await writeFile(join(mod, 'index.js'), 'module.exports = {};');
+  }
   let checks = 0;
   const receipt = check({root, resolveDependency(manifest, name) {
     assert.equal(name, 'smol-toml');
-    assert(scopes.some(s => manifest === join(root, s, 'package.json')));
+    const scope = scopes.find(s => manifest === join(root, s, 'package.json'));
+    assert(scope);
     checks++;
-    return 'synthetic-module';
+    return join(root, scope, 'node_modules', 'smol-toml', 'index.js');
   }});
   assert.equal(checks, 3);
   assert.deepEqual(receipt, {allowed: true, reason: 'pass'});
