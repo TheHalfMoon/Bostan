@@ -43,7 +43,7 @@ Machine-evaluated schema bostan.private-windows-real-postgres-teardown.v1: run=t
 - Matching owned B111 temporary database data directories **0**.
 - Git exact SHA still verified, worktree CLEAN.
 - Free memory recovered to ~6.71 GiB; D: free ~7.14 GiB.
-- Existing unrelated TEMP contents were preserved. AppData appeared, with ownership uncertain, and was not deleted. The task's own exact-match marker should be removed after verification and test checkout reverted to prior SHA; do not claim this was done until verified separately.
+- Existing unrelated TEMP contents were preserved. AppData appeared, with ownership uncertain, and was not deleted. After the native run, the task verified its own marker as a regular non-reparse file with EXACT 17-byte BOSTAN_TEST_ONLY plus LF contents and removed ONLY THAT marker; original TEMP entries were left untouched. The clean full QA checkout was restored to its exact original detached SHA 4a367c57e4a40c06dad2befd7de5a6ff43bd6081. Independent final read-only checks confirmed Git CLEAN, the marker ABSENT, zero postgres.exe processes, and the three remaining unrelated/uncertain TEMP entries preserved.
 
 ## Strict qualification limits
 
