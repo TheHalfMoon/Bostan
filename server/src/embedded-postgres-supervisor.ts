@@ -33,6 +33,7 @@ export function createEmbeddedPostgresSupervisor(options: Options): EmbeddedPost
   let activeInstanceExited = false;
   let shuttingDown = false;
   let recoveryPromise: Promise<void> | null = null;
+  let shutdownPromise: Promise<void> | null = null;
 
   const recover = async () => {
     let lastError: unknown = new Error("Embedded PostgreSQL exited unexpectedly");
@@ -56,6 +57,9 @@ export function createEmbeddedPostgresSupervisor(options: Options): EmbeddedPost
         options.onRestarted?.(attempt);
         return;
       } catch (error) {
+        // A shutdown waiting for recovery must not report successful teardown
+        // after a replacement failed to stop.
+        if (shuttingDown) throw error;
         lastError = error;
         options.onRestartAttemptFailed?.(error, attempt);
       }
@@ -82,11 +86,16 @@ export function createEmbeddedPostgresSupervisor(options: Options): EmbeddedPost
   return {
     current: () => activeInstance,
     waitForRecovery: async () => { await recoveryPromise; },
-    shutdown: async () => {
-      if (shuttingDown) return;
+    shutdown: () => {
+      if (shutdownPromise) return shutdownPromise;
       shuttingDown = true;
-      await recoveryPromise;
-      if (!activeInstanceExited) await activeInstance.stop();
+      // Share completion and native stop failures with every shutdown caller.
+      // An early "already shutting down" return is not proof of quiescence.
+      shutdownPromise = (async () => {
+        await recoveryPromise;
+        if (!activeInstanceExited) await activeInstance.stop();
+      })();
+      return shutdownPromise;
     },
   };
 }
