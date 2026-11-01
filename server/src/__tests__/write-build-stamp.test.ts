@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -33,6 +33,29 @@ it("packages a full source commit without a Docker build argument", () => {
     expect(stamp.indexSha256).toBe(hash(compiledEntry));
     expect(stamp.vendorSha256).toBe(hash(runnerEntry));
     expect(Object.keys(stamp).sort()).toEqual(["commit","indexSha256","vendorSha256"].sort());
+    // A build stamp must never overwrite a linked file outside dist.
+    const stampPath = join(compiled, "build-info.json");
+    const outsideStamp = join(root, "outside-stamp.json");
+    writeFileSync(outsideStamp, "foreign-owned-sentinel");
+    rmSync(stampPath);
+    symlinkSync(outsideStamp, stampPath);
+    expect(() => execFileSync(process.execPath, [script], {
+      cwd: root, env, stdio: "pipe",
+    })).toThrow();
+    expect(readFileSync(outsideStamp, "utf8")).toBe("foreign-owned-sentinel");
+    rmSync(stampPath);
+
+    // A linked intermediate compiled directory is not an owned artifact.
+    const vendorDir = join(compiled, "vendor", "paperclip-runner");
+    const outsideRunner = join(root, "outside-runner");
+    mkdirSync(outsideRunner);
+    writeFileSync(join(outsideRunner, "index.js"), runnerEntry);
+    rmSync(vendorDir, {recursive: true});
+    symlinkSync(outsideRunner, vendorDir, "dir");
+    expect(() => execFileSync(process.execPath, [script], {
+      cwd: root, env, stdio: "pipe",
+    })).toThrow();
+    expect(readFileSync(join(outsideRunner, "index.js"), "utf8")).toBe(runnerEntry);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
