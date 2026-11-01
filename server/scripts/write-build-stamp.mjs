@@ -17,7 +17,7 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { lstatSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, constants, fstatSync, ftruncateSync, lstatSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -35,6 +35,14 @@ const COMPILED_FILES = ["index.js", "vendor/paperclip-runner/index.js"];
  * issuing a misleading provenance receipt.
  */
 export function digestCompiledBuildEntries(directory = distDir) {
+  // A linked dist/vendor directory can redirect otherwise regular compiled
+  // entries outside the owned server build tree. Refuse before reading bytes.
+  for (const directory of [distDir, join(distDir, "vendor"),
+    join(distDir, "vendor", "paperclip-runner")]) {
+    const info = lstatSync(directory);
+    if (!info.isDirectory() || info.isSymbolicLink())
+      throw new Error("Bostan compiled build directory not safely qualified");
+  }
   const values = [];
   for (const relativePath of COMPILED_FILES) {
     const file = join(directory, ...relativePath.split('/'));
@@ -98,7 +106,31 @@ function main() {
   }
 
   const digests = digestCompiledBuildEntries(distDir);
-  writeFileSync(outFile, `${JSON.stringify({ commit, ...digests }, null, 2)}\n`);
+  // Do not follow a pre-existing linked build-info.json and overwrite a
+  // foreign file. Open without truncation, verify the owned regular inode,
+  // then truncate only that opened descriptor.
+  try {
+    const existing = lstatSync(outFile);
+    if (!existing.isFile() || existing.isSymbolicLink() || existing.nlink !== 1)
+      throw new Error("Bostan build stamp path not safely qualified");
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+  const fd = openSync(outFile,
+    constants.O_WRONLY | constants.O_CREAT | (constants.O_NOFOLLOW ?? 0), 0o600);
+  try {
+    const info = fstatSync(fd);
+    const pathInfo = lstatSync(outFile);
+    if (!info.isFile() || info.nlink !== 1 ||
+        !pathInfo.isFile() || pathInfo.isSymbolicLink() ||
+        pathInfo.nlink !== 1 || info.dev !== pathInfo.dev ||
+        info.ino !== pathInfo.ino)
+      throw new Error("Bostan build stamp descriptor not safely qualified");
+    ftruncateSync(fd, 0);
+    writeFileSync(fd, `${JSON.stringify({ commit, ...digests }, null, 2)}\n`);
+  } finally {
+    closeSync(fd);
+  }
   console.log(`[build-stamp] wrote ${outFile} commit=${commit}`);
 }
 
