@@ -72,6 +72,12 @@ describe("privateHostnameGuard", () => {
     expect([400, 403]).toContain(await rawHttpStatus(["Host: localhost:3100"], requestTarget));
   });
 
+  it.each(["//blocked-host.invalid/api/health", "//%"])(
+    "refuses ambiguous network-path request targets (%s)", async (requestTarget) => {
+      expect([400, 403]).toContain(await rawHttpStatus(["Host: localhost:3100"], requestTarget));
+    },
+  );
+
   it("keeps normal origin-form paths and query strings working", async () => {
     expect(await rawHttpStatus(["Host: localhost:3100"], "/api/health?source=qa")).toBe(200);
   });
@@ -267,6 +273,7 @@ describe("private WebSocket upgrade authority admission", () => {
     { label: "duplicate Host", rawHeaders: ["Host", "localhost", "Host", "blocked.invalid"], url: target },
     { label: "missing Host", rawHeaders: ["X-Forwarded-Host", "localhost"], url: target },
     { label: "absolute-form target", rawHeaders: ["Host", "localhost"], url: "http://blocked.invalid/api/companies/00000000-0000-4000-8000-000000000001/events/ws" },
+    { label: "network-path target", rawHeaders: ["Host", "localhost"], url: "//%" },
   ])("refuses $label before WebSocket authentication", ({ rawHeaders, url }) => {
     expect(isPrivateUpgradeHostAllowed({ rawHeaders, url }, privateOpts)).toBe(false);
   });
@@ -326,6 +333,11 @@ describe("private HTTP listener WebSocket upgrade admission", () => {
     const result = await probeUpgrade("blocked.invalid", true, "http://%");
     expect(result.downstream).toBe(0);
     expect(result.response).not.toContain("101 Switching Protocols");
+  });
+
+  it("refuses ambiguous network-path upgrades before URL parsing", async () => {
+    const result = await probeUpgrade("localhost:3100", true, "//%");
+    expect(result.downstream).toBe(0);
   });
 
   it("retains a valid loopback upgrade and public-mode compatibility", async () => {
