@@ -86,7 +86,9 @@ export function resolvePrivateHostnameAllowSet(opts: { allowedHostnames: string[
   const bindHost = opts.bindHost.trim().toLowerCase();
   const allowSet = new Set<string>(configuredAllow);
 
-  if (bindHost && bindHost !== "0.0.0.0") {
+  // IPv4 and IPv6 unspecified addresses bind every interface; neither is
+  // an implicit client-facing Host authority in private mode.
+  if (bindHost && bindHost !== "0.0.0.0" && bindHost !== "::") {
     allowSet.add(bindHost);
   }
   allowSet.add("localhost");
