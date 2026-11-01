@@ -133,3 +133,64 @@ test('native Mac oversized output terminates only its detached synthetic worker 
       child.kill('SIGKILL');
   }
 });
+
+
+test('native Mac timeout escalates only its own SIGTERM-ignoring synthetic group', {
+  skip: process.platform !== 'darwin', timeout: 12_000,
+}, async () => {
+  let child;
+  try {
+    const receipt = await runWorker('synthetic-stubborn-timeout', {}, 'api', {
+      timeoutMs: 300,
+      spawnWorker: (_binary, _args, options) => {
+        assert.equal(options.detached, true);
+        child = spawn(process.execPath, [
+          '-e', 'process.on("SIGTERM",()=>{}); process.stdout.write("READY\\n"); setInterval(()=>{},1000)',
+        ], options);
+        return child;
+      },
+    });
+    assert.equal(receipt.closed, true);
+    assert.equal(receipt.timedOut, true);
+    assert.equal(receipt.qualified, false);
+    assert.ok(Number.isSafeInteger(child?.pid));
+    assert.throws(() => process.kill(child.pid, 0), { code: 'ESRCH' });
+    assert.doesNotThrow(() => process.kill(process.pid, 0));
+  } finally {
+    // Only the freshly spawned detached synthetic QA group is eligible.
+    if (child?.pid && child.exitCode === null && child.signalCode === null) {
+      try { process.kill(-child.pid, 'SIGKILL'); }
+      catch (error) { if (error?.code !== 'ESRCH') throw error; }
+    }
+  }
+});
+
+test('native Mac overflow escalates its own SIGTERM-ignoring synthetic group', {
+  skip: process.platform !== 'darwin', timeout: 12_000,
+}, async () => {
+  let child;
+  try {
+    const receipt = await runWorker('synthetic-stubborn-overflow', {}, 'api', {
+      timeoutMs: 5_000,
+      spawnWorker: (_binary, _args, options) => {
+        assert.equal(options.detached, true);
+        child = spawn(process.execPath, [
+          '-e', 'process.on("SIGTERM",()=>{}); process.stdout.write("x".repeat(540000)); setInterval(()=>{},1000)',
+        ], options);
+        return child;
+      },
+    });
+    assert.equal(receipt.closed, true);
+    assert.equal(receipt.overflow, true);
+    assert.equal(receipt.timedOut, false);
+    assert.equal(receipt.qualified, false);
+    assert.ok(Number.isSafeInteger(child?.pid));
+    assert.throws(() => process.kill(child.pid, 0), { code: 'ESRCH' });
+    assert.doesNotThrow(() => process.kill(process.pid, 0));
+  } finally {
+    if (child?.pid && child.exitCode === null && child.signalCode === null) {
+      try { process.kill(-child.pid, 'SIGKILL'); }
+      catch (error) { if (error?.code !== 'ESRCH') throw error; }
+    }
+  }
+});
