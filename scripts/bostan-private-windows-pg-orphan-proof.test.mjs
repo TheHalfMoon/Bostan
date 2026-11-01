@@ -10,7 +10,7 @@ const checkResult = input => check({status:0,signal:null,errorCode:null,stdout:p
 
 test("strict zero-owned and zero-uninspectable proof qualifies a clean process tree",()=>{
   const v=checkResult();
-  assert.equal(LINES.length,3);
+  assert.equal(LINES.length,4);
   assert.deepEqual(v,{
     schema:"bostan.private-windows-pg-orphan-check.v1",
     noOrphanPostgresProcessVerified:true,outcome:"pass",
