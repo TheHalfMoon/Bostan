@@ -274,6 +274,48 @@ describe("isUsableTemplate", () => {
     expect(isUsableTemplate(link)).toBe(false);
   });
 
+  it.skipIf(process.platform === "win32")("refuses PG_VERSION symlinks inside an otherwise private cache template", () => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "paperclip-template-usable-"));
+    const dir = path.join(root, "template");
+    writeCluster(dir);
+    const version = path.join(dir, "PG_VERSION");
+    const target = path.join(root, "external-version");
+    fs.renameSync(version, target);
+    fs.symlinkSync(target, version);
+    expect(fs.readFileSync(version, "utf8")).toMatch(/^18/);
+    expect(isUsableTemplate(dir)).toBe(false);
+  });
+
+  it("refuses multiply linked PG_VERSION before admitting a template", () => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "paperclip-template-usable-"));
+    const dir = path.join(root, "template");
+    writeCluster(dir);
+    const external = path.join(root, "shared-version");
+    fs.linkSync(path.join(dir, "PG_VERSION"), external);
+    expect(fs.lstatSync(path.join(dir, "PG_VERSION")).nlink).toBe(2);
+    expect(isUsableTemplate(dir)).toBe(false);
+    expect(fs.readFileSync(external, "utf8")).toMatch(/^18/);
+  });
+
+  it.skipIf(process.platform === "win32")("refuses a dangling postmaster.pid symlink rather than treating it as absent", () => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "paperclip-template-usable-"));
+    const dir = path.join(root, "template");
+    writeCluster(dir);
+    const marker = path.join(dir, "postmaster.pid");
+    fs.symlinkSync(path.join(root, "nonexistent-pid-target"), marker);
+    expect(fs.existsSync(marker)).toBe(false);
+    expect(fs.lstatSync(marker).isSymbolicLink()).toBe(true);
+    expect(isUsableTemplate(dir)).toBe(false);
+  });
+
+  it("refuses a postmaster.pid directory masquerading as a missing stopped-cluster marker", () => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "paperclip-template-usable-"));
+    const dir = path.join(root, "template");
+    writeCluster(dir);
+    fs.mkdirSync(path.join(dir, "postmaster.pid"));
+    expect(isUsableTemplate(dir)).toBe(false);
+  });
+
   describeOnPosix("on POSIX", () => {
     it("rejects a cluster directory that group or others can write", () => {
       root = fs.mkdtempSync(path.join(os.tmpdir(), "paperclip-template-usable-"));
