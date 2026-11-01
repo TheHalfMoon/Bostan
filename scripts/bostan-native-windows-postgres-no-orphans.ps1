@@ -14,26 +14,30 @@ try {
   $rootPrefix = $repo.TrimEnd('\') + '\'
   $owned = @()
   $uninspected = 0
-  foreach ($proc in (Get-CimInstance Win32_Process -Filter "Name = 'postgres.exe'")) {
-    $exe = [string]$proc.ExecutablePath
-    if ([string]::IsNullOrWhiteSpace($exe)) {
-      # No executable path: ownership cannot be established. Fail closed.
-      $uninspected++
-      continue
-    }
-    $full = [System.IO.Path]::GetFullPath($exe)
-    if ($full.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
-      $owned += $proc
-    } else {
-      # The native embedded-postgres binary may live outside the checkout
-      # (e.g. a redirected pnpm virtual store). A different executable path
-      # alone cannot PROVE the process is unrelated to this QA run. Treat it
-      # as unattributed rather than silently claiming no Bostan orphans.
-      # This deliberately blocks qualification if unrelated PostgreSQL is
-      # running: never terminate or alter that process to make a test pass.
-      $uninspected++
+  # One clean CIM read is not proof that late io_worker descendants are gone.
+  # Take three independent scans with bounded gaps; aggregate any positive or
+  # ambiguous identity from ANY scan, never accept only the last clean sample.
+  $requiredSnapshots = 3
+  for ($sample = 0; $sample -lt $requiredSnapshots; $sample++) {
+    if ($sample -gt 0) { Start-Sleep -Milliseconds 250 }
+    foreach ($proc in (Get-CimInstance Win32_Process -Filter "Name = 'postgres.exe'")) {
+      $exe = [string]$proc.ExecutablePath
+      if ([string]::IsNullOrWhiteSpace($exe)) {
+        # No executable path: ownership cannot be established. Fail closed.
+        $uninspected++
+        continue
+      }
+      $full = [System.IO.Path]::GetFullPath($exe)
+      if ($full.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $owned += $proc
+      } else {
+        # A different binary path cannot prove this process unrelated.
+        # Do not terminate, alter or conceal an unattributed process.
+        $uninspected++
+      }
     }
   }
+  Write-Output ("BOSTAN_WINDOWS_PG_SNAPSHOTS=" + $requiredSnapshots)
   Write-Output ("BOSTAN_WINDOWS_PG_OWNED_PROCESSES=" + $owned.Count)
   Write-Output ("BOSTAN_WINDOWS_PG_UNINSPECTABLE=" + $uninspected)
   if ($owned.Count -ne 0 -or $uninspected -ne 0) { exit 1 }
