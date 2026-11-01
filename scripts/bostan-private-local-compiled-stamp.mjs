@@ -77,6 +77,7 @@ export function checkLocalCompiledBuildStamp(repoRoot = root) {
       const file = join(repoRoot, "server", "dist", ...name.split("/"));
       const entryInfo = lstatSync(file);
       if (!entryInfo.isFile() || entryInfo.isSymbolicLink() ||
+          entryInfo.nlink !== 1 ||
           entryInfo.size < 1 || entryInfo.size > MAX_ENTRY_BYTES) return false;
       const actual = createHash("sha256").update(readFileSync(file)).digest("hex");
       actualDigests[i === 0 ? "indexSha256" : "vendorSha256"] = actual;
