@@ -281,6 +281,7 @@ describe("private WebSocket upgrade authority admission", () => {
 
   it.each([
     { label: "unknown Host", rawHeaders: ["Host", "blocked.invalid:3100"], url: target },
+    { label: "Latin-1 obs-text Host", rawHeaders: ["Host", "\u00a0localhost:3100"], url: target },
     { label: "forged forwarded Host", rawHeaders: ["Host", "blocked.invalid", "X-Forwarded-Host", "localhost"], url: target },
     { label: "duplicate Host", rawHeaders: ["Host", "localhost", "Host", "blocked.invalid"], url: target },
     { label: "missing Host", rawHeaders: ["X-Forwarded-Host", "localhost"], url: target },
@@ -300,6 +301,7 @@ describe("private WebSocket upgrade authority admission", () => {
     { label: "null Origin", rawHeaders: ["Host", "localhost:3100", "Origin", "null"], allowed: false },
     { label: "userinfo-folded Origin", rawHeaders: ["Host", "localhost:3100", "Origin", "http://evil@localhost:3100"], allowed: false },
     { label: "numeric IPv4 alias Origin", rawHeaders: ["Host", "127.0.0.1:3100", "Origin", "http://0x7f000001"], allowed: false },
+    { label: "Latin-1 obs-text Origin", rawHeaders: ["Host", "localhost:3100", "Origin", "http://localhost\u00a0:3100"], allowed: false },
     { label: "duplicate Origin", rawHeaders: ["Host", "localhost:3100", "Origin", "http://localhost", "Origin", "https://blocked.invalid"], allowed: false },
     { label: "same host different dev port", rawHeaders: ["Host", "localhost:3100", "Origin", "http://localhost:5173"], allowed: true },
     { label: "equivalent loopback host", rawHeaders: ["Host", "127.0.0.1:3100", "Origin", "http://localhost:5173"], allowed: true },
