@@ -1,7 +1,7 @@
 import { createServer, type RequestListener, type ServerOptions } from "node:http";
 import { setupPluginApiWebSocketServer } from "../realtime/plugin-api-ws.js";
 import { setupRunnerPrpWebSocketServer } from "../realtime/runner-prp-ws.js";
-import { isPrivateUpgradeHostAllowed } from "../middleware/private-hostname-guard.js";
+import { isPrivateUpgradeRequestAllowed } from "../middleware/private-hostname-guard.js";
 
 /** Create the HTTP listener used by both production and custom launchers. */
 export function createPaperclipHttpServer(
@@ -19,7 +19,7 @@ export function createPaperclipHttpServer(
   // destroyed without dispatching authentication or a WebSocket handshake.
   if (options.privateHostAdmission?.enabled) {
     server.on("upgrade", (request, socket) => {
-      if (isPrivateUpgradeHostAllowed(request, options.privateHostAdmission!)) return;
+      if (isPrivateUpgradeRequestAllowed(request, options.privateHostAdmission!)) return;
       (request as typeof request & { paperclipWebSocketHandled?: boolean }).paperclipWebSocketHandled = true;
       socket.destroy();
     });
