@@ -362,6 +362,25 @@ describe("createChatReconciliationCoordinator", () => {
 });
 
 describe("shouldEnablePrivateHostnameGuard", () => {
+  it("admits private Host authority before all request-body parsing and response compression", () => {
+    const source = readFileSync(new URL("../app.ts", import.meta.url), "utf8");
+    const createApp = source.slice(source.indexOf("export async function createApp("));
+    const guard = createApp.indexOf("app.use(\n    privateHostnameGuard({");
+    expect(guard).toBeGreaterThan(-1);
+    expect(createApp.indexOf("applyTrustProxy(")).toBeLessThan(guard);
+    for (const downstream of [
+      "app.use(\n    COMPANY_IMPORT_API_PATH,",
+      'app.use(\n    "/api/chat-webhooks",',
+      'app.use((req, res, next) => ["/mcp/files/upload"',
+      'app.use("/api", apiCompression())',
+      "app.use(httpLogger)",
+    ]) {
+      const position = createApp.indexOf(downstream);
+      expect(position, `missing expected middleware: ${downstream}`).toBeGreaterThan(guard);
+    }
+    expect(createApp.match(/app\.use\(\s*privateHostnameGuard\(\{/g)).toHaveLength(1);
+  });
+
   it("enables the hostname guard for local_trusted private deployments", () => {
     expect(
       shouldEnablePrivateHostnameGuard({
