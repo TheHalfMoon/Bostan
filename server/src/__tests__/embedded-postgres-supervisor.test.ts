@@ -245,4 +245,67 @@ describe("embedded PostgreSQL supervisor", () => {
     expect(onRecoveryExhausted).toHaveBeenCalledOnce();
     expect(onRecoveryExhausted).toHaveBeenCalledWith(expect.objectContaining({ message: "third" }));
   });
+
+  it("never retries an unverified native stop when the exhaustion observer throws", async () => {
+    const initial = createInstance();
+    const failed = createInstance(new Error("synthetic start rejection"));
+    failed.instance.stop = vi.fn(async () => { throw new Error("synthetic stop refusal"); });
+    const createReplacement = vi.fn(() => failed.instance);
+    const onRecoveryExhausted = vi.fn(() => { throw new Error("diagnostic observer failed"); });
+    const supervisor = createEmbeddedPostgresSupervisor({
+      initialInstance: initial.instance,
+      createInstance: createReplacement,
+      restartDelaysMs: [0, 0, 0],
+      onRecoveryExhausted,
+    });
+
+    initial.process.emit("exit", 1, null);
+    await expect(supervisor.waitForRecovery()).rejects.toThrow("replacement stop unverified");
+    expect(createReplacement).toHaveBeenCalledOnce();
+    expect(failed.instance.stop).toHaveBeenCalledOnce();
+    expect(onRecoveryExhausted).toHaveBeenCalledOnce();
+    await expect(supervisor.shutdown()).rejects.toThrow("replacement stop unverified");
+  });
+
+  it("continues recovery after a non-authoritative failed-attempt observer throws", async () => {
+    const initial = createInstance();
+    const failed = createInstance(new Error("synthetic start rejection"));
+    const recovered = createInstance();
+    const createReplacement = vi.fn()
+      .mockReturnValueOnce(failed.instance)
+      .mockReturnValueOnce(recovered.instance);
+    const onRestartAttemptFailed = vi.fn(() => { throw new Error("diagnostic observer failed"); });
+    const supervisor = createEmbeddedPostgresSupervisor({
+      initialInstance: initial.instance,
+      createInstance: createReplacement,
+      restartDelaysMs: [0, 0],
+      onRestartAttemptFailed,
+    });
+
+    initial.process.emit("exit", 1, null);
+    await supervisor.waitForRecovery();
+    expect(failed.instance.stop).toHaveBeenCalledOnce();
+    expect(createReplacement).toHaveBeenCalledTimes(2);
+    expect(recovered.instance.start).toHaveBeenCalledOnce();
+    expect(supervisor.current()).toBe(recovered.instance);
+    expect(onRestartAttemptFailed).toHaveBeenCalledOnce();
+  });
+
+  it("settles bounded recovery when its final diagnostic observer throws", async () => {
+    const initial = createInstance();
+    const failed = createInstance(new Error("synthetic start rejection"));
+    const onRecoveryExhausted = vi.fn(() => { throw new Error("diagnostic observer failed"); });
+    const supervisor = createEmbeddedPostgresSupervisor({
+      initialInstance: initial.instance,
+      createInstance: () => failed.instance,
+      restartDelaysMs: [0],
+      onRecoveryExhausted,
+    });
+
+    initial.process.emit("exit", 1, null);
+    await expect(supervisor.waitForRecovery()).resolves.toBeUndefined();
+    expect(failed.instance.stop).toHaveBeenCalledOnce();
+    expect(onRecoveryExhausted).toHaveBeenCalledOnce();
+  });
+
 });
