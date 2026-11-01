@@ -16,7 +16,8 @@
 // no stamp and exit 0.
 
 import { execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { lstatSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -24,6 +25,27 @@ const scriptDir = dirname(fileURLToPath(import.meta.url));
 const serverDir = join(scriptDir, "..");
 const distDir = join(serverDir, "dist");
 const outFile = join(distDir, "build-info.json");
+const MAX_COMPILED_ENTRY_BYTES = 128 * 1024 * 1024;
+const COMPILED_FILES = ["index.js", "vendor/paperclip-runner/index.js"];
+
+/**
+ * A source commit string alone does not protect compiled bytes against
+ * changes after build. Hash both actual executable entry files. A missing,
+ * linked, empty or unexpectedly large file fails the build rather than
+ * issuing a misleading provenance receipt.
+ */
+export function digestCompiledBuildEntries(directory = distDir) {
+  const values = [];
+  for (const relativePath of COMPILED_FILES) {
+    const file = join(directory, ...relativePath.split('/'));
+    const info = lstatSync(file);
+    if (!info.isFile() || info.isSymbolicLink() ||
+        info.size < 1 || info.size > MAX_COMPILED_ENTRY_BYTES)
+      throw new Error('Bostan compiled build entry not safely qualified');
+    values.push(createHash('sha256').update(readFileSync(file)).digest('hex'));
+  }
+  return Object.freeze({indexSha256: values[0], vendorSha256: values[1]});
+}
 
 /**
  * Resolve the commit for the build stamp. Prefer the git commit. Fall back to
@@ -75,8 +97,8 @@ function main() {
     return;
   }
 
-  mkdirSync(distDir, { recursive: true });
-  writeFileSync(outFile, `${JSON.stringify({ commit }, null, 2)}\n`);
+  const digests = digestCompiledBuildEntries(distDir);
+  writeFileSync(outFile, `${JSON.stringify({ commit, ...digests }, null, 2)}\n`);
   console.log(`[build-stamp] wrote ${outFile} commit=${commit}`);
 }
 
