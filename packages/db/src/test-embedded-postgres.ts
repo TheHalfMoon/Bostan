@@ -541,7 +541,7 @@ function warnTemplateOnce(topic: string, message: string): void {
 const TEMPLATE_OWNER_MARKER = ".bostan-template-owner";
 const templateOwnerMarkerContents = (key: string) => `bostan-test-template-v1:${key}\n`;
 
-function isPrunableOwnedTemplate(dir: string, key: string): boolean {
+function isOwnedStoppedTemplate(dir: string, key: string): boolean {
   if (!/^[a-f0-9]{24}$/.test(key) || !isUsableTemplate(dir)) return false;
   try {
     const marker = path.join(dir, TEMPLATE_OWNER_MARKER);
@@ -555,7 +555,7 @@ function isPrunableOwnedTemplate(dir: string, key: string): boolean {
   }
 }
 
-// Best-effort pruning of explicitly owned, stopped Bostan template clusters.
+// Only marker-authenticated stopped templates may be reused or pruned.\n// Pre-marker cache entries are preserved but cannot prove native provenance.\n// Best-effort pruning of explicitly owned, stopped Bostan template clusters.
 // Never reclaim pre-marker templates, unknown directories or live clusters.
 // A separate process may race this sweep; retain on any failed revalidation.
 function pruneStaleTemplates(rootDir: string, keepDir: string): void {
@@ -574,11 +574,11 @@ function pruneStaleTemplates(rootDir: string, keepDir: string): void {
       const info = fs.lstatSync(entryPath);
       if (!info.isDirectory() || info.isSymbolicLink() ||
           now - info.mtimeMs <= TEMPLATE_PRUNE_AGE_MS ||
-          !isPrunableOwnedTemplate(entryPath, entry.name)) continue;
+          !isOwnedStoppedTemplate(entryPath, entry.name)) continue;
       const current = fs.lstatSync(entryPath);
       if (current.dev !== info.dev || current.ino !== info.ino ||
           current.birthtimeMs !== info.birthtimeMs ||
-          !isPrunableOwnedTemplate(entryPath, entry.name)) continue;
+          !isOwnedStoppedTemplate(entryPath, entry.name)) continue;
       fs.rmSync(entryPath, { recursive: true, force: true });
     } catch {
       // Ownership or identity became uncertain; retain the entry.
@@ -634,7 +634,7 @@ async function buildEmbeddedPostgresTemplate(templateDir: string): Promise<boole
       // Another process published the same key first. Use theirs.
       const code = (error as NodeJS.ErrnoException).code;
       if (code === "EEXIST" || code === "ENOTEMPTY" || code === "EPERM") {
-        return isUsableTemplate(templateDir);
+        return isOwnedStoppedTemplate(templateDir, templateKey);
       }
       throw error;
     }
@@ -665,13 +665,13 @@ async function getEmbeddedPostgresTemplateDir(): Promise<string | null> {
       const rootDir = prepareTemplateRootDir();
       if (rootDir === null) return null;
       const templateDir = path.join(rootDir, computeEmbeddedPostgresTemplateKey());
-      if (isUsableTemplate(templateDir)) {
+      if (isOwnedStoppedTemplate(templateDir, path.basename(templateDir))) {
         touchTemplate(templateDir);
         return templateDir;
       }
       try {
         const built = await buildEmbeddedPostgresTemplate(templateDir);
-        return built && isUsableTemplate(templateDir) ? templateDir : null;
+        return built && isOwnedStoppedTemplate(templateDir, path.basename(templateDir)) ? templateDir : null;
       } catch (error) {
         warnTemplateOnce(
           "build",
@@ -702,7 +702,7 @@ async function startEmbeddedPostgresFromTemplateWithRetry(
   let lastError = new Error("embedded Postgres startup from template failed");
 
   for (let attempt = 1; attempt <= EMBEDDED_POSTGRES_START_MAX_ATTEMPTS; attempt += 1) {
-    if (!isUsableTemplate(templateDir)) {
+    if (!isOwnedStoppedTemplate(templateDir, path.basename(templateDir))) {
       throw new Error(`embedded Postgres template ${templateDir} is no longer usable`);
     }
     const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), tempDirPrefix));
