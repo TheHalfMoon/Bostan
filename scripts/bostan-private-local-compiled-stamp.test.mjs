@@ -104,9 +104,19 @@ test("real checkout admission accepts owned matching bytes and rejects both tamp
     mkdirSync(externalRunner);
     writeFileSync(join(externalRunner, "index.js"), runnerBytes);
     rmSync(vendor, {recursive: true});
-    symlinkSync(externalRunner, vendor, "dir");
-    assert.equal(checkLocalCompiledBuildStamp(workspace), false);
-    rmSync(vendor);
+    // Some Windows machines forbid directory symlinks without Developer Mode.
+    // Do not elevate or use a junction to bypass the host policy; keep other
+    // (including hardlink) security cases running under normal privileges.
+    let symlinkSupported = true;
+    try { symlinkSync(externalRunner, vendor, "dir"); }
+    catch (error) {
+      if (process.platform !== "win32" || error?.code !== "EPERM") throw error;
+      symlinkSupported = false;
+    }
+    if (symlinkSupported) {
+      assert.equal(checkLocalCompiledBuildStamp(workspace), false);
+      rmSync(vendor);
+    }
     mkdirSync(vendor);
     writeFileSync(runner, runnerBytes);
     assert.equal(checkLocalCompiledBuildStamp(workspace), true);
