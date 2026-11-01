@@ -1,4 +1,5 @@
 import type { Request, RequestHandler } from "express";
+import type { IncomingMessage } from "node:http";
 
 function isLoopbackHostname(hostname: string): boolean {
   const normalized = hostname.trim().toLowerCase();
@@ -47,7 +48,7 @@ export function parsePrivateHostHeader(value: string | undefined): string | null
   }
 }
 
-function extractHostname(req: Request): string | null {
+function extractHostname(req: Pick<IncomingMessage, "rawHeaders">): string | null {
   // Node's req.headers / Express req.header() silently retain only the first
   // Host when a raw HTTP/1.1 request repeats that field. A second, conflicting
   // authority may be interpreted differently by a proxy or another consumer.
@@ -89,6 +90,23 @@ export function resolvePrivateHostnameAllowSet(opts: { allowedHostnames: string[
   allowSet.add("127.0.0.1");
   allowSet.add("::1");
   return allowSet;
+}
+
+/**
+ * HTTP upgrade events bypass Express middleware entirely. Admit private-mode
+ * WebSocket handshakes using the same raw Host and origin-form checks as HTTP,
+ * before any listener can authenticate, count work, or upgrade a socket.
+ * Public mode keeps its existing behavior.
+ */
+export function isPrivateUpgradeHostAllowed(
+  req: Pick<IncomingMessage, "rawHeaders" | "url">,
+  opts: { enabled: boolean; allowedHostnames: string[]; bindHost: string },
+): boolean {
+  if (!opts.enabled) return true;
+  if (typeof req.url !== "string" || !req.url.startsWith("/")) return false;
+  const hostname = extractHostname(req);
+  if (!hostname) return false;
+  return isLoopbackHostname(hostname) || resolvePrivateHostnameAllowSet(opts).has(hostname);
 }
 
 // The hostname comes from the request Host header, so an unauthenticated
