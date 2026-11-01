@@ -26,6 +26,8 @@ node --test --test-reporter=tap scripts/bostan-private-local-compiled-stamp.test
 cd server && NODE_OPTIONS=--max-old-space-size=1152 ./node_modules/.bin/vitest run src/__tests__/write-build-stamp.test.ts --config vitest.config.ts --pool=forks --maxWorkers=1
 ~~~
 
+**Aggregate exact-source result: 15/15 native tests PASS (Node 9/9 + Vitest 6/6), zero failed or skipped.** This is source/test and provenance admission qualification, not actual production compiled server startup.
+
 - **Native Node TAP 9/9 PASS**, all exit0, final suite ~361ms. Covers exact three-field hash and source-commit validation; rejects malformed/oversized/wrong SHA values, mismatched executable/Runner digests, unknown flags, invalid cloud admission; checks that compiled QA blocks before database scratch creation.
 - **Native Vitest write-build-stamp 6/6 PASS**, exit0, ~304ms final run. A real small isolated synthetic Git repo with exactly two synthetic compiled files was stamped through the actual `write-build-stamp.mjs`; tests verify the Git source SHA and both computed SHA-256s. Existing commit resolution tests passed unchanged.
 - The new Node regression also creates a **real isolated temporary Git checkout** with two synthetic executable files and genuine `git rev-parse HEAD`. `checkLocalCompiledBuildStamp()` accepts matching bytes, refuses modified server bytes, refuses modified Runner bytes, reaccepts restored contents, and refuses a substituted commit. Only this test's fresh temporary root is cleaned up.
