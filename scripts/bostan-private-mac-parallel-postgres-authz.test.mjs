@@ -105,3 +105,31 @@ test('native Mac timeout terminates the exclusively owned detached synthetic QA 
       child.kill('SIGKILL');
   }
 });
+
+test('native Mac oversized output terminates only its detached synthetic worker group', {
+  skip: process.platform !== 'darwin', timeout: 12_000,
+}, async () => {
+  let child;
+  try {
+    const receipt = await runWorker('synthetic-overflow', {}, 'api', {
+      timeoutMs: 5000,
+      spawnWorker: (_binary, _args, options) => {
+        assert.equal(options.detached, true);
+        child = spawn(process.execPath, [
+          '-e', 'process.stdout.write("x".repeat(540000)); setInterval(() => {}, 1000)',
+        ], options);
+        return child;
+      },
+    });
+    assert.equal(receipt.closed, true);
+    assert.equal(receipt.overflow, true);
+    assert.equal(receipt.timedOut, false);
+    assert.equal(receipt.qualified, false);
+    assert.ok(Number.isSafeInteger(child?.pid));
+    assert.throws(() => process.kill(child.pid, 0), { code: 'ESRCH' });
+    assert.doesNotThrow(() => process.kill(process.pid, 0));
+  } finally {
+    if (child && child.exitCode === null && child.signalCode === null)
+      child.kill('SIGKILL');
+  }
+});
