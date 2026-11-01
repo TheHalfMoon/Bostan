@@ -539,7 +539,7 @@ function warnTemplateOnce(topic: string, message: string): void {
 // that root. Only templates stamped by a successful Bostan build may be
 // reclaimed; unmarked, malformed, live, linked, or foreign entries are retained.
 const TEMPLATE_OWNER_MARKER = ".bostan-template-owner";
-const templateOwnerMarkerContents = (key: string) => `bostan-test-template-v1:${key}\\n`;
+const templateOwnerMarkerContents = (key: string) => `bostan-test-template-v1:${key}\n`;
 
 function isPrunableOwnedTemplate(dir: string, key: string): boolean {
   if (!/^[a-f0-9]{24}$/.test(key) || !isUsableTemplate(dir)) return false;
