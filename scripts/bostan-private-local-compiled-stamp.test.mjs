@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { matchesLocalCompiledSourceCommit as matches } from "./bostan-private-local-compiled-stamp.mjs";
+import { matchesLocalCompiledSourceCommit as matches,
+  checkLocalCompiledBuildStamp } from "./bostan-private-local-compiled-stamp.mjs";
 
 const sha = "a".repeat(40);
 const actual = Object.freeze({indexSha256: "b".repeat(64), vendorSha256: "c".repeat(64)});
@@ -41,6 +45,52 @@ test("compiled entry hashes must match both real executable digests", () => {
   assert.equal(matches(JSON.stringify({commit: sha}), sha, actual), false);
   assert.equal(matches(JSON.stringify({...actual,commit: sha, extra:"unexpected"}), sha, actual), false);
   assert.equal(matches(JSON.stringify({commit: sha,indexSha256:"x",vendorSha256:actual.vendorSha256}), sha, actual), false);
+});
+
+test("real checkout admission accepts owned matching bytes and rejects both tampered entries", () => {
+  const workspace = mkdtempSync(join(tmpdir(), "bostan-private-stamp-owned-"));
+  try {
+    const git = (...args) => execFileSync("git", args, {
+      cwd: workspace, encoding: "utf8", timeout: 5000,
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    git("init", "--quiet");
+    git("-c", "user.name=QA", "-c", "user.email=test@example.invalid",
+      "commit", "--allow-empty", "--no-gpg-sign", "-m", "synthetic");
+    const head = git("rev-parse", "HEAD");
+    const dist = join(workspace, "server", "dist");
+    const vendor = join(dist, "vendor", "paperclip-runner");
+    mkdirSync(vendor, {recursive: true});
+    const index = join(dist, "index.js");
+    const runner = join(vendor, "index.js");
+    const indexBytes = "owned-bostan-synthetic-compiled-index";
+    const runnerBytes = "owned-bostan-synthetic-compiled-runner";
+    writeFileSync(index, indexBytes);
+    writeFileSync(runner, runnerBytes);
+    const hash = value => createHash("sha256").update(value).digest("hex");
+    const stamp = join(dist, "build-info.json");
+    writeFileSync(stamp, JSON.stringify({
+      commit: head, indexSha256: hash(indexBytes),
+      vendorSha256: hash(runnerBytes),
+    }) + "\n");
+    assert.equal(checkLocalCompiledBuildStamp(workspace), true);
+    writeFileSync(index, indexBytes + "-unexpected");
+    assert.equal(checkLocalCompiledBuildStamp(workspace), false);
+    writeFileSync(index, indexBytes);
+    assert.equal(checkLocalCompiledBuildStamp(workspace), true);
+    writeFileSync(runner, runnerBytes + "-unexpected");
+    assert.equal(checkLocalCompiledBuildStamp(workspace), false);
+    writeFileSync(runner, runnerBytes);
+    assert.equal(checkLocalCompiledBuildStamp(workspace), true);
+    writeFileSync(stamp, JSON.stringify({
+      commit: "f".repeat(40), indexSha256: hash(indexBytes),
+      vendorSha256: hash(runnerBytes),
+    }));
+    assert.equal(checkLocalCompiledBuildStamp(workspace), false);
+  } finally {
+    // Isolated fresh test root only, never the checkout/global package caches.
+    rmSync(workspace, {recursive: true, force: true});
+  }
 });
 
 test("compiled and packed private smoke reject stale build before mktemp, source mode unaffected", () => {
