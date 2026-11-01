@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const HEX_SHA = /^[0-9a-f]{40}$/;
-const MAX_BUILD_INFO_BYTES = 512;
+const MAX_BUILD_INFO_BYTES = 256;
 const MAX_ENTRY_BYTES = 128 * 1024 * 1024;
 const SHA256 = /^[0-9a-f]{64}$/;
 const ENTRIES = ["index.js", "vendor/paperclip-runner/index.js"];
