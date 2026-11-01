@@ -157,10 +157,14 @@ export function isPrivateUpgradeHostAllowed(
  * Public mode intentionally preserves the existing upgrade policy.
  */
 export function isPrivateUpgradeRequestAllowed(
-  req: Pick<IncomingMessage, "method" | "rawHeaders" | "url">,
+  req: Pick<IncomingMessage, "method" | "httpVersion" | "rawHeaders" | "url">,
   opts: { enabled: boolean; allowedHostnames: string[]; bindHost: string },
 ): boolean {
   if (!opts.enabled) return true;
+  // HTTP/1.1 is required for a classic WebSocket Upgrade handshake. Node's
+  // HTTP/1 parser can emit 'upgrade' even for HTTP/1.0 and HTTP/2.0 request
+  // lines. Do not let those versions reach authenticated WS handlers.
+  if (req.httpVersion !== "1.1") return false;
   if (req.method !== "GET") return false;
   if (!Array.isArray(req.rawHeaders) || req.rawHeaders.length % 2 !== 0) return false;
 
