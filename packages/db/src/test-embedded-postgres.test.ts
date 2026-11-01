@@ -97,6 +97,33 @@ describe("startEmbeddedPostgresWithRetry", () => {
     fs.rmSync(started.dataDir, { recursive: true, force: true });
   });
 
+  it("retains a disposable cluster if a failed start cannot be stopped", async () => {
+    const ownedDirs: string[] = [];
+    class UnstoppableFake {
+      constructor(options: FakeOptions) {
+        ownedDirs.push(options.databaseDir);
+      }
+      async initialise(): Promise<void> {}
+      async start(): Promise<void> { throw new Error("synthetic startup failure"); }
+      async stop(): Promise<void> { throw new Error("synthetic unverified shutdown"); }
+    }
+    __setEmbeddedPostgresCtorProviderForTests(async () => UnstoppableFake);
+    try {
+      await expect(startWithRetry("bostan-stop-unverified-")).rejects.toThrow(
+        /unverified shutdown|stop unverified/i,
+      );
+      expect(ownedDirs).toHaveLength(1);
+      expect(fs.existsSync(ownedDirs[0]!)).toBe(true);
+    } finally {
+      // Only the exact scratch clusters produced by this fake are ours to reclaim.
+      for (const dir of ownedDirs) {
+        if (path.basename(dir).startsWith("bostan-stop-unverified-") && fs.existsSync(dir)) {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      }
+    }
+  });
+
   it("throws with the real Postgres output after the attempt bound", async () => {
     const { ctor, constructed } = makeFakeCtor(Number.POSITIVE_INFINITY);
     __setEmbeddedPostgresCtorProviderForTests(async () => ctor);
