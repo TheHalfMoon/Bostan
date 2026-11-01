@@ -133,3 +133,47 @@ test('native Mac oversized output terminates only its detached synthetic worker 
       child.kill('SIGKILL');
   }
 });
+
+test('native Mac stubborn synthetic QA worker cannot block shutdown by ignoring SIGTERM', {
+  skip: process.platform !== 'darwin', timeout: 12_000,
+}, async () => {
+  let child;
+  const started = Date.now();
+  try {
+    const receipt = await runWorker('synthetic-stubborn', {}, 'api', {
+      timeoutMs: 600,
+      terminationGraceMs: 200,
+      spawnWorker: (_binary, _args, options) => {
+        assert.equal(options.detached, true);
+        child = spawn(process.execPath, [
+          '-e',
+          'process.on("SIGTERM", () => {}); process.stdout.write("READY\\n"); setInterval(() => {}, 1000)',
+        ], options);
+        return child;
+      },
+    });
+    assert.equal(receipt.closed, true);
+    assert.equal(receipt.timedOut, true);
+    assert.equal(receipt.qualified, false);
+    assert.equal(receipt.overflow, false);
+    assert.ok(Date.now() - started < 4000);
+    assert.ok(Number.isSafeInteger(child?.pid));
+    assert.throws(() => process.kill(child.pid, 0), {code: 'ESRCH'});
+    assert.doesNotThrow(() => process.kill(process.pid, 0));
+  } finally {
+    // This process was created directly by this test; never signal by name.
+    if (child && child.exitCode === null && child.signalCode === null)
+      child.kill('SIGKILL');
+  }
+});
+
+test('Mac owned process-group shutdown refuses unbounded or invalid grace periods', {
+  skip: process.platform !== 'darwin',
+}, async () => {
+  for (const terminationGraceMs of [0, 99, 10001, -1, 1.5, Infinity, NaN, '200']) {
+    await assert.rejects(runWorker('invalid-grace', {}, 'api', {
+      terminationGraceMs,
+      spawnWorker: () => { throw Error('must refuse BEFORE child spawn'); },
+    }), /admission refused/);
+  }
+});
