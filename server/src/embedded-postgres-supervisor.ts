@@ -36,6 +36,16 @@ export function createEmbeddedPostgresSupervisor(options: Options): EmbeddedPost
   let shutdownPromise: Promise<void> | null = null;
   let unverifiedReplacementStop: Error | null = null;
 
+  // Diagnostics are not native lifecycle authority. A throwing observer must
+  // never authorize a second PostgreSQL start after an unverified stop.
+  const reportRecoveryExhausted = (error: unknown) => {
+    try {
+      options.onRecoveryExhausted?.(error);
+    } catch {
+      // Preserve the actual native stop/recovery result.
+    }
+  };
+
   const recover = async () => {
     let lastError: unknown = new Error("Embedded PostgreSQL exited unexpectedly");
     for (let index = 0; index < restartDelaysMs.length; index += 1) {
@@ -63,7 +73,7 @@ export function createEmbeddedPostgresSupervisor(options: Options): EmbeddedPost
               { cause: stopError },
             );
             unverifiedReplacementStop = unsafe;
-            options.onRecoveryExhausted?.(unsafe);
+            reportRecoveryExhausted(unsafe);
             // Stop retries: another cluster could collide with a still-live
             // failed replacement. Shutdown and waitForRecovery fail closed.
             if (shuttingDown) throw unsafe;
@@ -95,16 +105,20 @@ export function createEmbeddedPostgresSupervisor(options: Options): EmbeddedPost
         // after a replacement failed to stop.
         if (shuttingDown) throw error;
         lastError = error;
-        options.onRestartAttemptFailed?.(error, attempt);
+        try {
+          options.onRestartAttemptFailed?.(error, attempt);
+        } catch {
+          // A diagnostic failure cannot cancel a safe bounded retry.
+        }
       }
     }
-    if (!shuttingDown) options.onRecoveryExhausted?.(lastError);
+    if (!shuttingDown) reportRecoveryExhausted(lastError);
   };
 
   const monitor = (instance: SupervisedEmbeddedPostgres) => {
     const child = instance.process;
     if (!child) {
-      options.onRecoveryExhausted?.(new Error("Embedded PostgreSQL started without a child process to monitor"));
+      reportRecoveryExhausted(new Error("Embedded PostgreSQL started without a child process to monitor"));
       return;
     }
     child.once("exit", (code, signal) => {
