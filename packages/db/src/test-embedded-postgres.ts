@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { stopOwnedWindowsEmbeddedPostgres } from "./windows-embedded-postgres-stop.js";
 import { isEmbeddedPostgresTemplateCacheDisabled } from "./embedded-postgres-template-policy.js";
 import { isSelfContainedPostgresTemplateTree } from "./embedded-postgres-template-tree.js";
+import { captureOwnedPostgresScratchReclaimer } from "./embedded-postgres-scratch-ownership.mjs";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -151,6 +152,7 @@ const EMBEDDED_POSTGRES_INITDB_FLAGS = ["--encoding=UTF8", "--locale=C", "--lc-m
 async function createEmbeddedPostgresTestInstance(tempDirPrefix: string) {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), tempDirPrefix));
   const owned = fs.lstatSync(dataDir);
+  registerOwnedPostgresScratch(dataDir);
   try {
     return await createEmbeddedPostgresTestInstanceAt(dataDir);
   } catch (error) {
@@ -171,6 +173,7 @@ async function createEmbeddedPostgresTestInstance(tempDirPrefix: string) {
     // Retain the entire fixture on ENOTEMPTY, replacement or any OS error.
     try {
       fs.rmdirSync(dataDir);
+      ownedPostgresScratchReclaimers.delete(dataDir);
     } catch {
       throw new Error("Fresh PostgreSQL scratch not empty or unavailable; retaining fixture", { cause: error });
     }
@@ -211,8 +214,22 @@ function databaseConnectionStringFor(port: number): string {
   return `postgres://${EMBEDDED_POSTGRES_USER}:${EMBEDDED_POSTGRES_PASSWORD}@127.0.0.1:${port}/paperclip`;
 }
 
-function cleanupEmbeddedPostgresTestDirs(dataDir: string) {
-  fs.rmSync(dataDir, { recursive: true, force: true });
+// Every data directory is independently created by mkdtemp in THIS process.
+// Do not allow a stale path to authorize deletion of a replacement directory.
+const ownedPostgresScratchReclaimers = new Map<string, () => void>();
+function registerOwnedPostgresScratch(dir: string): void {
+  if (ownedPostgresScratchReclaimers.has(dir))
+    throw Error("Duplicate PostgreSQL test scratch directory; retaining fixture");
+  ownedPostgresScratchReclaimers.set(dir, captureOwnedPostgresScratchReclaimer(dir));
+}
+function cleanupEmbeddedPostgresTestDirs(dataDir: string): void {
+  const reclaim = ownedPostgresScratchReclaimers.get(dataDir);
+  if (!reclaim)
+    throw Error("Untracked PostgreSQL test scratch directory; retaining fixture");
+  // Failed ownership verification retains the candidate and the tracking
+  // entry. Remove it only once the captured directory was reclaimed.
+  reclaim();
+  ownedPostgresScratchReclaimers.delete(dataDir);
 }
 
 // Upper bound (ms) on how long we await a graceful POSIX PostgreSQL stop
@@ -649,6 +666,9 @@ async function buildEmbeddedPostgresTemplate(templateDir: string): Promise<boole
     try {
       fs.renameSync(dataDir, templateDir);
       published = true;
+      // This exact directory became the preserved published template; it
+      // must never be reclaimed using its former disposable dataDir path.
+      ownedPostgresScratchReclaimers.delete(dataDir);
     } catch (error) {
       // Another process published the same key first. Use theirs.
       const code = (error as NodeJS.ErrnoException).code;
@@ -725,6 +745,7 @@ async function startEmbeddedPostgresFromTemplateWithRetry(
       throw new Error(`embedded Postgres template ${templateDir} is no longer usable`);
     }
     const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), tempDirPrefix));
+    registerOwnedPostgresScratch(rootDir);
     const dataDir = path.join(rootDir, "data");
     let created: Awaited<ReturnType<typeof createEmbeddedPostgresTestInstanceAt>> | null = null;
     try {
