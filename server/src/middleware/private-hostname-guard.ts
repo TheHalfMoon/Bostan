@@ -103,7 +103,7 @@ export function isPrivateUpgradeHostAllowed(
   opts: { enabled: boolean; allowedHostnames: string[]; bindHost: string },
 ): boolean {
   if (!opts.enabled) return true;
-  if (typeof req.url !== "string" || !req.url.startsWith("/")) return false;
+  if (typeof req.url !== "string" || !req.url.startsWith("/") || req.url.startsWith("//")) return false;
   const hostname = extractHostname(req);
   if (!hostname) return false;
   return isLoopbackHostname(hostname) || resolvePrivateHostnameAllowSet(opts).has(hostname);
@@ -140,7 +140,7 @@ export function privateHostnameGuard(opts: {
     // and Express may route their parsed pathname even when Host is allowed.
     // Require origin-form before trusting the independently checked Host.
     const requestTarget = req.originalUrl ?? req.url;
-    const validOriginForm = typeof requestTarget === "string" && requestTarget.startsWith("/");
+    const validOriginForm = typeof requestTarget === "string" && requestTarget.startsWith("/") && !requestTarget.startsWith("//");
     const hostname = validOriginForm ? extractHostname(req) : null;
     const wantsJson = req.path.startsWith("/api") || req.accepts(["json", "html", "text"]) === "json";
 
