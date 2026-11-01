@@ -260,18 +260,20 @@ async function stopEmbeddedPostgresBounded(
     return;
   }
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const stopped = instance
-    .stop()
-    .catch(() => {
-      // Swallow shutdown errors — the data dir is reclaimed regardless.
-    })
-    .finally(() => {
+  const stopped = instance.stop().then(
+    () => {
       try {
         cleanupFn?.();
       } catch {
-        // Best-effort reclaim; ignore removal errors.
+        // Best-effort reclaim after a verified stop; ignore removal errors.
       }
-    });
+    },
+    (error: unknown) => {
+      // A rejected stop is not proof that PostgreSQL and its workers exited.
+      // Retain the scratch cluster and fail the test instead of deleting live WAL.
+      throw new Error("Embedded PostgreSQL stop unverified; retaining fixture", { cause: error });
+    },
+  );
   try {
     await Promise.race([
       stopped,
