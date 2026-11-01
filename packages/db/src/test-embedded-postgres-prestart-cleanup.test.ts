@@ -55,3 +55,62 @@ it("reclaims its own empty PostgreSQL scratch when constructor loading fails bef
     }
   }
 });
+
+it("retains a newly populated scratch directory instead of erasing unexpected content", async () => {
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-pg-nonempty-owned-"));
+  const marker = path.join(scratch, "BOSTAN_QA_OWNED");
+  const markerBytes = "BOSTAN_TEST_ONLY\n";
+  fs.writeFileSync(marker, markerBytes);
+  const original = new Map(["TMPDIR", "TEMP", "TMP"].map((key) =>
+    [key, process.env[key]] as const));
+  const prefix = "bostan-prestart-nonempty-" + randomUUID() + "-";
+  const sentinel = "test-created-unexpected-content";
+  const sentinelBytes = "must not be erased";
+  let owned: string | undefined;
+  try {
+    for (const key of original.keys()) process.env[key] = scratch;
+    expect(os.tmpdir()).toBe(scratch);
+    __setEmbeddedPostgresCtorProviderForTests(async () => {
+      const dirs = fs.readdirSync(scratch).filter(name => name.startsWith(prefix));
+      expect(dirs).toHaveLength(1);
+      owned = path.join(scratch, dirs[0]);
+      const info = fs.lstatSync(owned);
+      expect(info.isDirectory() && !info.isSymbolicLink()).toBe(true);
+      // This file is deliberately created after the fixture mkdtemp.
+      fs.writeFileSync(path.join(owned, sentinel), sentinelBytes, { flag: "wx" });
+      throw new Error("synthetic constructor rejection after unexpected write");
+    });
+    await expect(__startEmbeddedPostgresWithRetryForTests(prefix))
+      .rejects.toThrow("Fresh PostgreSQL scratch not empty or unavailable; retaining fixture");
+    expect(owned).toBeDefined();
+    expect(fs.readFileSync(path.join(owned!, sentinel), "utf8")).toBe(sentinelBytes);
+  } finally {
+    __setEmbeddedPostgresCtorProviderForTests(null);
+    for (const [key, value] of original) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    // Delete only the exact file this test wrote, never arbitrary children.
+    if (owned && fs.existsSync(owned)) {
+      const info = fs.lstatSync(owned);
+      const entries = info.isDirectory() && !info.isSymbolicLink()
+        ? fs.readdirSync(owned) : [];
+      if (info.isDirectory() && !info.isSymbolicLink() &&
+          entries.length === 1 && entries[0] === sentinel) {
+        const file = path.join(owned, sentinel);
+        const fileInfo = fs.lstatSync(file);
+        if (fileInfo.isFile() && !fileInfo.isSymbolicLink() &&
+            fs.readFileSync(file, "utf8") === sentinelBytes) {
+          fs.unlinkSync(file);
+          fs.rmdirSync(owned);
+        }
+      }
+    }
+    if (fs.readdirSync(scratch).length === 1 &&
+        fs.lstatSync(marker).isFile() && !fs.lstatSync(marker).isSymbolicLink() &&
+        fs.readFileSync(marker, "utf8") === markerBytes) {
+      fs.unlinkSync(marker);
+      fs.rmdirSync(scratch);
+    }
+  }
+});
