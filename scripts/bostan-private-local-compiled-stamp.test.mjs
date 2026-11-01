@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -55,6 +55,13 @@ test("real checkout admission accepts owned matching bytes and rejects both tamp
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
     git("init", "--quiet");
+    // Keep generated compiled assets ignored but enforce a genuinely clean
+    // tracked and untracked source checkout at admission.
+    writeFileSync(join(workspace, ".gitignore"), "server/dist/\n");
+    const readme = join(workspace, "README.md");
+    const originalReadme = "synthetic owned source\n";
+    writeFileSync(readme, originalReadme);
+    git("add", ".gitignore", "README.md");
     git("-c", "user.name=QA", "-c", "user.email=test@example.invalid",
       "commit", "--allow-empty", "--no-gpg-sign", "-m", "synthetic");
     const head = git("rev-parse", "HEAD");
@@ -73,6 +80,15 @@ test("real checkout admission accepts owned matching bytes and rejects both tamp
       commit: head, indexSha256: hash(indexBytes),
       vendorSha256: hash(runnerBytes),
     }) + "\n");
+    assert.equal(checkLocalCompiledBuildStamp(workspace), true);
+    writeFileSync(readme, "modified tracked source despite same HEAD\n");
+    assert.equal(checkLocalCompiledBuildStamp(workspace), false);
+    writeFileSync(readme, originalReadme);
+    assert.equal(checkLocalCompiledBuildStamp(workspace), true);
+    const untracked = join(workspace, "unexpected-source.txt");
+    writeFileSync(untracked, "test-owned untracked source\n");
+    assert.equal(checkLocalCompiledBuildStamp(workspace), false);
+    unlinkSync(untracked);
     assert.equal(checkLocalCompiledBuildStamp(workspace), true);
     writeFileSync(index, indexBytes + "-unexpected");
     assert.equal(checkLocalCompiledBuildStamp(workspace), false);
