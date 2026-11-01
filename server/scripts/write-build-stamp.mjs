@@ -47,7 +47,7 @@ export function digestCompiledBuildEntries(directory = distDir) {
   for (const relativePath of COMPILED_FILES) {
     const file = join(directory, ...relativePath.split('/'));
     const info = lstatSync(file);
-    if (!info.isFile() || info.isSymbolicLink() ||
+    if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1 ||
         info.size < 1 || info.size > MAX_COMPILED_ENTRY_BYTES)
       throw new Error('Bostan compiled build entry not safely qualified');
     values.push(createHash('sha256').update(readFileSync(file)).digest('hex'));
