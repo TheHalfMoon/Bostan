@@ -41,6 +41,16 @@ export function matchesLocalCompiledSourceCommit(rawBuildInfo, rawHead, actualDi
 
 export function checkLocalCompiledBuildStamp(repoRoot = root) {
   try {
+    // All intermediate directories must belong to this real checkout,
+    // not be links to otherwise hash-matching foreign compiled assets.
+    for (const directory of [repoRoot, join(repoRoot, "server"),
+      join(repoRoot, "server", "dist"),
+      join(repoRoot, "server", "dist", "vendor"),
+      join(repoRoot, "server", "dist", "vendor", "paperclip-runner")]) {
+      const directoryInfo = lstatSync(directory);
+      if (!directoryInfo.isDirectory() || directoryInfo.isSymbolicLink())
+        return false;
+    }
     const stampPath = join(repoRoot, "server", "dist", "build-info.json");
     const info = lstatSync(stampPath);
     if (!info.isFile() || info.isSymbolicLink() ||
