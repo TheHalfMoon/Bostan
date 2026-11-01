@@ -534,13 +534,31 @@ function warnTemplateOnce(topic: string, message: string): void {
   console.warn(`[embedded-postgres] ${message}`);
 }
 
-// Best-effort removal of templates for other keys that have not been used for
-// a week, plus abandoned build directories. Every reuse refreshes a template's
-// timestamp, so a template that any process resolved in the last week stays.
-// A suite never depends on the template after its copy is made, so pruning
-// can only affect a process that resolved the path and has not copied yet;
-// that process then rebuilds the template instead of failing. Never throws.
+// A private cache root is not evidence that every child belongs to Bostan.
+// Older versions could recursively delete arbitrary stale directories under
+// that root. Only templates stamped by a successful Bostan build may be
+// reclaimed; unmarked, malformed, live, linked, or foreign entries are retained.
+const TEMPLATE_OWNER_MARKER = ".bostan-template-owner";
+const templateOwnerMarkerContents = (key: string) => `bostan-test-template-v1:${key}\\n`;
+
+function isPrunableOwnedTemplate(dir: string, key: string): boolean {
+  if (!/^[a-f0-9]{24}$/.test(key) || !isUsableTemplate(dir)) return false;
+  try {
+    const marker = path.join(dir, TEMPLATE_OWNER_MARKER);
+    const info = fs.lstatSync(marker);
+    if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1 ||
+        info.size > 80 || (info.mode & 0o022) !== 0) return false;
+    return fs.readFileSync(marker, "utf8") === templateOwnerMarkerContents(key);
+  } catch {
+    return false;
+  }
+}
+
+// Best-effort pruning of explicitly owned, stopped Bostan template clusters.
+// Never reclaim pre-marker templates, unknown directories or live clusters.
+// A separate process may race this sweep; retain on any failed revalidation.
 function pruneStaleTemplates(rootDir: string, keepDir: string): void {
+  if (describePrivateDirectoryProblem(rootDir) !== null) return;
   let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(rootDir, { withFileTypes: true });
@@ -552,10 +570,17 @@ function pruneStaleTemplates(rootDir: string, keepDir: string): void {
     const entryPath = path.join(rootDir, entry.name);
     if (entryPath === keepDir || !entry.isDirectory()) continue;
     try {
-      const age = now - fs.statSync(entryPath).mtimeMs;
-      if (age > TEMPLATE_PRUNE_AGE_MS) fs.rmSync(entryPath, { recursive: true, force: true });
+      const info = fs.lstatSync(entryPath);
+      if (!info.isDirectory() || info.isSymbolicLink() ||
+          now - info.mtimeMs <= TEMPLATE_PRUNE_AGE_MS ||
+          !isPrunableOwnedTemplate(entryPath, entry.name)) continue;
+      const current = fs.lstatSync(entryPath);
+      if (current.dev !== info.dev || current.ino !== info.ino ||
+          current.birthtimeMs !== info.birthtimeMs ||
+          !isPrunableOwnedTemplate(entryPath, entry.name)) continue;
+      fs.rmSync(entryPath, { recursive: true, force: true });
     } catch {
-      // Another process may be using or removing it; leave it alone.
+      // Ownership or identity became uncertain; retain the entry.
     }
   }
 }
@@ -592,6 +617,15 @@ async function buildEmbeddedPostgresTemplate(templateDir: string): Promise<boole
     await applyPendingMigrations(databaseConnectionStringFor(port));
     const stopped = await stopForTemplatePublish(instance);
     if (!stopped || !isUsableTemplate(dataDir)) return false;
+    // Stamp only a newly built, verified-stopped native cluster. Preexisting
+    // or foreign cache entries never gain deletion authority retroactively.
+    const templateKey = path.basename(templateDir);
+    if (!/^[a-f0-9]{24}$/.test(templateKey)) return false;
+    fs.writeFileSync(
+      path.join(dataDir, TEMPLATE_OWNER_MARKER),
+      templateOwnerMarkerContents(templateKey),
+      { flag: "wx", mode: 0o600 },
+    );
     try {
       fs.renameSync(dataDir, templateDir);
       published = true;
