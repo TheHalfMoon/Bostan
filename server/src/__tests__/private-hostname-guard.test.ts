@@ -283,6 +283,19 @@ describe("private WebSocket upgrade authority admission", () => {
     expect(isPrivateUpgradeHostAllowed({ rawHeaders: ["Host", "approved.internal:3100"], url: target }, privateOpts)).toBe(true);
   });
 
+  it.each([
+    { label: "foreign browser Origin", rawHeaders: ["Host", "localhost:3100", "Origin", "https://blocked.invalid"], allowed: false },
+    { label: "null Origin", rawHeaders: ["Host", "localhost:3100", "Origin", "null"], allowed: false },
+    { label: "userinfo-folded Origin", rawHeaders: ["Host", "localhost:3100", "Origin", "http://evil@localhost:3100"], allowed: false },
+    { label: "numeric IPv4 alias Origin", rawHeaders: ["Host", "127.0.0.1:3100", "Origin", "http://0x7f000001"], allowed: false },
+    { label: "duplicate Origin", rawHeaders: ["Host", "localhost:3100", "Origin", "http://localhost", "Origin", "https://blocked.invalid"], allowed: false },
+    { label: "same host different dev port", rawHeaders: ["Host", "localhost:3100", "Origin", "http://localhost:5173"], allowed: true },
+    { label: "equivalent loopback host", rawHeaders: ["Host", "127.0.0.1:3100", "Origin", "http://localhost:5173"], allowed: true },
+    { label: "nonbrowser client without Origin", rawHeaders: ["Host", "localhost:3100"], allowed: true },
+  ])("enforces browser Origin admission for $label", ({ rawHeaders, allowed }) => {
+    expect(isPrivateUpgradeHostAllowed({ rawHeaders, url: target }, privateOpts)).toBe(allowed);
+  });
+
   it("preserves public-mode WebSocket compatibility", () => {
     expect(isPrivateUpgradeHostAllowed({ rawHeaders: ["Host", "blocked.invalid"], url: target }, { ...privateOpts, enabled: false })).toBe(true);
   });
@@ -290,7 +303,7 @@ describe("private WebSocket upgrade authority admission", () => {
 
 
 describe("private HTTP listener WebSocket upgrade admission", () => {
-  async function probeUpgrade(host: string, enabled: boolean, requestTarget = "/api/companies/00000000-0000-4000-8000-000000000001/events/ws") {
+  async function probeUpgrade(host: string, enabled: boolean, requestTarget = "/api/companies/00000000-0000-4000-8000-000000000001/events/ws", origin?: string) {
     const server = createPaperclipHttpServer((_req, res) => res.end("HTTP only"), {
       apiUrl: "http://127.0.0.1:3100",
       privateHostAdmission: { enabled, allowedHostnames: [], bindHost: "0.0.0.0" },
@@ -299,7 +312,7 @@ describe("private HTTP listener WebSocket upgrade admission", () => {
     server.on("upgrade", (req, socket) => {
       if ((req as typeof req & { paperclipWebSocketHandled?: boolean }).paperclipWebSocketHandled) return;
       downstream += 1;
-      socket.end("HTTP/1.1 101 Switching Protocols\\r\\nConnection: Upgrade\\r\\nUpgrade: websocket\\r\\n\\r\\n");
+      socket.end("HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n");
     });
     try {
       await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -310,8 +323,10 @@ describe("private HTTP listener WebSocket upgrade admission", () => {
         let data = "";
         client.setTimeout(3_000, () => client.destroy(new Error("upgrade test timeout")));
         client.once("connect", () => client.write(
-          `GET ${requestTarget} HTTP/1.1\\r\\n` +
-          `Host: ${host}\\r\\nConnection: Upgrade\\r\\nUpgrade: websocket\\r\\nSec-WebSocket-Key: dGVzdC1rZXk=\\r\\nSec-WebSocket-Version: 13\\r\\n\\r\\n`,
+          `GET ${requestTarget} HTTP/1.1\r\n` +
+          `Host: ${host}\r\n` +
+          (origin === undefined ? "" : `Origin: ${origin}\r\n`) +
+          `Connection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Key: dGVzdC1rZXk=\r\nSec-WebSocket-Version: 13\r\n\r\n`,
         ));
         client.on("data", (chunk) => { data += chunk.toString(); });
         client.once("error", reject);
@@ -322,6 +337,18 @@ describe("private HTTP listener WebSocket upgrade admission", () => {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
   }
+
+  it("refuses foreign browser Origin before any private WebSocket handler", async () => {
+    const result = await probeUpgrade("localhost:3100", true, undefined, "https://blocked.invalid");
+    expect(result.downstream).toBe(0);
+    expect(result.response).not.toContain("101 Switching Protocols");
+  });
+
+  it("admits a same-host browser Origin on a development port", async () => {
+    const result = await probeUpgrade("localhost:3100", true, undefined, "http://localhost:5173");
+    expect(result.downstream).toBe(1);
+    expect(result.response).toContain("101 Switching Protocols");
+  });
 
   it("refuses a forbidden private Host before any WebSocket listener handles it", async () => {
     const result = await probeUpgrade("blocked.invalid", true);
