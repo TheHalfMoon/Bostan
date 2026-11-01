@@ -66,6 +66,26 @@ describe("parseTrustProxyEnv", () => {
     expect(() => parseTrustProxyEnv(raw)).toThrow(/unrecognized token/);
   });
 
+  it.each([
+    "loopback,",
+    ",loopback",
+    "loopback,,uniquelocal",
+    "loopback,   ,10.0.0.0/8",
+    ",",
+    " , ",
+  ])("rejects empty comma-separated trust-proxy subnet entries (%s)", (raw) => {
+    // Dropping empty tokens silently turns malformed operator configuration
+    // into a live trust policy. Refuse startup instead of trusting a subset.
+    expect(() => parseTrustProxyEnv(raw)).toThrow(/empty proxy subnet entry/);
+  });
+
+  it("preserves legitimate whitespace around nonempty subnet entries", () => {
+    expect(parseTrustProxyEnv(" loopback , 10.0.0.0/8 ")).toEqual([
+      "loopback",
+      "10.0.0.0/8",
+    ]);
+  });
+
   it("retains valid IPv4 and IPv6 CIDR trust-proxy configuration", () => {
     expect(parseTrustProxyEnv("192.0.2.0/24,2001:db8::/32")).toEqual([
       "192.0.2.0/24",
