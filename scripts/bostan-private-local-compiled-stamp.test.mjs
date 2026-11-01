@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, unlinkSync, symlinkSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, unlinkSync, symlinkSync, linkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -109,6 +109,18 @@ test("real checkout admission accepts owned matching bytes and rejects both tamp
     rmSync(vendor);
     mkdirSync(vendor);
     writeFileSync(runner, runnerBytes);
+    assert.equal(checkLocalCompiledBuildStamp(workspace), true);
+    // Two names pointing to one inode are not exclusively owned build output.
+    // Use only links to fixture-created files within the test-owned workspace.
+    const hardlinkedServer = join(externalRunner, "hardlinked-server.js");
+    linkSync(index, hardlinkedServer);
+    assert.equal(checkLocalCompiledBuildStamp(workspace), false);
+    unlinkSync(hardlinkedServer);
+    assert.equal(checkLocalCompiledBuildStamp(workspace), true);
+    const hardlinkedRunner = join(externalRunner, "hardlinked-runner.js");
+    linkSync(runner, hardlinkedRunner);
+    assert.equal(checkLocalCompiledBuildStamp(workspace), false);
+    unlinkSync(hardlinkedRunner);
     assert.equal(checkLocalCompiledBuildStamp(workspace), true);
     writeFileSync(stamp, JSON.stringify({
       commit: "f".repeat(40), indexSha256: hash(indexBytes),
