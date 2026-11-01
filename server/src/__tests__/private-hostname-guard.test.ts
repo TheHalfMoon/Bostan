@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import express from "express";
 import request from "supertest";
 import { connect } from "node:net";
-import { parsePrivateHostHeader, privateHostnameGuard } from "../middleware/private-hostname-guard.js";
+import { isPrivateUpgradeHostAllowed, parsePrivateHostHeader, privateHostnameGuard } from "../middleware/private-hostname-guard.js";
 
 const unknownHostname = "blocked-host.invalid";
 
@@ -252,5 +252,30 @@ describe("privateHostnameGuard", () => {
     expect(res.body?.error).not.toContain("evil");
     expect(res.body?.error).not.toContain("$(");
     expect(res.body?.error).not.toContain("marker");
+  });
+});
+
+
+describe("private WebSocket upgrade authority admission", () => {
+  const privateOpts = { enabled: true, allowedHostnames: ["approved.internal"], bindHost: "0.0.0.0" };
+  const target = "/api/companies/00000000-0000-4000-8000-000000000001/events/ws";
+
+  it.each([
+    { label: "unknown Host", rawHeaders: ["Host", "blocked.invalid:3100"], url: target },
+    { label: "forged forwarded Host", rawHeaders: ["Host", "blocked.invalid", "X-Forwarded-Host", "localhost"], url: target },
+    { label: "duplicate Host", rawHeaders: ["Host", "localhost", "Host", "blocked.invalid"], url: target },
+    { label: "missing Host", rawHeaders: ["X-Forwarded-Host", "localhost"], url: target },
+    { label: "absolute-form target", rawHeaders: ["Host", "localhost"], url: "http://blocked.invalid/api/companies/00000000-0000-4000-8000-000000000001/events/ws" },
+  ])("refuses $label before WebSocket authentication", ({ rawHeaders, url }) => {
+    expect(isPrivateUpgradeHostAllowed({ rawHeaders, url }, privateOpts)).toBe(false);
+  });
+
+  it("allows a single loopback or explicitly configured Host", () => {
+    expect(isPrivateUpgradeHostAllowed({ rawHeaders: ["Host", "localhost:3100"], url: target }, privateOpts)).toBe(true);
+    expect(isPrivateUpgradeHostAllowed({ rawHeaders: ["Host", "approved.internal:3100"], url: target }, privateOpts)).toBe(true);
+  });
+
+  it("preserves public-mode WebSocket compatibility", () => {
+    expect(isPrivateUpgradeHostAllowed({ rawHeaders: ["Host", "blocked.invalid"], url: target }, { ...privateOpts, enabled: false })).toBe(true);
   });
 });
