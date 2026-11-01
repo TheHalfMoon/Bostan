@@ -358,8 +358,8 @@ describe("private WebSocket upgrade request framing", () => {
 
   it.each([
     { label: "duplicate keep-alive Connection token", connection: "Upgrade, keep-alive, keep-alive", allow: false },
-    { label: "Latin-1 NBSP before keep-alive token", connection: "Upgrade,\\u00a0keep-alive", allow: false },
-    { label: "valid ASCII tab OWS before keep-alive token", connection: "Upgrade,\\tkeep-alive", allow: true },
+    { label: "Latin-1 NBSP before keep-alive token", connection: "Upgrade,\u00a0keep-alive", allow: false },
+    { label: "valid ASCII tab OWS before keep-alive token", connection: "Upgrade,\tkeep-alive", allow: true },
   ])("enforces strict Connection token lexical framing for $label", ({ connection, allow }) => {
     const rawHeaders = ["Host", "localhost:3100", "Connection", connection, "Upgrade", "websocket"];
     expect(isPrivateUpgradeRequestAllowed({
