@@ -59,6 +59,16 @@ test("refuses a tree exceeding the bounded maximum directory depth", t => {
   }
   assert.equal(safe(data), false);
 });
+test("source fixture checks both the owner template and its copy before native start", () => {
+  const source = fs.readFileSync(new URL("./test-embedded-postgres.ts", import.meta.url), "utf8");
+  assert(source.includes('import { isSelfContainedPostgresTemplateTree } from "./embedded-postgres-template-tree.js";'));
+  assert(source.includes('&& isSelfContainedPostgresTemplateTree(dir)'));
+  const copyAt = source.indexOf('fs.cpSync(templateDir, dataDir, { recursive: true });');
+  const verifyAt = source.indexOf('if (!isSelfContainedPostgresTemplateTree(dataDir))', copyAt);
+  const nativeStartAt = source.indexOf('await created.instance.start();', copyAt);
+  assert(copyAt >= 0 && verifyAt > copyAt && nativeStartAt > verifyAt);
+});
+
 test("rejects missing roots and symlinked root directories", t => {
   const { root, data } = own(t);
   assert.equal(safe(path.join(root,"absent")), false);
