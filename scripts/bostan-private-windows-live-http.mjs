@@ -8,6 +8,7 @@ import {basename,join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {checkBostanWindowsDisk} from "./bostan-private-windows-disk-admission.mjs";
 import {checkBostanWindowsMemory} from "./bostan-private-windows-memory-admission.mjs";
+import {evaluateWindowsLiveMemory} from "./bostan-private-windows-live-memory-policy.mjs";
 import {buildPrivateWindowsHttpQaEnvironment} from "./bostan-private-windows-qa-env.mjs";
 import {parsePrivateWindowsQaWave,matchingPrivateWindowsQaWave} from "./bostan-private-windows-qa-wave.mjs";
 import {observeOwnedQaChild} from "./bostan-private-windows-child-lifecycle.mjs";
@@ -69,7 +70,7 @@ if(!memoryAdmission.allowed){
 // significantly heavier than the backend-only gate. Refuse low-memory
 // attempts before creating any owned database or long-running process.
 // This is resource protection, not a claim that 4 GiB ensures success.
-if(browserMode&&memoryAdmission.freeGiB<4){
+if(browserMode&&!evaluateWindowsLiveMemory(memoryAdmission,{browserMode}).allowed){
   console.error("BOSTAN_WINDOWS_LIVE_CHROMIUM_MEMORY_REFUSED");
   process.exit(2);
 }
@@ -112,6 +113,15 @@ if(browserMode){
     process.exit(2);
   }
   console.log("BOSTAN_WINDOWS_CHROMIUM_ASSET_PREFLIGHT_PASS");
+}
+// Native assets and module resolution can consume RAM after the initial
+// gate. Refresh admission before creating any PostgreSQL scratch state.
+const beforeDatabasePolicy=evaluateWindowsLiveMemory(
+  checkBostanWindowsMemory(),{browserMode},
+);
+if(!beforeDatabasePolicy.allowed){
+  console.error("BOSTAN_WINDOWS_LIVE_MEMORY_BEFORE_DATABASE_REFUSED="+beforeDatabasePolicy.reason);
+  process.exit(2);
 }
 async function availablePort(){
   const server=createServer();
@@ -163,10 +173,11 @@ try{
   markHttpStage("BOSTAN_WINDOWS_LIVE_POSTGRES_MIGRATED");
   // Recheck after the real migration, before starting the memory-heavy
   // TypeScript server. A failure enters owned PostgreSQL teardown below.
-  const afterDbMemory=checkBostanWindowsMemory();
-  if(!afterDbMemory.allowed||(browserMode&&afterDbMemory.freeGiB<3)){
-    console.error("BOSTAN_WINDOWS_LIVE_MEMORY_POSTGRES_REFUSED="+
-      (browserMode&&afterDbMemory.freeGiB<3?"chromium_low_free_memory":afterDbMemory.reason));
+  const afterDbPolicy=evaluateWindowsLiveMemory(
+    checkBostanWindowsMemory(),{browserMode},
+  );
+  if(!afterDbPolicy.allowed){
+    console.error("BOSTAN_WINDOWS_LIVE_MEMORY_POSTGRES_REFUSED="+afterDbPolicy.reason);
     throw Error("Native Windows memory admission failed after PostgreSQL migration");
   }
   const port=await availablePort();
@@ -180,6 +191,15 @@ try{
   });
   mkdirSync(env.APPDATA,{recursive:true,mode:0o700});
   mkdirSync(env.LOCALAPPDATA,{recursive:true,mode:0o700});
+  // Free RAM can change while choosing a port and preparing the synthetic
+  // environment. Refuse the actual server spawn if the budget has expired.
+  const beforeServerPolicy=evaluateWindowsLiveMemory(
+    checkBostanWindowsMemory(),{browserMode},
+  );
+  if(!beforeServerPolicy.allowed){
+    console.error("BOSTAN_WINDOWS_LIVE_MEMORY_BEFORE_SERVER_REFUSED="+beforeServerPolicy.reason);
+    throw Error("Native Windows memory admission failed before server spawn");
+  }
   console.log("BOSTAN_WINDOWS_LIVE_SERVER_MODE="+serverCommand.mode);
   server=spawn(process.execPath,serverCommand.nodeArgs,{
     cwd:join(root,"server"),env,windowsHide:true,stdio:["ignore","pipe","pipe"],
