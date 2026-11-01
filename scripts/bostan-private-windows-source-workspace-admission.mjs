@@ -1,15 +1,22 @@
 /**
- * Test-only source HTTP QA: reject missing workspace-scoped imports BEFORE
- * creating any disposable PostgreSQL database or starting a child process.
- * A package declaration alone does not prove its installed Node resolution.
+ * Native Windows source HTTP QA: preflight direct package-scoped dependency
+ * resolution before creating PostgreSQL scratch state or spawning a server.
+ * Node resolution alone may silently use a borrowed parent install or an
+ * out-of-checkout package symlink; neither proves an owned QA workspace.
  */
 import { createRequire } from 'node:module';
-import { lstatSync, readFileSync } from 'node:fs';
-import { isAbsolute, join, resolve } from 'node:path';
+import { lstatSync, readFileSync, realpathSync } from 'node:fs';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 const SCOPES = Object.freeze(['server', 'packages/adapter-utils', 'packages/paperclip-runner']);
 const DEPENDENCY = 'smol-toml';
 const refuse = reason => Object.freeze({ allowed: false, reason });
+
+function inside(parent, child) {
+  if (typeof child !== 'string' || !isAbsolute(child)) return false;
+  const rel = relative(parent, child);
+  return rel !== '' && rel !== '..' && !rel.startsWith('..' + sep) && !isAbsolute(rel);
+}
 
 export function checkPrivateWindowsSourceWorkspaceDependencies({
   root,
@@ -17,6 +24,10 @@ export function checkPrivateWindowsSourceWorkspaceDependencies({
 } = {}) {
   if (typeof root !== 'string' || !isAbsolute(root) || resolve(root) !== root ||
       typeof resolveDependency !== 'function') return refuse('invalid_source_root');
+  try {
+    const rootStat = lstatSync(root);
+    if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) return refuse('invalid_source_root');
+  } catch { return refuse('invalid_source_root'); }
   for (const scope of SCOPES) {
     const manifest = join(root, scope, 'package.json');
     let parsed;
@@ -30,9 +41,35 @@ export function checkPrivateWindowsSourceWorkspaceDependencies({
         typeof parsed.dependencies?.[DEPENDENCY] !== 'string' ||
         parsed.dependencies[DEPENDENCY].length === 0)
       return refuse('undeclared_workspace_dependency');
+
+    // Every scope must have its own direct package entry, not merely a
+    // hoisted or borrowed ancestor dependency that happens to resolve.
+    const modules = join(root, scope, 'node_modules');
+    const packageLink = join(modules, DEPENDENCY);
+    let physicalPackage;
+    try {
+      const modulesStat = lstatSync(modules);
+      if (!modulesStat.isDirectory() || modulesStat.isSymbolicLink())
+        return refuse('foreign_workspace_dependency');
+      const linkStat = lstatSync(packageLink);
+      if (!linkStat.isDirectory() && !linkStat.isSymbolicLink())
+        return refuse('missing_workspace_dependency');
+      physicalPackage = realpathSync(packageLink);
+      if (!lstatSync(physicalPackage).isDirectory())
+        return refuse('missing_workspace_dependency');
+    } catch { return refuse('missing_workspace_dependency'); }
+    // pnpm symlinks to this checkout's own node_modules/.pnpm are allowed;
+    // paths into other checkouts or operator-controlled directories are not.
+    if (!inside(root, physicalPackage)) return refuse('foreign_workspace_dependency');
     try {
       const located = resolveDependency(manifest, DEPENDENCY);
-      if (typeof located !== 'string' || located.length === 0)
+      if (typeof located !== 'string' || !isAbsolute(located))
+        return refuse('missing_workspace_dependency');
+      const physicalFile = realpathSync(located);
+      if (!inside(physicalPackage, physicalFile) || !inside(root, physicalFile))
+        return refuse('foreign_workspace_dependency');
+      const fileStat = lstatSync(physicalFile);
+      if (!fileStat.isFile() || fileStat.isSymbolicLink())
         return refuse('missing_workspace_dependency');
     } catch { return refuse('missing_workspace_dependency'); }
   }
