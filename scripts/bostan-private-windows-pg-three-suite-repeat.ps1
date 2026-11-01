@@ -115,7 +115,13 @@ try {
       }
       Write-Output "BOSTAN_B105_ROUND_$($round)_GREEN_NO_RETAINED_FIXTURES"
     }
-    Write-Output "BOSTAN_B105_NATIVE_WINDOWS_REAL_PG_PARALLEL_REPEATED_PASS rounds=$Rounds"
+    # A single native parallel round qualifies the three-suite boundary,
+    # not repeatability. Keep the repeated marker exclusive to 2 rounds.
+    if ($Rounds -eq 1) {
+      Write-Output 'BOSTAN_B105_NATIVE_WINDOWS_REAL_PG_PARALLEL_SINGLE_ROUND_PASS'
+    } else {
+      Write-Output "BOSTAN_B105_NATIVE_WINDOWS_REAL_PG_PARALLEL_REPEATED_PASS rounds=$Rounds"
+    }
   } finally {
     $env:TMP = $savedTemp
     $env:PAPERCLIP_TEST_POSTGRES_TEMPLATE = $savedTemplate
