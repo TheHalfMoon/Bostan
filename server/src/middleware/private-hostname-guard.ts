@@ -177,10 +177,14 @@ export function isPrivateUpgradeRequestAllowed(
       // 'upgrade'; an origin server must reject that framing ambiguity before
       // any WebSocket authentication handler gets the request.
       if (++connectionFields !== 1) return false;
-      const tokens = value.split(",").map((token) => token.trim().toLowerCase());
-      // Preserve the standard comma-token spelling and keep-alive + Upgrade
-      // while refusing unknown, empty, repeated or conflicting tokens.
+      // HTTP Connection tokens permit ASCII SP/HTAB optional whitespace, not
+      // Unicode whitespace. String.trim() would silently fold Latin-1 NBSP
+      // into a valid token even though Node can dispatch that raw field to
+      // the upgrade event. Reject duplicate keep-alive tokens as ambiguous.
+      const tokens = value.split(",").map((token) =>
+        token.replace(/^[ \\t]+|[ \\t]+$/g, "").toLowerCase());
       if (tokens.filter((token) => token === "upgrade").length !== 1 ||
+          tokens.filter((token) => token === "keep-alive").length > 1 ||
           tokens.some((token) => token !== "upgrade" && token !== "keep-alive")) return false;
     }
     if (field === "upgrade") {
