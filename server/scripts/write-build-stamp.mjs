@@ -127,7 +127,7 @@ function main() {
         info.ino !== pathInfo.ino)
       throw new Error("Bostan build stamp descriptor not safely qualified");
     ftruncateSync(fd, 0);
-    writeFileSync(fd, `${JSON.stringify({ commit, ...digests }, null, 2)}\\n`);
+    writeFileSync(fd, `${JSON.stringify({ commit, ...digests }, null, 2)}\n`);
   } finally {
     closeSync(fd);
   }
