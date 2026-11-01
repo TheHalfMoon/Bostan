@@ -26,13 +26,15 @@ test("refuses a nested symbolic link to an external directory", t => {
   fs.mkdirSync(outside);
   fs.writeFileSync(path.join(outside, "KEEP"), "foreign");
   fs.mkdirSync(path.join(data, "pg_tblspc"));
-  fs.symlinkSync(outside, path.join(data, "pg_tblspc", "123"));
+  try { fs.symlinkSync(outside, path.join(data, "pg_tblspc", "123")); }
+  catch (error) { if (error.code === "EPERM") { t.skip("native symlink privilege unavailable"); return; } throw error; }
   assert.equal(safe(data), false);
   assert.equal(fs.readFileSync(path.join(outside, "KEEP"), "utf8"), "foreign");
 });
 test("refuses a nested dangling symlink", t => {
   const { root, data } = own(t);
-  fs.symlinkSync(path.join(root, "not-created"), path.join(data, "postgresql.auto.conf"));
+  try { fs.symlinkSync(path.join(root, "not-created"), path.join(data, "postgresql.auto.conf")); }
+  catch (error) { if (error.code === "EPERM") { t.skip("native symlink privilege unavailable"); return; } throw error; }
   assert.equal(safe(data), false);
 });
 test("refuses nested hardlinks shared with data outside the cluster", t => {
@@ -73,6 +75,7 @@ test("rejects missing roots and symlinked root directories", t => {
   const { root, data } = own(t);
   assert.equal(safe(path.join(root,"absent")), false);
   const linked = path.join(root, "linked");
-  fs.symlinkSync(data, linked, "dir");
+  try { fs.symlinkSync(data, linked, "dir"); }
+  catch (error) { if (error.code === "EPERM") { t.skip("native symlink privilege unavailable"); return; } throw error; }
   assert.equal(safe(linked), false);
 });
