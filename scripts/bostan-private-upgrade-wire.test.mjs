@@ -126,6 +126,9 @@ for (const [label, extraHeaders, connectionHeader, allowed] of [
   ['repeated Upgrade token in Connection', [], 'Connection: Upgrade, Upgrade', false],
   ['conflicting close token in Connection', [], 'Connection: Upgrade, close', false],
   ['empty Connection token', [], 'Connection: Upgrade,', false],
+  ['duplicate keep-alive Connection token', [], 'Connection: Upgrade, keep-alive, keep-alive', false],
+  ['Latin-1 NBSP before keep-alive token', [], 'Connection: Upgrade,\u00a0keep-alive', false],
+  ['ASCII tab OWS before keep-alive token', [], 'Connection: Upgrade,\tkeep-alive', true],
   ['unknown Connection token', [], 'Connection: Upgrade, h2c', false],
 ]) {
   test('native upgrade wire: ' + label, async () => {
