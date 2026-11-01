@@ -86,11 +86,19 @@ export function setupRunnerPrpWebSocketServer(
   server.on(
     "upgrade",
     (request: IncomingMessage, socket: Duplex, head: Buffer) => {
-      const url = new URL(request.url ?? "/", "http://paperclip.invalid");
+      const ownedRequest = request as RunnerPrpUpgradeRequest;
+      // The private Host gate may already have rejected this socket. Never
+      // parse a potentially malformed request target after that rejection.
+      if (ownedRequest.paperclipWebSocketHandled) return;
+      let url: URL;
+      try {
+        url = new URL(request.url ?? "/", "http://paperclip.invalid");
+      } catch {
+        // Unrelated malformed upgrade targets must not crash this listener.
+        return;
+      }
       if (!url.pathname.startsWith(CONNECT_PATH_PREFIX)) return;
 
-      const ownedRequest = request as RunnerPrpUpgradeRequest;
-      if (ownedRequest.paperclipWebSocketHandled) return;
       ownedRequest.paperclipWebSocketHandled = true;
       socket.on("error", (error) => {
         logger.warn(
