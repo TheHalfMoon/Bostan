@@ -22,7 +22,7 @@ export function isSelfContainedPostgresTemplateTree(root: string): boolean {
       if (!info.isDirectory() || info.isSymbolicLink() ||
           info.dev !== anchor.dev ||
           (uid !== undefined && info.uid !== uid) ||
-          (info.mode & 0o022) !== 0) return false;
+          (uid !== undefined && (info.mode & 0o022) !== 0)) return false;
       const names = fs.readdirSync(dir);
       entries += names.length;
       if (entries > MAX_TEMPLATE_ENTRIES) return false;
