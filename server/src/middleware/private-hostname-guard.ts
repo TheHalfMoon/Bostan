@@ -12,8 +12,11 @@ function isLoopbackHostname(hostname: string): boolean {
  * accepting those spellings could turn an unauthorized Host into localhost.
  */
 export function parsePrivateHostHeader(value: string | undefined): string | null {
-  if (typeof value !== "string") return null;
-  const authority = value.trim();
+  // Host is an ASCII HTTP authority. Node preserves Latin-1 obs-text (for
+  // example 0xA0 NBSP) in rawHeaders; trimming it would turn an untrusted
+  // authority into an allowed localhost spelling.
+  if (typeof value !== "string" || /[^\x21-\x7e]/.test(value)) return null;
+  const authority = value;
   if (!authority || /[\x00-\x20\x7f@\\/?#%]/.test(authority)) return null;
 
   // Brackets are mandatory for IPv6 literals; ports must be canonical and
