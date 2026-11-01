@@ -198,7 +198,7 @@ function pidMarkerPresent(marker: string): boolean {
   }
   // existsSync follows links (including dangling links), so it cannot prove
   // that postmaster.pid is an ordinary marker owned by this scratch cluster.
-  if (!stat.isFile() || stat.isSymbolicLink())
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1)
     throw Error("Ambiguous PostgreSQL PID marker; retaining fixture");
   return true;
 }
@@ -209,11 +209,11 @@ function assertValidPidMarkerBeforeStop(marker: string, ownedDataDir: string): n
   let fd: number | undefined;
   try {
     const before = fs.lstatSync(marker);
-    if (!before.isFile() || before.isSymbolicLink()
+    if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1
         || before.size < 2 || before.size > 4096) throw Error("invalid");
     fd = fs.openSync(marker, "r"); // fstat below detects a link/replacement race.
     const opened = fs.fstatSync(fd);
-    if (!opened.isFile() || opened.dev !== before.dev
+    if (!opened.isFile() || opened.nlink !== 1 || opened.dev !== before.dev
         || opened.ino !== before.ino || opened.birthtimeMs !== before.birthtimeMs)
       throw Error("changed");
     // PostgreSQL postmaster.pid line 2 names its cluster data directory.
@@ -253,7 +253,7 @@ function assertValidPidMarkerBeforeStop(marker: string, ownedDataDir: string): n
     // An open descriptor can remain valid after its pathname is replaced.
     // Recheck the marker at its original path before authorizing pg_ctl.
     const atPath = fs.lstatSync(marker);
-    if (!atPath.isFile() || atPath.isSymbolicLink()
+    if (!atPath.isFile() || atPath.isSymbolicLink() || atPath.nlink !== 1
         || atPath.dev !== opened.dev || atPath.ino !== opened.ino
         || atPath.birthtimeMs !== opened.birthtimeMs
         || atPath.size !== opened.size || atPath.mtimeMs !== opened.mtimeMs)
@@ -319,6 +319,7 @@ export async function stopOwnedWindowsEmbeddedPostgres(
   try {
     initialVersion = fs.lstatSync(versionMarker);
     if (!initialVersion.isFile() || initialVersion.isSymbolicLink()
+        || initialVersion.nlink !== 1
         || initialVersion.size < 1 || initialVersion.size > 32)
       throw Error("ambiguous");
     initialVersionBytes = readBoundedVersionMarker(versionMarker);
@@ -339,6 +340,7 @@ export async function stopOwnedWindowsEmbeddedPostgres(
           || current.birthtimeMs !== initialDir.birthtimeMs
           || fs.realpathSync(dataDir) !== data
           || !currentVersion.isFile() || currentVersion.isSymbolicLink()
+          || currentVersion.nlink !== 1
           || currentVersion.dev !== initialVersion.dev
           || currentVersion.ino !== initialVersion.ino
           || currentVersion.birthtimeMs !== initialVersion.birthtimeMs
@@ -374,7 +376,8 @@ export async function stopOwnedWindowsEmbeddedPostgres(
   try { markerAfter = fs.lstatSync(marker); } catch {
     throw Error("Ambiguous PostgreSQL PID marker identity; retaining fixture");
   }
-  if (markerAfter.dev !== markerBefore.dev || markerAfter.ino !== markerBefore.ino
+  if (markerAfter.nlink !== 1
+      || markerAfter.dev !== markerBefore.dev || markerAfter.ino !== markerBefore.ino
       || markerAfter.birthtimeMs !== markerBefore.birthtimeMs
       || markerAfter.size !== markerBefore.size || markerAfter.mtimeMs !== markerBefore.mtimeMs)
     throw Error("Ambiguous PostgreSQL PID marker identity; retaining fixture");
