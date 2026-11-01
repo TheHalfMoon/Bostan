@@ -4,6 +4,9 @@ import { request as httpRequest } from "node:http";
 import { createServer as createViteServer } from "vite";
 import { afterEach, describe, expect, it } from "vitest";
 import { idleAdmissionMiddleware, trackIdleRequestHandlers } from "../middleware/idle-admission.js";
+import { privateHostnameGuard } from "../middleware/private-hostname-guard.js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { idleWorkSnapshot, startTaskDrain, stopTaskDrain, readTaskDrain, beginIdleTrackedWork } from "../services/task-admission.js";
 
 function deferred() {
@@ -15,6 +18,39 @@ function app() { const app = express(); app.use(idleAdmissionMiddleware); return
 afterEach(() => stopTaskDrain());
 
 describe("idle admission", () => {
+  it("does not create idle-work tokens for a rejected private Host", async () => {
+    const server = express();
+    server.use(privateHostnameGuard({
+      enabled: true,
+      allowedHostnames: [],
+      bindHost: "0.0.0.0",
+    }));
+    server.use(idleAdmissionMiddleware);
+    server.get("/api/health", (_req, res) => res.sendStatus(204));
+    trackIdleRequestHandlers(server);
+
+    const before = idleWorkSnapshot();
+    await request(server).get("/api/health").set("Host", "blocked.invalid:3100").expect(403);
+    expect(idleWorkSnapshot()).toEqual(before);
+
+    await request(server).get("/api/health").set("Host", "localhost:3100").expect(204);
+    expect(idleWorkSnapshot()).toEqual({
+      active: before.active,
+      generation: before.generation + 2,
+    });
+  });
+
+  it("registers production private Host admission before idle tracking and body parsers", () => {
+    const source = readFileSync(fileURLToPath(new URL("../app.ts", import.meta.url)), "utf8");
+    const guard = source.indexOf("privateHostnameGuard({");
+    const idle = source.indexOf("app.use(idleAdmissionMiddleware);");
+    const body = source.indexOf("COMPANY_IMPORT_API_PATH,\n    express.json({");
+    expect(guard).toBeGreaterThan(-1);
+    expect(idle).toBeGreaterThan(guard);
+    expect(body).toBeGreaterThan(idle);
+    expect(source.indexOf("app.use(idleAdmissionMiddleware);", idle + 1)).toBe(-1);
+  });
+
   it("preserves legacy drains, but blocks all new work during an owned idle hold", async () => {
     const server = app();
     server.all("/{*path}", (_req, res) => res.sendStatus(204));
