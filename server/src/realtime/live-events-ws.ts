@@ -417,7 +417,16 @@ export function setupLiveEventsWebSocketServer(
       return;
     }
 
-    const url = new URL(req.url, "http://localhost");
+    let url: URL;
+    try {
+      url = new URL(req.url, "http://localhost");
+    } catch {
+      // An invalid network-path reference must not throw from an upgrade
+      // listener and terminate the shared HTTP server process.
+      (req as IncomingMessageWithContext).paperclipWebSocketHandled = true;
+      rejectUpgrade(socket, "400 Bad Request", "invalid upgrade target");
+      return;
+    }
     const companyId = parseCompanyId(url.pathname);
     if (!companyId) {
       closeUpgradeSocket(socket);
