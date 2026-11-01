@@ -547,7 +547,8 @@ function isPrunableOwnedTemplate(dir: string, key: string): boolean {
     const marker = path.join(dir, TEMPLATE_OWNER_MARKER);
     const info = fs.lstatSync(marker);
     if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1 ||
-        info.size > 80 || (info.mode & 0o022) !== 0) return false;
+        info.size > 80 ||
+        (process.getuid?.() !== undefined && (info.mode & 0o022) !== 0)) return false;
     return fs.readFileSync(marker, "utf8") === templateOwnerMarkerContents(key);
   } catch {
     return false;
