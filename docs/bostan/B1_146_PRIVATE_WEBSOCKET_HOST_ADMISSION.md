@@ -18,15 +18,23 @@ An isolated Debian Linux Node v22.16.0 native `node:http` probe reproduced the e
 
 Frozen GitHub blobs for this branch after code/test changes:
 
-- `server/src/middleware/private-hostname-guard.ts`: `672210e5d380a34391f7c298da299bc1bd8fd51a`
+- `server/src/middleware/private-hostname-guard.ts`: `d1559b91cef71c6efc31ad939564ab4e261b4d03`
 - `server/src/http/server.ts`: `b3c8cb5a947307276e5a25e45adc12f35bb2e9fc`
 - `server/src/index.ts`: `5424c73cfafe94b9abf1c4496e8825444e20ff50`
-- `server/src/realtime/environment-custom-image-terminal-ws.ts`: `6657bbd29fb6c9d977d15a81a7839d63548e5e59`
-- `server/src/__tests__/private-hostname-guard.test.ts`: `bb64bd6bb8b8c28a16eaee781ef0e956d20f823c`
+- `server/src/realtime/environment-custom-image-terminal-ws.ts`: `cbca7ed86a50773aa80664eba004e8973037289c`
+- `server/src/__tests__/private-hostname-guard.test.ts`: `e2e0d4ad95cfd852704ce064b7911d51e846d1b8`
+- `server/src/realtime/live-events-ws.ts`: `1214f55adf4f591c8d5c128012968c21f9beb14a`
+- `server/src/realtime/runner-prp-ws.ts`: `549e87b7bc86f865678cb6c82510175bdbaf6a4c`
 
 ## Actually executed evidence (2026-11-01)
 
 An isolated model-owned Linux `/tmp` harness ran the same admission predicates and `node:http` upgrade listener ordering with loopback-only sockets. Node v22.16.0 built-in `node:test` reported **11/11 PASS**, zero failures: five denied authority cases, two allowed private Host cases, disabled-mode compatibility, denied upgrade never reaching a downstream handler, allowed loopback upgrade, and public-mode compatibility. This harness uses copied equivalent logic, **not** the exact checked-in TypeScript module or Bostan HTTP server. No paid services, downloads, customer data, GitHub Actions, or user-machine access.
+
+## Additional malformed-target hardening and bounded execution
+
+Node's `new URL("//%", "http://localhost")` throws a `TypeError`. The prior direct live-events and custom-image terminal upgrade listeners parsed `req.url` without a catch, while runner PRP parsed before honoring `paperclipWebSocketHandled`. These paths could throw on a malformed WebSocket request target instead of refusing it. The source changes now reject ambiguous `//` network-path targets in both private HTTP and upgrade admission, move runner's handled check ahead of URL parsing, and catch invalid URLs in live-events, terminal, and runner listeners. The live-events and terminal catch paths return a static HTTP 400 without reflecting the hostile request target.
+
+An additional model-owned, native Debian Linux Node v22.16.0 `node:test` probe executed **6/6 PASS**, zero failures: old `new URL("//%")` throw reproduced; origin-form refusal; absolute-form refusal; catch behavior; real loopback upgrade refused for `//%`; normal upgrade remained admitted. The six tests use isolated equivalent logic and a test-owned Node server, **not** the exact checked-in Bostan source-native suite. All model-owned scratch was deleted. These are **separate** from the prior 11/11 isolated checks; neither run qualifies full Bostan Vitest or installed WebSocket behavior.
 
 ## Remaining qualification and release blockers
 
