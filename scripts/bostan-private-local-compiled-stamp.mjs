@@ -7,15 +7,19 @@
  * before the HTTP smoke creates any temporary PostgreSQL data.
  */
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { lstatSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const HEX_SHA = /^[0-9a-f]{40}$/;
-const MAX_BUILD_INFO_BYTES = 256;
+const MAX_BUILD_INFO_BYTES = 512;
+const MAX_ENTRY_BYTES = 128 * 1024 * 1024;
+const SHA256 = /^[0-9a-f]{64}$/;
+const ENTRIES = ["index.js", "vendor/paperclip-runner/index.js"];
 
-export function matchesLocalCompiledSourceCommit(rawBuildInfo, rawHead) {
+export function matchesLocalCompiledSourceCommit(rawBuildInfo, rawHead, actualDigests) {
   if (typeof rawBuildInfo !== "string" ||
       Buffer.byteLength(rawBuildInfo, "utf8") > MAX_BUILD_INFO_BYTES ||
       typeof rawHead !== "string" || !HEX_SHA.test(rawHead)) return false;
@@ -24,10 +28,15 @@ export function matchesLocalCompiledSourceCommit(rawBuildInfo, rawHead) {
   catch { return false; }
   return Boolean(stamp && typeof stamp === "object" &&
     !Array.isArray(stamp) &&
-    Object.keys(stamp).length === 1 &&
+    Object.keys(stamp).length === 3 &&
     Object.hasOwn(stamp, "commit") &&
     typeof stamp.commit === "string" &&
-    HEX_SHA.test(stamp.commit) && stamp.commit === rawHead);
+    HEX_SHA.test(stamp.commit) && stamp.commit === rawHead &&
+    actualDigests &&
+    SHA256.test(stamp.indexSha256) &&
+    SHA256.test(stamp.vendorSha256) &&
+    stamp.indexSha256 === actualDigests.indexSha256 &&
+    stamp.vendorSha256 === actualDigests.vendorSha256);
 }
 
 export function checkLocalCompiledBuildStamp(repoRoot = root) {
@@ -43,7 +52,16 @@ export function checkLocalCompiledBuildStamp(repoRoot = root) {
       timeout: 3000, maxBuffer: 256, encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
-    return matchesLocalCompiledSourceCommit(stamped, head);
+    const actualDigests = {};
+    for (const [i, name] of ENTRIES.entries()) {
+      const file = join(repoRoot, "server", "dist", ...name.split("/"));
+      const entryInfo = lstatSync(file);
+      if (!entryInfo.isFile() || entryInfo.isSymbolicLink() ||
+          entryInfo.size < 1 || entryInfo.size > MAX_ENTRY_BYTES) return false;
+      const actual = createHash("sha256").update(readFileSync(file)).digest("hex");
+      actualDigests[i === 0 ? "indexSha256" : "vendorSha256"] = actual;
+    }
+    return matchesLocalCompiledSourceCommit(stamped, head, actualDigests);
   } catch {
     return false;
   }
