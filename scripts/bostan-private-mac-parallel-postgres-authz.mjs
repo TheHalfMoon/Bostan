@@ -27,6 +27,7 @@ const modeMarkers={
 };
 const MAX_OUTPUT=512*1024;
 const MAX_MS=120_000;
+const MAX_TERMINATION_GRACE_MS=10_000;
 export function parseMacMemoryPressureFreePercentage(value){
   if(typeof value!=='string'||value.length>4096)return null;
   const matches=[...value.matchAll(/System-wide memory free percentage: (\d{1,3})%/g)];
@@ -64,10 +65,12 @@ export function assessParallelOverlap(runs){
     Math.min(...runs.map(r=>r.end));
 }
 export async function runWorker(label,env,mode='api',{
-  spawnWorker=spawn,timeoutMs=MAX_MS,
+  spawnWorker=spawn,timeoutMs=MAX_MS,terminationGraceMs=3_000,
 }={}){
   if(process.platform!=='darwin'||!Number.isInteger(timeoutMs)||
-     timeoutMs<1||timeoutMs>MAX_MS)
+     timeoutMs<1||timeoutMs>MAX_MS||
+     !Number.isInteger(terminationGraceMs)||terminationGraceMs<100||
+     terminationGraceMs>MAX_TERMINATION_GRACE_MS)
     throw Error('Private owned Mac PostgreSQL worker admission refused');
   const start=Date.now();
   const child=spawnWorker('bash',[suite,
@@ -77,11 +80,23 @@ export async function runWorker(label,env,mode='api',{
   // the group; on timeout/overflow we signal only that exact owned group.
   const owner=Number.isSafeInteger(child.pid)&&child.pid>=2?
     createOwnedNativeQaProcessGroup(child,true,'darwin'):null;
+  let output='',overflow=false,timedOut=false,closed=false,spawnFailed=false;
+  let terminationTimer;
+  let stopping=false;
   const stopOwned=()=>{
+    if(stopping)return;
+    stopping=true;
     if(owner)terminateOwnedNativeQaProcessGroup(owner,'SIGTERM');
     else child.kill('SIGTERM'); // spawn failure without an owned group
+    // A descendant or QA worker may ignore SIGTERM, leaving stdout pipes open
+    // and blocking the 'close' event indefinitely. Bound the cleanup time.
+    // Only this newly detached, explicitly owned process group may escalate.
+    terminationTimer=setTimeout(()=>{
+      if(closed)return;
+      if(owner)terminateOwnedNativeQaProcessGroup(owner,'SIGKILL');
+      else child.kill('SIGKILL');
+    },terminationGraceMs);
   };
-  let output='',overflow=false,timedOut=false,closed=false,spawnFailed=false;
   const append=chunk=>{
     if(overflow)return;
     const piece=chunk.toString('utf8');
@@ -101,6 +116,7 @@ export async function runWorker(label,env,mode='api',{
   const timer=setTimeout(()=>{timedOut=true;stopOwned()},timeoutMs);
   const {exit,signal}=await complete;
   clearTimeout(timer);
+  if(terminationTimer)clearTimeout(terminationTimer);
   const end=Date.now();
   return {label,start,end,closed,spawnFailed,...summarizeParallelAuthzExit({
     exit,signal,output,timedOut,overflow,mode,
