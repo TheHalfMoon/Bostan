@@ -61,6 +61,21 @@ export function checkPrivateWindowsSourceWorkspaceDependencies({
     // pnpm symlinks to this checkout's own node_modules/.pnpm are allowed;
     // paths into other checkouts or operator-controlled directories are not.
     if (!inside(root, physicalPackage)) return refuse('foreign_workspace_dependency');
+    // The directory name alone is not proof of package identity. A malicious
+    // or incomplete install can resolve an arbitrary index.js under this
+    // directory while claiming to provide the declared dependency.
+    try {
+      const packageManifest = join(physicalPackage, 'package.json');
+      const info = lstatSync(packageManifest);
+      if (!info.isFile() || info.isSymbolicLink() || info.size < 2 || info.size > 131072)
+        return refuse('invalid_workspace_dependency_identity');
+      const physicalManifest = realpathSync(packageManifest);
+      if (!inside(physicalPackage, physicalManifest) || !inside(root, physicalManifest))
+        return refuse('invalid_workspace_dependency_identity');
+      const identity = JSON.parse(readFileSync(packageManifest, 'utf8'));
+      if (!identity || typeof identity !== 'object' || Array.isArray(identity) ||
+          identity.name !== DEPENDENCY) return refuse('invalid_workspace_dependency_identity');
+    } catch { return refuse('invalid_workspace_dependency_identity'); }
     try {
       const located = resolveDependency(manifest, DEPENDENCY);
       if (typeof located !== 'string' || !isAbsolute(located))
