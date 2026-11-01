@@ -10,7 +10,7 @@ import { isPrivateUpgradeRequestAllowed } from '../server/src/middleware/private
 // function. The 101 responder is a stub, NOT an authenticated Bostan WS server.
 const privateOpts = { enabled: true, bindHost: '0.0.0.0', allowedHostnames: [] };
 
-async function rawUpgrade(headers, { target = '/api/events/ws', opts = privateOpts, method = 'GET', connectionHeader = 'Connection: Upgrade' } = {}) {
+async function rawUpgrade(headers, { target = '/api/events/ws', opts = privateOpts, method = 'GET', httpVersion = '1.1', connectionHeader = 'Connection: Upgrade' } = {}) {
   let admitted = 0;
   let rejected = 0;
   const server = createServer((_req, res) => { res.statusCode = 400; res.end(); });
@@ -33,7 +33,7 @@ async function rawUpgrade(headers, { target = '/api/events/ws', opts = privateOp
       socket.setTimeout(3000, () => socket.destroy(new Error('upgrade wire test timed out')));
       socket.on('connect', () => {
         socket.write(
-          method + ' ' + target + ' HTTP/1.1\r\n' + headers.join('\r\n') +
+          method + ' ' + target + ' HTTP/' + httpVersion + '\r\n' + headers.join('\r\n') +
           '\r\n' + connectionHeader + '\r\nUpgrade: websocket\r\n' +
           'Sec-WebSocket-Version: 13\r\n' +
           'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n',
@@ -138,6 +138,28 @@ for (const [label, extraHeaders, connectionHeader, allowed] of [
 
 test('native upgrade wire: public mode preserves duplicate Connection compatibility', async () => {
   const actual = await rawUpgrade(['Host: blocked.invalid:3100', 'Connection: keep-alive'], {
+    opts: { ...privateOpts, enabled: false },
+  });
+  assert.equal(actual.admitted, 1);
+  assert.equal(actual.status, '101');
+});
+
+
+// Native Node 22 actually emits 'upgrade' for request lines advertising
+// HTTP/1.0 and HTTP/2.0, even with otherwise canonical WebSocket headers.
+// The private boundary must fail closed before downstream WS listeners.
+for (const httpVersion of ['1.0', '2.0']) {
+  test('native upgrade wire: refuses HTTP/' + httpVersion + ' request version', async () => {
+    const actual = await rawUpgrade(['Host: localhost:3100'], { httpVersion });
+    assert.equal(actual.admitted, 0, JSON.stringify(actual));
+    // A future Node parser may reject before reaching Bostan's listener.
+    assert.ok(actual.rejected === 1 || actual.status === '400', JSON.stringify(actual));
+  });
+}
+
+test('native upgrade wire: public mode preserves legacy version semantics', async () => {
+  const actual = await rawUpgrade(['Host: localhost:3100'], {
+    httpVersion: '1.0',
     opts: { ...privateOpts, enabled: false },
   });
   assert.equal(actual.admitted, 1);
