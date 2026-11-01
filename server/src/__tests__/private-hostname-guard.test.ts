@@ -320,6 +320,7 @@ describe("private WebSocket upgrade request framing", () => {
   const opts = { enabled: true, allowedHostnames: [], bindHost: "0.0.0.0" };
   const makeRequest = (method: string, extra: string[] = [], upgrade = "websocket") => ({
     method,
+    httpVersion: "1.1",
     url: "/api/events/ws",
     rawHeaders: ["Host", "localhost:3100", "Connection", "Upgrade", "Upgrade", upgrade, ...extra],
   });
@@ -352,8 +353,29 @@ describe("private WebSocket upgrade request framing", () => {
   ])("checks $label at private upgrade boundary", ({ headers, allow }) => {
     const rawHeaders = ["Host", "localhost:3100", "Upgrade", "websocket", ...headers];
     expect(isPrivateUpgradeRequestAllowed({
-      method: "GET", url: "/api/events/ws", rawHeaders,
+      method: "GET", httpVersion: "1.1", url: "/api/events/ws", rawHeaders,
     }, opts)).toBe(allow);
+  });
+
+  it.each(["1.0", "2.0", "", "1.2"])(
+    "rejects non-HTTP/1.1 upgrade protocol version %s",
+    (httpVersion) => {
+      expect(isPrivateUpgradeRequestAllowed({
+        ...makeRequest("GET"),
+        httpVersion,
+      }, opts)).toBe(false);
+    },
+  );
+
+  it("permits canonical HTTP/1.1 request framing", () => {
+    expect(isPrivateUpgradeRequestAllowed(makeRequest("GET"), opts)).toBe(true);
+  });
+
+  it("preserves public-mode compatibility for legacy HTTP version", () => {
+    expect(isPrivateUpgradeRequestAllowed({
+      ...makeRequest("GET"),
+      httpVersion: "1.0",
+    }, { ...opts, enabled: false })).toBe(true);
   });
 
   it("preserves public-mode request-framing compatibility", () => {
