@@ -15,10 +15,10 @@ import { isIP } from "node:net";
  *   comma-separated tokens       -> string[] of named subnets + CIDRs
  *
  * Named subnets accepted verbatim by Express: loopback, linklocal,
- * uniquelocal. CIDR validation is intentionally lax (Postel's law):
- * Express only uses the array form for prefix matching, so we just
- * reject obvious garbage. Anything that doesn't match the regex or
- * keyword whitelist throws at startup with a clear error.
+ * uniquelocal. IP/CIDR tokens must have the existing supported syntax AND
+ * a real IPv4/IPv6 address (node:net isIP); malformed tokens fail startup.
+ * Numeric hop counts are bounded to 1..32 rather than trusting an effectively
+ * unlimited chain after an overflow or an accidental oversized value.
  */
 
 export type TrustProxyValue = boolean | number | string[];
@@ -30,28 +30,10 @@ const NAMED_SUBNETS: ReadonlySet<string> = new Set([
 ]);
 
 // IPv4 with optional /CIDR (0-32), or IPv6 with optional /CIDR (0-128).
-// Not 100% RFC-correct on purpose — Express tolerates loose forms and
-// we just want to reject obvious typos / shell-quoting accidents.
+// Keep the existing CIDR syntax while validating address semantics with isIP.
 const IPV4_RE = /^(?:\d{1,3}\.){3}\d{1,3}(?:\/(?:3[0-2]|[12]?\d))?$/;
-// IPV6_RE is intentionally lax — it is *not* a full RFC 4291 validator.
-// It matches any non-empty string of hex digits and colons (plus an
-// optional /CIDR suffix in 0-128), which means tokens like ":::",
-// "aaaa", or "gggg::1" (the last only if it had hex chars — "gggg" is
-// hex-valid) can pass this regex. The colon-presence guard in
-// `isValidSubnetToken` rejects purely-numeric strings, but malformed
-// IPv6-shaped tokens still slip through to Express.
-//
-// Trade-off: the goal here is *fast rejection of obvious typos* (e.g.
-// "10.0.0/8" missing an octet, shell-quoting accidents, stray
-// alphabetics) — not strict parse. When a malformed-but-passed-through
-// token reaches Express, Express silently ignores entries it cannot
-// parse rather than throwing at startup. The practical impact is a
-// silently-unconfigured trust-proxy entry, not a crash.
-//
-// Operators are therefore expected to verify their TRUST_PROXY config
-// by hitting the server through their LB and confirming `req.ip` in the
-// request log matches the real client IP. If you tighten this regex,
-// also add tests for the rejected forms; see trust-proxy.test.ts.
+// The token regex alone is not an IPv6 validator. isIP rejects malformed
+// addresses such as ::: even when they match the character grammar.
 const IPV6_RE = /^[0-9A-Fa-f:]+(?:\/(?:12[0-8]|1[01]\d|\d{1,2}))?$/;
 // Strict positive integer: no leading zeros, no whitespace, no sign.
 const STRICT_POS_INT_RE = /^[1-9]\d*$/;
