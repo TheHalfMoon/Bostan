@@ -17,6 +17,7 @@ All tests use an isolated synthetic test fixture; **no real PostgreSQL server, d
 - Independent RED: with shared-promise fix but unchanged recovery catch, new replacement-stop rejection test **0/1 PASS (1 FAIL)**, proving error masking.
 - Exact candidate GitHub source blobs: `server/src/embedded-postgres-supervisor.ts` **db009808148d4fba710d79345cd6f3f9fab12e77**; `server/src/__tests__/embedded-postgres-supervisor.test.ts` **74643af130735b6a75eeb0c092c5753eb10caaa2**. Both independently confirmed via native `git hash-object` on the Mac QA copy.
 - FINAL native Mac same exact blobs: **7/7 Vitest tests PASS, 0 failures/skips, exit 0**; targeted TypeScript 7 strict `--noEmit` **exit 0**. Full root TypeScript, compiled server and native PG lifecycle were NOT run or qualified.
+- FINAL native **Windows 11 / Node 24.19.0** source blob hash verified `db009808148d4fba710d79345cd6f3f9fab12e77` in an exclusive tiny `D:\\Bostan-B200-qa` fixture. Ran `node --experimental-strip-types native-supervisor.mjs` against the exact TypeScript production source: **4/4 independent synthetic acceptance cases PASS, exit 0**. Covers two callers waiting on one deferred stop, shared rejection, waiting for a recovery replacement, and propagation of its stop failure. This is a native Node harness, NOT the entire Windows Vitest suite nor real PostgreSQL.
 
 ## Scope and release limitations
 
