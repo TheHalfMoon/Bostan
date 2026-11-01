@@ -148,6 +148,37 @@ export function isPrivateUpgradeHostAllowed(
   return isPrivateUpgradeOriginAllowed(req, hostname);
 }
 
+/**
+ * Node emits 'upgrade' for POST, body-framed and duplicate-Upgrade requests,
+ * not only for canonical GET WebSocket handshakes. Require one unambiguous
+ * WebSocket Upgrade field and no HTTP request body framing before any
+ * downstream listener can authenticate or take ownership of the socket.
+ *
+ * Public mode intentionally preserves the existing upgrade policy.
+ */
+export function isPrivateUpgradeRequestAllowed(
+  req: Pick<IncomingMessage, "method" | "rawHeaders" | "url">,
+  opts: { enabled: boolean; allowedHostnames: string[]; bindHost: string },
+): boolean {
+  if (!opts.enabled) return true;
+  if (req.method !== "GET") return false;
+  if (!Array.isArray(req.rawHeaders) || req.rawHeaders.length % 2 !== 0) return false;
+
+  let upgradeFields = 0;
+  for (let i = 0; i < req.rawHeaders.length; i += 2) {
+    const name = req.rawHeaders[i];
+    const value = req.rawHeaders[i + 1];
+    if (typeof name !== "string" || typeof value !== "string") return false;
+    const field = name.toLowerCase();
+    if (field === "content-length" || field === "transfer-encoding") return false;
+    if (field === "upgrade") {
+      upgradeFields += 1;
+      if (upgradeFields !== 1 || value.toLowerCase() !== "websocket") return false;
+    }
+  }
+  return upgradeFields === 1 && isPrivateUpgradeHostAllowed(req, opts);
+}
+
 // The hostname comes from the request Host header, so an unauthenticated
 // requester controls it. Never put that value into the guidance command. An
 // operator or an agent can paste the guidance into a shell, and that outer
