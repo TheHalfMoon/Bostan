@@ -117,7 +117,7 @@ function isPrivateUpgradeOriginAllowed(
   // Browser Origin is serialized as scheme://authority, without path,
   // userinfo, query or fragment. Reuse strict Host parsing to avoid WHATWG
   // URL normalization of numeric IPv4 aliases into loopback.
-  const match = /^https?:\\/\\/([^/?#]+)$/.exec(origin);
+  const match = /^https?:\/\/([^/?#]+)$/.exec(origin);
   if (!match) return false;
   const originHostname = parsePrivateHostHeader(match[1]);
   if (!originHostname) return false;
