@@ -87,9 +87,13 @@ export function parseTrustProxyEnv(raw: string | undefined): TrustProxyValue | u
   }
   const tokens = value
     .split(",")
-    .map((t) => t.trim())
-    .filter((t) => t.length > 0);
-  if (tokens.length === 0) return undefined;
+    .map((t) => t.trim());
+  // A comma means another trusted proxy subnet was configured. Silently
+  // discarding an empty entry (leading/trailing/doubled comma) turns a typo
+  // into an active, potentially broader trust policy. Fail startup closed.
+  if (tokens.some((token) => token.length === 0)) {
+    throw new Error("TRUST_PROXY: empty proxy subnet entry — remove redundant commas");
+  }
   for (const token of tokens) {
     if (!isValidSubnetToken(token)) {
       throw new Error(
