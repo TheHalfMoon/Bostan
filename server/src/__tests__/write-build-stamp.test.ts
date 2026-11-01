@@ -55,12 +55,21 @@ it("packages a full source commit without a Docker build argument", () => {
     const outsideStamp = join(root, "outside-stamp.json");
     writeFileSync(outsideStamp, "foreign-owned-sentinel");
     rmSync(stampPath);
-    symlinkSync(outsideStamp, stampPath);
-    expect(() => execFileSync(process.execPath, [script], {
-      cwd: root, env, stdio: "pipe",
-    })).toThrow();
-    expect(readFileSync(outsideStamp, "utf8")).toBe("foreign-owned-sentinel");
-    rmSync(stampPath);
+    let stampSymlinkAvailable = true;
+    try { symlinkSync(outsideStamp, stampPath); }
+    catch (error: any) {
+      // Normal Windows accounts may not have Developer Mode symlink rights.
+      // Do not elevate or replace the symlink with a junction.
+      if (process.platform !== "win32" || error?.code !== "EPERM") throw error;
+      stampSymlinkAvailable = false;
+    }
+    if (stampSymlinkAvailable) {
+      expect(() => execFileSync(process.execPath, [script], {
+        cwd: root, env, stdio: "pipe",
+      })).toThrow();
+      expect(readFileSync(outsideStamp, "utf8")).toBe("foreign-owned-sentinel");
+      rmSync(stampPath);
+    }
 
     // A linked intermediate compiled directory is not an owned artifact.
     const vendorDir = join(compiled, "vendor", "paperclip-runner");
@@ -68,11 +77,18 @@ it("packages a full source commit without a Docker build argument", () => {
     mkdirSync(outsideRunner);
     writeFileSync(join(outsideRunner, "index.js"), runnerEntry);
     rmSync(vendorDir, {recursive: true});
-    symlinkSync(outsideRunner, vendorDir, "dir");
-    expect(() => execFileSync(process.execPath, [script], {
-      cwd: root, env, stdio: "pipe",
-    })).toThrow();
-    expect(readFileSync(join(outsideRunner, "index.js"), "utf8")).toBe(runnerEntry);
+    let runnerSymlinkAvailable = true;
+    try { symlinkSync(outsideRunner, vendorDir, "dir"); }
+    catch (error: any) {
+      if (process.platform !== "win32" || error?.code !== "EPERM") throw error;
+      runnerSymlinkAvailable = false;
+    }
+    if (runnerSymlinkAvailable) {
+      expect(() => execFileSync(process.execPath, [script], {
+        cwd: root, env, stdio: "pipe",
+      })).toThrow();
+      expect(readFileSync(join(outsideRunner, "index.js"), "utf8")).toBe(runnerEntry);
+    }
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
