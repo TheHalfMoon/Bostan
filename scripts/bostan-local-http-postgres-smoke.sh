@@ -43,6 +43,9 @@ if [ "$MODE" = "--run-dist" ] || [ "$MODE" = "--run-dist-authz" ] || [ "$MODE" =
       exit 2
     fi
   done
+  # Existing SHA256-owned packed outputs can still come from a stale
+  # source build. Never create a QA database using mismatched compiled code.
+  node "$REPO/scripts/bostan-private-local-compiled-stamp.mjs" --check
 fi
 if [ "$MODE" = "--run-packed-authz" ] || [ "$MODE" = "--run-packed-authz-concurrent" ] || [ "$MODE" = "--run-packed-authz-ui" ]; then
   # The packed runtime is a different SHA256-owned entry, not merely dist/.
