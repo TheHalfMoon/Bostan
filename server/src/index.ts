@@ -78,7 +78,7 @@ import {
   closeLivenessDb,
 } from "@bostan/db";
 import detectPort from "detect-port";
-import { createApp } from "./app.js";
+import { createApp, shouldEnablePrivateHostnameGuard } from "./app.js";
 import { loadConfig } from "./config.js";
 import { logger } from "./middleware/logger.js";
 import { setStartupRecoveryPhase } from "./startup-recovery-state.js";
@@ -994,6 +994,14 @@ async function startServerWithDatabaseTeardown(
   // Upgrade admission runs before every WebSocket listener, outside Express.
   const server = createPaperclipHttpServer(app as unknown as RequestListener, {
     apiUrl: configuredApiUrl,
+    privateHostAdmission: {
+      enabled: shouldEnablePrivateHostnameGuard({
+        deploymentMode: config.deploymentMode,
+        deploymentExposure: config.deploymentExposure,
+      }),
+      allowedHostnames: config.allowedHostnames,
+      bindHost: config.host,
+    },
     httpOptions: cloudWarmStandbyServerOptions(() => isWarmStandby() || isIdleTaskDrainActive()),
   });
   // Outlive reverse-proxy idle timeouts to avoid intermittent resets.
