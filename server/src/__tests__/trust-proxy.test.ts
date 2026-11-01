@@ -38,6 +38,8 @@ describe("parseTrustProxyEnv", () => {
   });
 
   it.each([
+    "33",
+    "1000",
     "9007199254740992",
     "999999999999999999999999",
     "9".repeat(400),
@@ -45,11 +47,12 @@ describe("parseTrustProxyEnv", () => {
     // Number(raw) may round an unsafe integer or become Infinity, which
     // effectively trusts every X-Forwarded-For hop.
     expect(() => parseTrustProxyEnv(raw)).toThrow(/invalid integer/);
-    expect(() => parseTrustProxyEnv(raw)).toThrow(/safe positive integer/);
+    expect(() => parseTrustProxyEnv(raw)).toThrow(/between 1 and 32/);
   });
 
-  it("retains exact safe integer hop counts without floating-point rounding", () => {
-    expect(parseTrustProxyEnv("9007199254740991")).toBe(Number.MAX_SAFE_INTEGER);
+  it("allows at most 32 explicitly configured trusted proxy hops", () => {
+    expect(parseTrustProxyEnv("32")).toBe(32);
+    expect(parseTrustProxyEnv(" 2 ")).toBe(2);
   });
 
   it.each([
