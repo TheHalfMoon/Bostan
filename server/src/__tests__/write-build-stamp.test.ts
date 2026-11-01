@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, linkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -33,8 +33,25 @@ it("packages a full source commit without a Docker build argument", () => {
     expect(stamp.indexSha256).toBe(hash(compiledEntry));
     expect(stamp.vendorSha256).toBe(hash(runnerEntry));
     expect(Object.keys(stamp).sort()).toEqual(["commit","indexSha256","vendorSha256"].sort());
-    // A build stamp must never overwrite a linked file outside dist.
+    // Hardlinked entries are not exclusively owned even when bytes hash the
+    // same. The test controls both names and verifies stamp is left unchanged.
     const stampPath = join(compiled, "build-info.json");
+    const priorStamp = readFileSync(stampPath, "utf8");
+    const linkedIndex = join(root, "hardlinked-index.js");
+    linkSync(join(compiled, "index.js"), linkedIndex);
+    expect(() => execFileSync(process.execPath, [script], {
+      cwd: root, env, stdio: "pipe",
+    })).toThrow();
+    expect(readFileSync(stampPath, "utf8")).toBe(priorStamp);
+    unlinkSync(linkedIndex);
+    const linkedRunner = join(root, "hardlinked-runner.js");
+    linkSync(join(compiled, "vendor", "paperclip-runner", "index.js"), linkedRunner);
+    expect(() => execFileSync(process.execPath, [script], {
+      cwd: root, env, stdio: "pipe",
+    })).toThrow();
+    expect(readFileSync(stampPath, "utf8")).toBe(priorStamp);
+    unlinkSync(linkedRunner);
+    // A build stamp must never overwrite a linked file outside dist.
     const outsideStamp = join(root, "outside-stamp.json");
     writeFileSync(outsideStamp, "foreign-owned-sentinel");
     rmSync(stampPath);
