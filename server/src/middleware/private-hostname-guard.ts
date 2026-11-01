@@ -182,7 +182,7 @@ export function isPrivateUpgradeRequestAllowed(
       // into a valid token even though Node can dispatch that raw field to
       // the upgrade event. Reject duplicate keep-alive tokens as ambiguous.
       const tokens = value.split(",").map((token) =>
-        token.replace(/^[ \\t]+|[ \\t]+$/g, "").toLowerCase());
+        token.replace(/^[ \t]+|[ \t]+$/g, "").toLowerCase());
       if (tokens.filter((token) => token === "upgrade").length !== 1 ||
           tokens.filter((token) => token === "keep-alive").length > 1 ||
           tokens.some((token) => token !== "upgrade" && token !== "keep-alive")) return false;
