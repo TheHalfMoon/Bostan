@@ -46,6 +46,9 @@ export function createEmbeddedPostgresSupervisor(options: Options): EmbeddedPost
       if (shuttingDown) return;
       try {
         await options.beforeRestart?.(attempt);
+        // Shutdown may begin while an asynchronous pre-restart hook runs.
+        // Never allocate another native PostgreSQL process after that point.
+        if (shuttingDown) return;
         const replacement = options.createInstance();
         try {
           await replacement.start();
@@ -79,7 +82,13 @@ export function createEmbeddedPostgresSupervisor(options: Options): EmbeddedPost
         activeInstance = replacement;
         activeInstanceExited = false;
         monitor(replacement);
-        options.onRestarted?.(attempt);
+        // A diagnostic observer cannot turn an already-running replacement
+        // into a failed attempt: retrying would create a second live cluster.
+        try {
+          options.onRestarted?.(attempt);
+        } catch {
+          // The native recovery succeeded; observer errors are non-authoritative.
+        }
         return;
       } catch (error) {
         // A shutdown waiting for recovery must not report successful teardown
@@ -102,7 +111,13 @@ export function createEmbeddedPostgresSupervisor(options: Options): EmbeddedPost
       if (activeInstance !== instance) return;
       activeInstanceExited = true;
       if (shuttingDown) return;
-      options.onUnexpectedExit?.(code, signal);
+      // Schedule recovery even when an optional diagnostic observer throws.
+      // EventEmitter would otherwise propagate the exception before recovery.
+      try {
+        options.onUnexpectedExit?.(code, signal);
+      } catch {
+        // Native exit handling must not depend on observer success.
+      }
       recoveryPromise = recover().finally(() => { recoveryPromise = null; });
     });
   };
