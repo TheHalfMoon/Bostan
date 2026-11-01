@@ -165,18 +165,30 @@ export function isPrivateUpgradeRequestAllowed(
   if (!Array.isArray(req.rawHeaders) || req.rawHeaders.length % 2 !== 0) return false;
 
   let upgradeFields = 0;
+  let connectionFields = 0;
   for (let i = 0; i < req.rawHeaders.length; i += 2) {
     const name = req.rawHeaders[i];
     const value = req.rawHeaders[i + 1];
     if (typeof name !== "string" || typeof value !== "string") return false;
     const field = name.toLowerCase();
     if (field === "content-length" || field === "transfer-encoding") return false;
+    if (field === "connection") {
+      // Node can dispatch duplicate or contradictory Connection fields to
+      // 'upgrade'; an origin server must reject that framing ambiguity before
+      // any WebSocket authentication handler gets the request.
+      if (++connectionFields !== 1) return false;
+      const tokens = value.split(",").map((token) => token.trim().toLowerCase());
+      // Preserve the standard comma-token spelling and keep-alive + Upgrade
+      // while refusing unknown, empty, repeated or conflicting tokens.
+      if (tokens.filter((token) => token === "upgrade").length !== 1 ||
+          tokens.some((token) => token !== "upgrade" && token !== "keep-alive")) return false;
+    }
     if (field === "upgrade") {
       upgradeFields += 1;
       if (upgradeFields !== 1 || value.toLowerCase() !== "websocket") return false;
     }
   }
-  return upgradeFields === 1 && isPrivateUpgradeHostAllowed(req, opts);
+  return connectionFields === 1 && upgradeFields === 1 && isPrivateUpgradeHostAllowed(req, opts);
 }
 
 // The hostname comes from the request Host header, so an unauthenticated
