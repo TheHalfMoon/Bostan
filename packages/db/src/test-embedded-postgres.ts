@@ -164,7 +164,15 @@ async function createEmbeddedPostgresTestInstance(tempDirPrefix: string) {
         current.dev !== owned.dev || current.ino !== owned.ino ||
         current.birthtimeMs !== owned.birthtimeMs)
       throw new Error("Fresh PostgreSQL scratch identity changed; retaining fixture", { cause: error });
-    fs.rmSync(dataDir, { recursive: true, force: true });
+    // Directory identity alone does not grant authority over new contents:
+    // a different writer may have populated this scratch after mkdtemp.
+    // An atomic, nonrecursive rmdir succeeds only while truly empty.
+    // Retain the entire fixture on ENOTEMPTY, replacement or any OS error.
+    try {
+      fs.rmdirSync(dataDir);
+    } catch {
+      throw new Error("Fresh PostgreSQL scratch not empty or unavailable; retaining fixture", { cause: error });
+    }
     throw error;
   }
 }
