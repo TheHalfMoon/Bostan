@@ -149,7 +149,24 @@ const EMBEDDED_POSTGRES_INITDB_FLAGS = ["--encoding=UTF8", "--locale=C", "--lc-m
 
 async function createEmbeddedPostgresTestInstance(tempDirPrefix: string) {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), tempDirPrefix));
-  return await createEmbeddedPostgresTestInstanceAt(dataDir);
+  const owned = fs.lstatSync(dataDir);
+  try {
+    return await createEmbeddedPostgresTestInstanceAt(dataDir);
+  } catch (error) {
+    // Port allocation or native constructor loading can fail before an
+    // embedded-postgres instance exists. Reclaim only this newly-created,
+    // still-identical scratch directory; never touch a replaced directory.
+    let current: fs.Stats;
+    try { current = fs.lstatSync(dataDir); } catch {
+      throw new Error("Fresh PostgreSQL scratch identity unavailable; retaining fixture", { cause: error });
+    }
+    if (!current.isDirectory() || current.isSymbolicLink() ||
+        current.dev !== owned.dev || current.ino !== owned.ino ||
+        current.birthtimeMs !== owned.birthtimeMs)
+      throw new Error("Fresh PostgreSQL scratch identity changed; retaining fixture", { cause: error });
+    fs.rmSync(dataDir, { recursive: true, force: true });
+    throw error;
+  }
 }
 
 // Wraps an embedded-postgres instance around `dataDir`. The caller decides
