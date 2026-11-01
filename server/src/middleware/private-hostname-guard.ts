@@ -93,6 +93,39 @@ export function resolvePrivateHostnameAllowSet(opts: { allowedHostnames: string[
 }
 
 /**
+ * Browsers always send Origin on WebSocket handshakes. A private Host alone
+ * does not stop cross-site WebSocket hijacking: hostile JavaScript can open a
+ * ws://localhost socket and the browser supplies a valid localhost Host.
+ *
+ * Admit an absent Origin for native clients, but fail closed on any present
+ * malformed, duplicate, opaque or foreign browser Origin. A different port
+ * on the same hostname is allowed for local development; localhost, ::1 and
+ * 127.0.0.1 are equivalent loopback identities. This is browser-origin
+ * defense, not authentication of nonbrowser clients (which can forge Origin).
+ */
+function isPrivateUpgradeOriginAllowed(
+  req: Pick<IncomingMessage, "rawHeaders">,
+  requestHostname: string,
+): boolean {
+  let origin: string | undefined;
+  for (let i = 0; i < req.rawHeaders.length; i += 2) {
+    if (req.rawHeaders[i]?.toLowerCase() !== "origin") continue;
+    if (origin !== undefined) return false;
+    origin = req.rawHeaders[i + 1];
+  }
+  if (origin === undefined) return true;
+  // Browser Origin is serialized as scheme://authority, without path,
+  // userinfo, query or fragment. Reuse strict Host parsing to avoid WHATWG
+  // URL normalization of numeric IPv4 aliases into loopback.
+  const match = /^https?:\\/\\/([^/?#]+)$/.exec(origin);
+  if (!match) return false;
+  const originHostname = parsePrivateHostHeader(match[1]);
+  if (!originHostname) return false;
+  return originHostname === requestHostname
+    || (isLoopbackHostname(originHostname) && isLoopbackHostname(requestHostname));
+}
+
+/**
  * HTTP upgrade events bypass Express middleware entirely. Admit private-mode
  * WebSocket handshakes using the same raw Host and origin-form checks as HTTP,
  * before any listener can authenticate, count work, or upgrade a socket.
@@ -106,7 +139,8 @@ export function isPrivateUpgradeHostAllowed(
   if (typeof req.url !== "string" || !req.url.startsWith("/") || req.url.startsWith("//")) return false;
   const hostname = extractHostname(req);
   if (!hostname) return false;
-  return isLoopbackHostname(hostname) || resolvePrivateHostnameAllowSet(opts).has(hostname);
+  if (!isLoopbackHostname(hostname) && !resolvePrivateHostnameAllowSet(opts).has(hostname)) return false;
+  return isPrivateUpgradeOriginAllowed(req, hostname);
 }
 
 // The hostname comes from the request Host header, so an unauthenticated
