@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import express from "express";
 import request from "supertest";
 import { connect } from "node:net";
+import { createPaperclipHttpServer } from "../http/server.js";
 import { isPrivateUpgradeHostAllowed, parsePrivateHostHeader, privateHostnameGuard } from "../middleware/private-hostname-guard.js";
 
 const unknownHostname = "blocked-host.invalid";
@@ -277,5 +278,56 @@ describe("private WebSocket upgrade authority admission", () => {
 
   it("preserves public-mode WebSocket compatibility", () => {
     expect(isPrivateUpgradeHostAllowed({ rawHeaders: ["Host", "blocked.invalid"], url: target }, { ...privateOpts, enabled: false })).toBe(true);
+  });
+});
+
+
+describe("private HTTP listener WebSocket upgrade admission", () => {
+  async function probeUpgrade(host: string, enabled: boolean) {
+    const server = createPaperclipHttpServer((_req, res) => res.end("HTTP only"), {
+      apiUrl: "http://127.0.0.1:3100",
+      privateHostAdmission: { enabled, allowedHostnames: [], bindHost: "0.0.0.0" },
+    });
+    let downstream = 0;
+    server.on("upgrade", (req, socket) => {
+      if ((req as typeof req & { paperclipWebSocketHandled?: boolean }).paperclipWebSocketHandled) return;
+      downstream += 1;
+      socket.end("HTTP/1.1 101 Switching Protocols\\r\\nConnection: Upgrade\\r\\nUpgrade: websocket\\r\\n\\r\\n");
+    });
+    try {
+      await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+      const address = server.address();
+      if (!address || typeof address === "string") throw new Error("missing listener");
+      const response = await new Promise<string>((resolve, reject) => {
+        const client = connect(address.port, "127.0.0.1");
+        let data = "";
+        client.setTimeout(3_000, () => client.destroy(new Error("upgrade test timeout")));
+        client.once("connect", () => client.write(
+          "GET /api/companies/00000000-0000-4000-8000-000000000001/events/ws HTTP/1.1\\r\\n" +
+          `Host: ${host}\\r\\nConnection: Upgrade\\r\\nUpgrade: websocket\\r\\nSec-WebSocket-Key: dGVzdC1rZXk=\\r\\nSec-WebSocket-Version: 13\\r\\n\\r\\n`,
+        ));
+        client.on("data", (chunk) => { data += chunk.toString(); });
+        client.once("error", reject);
+        client.once("close", () => resolve(data));
+      });
+      return { response, downstream };
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  }
+
+  it("refuses a forbidden private Host before any WebSocket listener handles it", async () => {
+    const result = await probeUpgrade("blocked.invalid", true);
+    expect(result.downstream).toBe(0);
+    expect(result.response).not.toContain("101 Switching Protocols");
+  });
+
+  it("retains a valid loopback upgrade and public-mode compatibility", async () => {
+    const local = await probeUpgrade("localhost:3100", true);
+    expect(local.downstream).toBe(1);
+    expect(local.response).toContain("101 Switching Protocols");
+    const publicMode = await probeUpgrade("blocked.invalid", false);
+    expect(publicMode.downstream).toBe(1);
+    expect(publicMode.response).toContain("101 Switching Protocols");
   });
 });
