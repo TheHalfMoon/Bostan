@@ -67,6 +67,41 @@ pnpm run test:bostan-admission
 
 The earlier **55 PASS / 3 FAIL** on the *sparse* checkout above remains accurately recorded as an incomplete first attempt, **superseded for docs/UI admission qualification by this successful full-checkout result**. It does not imply full Vitest/TypeScript or installed app readiness.
 
+
+## Qualification 5 — native Windows private Host security suite PASS 83/83
+
+On the previous clean authorized full Windows 11 QA checkout (Node v24.19.0, Vitest v5.0.3), git HEAD was temporarily moved from 4a367c57e4a40c06dad2befd7de5a6ff43bd6081 to exact B1-157 head b662bfc7c629e19112fe1a700b0b119573383cba and verified CLEAN. The following package-local Vitest command ran with one worker to limit memory:
+
+~~~powershell
+cd server
+pnpm exec vitest run src/__tests__/private-hostname-guard.test.ts --config vitest.config.ts --pool=forks --maxWorkers=1
+~~~
+
+**Actual result: 83/83 PASS in 1 source-native file, 0 fail, EXIT 0, 14.25 seconds.** The exact checked-in TypeScript production Host/WebSocket admission module was exercised by real Vitest/Supertest code. This is NOT qualification of a fully booted authenticated application or browser.
+
+### Bounded stop: authenticated route suites not qualified
+
+A separate attempt to run three auth-route suites (auth-routes.test.ts, bootstrap-claim-routes.test.ts, auth-session-route.test.ts) using the same one-worker Vitest config began but never returned final test results. Read-only Windows memory observations showed free RAM fall from ~2.85 GiB to **0.58 GiB** while it remained active. To protect the user's workstation, only this owned test terminal session was forcibly terminated. The session exited 1 after approximately 61 seconds; **NO TEST PASS/FAIL COUNT** can honestly be reported. This does not establish a source defect or authenticated server readiness. No real PostgreSQL was started; read-only CIM confirmed zero postgres.exe processes. Free memory subsequently recovered to approximately 1.64 GiB. Windows full QA checkout was returned to its EXACT original detached HEAD and CLEAN status.
+
+Future native auth-route/BetterAuth startup tests must first meet resource requirements (adequate free memory, single narrow suite or isolated disposable host). Do not disable safety checks or terminate unrelated applications.
+
+## Qualification 6 — actual macOS source tests PASS 35/35 and 58/58
+
+A previously existing, clean, FULL private Mac QA checkout (Bostan-B175-qa) on Darwin/macOS, Node v26.0.0, 8 GiB installed RAM, original detached HEAD 071e69fbd888cebd99960ca2f4a007e87b11ac6e, temporarily fetched and checked out exact B1-157 HEAD b662bfc7c629e19112fe1a700b0b119573383cba without local dependency installation, new clones, publication, external services, or customer data.
+
+The following **exact checked-in** source tests ran directly on native macOS:
+
+~~~sh
+node --experimental-strip-types --test --test-reporter=tap scripts/bostan-private-upgrade-wire.test.mjs
+node --test --test-reporter=tap scripts/bostan-private-workflow-admission.test.mjs scripts/bostan-private-preflight.test.mjs scripts/bostan-private-docs-entry-gate.test.mjs scripts/bostan-private-ui-brand-gate.test.mjs
+~~~
+
+**Mac TCP HTTP Upgrade WebSocket admission: 35/35 PASS, 0 fail/skip, EXIT 0, ~207 ms**, genuinely importing the private production TypeScript gate and using local native TCP sockets.
+
+**Mac docs/UI/workflow admission: 58/58 PASS, 0 fail/skip, EXIT 0, ~170 ms**, using actual tracked docs/navigation/brand assets and negative-fixture source tests.
+
+The existing Mac checkout was restored to its EXACT original detached HEAD 071e69fbd888cebd99960ca2f4a007e87b11ac6e and verified CLEAN. This cross-OS evidence is for source regression gates only, not a fully installed/packaged macOS Bostan GUI, authenticated backend, or consent/tenant runtime.
+
 ## Remaining release NO-GO gates
 
 - Combined docs/UI admission: **now satisfied for this exact B1-156 source SHA on native Windows Node24**. Still requires full root Vitest/TypeScript7 and a release-frozen cross-OS qualification.
