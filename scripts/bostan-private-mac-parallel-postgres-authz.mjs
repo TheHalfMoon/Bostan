@@ -5,6 +5,7 @@
  * Spawned suites each own and cleanup their own real PG + server.
  */
 import {spawn,spawnSync} from 'node:child_process';
+import {createOwnedNativeQaProcessGroup,terminateOwnedNativeQaProcessGroup} from './bostan-disposable-native-process-group.mjs';
 import {readFileSync, existsSync, statfsSync, lstatSync} from 'node:fs';
 import {join, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -62,18 +63,31 @@ export function assessParallelOverlap(runs){
     r.end>=r.start)&&Math.max(...runs.map(r=>r.start))<
     Math.min(...runs.map(r=>r.end));
 }
-async function runWorker(label,env,mode='api'){
+export async function runWorker(label,env,mode='api',{
+  spawnWorker=spawn,timeoutMs=MAX_MS,
+}={}){
+  if(process.platform!=='darwin'||!Number.isInteger(timeoutMs)||
+     timeoutMs<1||timeoutMs>MAX_MS)
+    throw Error('Private owned Mac PostgreSQL worker admission refused');
   const start=Date.now();
-  const child=spawn('bash',[suite,
+  const child=spawnWorker('bash',[suite,
     mode==='browser'?'--run-packed-authz-ui':'--run-packed-authz'],{
-    cwd:root,env,stdio:['ignore','pipe','pipe'],windowsHide:true});
+    cwd:root,env,stdio:['ignore','pipe','pipe'],windowsHide:true,detached:true});
+  // A new session is created for this spawned QA bash. Its descendants inherit
+  // the group; on timeout/overflow we signal only that exact owned group.
+  const owner=Number.isSafeInteger(child.pid)&&child.pid>=2?
+    createOwnedNativeQaProcessGroup(child,true,'darwin'):null;
+  const stopOwned=()=>{
+    if(owner)terminateOwnedNativeQaProcessGroup(owner,'SIGTERM');
+    else child.kill('SIGTERM'); // spawn failure without an owned group
+  };
   let output='',overflow=false,timedOut=false,closed=false,spawnFailed=false;
   const append=chunk=>{
     if(overflow)return;
     const piece=chunk.toString('utf8');
     if(Buffer.byteLength(output,'utf8')+Buffer.byteLength(piece,'utf8')>MAX_OUTPUT){
       overflow=true;
-      child.kill('SIGTERM');
+      stopOwned();
       return;
     }
     output+=piece;
@@ -84,7 +98,7 @@ async function runWorker(label,env,mode='api'){
     child.once('error',()=>{spawnFailed=true});
     child.once('close',(exit,signal)=>{closed=true;resolve({exit,signal})});
   });
-  const timer=setTimeout(()=>{timedOut=true;child.kill('SIGTERM')},MAX_MS);
+  const timer=setTimeout(()=>{timedOut=true;stopOwned()},timeoutMs);
   const {exit,signal}=await complete;
   clearTimeout(timer);
   const end=Date.now();
