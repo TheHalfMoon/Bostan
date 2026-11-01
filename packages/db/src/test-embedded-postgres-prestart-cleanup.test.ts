@@ -48,7 +48,8 @@ it("reclaims its own empty PostgreSQL scratch when constructor loading fails bef
         const stat = fs.lstatSync(owned);
         if (!stat.isDirectory() || stat.isSymbolicLink())
           throw new Error("Unexpected test scratch entry; retaining it");
-        fs.rmSync(owned, { recursive: true, force: true });
+        // An empty-directory removal cannot erase unexpected nested content.
+        fs.rmdirSync(owned);
       }
       fs.unlinkSync(marker);
       fs.rmdirSync(scratch);
