@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {spawnSync} from 'node:child_process';
+import {spawn,spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {scrubPrivateParallelEnv,summarizeParallelAuthzExit,
-  assessParallelOverlap,parseMacMemoryPressureFreePercentage} from './bostan-private-mac-parallel-postgres-authz.mjs';
+  assessParallelOverlap,parseMacMemoryPressureFreePercentage,
+  runWorker} from './bostan-private-mac-parallel-postgres-authz.mjs';
 const entry=fileURLToPath(new URL('./bostan-private-mac-parallel-postgres-authz.mjs',import.meta.url));
 const common=[
  'BOSTAN_PACKED_SHA256_RUNTIME_OWNERSHIP_VERIFIED','MIGRATED',
@@ -75,4 +76,32 @@ test('Mac mixed Chromium/API concurrent mode requires its own exact browser proo
     exit:0,signal:null,output:browserOutput,mode:'api'}).qualified,false);
   assert.throws(()=>summarizeParallelAuthzExit({
     exit:0,signal:null,output:apiOutput,mode:'unknown'}));
+});
+
+test('native Mac timeout terminates the exclusively owned detached synthetic QA worker group', {
+  skip: process.platform !== 'darwin', timeout: 12_000,
+}, async () => {
+  let child;
+  try {
+    const receipt = await runWorker('test-only-synthetic', {}, 'api', {
+      timeoutMs: 300,
+      spawnWorker: (_binary, _args, options) => {
+        assert.equal(options.detached, true);
+        assert.deepEqual(options.stdio, ['ignore', 'pipe', 'pipe']);
+        child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], options);
+        return child;
+      },
+    });
+    assert.equal(receipt.closed, true);
+    assert.equal(receipt.timedOut, true);
+    assert.equal(receipt.qualified, false);
+    assert.equal(receipt.signal, undefined); // bounded receipt deliberately does not expose child signal
+    assert.ok(Number.isSafeInteger(child?.pid));
+    assert.throws(() => process.kill(child.pid, 0), { code: 'ESRCH' });
+    assert.doesNotThrow(() => process.kill(process.pid, 0));
+  } finally {
+    // Only the direct synthetic child launched above can be killed here.
+    if (child && child.exitCode === null && child.signalCode === null)
+      child.kill('SIGKILL');
+  }
 });
