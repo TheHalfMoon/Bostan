@@ -342,6 +342,20 @@ describe("private WebSocket upgrade request framing", () => {
     expect(isPrivateUpgradeRequestAllowed(makeRequest("GET", [], "WebSocket"), opts)).toBe(true);
   });
 
+  it.each([
+    { label: "one Connection keep-alive, Upgrade list", headers: ["Connection", "keep-alive, Upgrade"], allow: true },
+    { label: "duplicate Connection headers", headers: ["Connection", "Upgrade", "Connection", "keep-alive"], allow: false },
+    { label: "conflicting close Connection", headers: ["Connection", "Upgrade, close"], allow: false },
+    { label: "repeated Upgrade Connection token", headers: ["Connection", "Upgrade, Upgrade"], allow: false },
+    { label: "empty Connection token", headers: ["Connection", "Upgrade,"], allow: false },
+    { label: "unknown Connection token", headers: ["Connection", "Upgrade, h2c"], allow: false },
+  ])("checks $label at private upgrade boundary", ({ headers, allow }) => {
+    const rawHeaders = ["Host", "localhost:3100", "Upgrade", "websocket", ...headers];
+    expect(isPrivateUpgradeRequestAllowed({
+      method: "GET", url: "/api/events/ws", rawHeaders,
+    }, opts)).toBe(allow);
+  });
+
   it("preserves public-mode request-framing compatibility", () => {
     expect(isPrivateUpgradeRequestAllowed(makeRequest("POST", ["Content-Length", "0"]), {
       ...opts,
