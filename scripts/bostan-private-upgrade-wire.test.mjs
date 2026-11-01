@@ -10,7 +10,7 @@ import { isPrivateUpgradeRequestAllowed } from '../server/src/middleware/private
 // function. The 101 responder is a stub, NOT an authenticated Bostan WS server.
 const privateOpts = { enabled: true, bindHost: '0.0.0.0', allowedHostnames: [] };
 
-async function rawUpgrade(headers, { target = '/api/events/ws', opts = privateOpts, method = 'GET' } = {}) {
+async function rawUpgrade(headers, { target = '/api/events/ws', opts = privateOpts, method = 'GET', connectionHeader = 'Connection: Upgrade' } = {}) {
   let admitted = 0;
   let rejected = 0;
   const server = createServer((_req, res) => { res.statusCode = 400; res.end(); });
@@ -34,7 +34,7 @@ async function rawUpgrade(headers, { target = '/api/events/ws', opts = privateOp
       socket.on('connect', () => {
         socket.write(
           method + ' ' + target + ' HTTP/1.1\r\n' + headers.join('\r\n') +
-          '\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n' +
+          '\r\n' + connectionHeader + '\r\nUpgrade: websocket\r\n' +
           'Sec-WebSocket-Version: 13\r\n' +
           'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n',
           'latin1',
@@ -114,6 +114,35 @@ for (const [label, method, extraHeaders] of [
     assert.ok(actual.rejected === 1 || actual.status === '400', JSON.stringify(actual));
   });
 }
+
+
+// Node can dispatch duplicate Connection fields and contradictory comma tokens
+// to the upgrade event. The private gate must reject ambiguity and still admit
+// one valid comma-separated keep-alive + Upgrade field.
+for (const [label, extraHeaders, connectionHeader, allowed] of [
+  ['single multi-token Connection', [], 'Connection: keep-alive, Upgrade', true],
+  ['duplicate Connection fields', ['Connection: keep-alive'], 'Connection: Upgrade', false],
+  ['contradictory Connection fields', ['Connection: close'], 'Connection: Upgrade', false],
+  ['repeated Upgrade token in Connection', [], 'Connection: Upgrade, Upgrade', false],
+  ['conflicting close token in Connection', [], 'Connection: Upgrade, close', false],
+  ['empty Connection token', [], 'Connection: Upgrade,', false],
+  ['unknown Connection token', [], 'Connection: Upgrade, h2c', false],
+]) {
+  test('native upgrade wire: ' + label, async () => {
+    const actual = await rawUpgrade(['Host: localhost:3100', ...extraHeaders], { connectionHeader });
+    assert.equal(actual.admitted, allowed ? 1 : 0, JSON.stringify(actual));
+    if (allowed) assert.equal(actual.status, '101');
+    else assert.ok(actual.rejected === 1 || actual.status === '400', JSON.stringify(actual));
+  });
+}
+
+test('native upgrade wire: public mode preserves duplicate Connection compatibility', async () => {
+  const actual = await rawUpgrade(['Host: blocked.invalid:3100', 'Connection: keep-alive'], {
+    opts: { ...privateOpts, enabled: false },
+  });
+  assert.equal(actual.admitted, 1);
+  assert.equal(actual.status, '101');
+});
 
 test('native upgrade wire: public-mode framing policy remains unchanged', async () => {
   const actual = await rawUpgrade(['Host: blocked.invalid:3100'], {
