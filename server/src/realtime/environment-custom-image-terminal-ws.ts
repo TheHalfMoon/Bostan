@@ -724,7 +724,16 @@ export function setupEnvironmentCustomImageTerminalWebSocketServer(
     // Private-mode authority rejection may have already closed this upgrade.
     if (reqWithContext.paperclipWebSocketHandled || !req.url) return;
 
-    const url = new URL(req.url, "http://localhost");
+    let url: URL;
+    try {
+      url = new URL(req.url, "http://localhost");
+    } catch {
+      // A malformed network-path upgrade target is not a terminal session;
+      // fail closed instead of throwing from the shared server event loop.
+      reqWithContext.paperclipWebSocketHandled = true;
+      rejectUpgrade(socket, "400 Bad Request", "invalid upgrade target");
+      return;
+    }
     const path = parseTerminalPath(url.pathname);
     if (!path) return;
 
