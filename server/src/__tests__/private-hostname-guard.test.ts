@@ -3,7 +3,7 @@ import express from "express";
 import request from "supertest";
 import { connect } from "node:net";
 import { createPaperclipHttpServer } from "../http/server.js";
-import { isPrivateUpgradeHostAllowed, parsePrivateHostHeader, privateHostnameGuard } from "../middleware/private-hostname-guard.js";
+import { isPrivateUpgradeHostAllowed, isPrivateUpgradeRequestAllowed, parsePrivateHostHeader, privateHostnameGuard } from "../middleware/private-hostname-guard.js";
 
 const unknownHostname = "blocked-host.invalid";
 
@@ -315,6 +315,40 @@ describe("private WebSocket upgrade authority admission", () => {
   });
 });
 
+
+describe("private WebSocket upgrade request framing", () => {
+  const opts = { enabled: true, allowedHostnames: [], bindHost: "0.0.0.0" };
+  const makeRequest = (method: string, extra: string[] = [], upgrade = "websocket") => ({
+    method,
+    url: "/api/events/ws",
+    rawHeaders: ["Host", "localhost:3100", "Connection", "Upgrade", "Upgrade", upgrade, ...extra],
+  });
+
+  it.each([
+    { label: "POST upgrade", method: "POST", extra: [] },
+    { label: "Content-Length: 0", method: "GET", extra: ["Content-Length", "0"] },
+    { label: "Transfer-Encoding: chunked", method: "GET", extra: ["Transfer-Encoding", "chunked"] },
+    { label: "duplicate Upgrade", method: "GET", extra: ["Upgrade", "h2c"] },
+  ])("rejects $label before WebSocket handlers", ({ method, extra }) => {
+    expect(isPrivateUpgradeRequestAllowed(makeRequest(method, extra), opts)).toBe(false);
+  });
+
+  it("rejects a non-WebSocket Upgrade token", () => {
+    expect(isPrivateUpgradeRequestAllowed(makeRequest("GET", [], "h2c"), opts)).toBe(false);
+  });
+
+  it("accepts one canonical GET WebSocket Upgrade field", () => {
+    expect(isPrivateUpgradeRequestAllowed(makeRequest("GET"), opts)).toBe(true);
+    expect(isPrivateUpgradeRequestAllowed(makeRequest("GET", [], "WebSocket"), opts)).toBe(true);
+  });
+
+  it("preserves public-mode request-framing compatibility", () => {
+    expect(isPrivateUpgradeRequestAllowed(makeRequest("POST", ["Content-Length", "0"]), {
+      ...opts,
+      enabled: false,
+    })).toBe(true);
+  });
+});
 
 describe("private HTTP listener WebSocket upgrade admission", () => {
   async function probeUpgrade(host: string, enabled: boolean, requestTarget = "/api/companies/00000000-0000-4000-8000-000000000001/events/ws", origin?: string) {
