@@ -612,6 +612,9 @@ async function buildEmbeddedPostgresTemplate(templateDir: string): Promise<boole
   }
 }
 
+// Test-only seam for synthetic, exclusively owned scratch fixtures.
+export const __pruneStaleTemplatesForTests = pruneStaleTemplates;
+
 let templateDirPromise: Promise<string | null> | null = null;
 
 // Resolves the template data directory for this host, building it on first
