@@ -21,11 +21,11 @@ Sixteen cases cover:
 
 This validates the **real Node HTTP parser plus the real TypeScript admission function**; it does **not** use a real Bostan authenticated WebSocket server, Express, BetterAuth, Vite, or browser.
 
-## Local pre-commit execution
+## Exact source-native execution
 
-Runtime: Debian Linux, Node v22.16.0, command: node --experimental-strip-types --test scripts/bostan-private-upgrade-wire.test.mjs. A locally authored version of this suite, using the exact middleware Git blob, yielded **16/16 PASS**, zero failures, on real loopback TCP. The committed file was reformatted slightly (equivalent request construction and assertions) and was **not separately rerun byte-for-byte** on an authorized full checkout. Do not claim this is a full repository test.
+Runtime: Debian Linux, Node v22.16.0, command: node --experimental-strip-types --test scripts/bostan-private-upgrade-wire.test.mjs. The **exact committed test file** and exact middleware Git blobs were reconstructed into an isolated local fixture and checked with git hash-object against the private GitHub blob SHAs: test **75dc5bb6e04e7d40232fd4664f6128b26a7487c5**, middleware **76cbb0f257f45cf5b7519d3f18ee05632723420a**. The exact source-native suite then yielded **16/16 PASS**, zero failures, on real loopback TCP. This is not an installed Bostan server or a full repository test.
 
-The committed test's blob SHA should be checked on the new Draft head before qualification. The native suite must be rerun on the exact private checkout using Node >=24.11.
+The suite still needs an independent rerun in the authorized full private checkout using Node >=24.11. The exact blob verification here applies to the two isolated source files only, not the entire checkout.
 
 ## Remaining NO-GO gates
 
