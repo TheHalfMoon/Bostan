@@ -27,6 +27,9 @@ const modeMarkers={
 };
 const MAX_OUTPUT=512*1024;
 const MAX_MS=120_000;
+// Give an expressly owned detached QA worker a short graceful shutdown window
+// before escalating. This never targets a global PostgreSQL process.
+const OWNED_TERM_GRACE_MS=1_000;
 export function parseMacMemoryPressureFreePercentage(value){
   if(typeof value!=='string'||value.length>4096)return null;
   const matches=[...value.matchAll(/System-wide memory free percentage: (\d{1,3})%/g)];
@@ -77,11 +80,21 @@ export async function runWorker(label,env,mode='api',{
   // the group; on timeout/overflow we signal only that exact owned group.
   const owner=Number.isSafeInteger(child.pid)&&child.pid>=2?
     createOwnedNativeQaProcessGroup(child,true,'darwin'):null;
+  let output='',overflow=false,timedOut=false,closed=false,spawnFailed=false;
+  let escalationTimer=null;
   const stopOwned=()=>{
     if(owner)terminateOwnedNativeQaProcessGroup(owner,'SIGTERM');
     else child.kill('SIGTERM'); // spawn failure without an owned group
+    // A worker can ignore SIGTERM while keeping stdout/stderr open, causing
+    // ChildProcess 'close' to wait indefinitely. Escalate only if the exact
+    // spawned group leader is still alive; never signal a potentially reused
+    // group ID after its leader has exited.
+    if(!escalationTimer)escalationTimer=setTimeout(()=>{
+      if(closed||child.exitCode!==null||child.signalCode!==null)return;
+      if(owner)terminateOwnedNativeQaProcessGroup(owner,'SIGKILL');
+      else child.kill('SIGKILL');
+    },OWNED_TERM_GRACE_MS);
   };
-  let output='',overflow=false,timedOut=false,closed=false,spawnFailed=false;
   const append=chunk=>{
     if(overflow)return;
     const piece=chunk.toString('utf8');
@@ -101,6 +114,7 @@ export async function runWorker(label,env,mode='api',{
   const timer=setTimeout(()=>{timedOut=true;stopOwned()},timeoutMs);
   const {exit,signal}=await complete;
   clearTimeout(timer);
+  if(escalationTimer)clearTimeout(escalationTimer);
   const end=Date.now();
   return {label,start,end,closed,spawnFailed,...summarizeParallelAuthzExit({
     exit,signal,output,timedOut,overflow,mode,
