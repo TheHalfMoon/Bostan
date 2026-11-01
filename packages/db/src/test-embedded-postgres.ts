@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import { stopOwnedWindowsEmbeddedPostgres } from "./windows-embedded-postgres-stop.js";
 import { isEmbeddedPostgresTemplateCacheDisabled } from "./embedded-postgres-template-policy.js";
+import { isSelfContainedPostgresTemplateTree } from "./embedded-postgres-template-tree.js";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -525,7 +526,8 @@ function isUsableTemplate(dir: string): boolean {
       fs.lstatSync(path.join(dir, "postmaster.pid"));
       return false;
     } catch (error) {
-      return (error as NodeJS.ErrnoException).code === "ENOENT";
+      return (error as NodeJS.ErrnoException).code === "ENOENT"
+        && isSelfContainedPostgresTemplateTree(dir);
     }
   } catch {
     return false;
@@ -727,6 +729,12 @@ async function startEmbeddedPostgresFromTemplateWithRetry(
     let created: Awaited<ReturnType<typeof createEmbeddedPostgresTestInstanceAt>> | null = null;
     try {
       fs.cpSync(templateDir, dataDir, { recursive: true });
+      // Re-inspect the *copy* before handing it to native PostgreSQL. A
+      // source tree can be replaced during fs.cpSync despite its preflight.
+      // Linked, foreign or unknown objects must never reach instance.start().
+      if (!isSelfContainedPostgresTemplateTree(dataDir)) {
+        throw new Error("Embedded PostgreSQL template copy is not self-contained");
+      }
       // Postgres refuses a data directory that is group or world accessible.
       fs.chmodSync(dataDir, 0o700);
       created = await createEmbeddedPostgresTestInstanceAt(dataDir);
