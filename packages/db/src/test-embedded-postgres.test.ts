@@ -13,6 +13,7 @@ import {
   __resetEmbeddedPostgresTemplateStateForTests as resetTemplateState,
   __setEmbeddedPostgresCtorProviderForTests,
   __startEmbeddedPostgresWithRetryForTests as startWithRetry,
+  __stopEmbeddedPostgresBoundedForTests as stopBounded,
   computeEmbeddedPostgresTemplateKey,
   EMBEDDED_POSTGRES_TEST_TIMEOUT_MS,
   getEmbeddedPostgresTestSupport,
@@ -149,6 +150,40 @@ describe("startEmbeddedPostgresWithRetry", () => {
     // The thrown message carries the captured Postgres output, not only the
     // generic "embedded Postgres startup failed" text.
     expect((error as Error).message).toContain("Address already in use");
+  });
+});
+
+const posixTimeoutTest = process.platform === "win32" ? it.skip : it;
+
+describe("POSIX embedded PostgreSQL bounded stop", () => {
+  posixTimeoutTest("times out without claiming shutdown or cleaning a still-running cluster", async () => {
+    let finishStop!: () => void;
+    const pendingStop = new Promise<void>((resolve) => { finishStop = resolve; });
+    let cleans = 0;
+    const fake = { initialise: async () => {}, start: async () => {}, stop: () => pendingStop };
+
+    await expect(stopBounded(fake, () => { cleans += 1; }, 10))
+      .rejects.toThrow(/timeout/i);
+    expect(cleans).toBe(0);
+    finishStop();
+    await pendingStop;
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(cleans).toBe(1);
+  });
+
+  posixTimeoutTest("retains a fixture when native stop rejects after the timeout", async () => {
+    let failStop!: (error: Error) => void;
+    const pendingStop = new Promise<void>((_, reject) => { failStop = reject; });
+    let cleans = 0;
+    const fake = { initialise: async () => {}, start: async () => {}, stop: () => pendingStop };
+
+    await expect(stopBounded(fake, () => { cleans += 1; }, 10))
+      .rejects.toThrow(/timeout/i);
+    expect(cleans).toBe(0);
+    failStop(new Error("synthetic native stop failure"));
+    await pendingStop.catch(() => {});
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(cleans).toBe(0);
   });
 });
 
