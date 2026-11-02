@@ -21,6 +21,7 @@ import {resolvePrivateWindowsQaServerCommand} from "./bostan-private-windows-ser
 import {checkPrivateWindowsSourceWorkspaceDependencies} from "./bostan-private-windows-source-workspace-admission.mjs";
 import {captureOwnedWindowsHttpHomeReclaimer} from "./bostan-private-windows-owned-home-reclaimer.mjs";
 import {classifyPrivateWindowsImportHeartbeat} from "./bostan-private-windows-import-heartbeat-classifier.mjs";
+import {sanitizePrivateWindowsModuleProfile} from "./bostan-private-windows-module-profile-safe.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const spec={schema:"bostan.private-windows-auth-server.v1",run:false,
@@ -585,20 +586,18 @@ try{
   const profiles=serverOutput.split(String.fromCharCode(10)).filter(line=>line.startsWith("BOSTAN_WIN_IMPORT_PROFILE="));
   const latestProfile=profiles.at(-1)?.slice("BOSTAN_WIN_IMPORT_PROFILE=".length);
   if(latestProfile){
-    try{
-      const value=JSON.parse(latestProfile);
-      if(value.schema==="bostan.private-module-load-profile.v1"){
-        console.error("BOSTAN_WINDOWS_LIVE_MODULE_LOAD_COUNT="+Number(value.loadCount||0));
-        console.error("BOSTAN_WINDOWS_LIVE_MODULE_LOAD_MS="+Number(value.loadMs||0));
-        console.error("BOSTAN_WINDOWS_LIVE_MODULE_ERRORS="+Number(value.errorCount||0));
-        const safe=(value.topLoads||[]).filter(item=>
-          typeof item.module==="string" &&
-          (item.module.startsWith("server/src/") || item.module.startsWith("packages/") ||
-           ["third_party","external_file","virtual_or_builtin","other_repo_file"].includes(item.module)))
-          .slice(0,5).map(item=>({module:item.module,loadMs:Number(item.loadMs||0)}));
-        console.error("BOSTAN_WINDOWS_LIVE_SLOW_MODULES="+JSON.stringify(safe));
-      }
-    }catch{console.error("BOSTAN_WINDOWS_LIVE_MODULE_PROFILE=unparseable");}
+    // Child stderr is not an authority to print arbitrary module names or
+    // counters. Only bounded repository-relative names and fixed classes may
+    // reach parent diagnostics; invalid profiles retain no raw evidence.
+    const profile=sanitizePrivateWindowsModuleProfile(latestProfile);
+    if(profile){
+      console.error("BOSTAN_WINDOWS_LIVE_MODULE_LOAD_COUNT="+profile.loadCount);
+      console.error("BOSTAN_WINDOWS_LIVE_MODULE_LOAD_MS="+profile.loadMs);
+      console.error("BOSTAN_WINDOWS_LIVE_MODULE_ERRORS="+profile.errorCount);
+      console.error("BOSTAN_WINDOWS_LIVE_SLOW_MODULES="+JSON.stringify(profile.topLoads));
+    }else{
+      console.error("BOSTAN_WINDOWS_LIVE_MODULE_PROFILE=invalid");
+    }
   }
   console.error("BOSTAN_WINDOWS_LIVE_HTTP_OBSERVATION="+lastHealthStatus);
   console.error("BOSTAN_WINDOWS_LIVE_STARTUP_OUTCOME="+lastHealthOutcome);
