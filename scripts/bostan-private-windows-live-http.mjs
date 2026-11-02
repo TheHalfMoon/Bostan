@@ -10,6 +10,7 @@ import {checkBostanWindowsDisk} from "./bostan-private-windows-disk-admission.mj
 import {checkBostanWindowsMemory} from "./bostan-private-windows-memory-admission.mjs";
 import {evaluateWindowsLiveMemory} from "./bostan-private-windows-live-memory-policy.mjs";
 import {buildPrivateWindowsHttpQaEnvironment} from "./bostan-private-windows-qa-env.mjs";
+import {proveOwnedWindowsHttpListener} from "./bostan-private-windows-http-listener-proof.mjs";
 import {parsePrivateWindowsQaWave,matchingPrivateWindowsQaWave} from "./bostan-private-windows-qa-wave.mjs";
 import {observeOwnedQaChild} from "./bostan-private-windows-child-lifecycle.mjs";
 import {evaluateWindowsPrivateHttpEvidence} from "./bostan-private-windows-http-evidence.mjs";
@@ -226,6 +227,16 @@ try{
   lastHealthProbes=healthProbe.probes;
   if(!healthProbe.healthy)
     throw Error("Real Bostan native Windows authenticated server did not reach expected private ready state");
+  // Releasing the ephemeral port before spawn leaves a bind race: a foreign
+  // localhost service can answer /api/health. Before sending any synthetic
+  // signup credentials, require two read-only OS listener snapshots matching
+  // this exact still-live child PID. A denied/ambiguous scan retains QA state.
+  await proveOwnedWindowsHttpListener({
+    port,expectedPid:server.pid,
+    childAlive:()=>!serverObserver.exitedOrFailed&&
+      server.exitCode===null&&server.signalCode===null,
+  });
+  console.log("BOSTAN_WINDOWS_LIVE_OWNED_HTTP_LISTENER_PASS");
   markHttpStage("BOSTAN_WINDOWS_LIVE_HTTP_AUTH_HEALTH_PASS");
   // Same-origin without a browser session must not claim first admin.
   const anonymousClaim=await fetch(origin+"/api/bootstrap/claim",{
