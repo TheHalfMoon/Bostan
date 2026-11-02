@@ -187,6 +187,29 @@ describe("POSIX embedded PostgreSQL bounded stop", () => {
   });
 });
 
+// A verified native stop is not proof that owned scratch reclamation worked.
+describe("POSIX stop cleanup ownership admission", () => {
+  posixTimeoutTest("reports a refused owned-scratch reclaim after native stop resolves", async () => {
+    const native = { initialise: async () => {}, start: async () => {}, stop: async () => {} };
+    const refusal = "Unverified PostgreSQL test scratch directory; retaining fixture";
+    let calls = 0;
+    await expect(stopBounded(native, () => {
+      calls += 1;
+      throw new Error(refusal);
+    }, 100)).rejects.toThrow(refusal);
+    expect(calls).toBe(1);
+  });
+
+  posixTimeoutTest("does not attempt scratch reclaim when native stop rejects", async () => {
+    const native = { initialise: async () => {}, start: async () => {},
+      stop: async () => { throw new Error("native shutdown rejected"); } };
+    let calls = 0;
+    await expect(stopBounded(native, () => { calls += 1; }, 100))
+      .rejects.toThrow(/stop unverified; retaining fixture/i);
+    expect(calls).toBe(0);
+  });
+});
+
 describe("computeEmbeddedPostgresTemplateKey", () => {
   function writeMigrations(dir: string, files: Record<string, string>) {
     fs.mkdirSync(path.join(dir, "meta"), { recursive: true });
