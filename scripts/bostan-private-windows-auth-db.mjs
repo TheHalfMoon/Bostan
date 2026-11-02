@@ -3,7 +3,7 @@
 import {readFileSync, statfsSync} from "node:fs";
 import {join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
-import {spawnSync} from "node:child_process";
+import {invokePrivateWindowsAuthDbCaptured} from "./bostan-private-windows-auth-db-captured-child.mjs";
 import {checkBostanWindowsDisk} from "./bostan-private-windows-disk-admission.mjs";
 import {assertPrivateWindowsQaOsExecutablePaths} from "./bostan-private-windows-os-executable-admission.mjs";
 import {resolvePrivateWindowsPowerShellBinary} from "./bostan-private-windows-powershell-binary.mjs";
@@ -85,10 +85,8 @@ if(stat.bavail*stat.bsize<1024n*1024n*1024n){
 const {env,commands}=execution;
 const outcome=executePrivateWindowsAuthDbSteps({
   commands,
-  invoke:command=>spawnSync(command.binary,command.args,{
-    cwd:command.cwd,env,stdio:"inherit",windowsHide:true,
-    timeout:command.timeout,shell:false,
-  }),
+  // Never let untrusted child stdout/stderr forge trusted QA receipts.
+  invoke:command=>invokePrivateWindowsAuthDbCaptured(command,{env}),
   log:line=>console.log(line),
   error:line=>console.error(line),
 });
