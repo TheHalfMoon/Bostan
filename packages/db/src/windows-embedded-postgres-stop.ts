@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { resolveWindowsPostgresInspectorBinary } from "./windows-postgres-inspector-binary.mjs";
+import { parsePostmasterStartEpochSeconds, matchesPostmasterStartToCim } from "./windows-postgres-start-identity.mjs";
 
 const execAsync = promisify(execFile);
 type Runner = (binary: string, args: readonly string[]) => Promise<void>;
@@ -124,7 +125,7 @@ function isTransientIncompleteCimSnapshot(value: unknown): boolean {
 }
 // Use the same strict CIM identity validation before and after shutdown.
 // A bounded fresh CIM reinspection is NOT permission to proceed on ambiguity.
-type VerifiedPostgresProcess = { pid: number; executable: string };
+type VerifiedPostgresProcess = { pid: number; executable: string; creationDate: string };
 async function inspectVerifiedPostgresProcesses(
   inspect: Inspector, pause: Pause,
 ): Promise<VerifiedPostgresProcess[]> {
@@ -147,7 +148,7 @@ async function inspectVerifiedPostgresProcesses(
     if (executables.some(executable => executable === null))
       throw Error("Ambiguous Windows PostgreSQL process identity; retaining fixture");
     return processes.map((p, index) => ({
-      pid: p.ProcessId, executable: executables[index]!,
+      pid: p.ProcessId, executable: executables[index]!, creationDate: p.CreationDate!,
     }));
   }
   throw Error("Ambiguous Windows PostgreSQL process identity; retaining fixture");
@@ -156,13 +157,14 @@ async function inspectVerifiedPostgresProcesses(
 // Confirm the marker PID is an observed process from the exact pinned binary;
 // missing/foreign/ambiguous identity retains the fixture without shutdown.
 async function provePinnedPostmasterBeforeStop(
-  pid: number, pgCtlExe: string, inspect: Inspector, pause: Pause,
+  pid: number, startEpochSeconds: number, pgCtlExe: string, inspect: Inspector, pause: Pause,
 ): Promise<void> {
   const expected = normalizedPgCtlBinary(pgCtlExe);
   if (!expected)
     throw Error("Ambiguous pinned Windows PostgreSQL binary identity; retaining fixture");
   const processes = await inspectVerifiedPostgresProcesses(inspect, pause);
-  if (!processes.some(process => process.pid === pid && process.executable === expected))
+  if (!processes.some(process => process.pid === pid && process.executable === expected
+      && matchesPostmasterStartToCim(startEpochSeconds, process.creationDate)))
     throw Error("Unable to prove pinned PostgreSQL postmaster identity; retaining fixture");
 }
 /**
@@ -206,7 +208,7 @@ function pidMarkerPresent(marker: string): boolean {
 // The existence of postmaster.pid alone is not authority to run pg_ctl.
 // Verify a bounded, ordinary PostgreSQL PID line and the same opened file
 // identity before issuing the native shutdown request. Never log PID bytes.
-function assertValidPidMarkerBeforeStop(marker: string, ownedDataDir: string): number {
+function assertValidPidMarkerBeforeStop(marker: string, ownedDataDir: string): { pid: number; startEpochSeconds: number } {
   let fd: number | undefined;
   try {
     const before = fs.lstatSync(marker);
@@ -225,13 +227,21 @@ function assertValidPidMarkerBeforeStop(marker: string, ownedDataDir: string): n
     if (length !== before.size) throw Error("changed");
     const firstNewline = contents.indexOf(10);
     const secondNewline = contents.indexOf(10, firstNewline + 1);
-    if (firstNewline < 1 || secondNewline <= firstNewline + 1)
+    const thirdNewline = contents.indexOf(10, secondNewline + 1);
+    if (firstNewline < 1 || secondNewline <= firstNewline + 1
+        || thirdNewline <= secondNewline + 1)
       throw Error("invalid");
     // Node Buffer "ascii" masks the high bit (0xB1 becomes "1"). Preserve
     // original byte values so the decimal-only PID check rejects non-ASCII.
     const pidLine = contents.subarray(0, firstNewline).toString("latin1").replace(/\r$/, "");
     if (!/^[1-9]\d{0,9}$/.test(pidLine)
         || !Number.isSafeInteger(Number(pidLine))) throw Error("invalid");
+    // PostgreSQL postmaster.pid line 3 records the process start as Unix seconds.
+    // A recycled PID from the same pinned executable must not authorize pg_ctl.
+    const startLine = contents.subarray(secondNewline + 1, thirdNewline)
+      .toString("latin1").replace(/\r$/, "");
+    const startEpochSeconds = parsePostmasterStartEpochSeconds(startLine);
+    if (startEpochSeconds === null) throw Error("invalid");
     const pathBytes = contents.subarray(firstNewline + 1, secondNewline);
     const markerDataDir = new TextDecoder("utf-8", { fatal: true })
       .decode(pathBytes).replace(/\r$/, "");
@@ -259,7 +269,7 @@ function assertValidPidMarkerBeforeStop(marker: string, ownedDataDir: string): n
         || atPath.birthtimeMs !== opened.birthtimeMs
         || atPath.size !== opened.size || atPath.mtimeMs !== opened.mtimeMs)
       throw Error("changed");
-    return Number(pidLine);
+    return { pid: Number(pidLine), startEpochSeconds };
   } catch {
     throw Error("Ambiguous PostgreSQL PID marker identity; retaining fixture");
   } finally {
@@ -367,11 +377,14 @@ export async function stopOwnedWindowsEmbeddedPostgres(
   try { markerBefore = fs.lstatSync(marker); } catch {
     throw Error("Ambiguous PostgreSQL PID marker identity; retaining fixture");
   }
-  const postmasterPid = assertValidPidMarkerBeforeStop(marker, data);
-  await provePinnedPostmasterBeforeStop(postmasterPid, pgCtlExe, inspect, pause);
+  const postmasterIdentity = assertValidPidMarkerBeforeStop(marker, data);
+  await provePinnedPostmasterBeforeStop(postmasterIdentity.pid,
+    postmasterIdentity.startEpochSeconds, pgCtlExe, inspect, pause);
   // A process scan is asynchronous. Recheck the same marker identity and
   // PID before issuing pg_ctl, not merely the cluster version marker.
-  if (assertValidPidMarkerBeforeStop(marker, data) !== postmasterPid)
+  const markerIdentityAfter = assertValidPidMarkerBeforeStop(marker, data);
+  if (markerIdentityAfter.pid !== postmasterIdentity.pid
+      || markerIdentityAfter.startEpochSeconds !== postmasterIdentity.startEpochSeconds)
     throw Error("Ambiguous PostgreSQL PID marker identity; retaining fixture");
   let markerAfter: fs.Stats;
   try { markerAfter = fs.lstatSync(marker); } catch {
