@@ -7,6 +7,7 @@ import {performance} from 'node:perf_hooks';
 
 export const WINDOWS_PRIVATE_HTTP_STARTUP_MS = 180_000;
 export const WINDOWS_PRIVATE_HTTP_MAX_PROBES = 180;
+export const WINDOWS_PRIVATE_HTTP_MAX_HEALTH_BYTES = 4096;
 
 function endpointAllowed(value) {
   try {
@@ -25,8 +26,7 @@ function healthObservation(json) {
     (json.bootstrapStatus === 'bootstrap_pending' ? 'pending' : 'other_bootstrap');
 }
 
-// A fetch implementation can return HTTP headers while leaving response.json()
-// pending indefinitely. The same owned, ref'd timer bounds BOTH phases even if
+// The same owned, ref'd timer bounds headers and every body read, even if
 // an injected fetch ignores AbortSignal. Late promise rejection is observed.
 function awaitAbortable(promise, signal) {
   return new Promise((resolve, reject) => {
@@ -38,6 +38,48 @@ function awaitAbortable(promise, signal) {
       error => { signal.removeEventListener('abort', abort); reject(error); },
     );
   });
+}
+
+
+// Health is read BEFORE the listener PID ownership gate. A foreign process
+// might occupy the released ephemeral port and return unlimited JSON. Never
+// call response.json(): it buffers the entire body before enforcing a limit.
+// Count actual decoded stream bytes, not an untrusted Content-Length header.
+async function readBoundedHealthJson(response, signal) {
+  const declared = response.headers?.get?.('content-length');
+  if (declared !== undefined && declared !== null &&
+      (typeof declared !== 'string' || !/^(0|[1-9][0-9]{0,4})$/.test(declared) ||
+       Number(declared) > WINDOWS_PRIVATE_HTTP_MAX_HEALTH_BYTES))
+    throw Error('Private localhost health body refused');
+  if (!response.body || typeof response.body.getReader !== 'function')
+    throw Error('Private localhost health body unavailable');
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const part = await awaitAbortable(reader.read(), signal);
+      if (!part || typeof part.done !== 'boolean')
+        throw Error('Private localhost health stream invalid');
+      if (part.done) break;
+      if (!(part.value instanceof Uint8Array))
+        throw Error('Private localhost health stream invalid');
+      total += part.value.byteLength;
+      if (total > WINDOWS_PRIVATE_HTTP_MAX_HEALTH_BYTES)
+        throw Error('Private localhost health body too large');
+      chunks.push(part.value);
+    }
+    if (total === 0) throw Error('Private localhost health body empty');
+    const bytes = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+    return JSON.parse(new TextDecoder('utf-8', {fatal:true}).decode(bytes));
+  } finally {
+    // A stalled or oversized foreign response must not continue consuming
+    // the connection after this bounded probe. Never wait for cancellation.
+    try { Promise.resolve(reader.cancel()).catch(() => {}); } catch {}
+    try { reader.releaseLock(); } catch {}
+  }
 }
 
 export async function waitForWindowsPrivateHealth({
@@ -83,7 +125,7 @@ export async function waitForWindowsPrivateHealth({
       }), controller.signal);
       if (response.status === 200) {
         let json;
-        try { json = await awaitAbortable(response.json(), controller.signal); }
+        try { json = await readBoundedHealthJson(response, controller.signal); }
         catch { observation = 'health_invalid_json'; }
         if (json !== undefined) {
           observation = healthObservation(json);
