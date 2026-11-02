@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import { resolveWindowsPostgresInspectorBinary } from "./windows-postgres-inspector-binary.mjs";
 
 const execAsync = promisify(execFile);
 type Runner = (binary: string, args: readonly string[]) => Promise<void>;
@@ -29,7 +30,7 @@ const actualInspect: Inspector = async () => {
     "ConvertTo-Json -InputObject $items -Compress -Depth 3",
   ].join("; ");
   try {
-    const { stdout } = await execAsync("powershell.exe", [
+    const { stdout } = await execAsync(resolveWindowsPostgresInspectorBinary(), [
       "-NoProfile", "-NonInteractive", "-Command", script,
     ], { windowsHide: true, shell: false, timeout: 10_000, maxBuffer: 131_072 });
     return JSON.parse(stdout);
