@@ -2,7 +2,7 @@
 /** Explicit native-Windows, disposable localhost Bostan authenticated server QA. */
 import {randomBytes,randomUUID} from "node:crypto";
 import {spawn,spawnSync} from "node:child_process";
-import {existsSync,lstatSync,mkdtempSync,mkdirSync,readFileSync,rmSync,writeFileSync} from "node:fs";
+import {existsSync,lstatSync,mkdtempSync,mkdirSync,writeFileSync} from "node:fs";
 import {createServer} from "node:net";
 import {basename,join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -18,6 +18,7 @@ import {evaluateWindowsPgOrphanCheck} from "./bostan-private-windows-pg-orphan-p
 import {resolvePrivateWindowsPowerShellBinary} from "./bostan-private-windows-powershell-binary.mjs";
 import {resolvePrivateWindowsQaServerCommand} from "./bostan-private-windows-server-command.mjs";
 import {checkPrivateWindowsSourceWorkspaceDependencies} from "./bostan-private-windows-source-workspace-admission.mjs";
+import {captureOwnedWindowsHttpHomeReclaimer} from "./bostan-private-windows-owned-home-reclaimer.mjs";
 import {classifyPrivateWindowsImportHeartbeat} from "./bostan-private-windows-import-heartbeat-classifier.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
@@ -139,6 +140,7 @@ let lastHealthProbes=0;
 let serverStartedAt=0;
 const home=mkdtempSync(join(temp,"bostan-private-auth-http-"));
 writeFileSync(join(home,"BOSTAN_QA_OWNED"),"BOSTAN_PRIVATE_SYNTHETIC_ONLY\n");
+const reclaimOwnedHome=captureOwnedWindowsHttpHomeReclaimer({home,temp});
 const httpEvents=[];
 function markHttpStage(name){
   httpEvents.push(name);
@@ -694,17 +696,15 @@ try{
       console.error("BOSTAN_WINDOWS_LIVE_POSTGRES_PROCESS_PROOF="+pgProof.outcome);
     }
   }
-  const marker=join(home,"BOSTAN_QA_OWNED");
-  if(serverClosed&&dbCleaned&&postgresProcessTreeVerified&&existsSync(marker)&&
-     lstatSync(home).isDirectory()&&!lstatSync(home).isSymbolicLink()&&
-     lstatSync(marker).isFile()&&!lstatSync(marker).isSymbolicLink()&&
-     readFileSync(marker,"utf8")==="BOSTAN_PRIVATE_SYNTHETIC_ONLY"+String.fromCharCode(10)){
+  // A copied marker at a replaced pathname cannot authorize recursive
+  // deletion. Only the exact mkdtemp-owned home and marker may be reclaimed.
+  if(serverClosed&&dbCleaned&&postgresProcessTreeVerified){
     try{
-      rmSync(home,{recursive:true,force:true});
+      reclaimOwnedHome();
       ownedHomeCleaned=true;
       markHttpStage("BOSTAN_WINDOWS_LIVE_OWNED_FIXTURE_CLEANED");
     }
-    catch{failed=true;console.error("Bostan QA owned fixture cleanup failed");}
+    catch{failed=true;console.error("BOSTAN_WINDOWS_LIVE_OWNED_HOME_RECLAIM_REFUSED");}
   }
   const proof=evaluateWindowsPrivateHttpEvidence({
     events:httpEvents,httpComplete:completedHttpChecks,childClosed:serverClosed,
