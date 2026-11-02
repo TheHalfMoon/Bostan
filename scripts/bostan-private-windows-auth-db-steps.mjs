@@ -32,8 +32,15 @@ export function executePrivateWindowsAuthDbSteps({
         !c.binary || !Array.isArray(c.args) || typeof c.cwd !== 'string' ||
         !c.cwd || !Number.isSafeInteger(c.timeout) || c.timeout <= 0) refuse();
   }
+  // A broken diagnostic sink must never prevent the final read-only scan.
+  // Fail closed: do not start another workload once receipts cannot be written.
+  let diagnosticFailed=false;
+  const emit=(sink,line)=>{
+    try { sink(line); } catch { diagnosticFailed=true; }
+  };
   const run = i => {
-    log('BOSTAN_WIN_AUTH_DB_STEP=' + stepNames[i]);
+    emit(log,'BOSTAN_WIN_AUTH_DB_STEP=' + stepNames[i]);
+    if (diagnosticFailed && i !== 0 && i !== 6) return false;
     try {
       const result=invoke(commands[i]);
       return result?.status === 0 && !result.error && !result.signal;
@@ -42,24 +49,25 @@ export function executePrivateWindowsAuthDbSteps({
     }
   };
   if (!run(0)) {
-    error('BOSTAN_WIN_AUTH_DB_INITIAL_ORPHAN_GATE_FAILED');
+    emit(error,'BOSTAN_WIN_AUTH_DB_INITIAL_ORPHAN_GATE_FAILED');
     return Object.freeze({passed:false,failedStep:0,
-      finalGateAttempted:false,finalGatePassed:false});
+      finalGateAttempted:false,finalGatePassed:false,diagnosticFailed});
   }
   let failedStep=-1;
   for (let i=1; i<6; i++) {
+    if (diagnosticFailed) break;
     if (!run(i)) {
       failedStep=i;
-      error('BOSTAN_WIN_AUTH_DB_STEP_FAILED=' + i);
+      emit(error,'BOSTAN_WIN_AUTH_DB_STEP_FAILED=' + i);
       break;
     }
-    if (passMarkers[i]) log(passMarkers[i]);
+    if (passMarkers[i]) emit(log,passMarkers[i]);
   }
   // The final scan is read-only and must run after any attempted workload,
   // including when a child exits nonzero, times out, signals, or throws.
   const finalGatePassed=run(6);
-  if (finalGatePassed) log(passMarkers[6]);
-  else error('BOSTAN_WIN_AUTH_DB_FINAL_ORPHAN_GATE_FAILED');
-  return Object.freeze({passed:failedStep===-1 && finalGatePassed,
-    failedStep,finalGateAttempted:true,finalGatePassed});
+  if (finalGatePassed) emit(log,passMarkers[6]);
+  else emit(error,'BOSTAN_WIN_AUTH_DB_FINAL_ORPHAN_GATE_FAILED');
+  return Object.freeze({passed:failedStep===-1 && finalGatePassed && !diagnosticFailed,
+    failedStep,finalGateAttempted:true,finalGatePassed,diagnosticFailed});
 }
