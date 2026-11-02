@@ -105,8 +105,8 @@ test("fractional low-disk headroom is reported accurately without path disclosur
 
 test("rejects a mismatched SystemDrive before inspecting an unrelated volume",()=>{
   let scanned=0;
-  const result=checkBostanWindowsDisk(params({"C:\\\\":0,"D:\\\\":100},{
-    systemDrive:"D:",systemRoot:"C:\\\\Windows",
+  const result=checkBostanWindowsDisk(params({"C:\\":0,"D:\\":100},{
+    systemDrive:"D:",systemRoot:"C:\\Windows",
     statfs:()=>{scanned++;return {bavail:100n,bsize:gib};},
   }));
   assert.equal(result.allowed,false);
@@ -114,24 +114,24 @@ test("rejects a mismatched SystemDrive before inspecting an unrelated volume",()
   assert.equal(scanned,0);
 });
 test("rejects a SystemDrive path disguised as an ordinary drive label",()=>{
-  for(const drive of ["C:\\\\operator","C:\\\\Windows","C:/","\\\\\\\\host\\\\share","C:../","C::","c"]){
-    const result=checkBostanWindowsDisk(params({"C:\\\\":100,"D:\\\\":100},{systemDrive:drive}));
+  for(const drive of ["C:\\operator","C:\\Windows","C:/","\\\\host\\share","C:../","C::","c"]){
+    const result=checkBostanWindowsDisk(params({"C:\\":100,"D:\\":100},{systemDrive:drive}));
     assert.equal(result.allowed,false,drive);
     assert.equal(result.reason,"invalid_volume");
   }
 });
 test("rejects absent and foreign SystemRoot paths even if drive space is available",()=>{
-  for(const root of [undefined,"","D:\\\\Windows","C:\\\\Operator\\\\Windows",
-    "C:\\\\Windows\\\\..","C:/Windows","C:\\\\Windows:ads","C:Windows"]){
-    const result=checkBostanWindowsDisk(params({"C:\\\\":100,"D:\\\\":100},{systemRoot:root}));
+  for(const root of [undefined,"","D:\\Windows","C:\\Operator\\Windows",
+    "C:\\Windows\\..","C:/Windows","C:\\Windows:ads","C:Windows"]){
+    const result=checkBostanWindowsDisk(params({"C:\\":100,"D:\\":100},{systemRoot:root}));
     assert.equal(result.allowed,false,String(root));
     assert.equal(result.reason,"invalid_volume");
   }
 });
 test("accepts a verified alternative native Windows system drive",()=>{
-  const result=checkBostanWindowsDisk(params({"D:\\\\":2,"E:\\\\":6},{
-    systemDrive:"d:",systemRoot:"D:\\\\WINDOWS\\\\",
-    workspace:"E:\\\\Bostan-B091-qa",tempDir:"E:\\\\Bostan-B091-temp",
+  const result=checkBostanWindowsDisk(params({"D:\\":2,"E:\\":6},{
+    systemDrive:"d:",systemRoot:"D:\\WINDOWS\\",
+    workspace:"E:\\Bostan-B091-qa",tempDir:"E:\\Bostan-B091-temp",
   }));
   assert.equal(result.allowed,true);
   assert.deepEqual(result.checks.map(x=>x.purpose),["system","workspace+temp"]);
