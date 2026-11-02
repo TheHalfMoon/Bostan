@@ -18,6 +18,21 @@ function inside(parent, child) {
   return rel !== '' && rel !== '..' && !rel.startsWith('..' + sep) && !isAbsolute(rel);
 }
 
+// A valid package manifest and in-checkout resolution do not establish that
+// its workspace scope is an ordinary directory. A junction in any scope
+// ancestor can redirect the source tree before the dependency check runs.
+function ordinaryWorkspaceScope(root, scope) {
+  let current = root;
+  try {
+    for (const component of scope.split('/')) {
+      current = join(current, component);
+      const stat = lstatSync(current);
+      if (!stat.isDirectory() || stat.isSymbolicLink()) return false;
+    }
+    return true;
+  } catch { return false; }
+}
+
 export function checkPrivateWindowsSourceWorkspaceDependencies({
   root,
   resolveDependency = (manifest, name) => createRequire(manifest).resolve(name),
@@ -29,6 +44,7 @@ export function checkPrivateWindowsSourceWorkspaceDependencies({
     if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) return refuse('invalid_source_root');
   } catch { return refuse('invalid_source_root'); }
   for (const scope of SCOPES) {
+    if (!ordinaryWorkspaceScope(root, scope)) return refuse('foreign_workspace_scope');
     const manifest = join(root, scope, 'package.json');
     let parsed;
     try {
