@@ -3,7 +3,7 @@
  * Does not run a command; the native runner owns all process lifetimes.
  */
 import {lstatSync, realpathSync, readFileSync} from 'node:fs';
-import {isAbsolute, join, relative, resolve, sep, win32} from 'node:path';
+import {dirname, isAbsolute, join, relative, resolve, sep, win32} from 'node:path';
 
 const refused = () => { throw Error('Private Windows auth/DB QA executable admission refused'); };
 const inside = (parent, child) => {
@@ -39,8 +39,23 @@ export function buildPrivateWindowsAuthDbExecution({
   const windir = values.get('WINDIR');
   if (values.get('SYSTEMROOT')?.replace?.(/\\$/, '').toLowerCase() !== osPaths.systemRoot.toLowerCase() ||
       (windir !== undefined && windir?.replace?.(/\\$/, '').toLowerCase() !== osPaths.systemRoot.toLowerCase())) refused();
+  // process.execPath is outside the checkout trust boundary. Refuse an
+  // executable reached through an ancestor junction/symlink or dot alias;
+  // checking only its leaf lstat would admit redirected Node installations.
   if (typeof nodeBinary !== 'string' || !isAbsolute(nodeBinary) ||
-      !statPath(nodeBinary).isFile() || statPath(nodeBinary).isSymbolicLink()) refused();
+      resolve(nodeBinary) !== nodeBinary) refused();
+  let nodeAncestor=dirname(nodeBinary);
+  for (;;) {
+    const info=statPath(nodeAncestor);
+    if (!info.isDirectory() || info.isSymbolicLink() ||
+        realPath(nodeAncestor) !== nodeAncestor) refused();
+    const parent=dirname(nodeAncestor);
+    if (parent===nodeAncestor) break;
+    nodeAncestor=parent;
+  }
+  const nodeInfo=statPath(nodeBinary);
+  if (!nodeInfo.isFile() || nodeInfo.isSymbolicLink() ||
+      realPath(nodeBinary) !== nodeBinary) refused();
   const binaries = new Map();
   for (const [name, scope, pkg, entry] of tools) {
     let dir = root;

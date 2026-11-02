@@ -87,3 +87,13 @@ test('rejects nested temporary directory under checkout',()=>fixture(({input,roo
   const nested=join(root,'nested-temp');mkdirSync(nested);
   assert.throws(()=>buildPrivateWindowsAuthDbExecution({...input,temp:nested}));
 }));
+test('rejects a linked Node ancestor even when node.exe leaf is an ordinary file',()=>fixture(({input,outer})=>{
+  const realDir=join(outer,'actual-node-dir');mkdirSync(realDir);
+  writeFileSync(join(realDir,'node.exe'),'x');
+  const linkedDir=join(outer,'linked-node-dir');symlinkSync(realDir,linkedDir,'dir');
+  assert.throws(()=>buildPrivateWindowsAuthDbExecution({...input,nodeBinary:join(linkedDir,'node.exe')}));
+}));
+test('rejects noncanonical dot segments in the Node executable path',()=>fixture(({input,outer})=>{
+  const raw=outer+'/../'+outer.split('/').at(-1)+'/node.exe';
+  assert.throws(()=>buildPrivateWindowsAuthDbExecution({...input,nodeBinary:raw}));
+}));
