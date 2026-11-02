@@ -40,6 +40,18 @@ function canonicalPrivateTemp(path) {
     !/[:<>"|?*]/.test(part) && !/[. ]$/.test(part) &&
     !/^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?$/i.test(part));
 }
+// Native Windows child paths must be direct, canonical drive-rooted paths.
+// node:path.isAbsolute alone admits UNC/device namespaces and aliases.
+function canonicalWindowsChildPath(path) {
+  if (typeof path!=='string' || !/^[A-Za-z]:\\/.test(path) ||
+      path!==win32.normalize(path) || path.includes('/') ||
+      /[\x00-\x1f\x7f]/.test(path)) return false;
+  const components=path.slice(3).split('\\');
+  return components.length>0 && components.every(part=>part &&
+    part!=='.' && part!=='..' && !/[:<>"|?*]/.test(part) &&
+    !/[. ]$/.test(part) &&
+    !/^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?$/i.test(part));
+}
 function admittedEnvironment(env){
   if(!env || typeof env!=='object' || Array.isArray(env)) return false;
   const seen=new Map();
@@ -77,9 +89,14 @@ function admittedEnvironment(env){
 }
 
 export function invokePrivateWindowsAuthDbCaptured(command,{env,spawn=spawnSync}={}) {
-  if (!command || !noNul(command.binary) || !isAbsolute(command.binary) ||
+  const hasSystemRoot=env && typeof env==='object' &&
+    Object.keys(env).some(key=>key.toUpperCase()==='SYSTEMROOT');
+  const nativeWindows=process.platform==='win32' || hasSystemRoot;
+  const admittedPath=path=>nativeWindows ? canonicalWindowsChildPath(path) : isAbsolute(path);
+  if (process.platform==='win32' && !hasSystemRoot) return failed;
+  if (!command || !noNul(command.binary) || !admittedPath(command.binary) ||
       !Array.isArray(command.args) || !command.args.every(noNul) ||
-      !noNul(command.cwd) || !isAbsolute(command.cwd) ||
+      !noNul(command.cwd) || !admittedPath(command.cwd) ||
       !Number.isSafeInteger(command.timeout) || command.timeout<=0 ||
       !admittedEnvironment(env) ||
       typeof spawn!=='function') return failed;
