@@ -8,11 +8,34 @@ const SYSTEM_KEYS = Object.freeze([
   "PROCESSOR_ARCHITECTURE", "NUMBER_OF_PROCESSORS",
 ]);
 
+// This is a string-boundary check, not filesystem ownership attestation.
+// The runner must still create HOME with mkdtemp and capture its real inode
+// and marker identity before any recursive cleanup is authorized.
+function assertPrivateWindowsQaFixtureBoundary(home, marker, secret) {
+  const ordinaryDrivePath = value => {
+    if (typeof value !== "string" || !/^[A-Za-z]:\\/.test(value) ||
+        value.includes("/") || /[\x00-\x1f\x7f]/.test(value) ||
+        win32.normalize(value) !== value || value.endsWith("\\")) return false;
+    return value.slice(3).split("\\").every(segment =>
+      segment.length > 0 && segment !== "." && segment !== ".." &&
+      !/[. ]$/.test(segment) && !segment.includes(":"));
+  };
+  if (!ordinaryDrivePath(home) || !ordinaryDrivePath(marker) ||
+      !/^bostan-private-auth-http-[A-Za-z0-9_-]{1,80}$/.test(win32.basename(home)) ||
+      marker.toLowerCase() !== win32.join(home, "BOSTAN_QA_OWNED").toLowerCase() ||
+      win32.basename(marker) !== "BOSTAN_QA_OWNED" ||
+      typeof secret !== "string" || secret.length < 24 || secret.length > 256 ||
+      /[\x00-\x1f\x7f]/.test(secret))
+    throw Error("Invalid private QA fixture home, marker or secret");
+}
+
+
 export function buildPrivateWindowsHttpQaEnvironment({
   inherited = {}, home, origin, connectionString, port, marker, secret, serveUi = false,
 } = {}) {
   if (![home, marker, secret].every(value => typeof value === "string" && value.length > 0))
     throw Error("Missing isolated private QA fixture input");
+  assertPrivateWindowsQaFixtureBoundary(home, marker, secret);
   if (typeof serveUi !== "boolean")throw Error("Private Windows QA UI flag invalid");
   const portNumber = Number(port);
   if (!Number.isSafeInteger(portNumber) || portNumber < 1024 || portNumber > 65535 ||
@@ -42,12 +65,16 @@ export function buildPrivateWindowsHttpQaEnvironment({
   // operator PATH/ComSpec/PATHEXT would redirect them outside the owned fixture.
   // Require an explicit conventional OS root, including for synthetic tests.
   // Missing or noncanonical roots fail closed before spawning a child.
-  const rootInput = systemValues.get("SYSTEMROOT") ??
-    systemValues.get("WINDIR");
+  const rootInput = systemValues.get("SYSTEMROOT");
+  const windir = systemValues.get("WINDIR");
   if (typeof rootInput !== "string" ||
-      !/^[A-Za-z]:\\Windows\\?$/.test(rootInput))
+      !/^[A-Za-z]:\\Windows\\?$/i.test(rootInput))
     throw Error("Private Windows QA system root invalid");
   const windowsRoot = rootInput.replace(/\\$/, "");
+  if (windir !== undefined && (typeof windir !== "string" ||
+      !/^[A-Za-z]:\\Windows\\?$/i.test(windir) ||
+      windir.replace(/\\$/, "").toLowerCase() !== windowsRoot.toLowerCase()))
+    throw Error("Private Windows QA system root invalid");
   const system32 = win32.join(windowsRoot, "System32");
   const result = {
     SystemRoot:windowsRoot, WINDIR:windowsRoot,
