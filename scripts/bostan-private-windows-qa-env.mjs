@@ -5,8 +5,7 @@
 import {win32} from "node:path";
 
 const SYSTEM_KEYS = Object.freeze([
-  "SystemRoot", "WINDIR", "ComSpec", "PATHEXT", "PATH",
-  "SystemDrive", "PROCESSOR_ARCHITECTURE", "NUMBER_OF_PROCESSORS",
+  "PROCESSOR_ARCHITECTURE", "NUMBER_OF_PROCESSORS",
 ]);
 
 export function buildPrivateWindowsHttpQaEnvironment({
@@ -38,7 +37,24 @@ export function buildPrivateWindowsHttpQaEnvironment({
     throw Error("Private Windows QA requires an isolated loopback PostgreSQL URL");
 
   const systemValues = new Map(Object.entries(inherited).map(([key, value]) => [key.toUpperCase(), value]));
-  const result = {};
+  // Never inherit the operator's executable search path or shell. A Windows
+  // QA child may launch subprocesses during server initialization; allowing
+  // operator PATH/ComSpec/PATHEXT would redirect them outside the owned fixture.
+  // Require an explicit conventional OS root, including for synthetic tests.
+  // Missing or noncanonical roots fail closed before spawning a child.
+  const rootInput = systemValues.get("SYSTEMROOT") ??
+    systemValues.get("WINDIR");
+  if (typeof rootInput !== "string" ||
+      !/^[A-Za-z]:\\Windows\\?$/.test(rootInput))
+    throw Error("Private Windows QA system root invalid");
+  const windowsRoot = rootInput.replace(/\\$/, "");
+  const system32 = win32.join(windowsRoot, "System32");
+  const result = {
+    SystemRoot:windowsRoot, WINDIR:windowsRoot,
+    SystemDrive:windowsRoot.slice(0, 2),
+    ComSpec:win32.join(system32, "cmd.exe"),
+    PATHEXT:".COM;.EXE;.BAT;.CMD", PATH:system32,
+  };
   for (const key of SYSTEM_KEYS) {
     const value = systemValues.get(key.toUpperCase());
     if (typeof value === "string" && value.length > 0) result[key] = value;
