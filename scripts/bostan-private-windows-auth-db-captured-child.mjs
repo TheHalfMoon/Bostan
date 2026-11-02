@@ -10,6 +10,9 @@ import {isAbsolute, win32} from 'node:path';
 const failed=Object.freeze({status:1});
 const passed=Object.freeze({status:0});
 export const PRIVATE_WINDOWS_AUTH_DB_CHILD_MAX_BUFFER=1024*1024;
+// The execution planner uses at most 240 seconds per workload. A future direct
+// caller must not delay the final read-only PostgreSQL orphan gate indefinitely.
+export const PRIVATE_WINDOWS_AUTH_DB_CHILD_MAX_TIMEOUT_MS=240000;
 // A future caller must not accidentally restore ambient credentials, preload
 // hooks or a foreign executable search environment to this private QA path.
 const childEnvironmentKeys=new Set([
@@ -98,6 +101,7 @@ export function invokePrivateWindowsAuthDbCaptured(command,{env,spawn=spawnSync}
       !Array.isArray(command.args) || !command.args.every(noNul) ||
       !noNul(command.cwd) || !admittedPath(command.cwd) ||
       !Number.isSafeInteger(command.timeout) || command.timeout<=0 ||
+      command.timeout>PRIVATE_WINDOWS_AUTH_DB_CHILD_MAX_TIMEOUT_MS ||
       !admittedEnvironment(env) ||
       typeof spawn!=='function') return failed;
   try {
