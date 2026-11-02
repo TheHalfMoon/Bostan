@@ -10,6 +10,10 @@ const liveSource=readFileSync(live,"utf8");
 const envSource=readFileSync(fileURLToPath(new URL("./bostan-private-windows-qa-env.mjs",import.meta.url)),"utf8");
 const executionSource=readFileSync(fileURLToPath(new URL("./bostan-private-windows-auth-db-execution.mjs",import.meta.url)),"utf8");
 const stepsSource=readFileSync(fileURLToPath(new URL("./bostan-private-windows-auth-db-steps.mjs",import.meta.url)),"utf8");
+const waveSource=readFileSync(fileURLToPath(new URL("./bostan-private-windows-qa-wave.mjs",import.meta.url)),"utf8");
+const workspaceSource=readFileSync(fileURLToPath(new URL("./bostan-private-windows-auth-db-workspace-admission.mjs",import.meta.url)),"utf8");
+const managedEnvSource=readFileSync(fileURLToPath(new URL("./bostan-private-windows-auth-db-managed-env.mjs",import.meta.url)),"utf8");
+const capturedChildSource=readFileSync(fileURLToPath(new URL("./bostan-private-windows-auth-db-captured-child.mjs",import.meta.url)),"utf8");
 const invoke=(...args)=>spawnSync(process.execPath,[file,...args],{encoding:"utf8"});
 test("default is read-only, private and explicitly opted in",()=>{
   const out=invoke();
@@ -38,9 +42,14 @@ test("script retains pinned auth/DB tests and always-final read-only orphan gate
   assert.match(executionSource,/src\/client\.test\.ts/);
   assert.match(executionSource,/bostan-native-windows-postgres-no-orphans\.ps1/);
   assert.match(executionSource,/npm_config_offline/);
-  assert.match(src,/parsePrivateWindowsQaWave/);
-  assert.match(src,/matchingPrivateWindowsQaWave/);
-  assert.match(src,/PAPERCLIP_CLOUD_/);
+  assert.match(waveSource,/parsePrivateWindowsQaWave/);
+  assert.match(workspaceSource,/matchingPrivateWindowsQaWave/);
+  assert.match(managedEnvSource,/PAPERCLIP_CLOUD_/);
+  assert.match(src,/invokePrivateWindowsAuthDbCaptured/);
+  assert.match(capturedChildSource,/maxBuffer:PRIVATE_WINDOWS_AUTH_DB_CHILD_MAX_BUFFER/);
+  assert.match(capturedChildSource,/stdio:\['ignore','pipe','pipe'\]/);
+  assert.doesNotMatch(src,/stdio:["']inherit["']/);
+  assert.doesNotMatch(src,/spawnSync\(/);
   assert.match(src,/executePrivateWindowsAuthDbSteps/);
   assert.match(stepsSource,/BOSTAN_WIN_AUTH_DB_REAL_POSTGRES_PASS/);
   assert.match(stepsSource,/const finalGatePassed=run\(6\)/);
