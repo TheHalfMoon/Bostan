@@ -39,7 +39,7 @@ test('refuses a linked replacement and preserves its target',()=>fixture(({home,
   fs.mkdirSync(target);
   fs.writeFileSync(path.join(target,'KEEP.txt'),'keep');
   fs.renameSync(home,home+'.original');
-  fs.symlinkSync(target,home,'dir');
+  fs.symlinkSync(target,home,process.platform==='win32'?'junction':'dir');
   assert.throws(reclaim,refused);
   assert.equal(fs.readFileSync(path.join(target,'KEEP.txt'),'utf8'),'keep');
 }));
