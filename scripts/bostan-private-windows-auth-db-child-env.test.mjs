@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {invokePrivateWindowsAuthDbCaptured} from './bostan-private-windows-auth-db-captured-child.mjs';
-const command={binary:process.execPath,args:['-e','process.exit(0)'],cwd:process.cwd(),timeout:5000};
+const command={binary:'C:\\Program Files\\nodejs\\node.exe',args:['-e','process.exit(0)'],cwd:'D:\\Bostan-QA',timeout:5000};
 const fixture='D:\\Bostan-B217-temp';
 const native=Object.freeze({
   SystemRoot:'C:\\Windows',WINDIR:'C:\\Windows',SystemDrive:'C:',
@@ -45,6 +45,8 @@ test('rejects ambient synthetic paths without Windows SystemRoot',()=>{
   assert.deepEqual(run({CI:'1',PATH:'',HOME:'C:\\Users\\Operator'}),{result:{status:1},called:0});
 });
 test('preserves minimal offline unit fixture and rejects disabling controls',()=>{
-  assert.deepEqual(run({CI:'1',PATH:''}),{result:{status:0},called:1});
-  assert.deepEqual(run({CI:'1',PATH:'',npm_config_offline:'false'}),{result:{status:1},called:0});
+  const minimal={binary:process.execPath,args:['--version'],cwd:process.cwd(),timeout:5000};
+  const runMinimal=env=>{let called=0;const result=invokePrivateWindowsAuthDbCaptured(minimal,{env,spawn:()=>{called++;return {status:0};}});return {result,called};};
+  assert.deepEqual(runMinimal({CI:'1',PATH:''}),{result:{status:0},called:1});
+  assert.deepEqual(runMinimal({CI:'1',PATH:'',npm_config_offline:'false'}),{result:{status:1},called:0});
 });
