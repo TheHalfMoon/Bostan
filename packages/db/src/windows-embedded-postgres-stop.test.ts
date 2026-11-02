@@ -33,7 +33,9 @@ async function fixture(run: (data: string) => Promise<void>) {
 }
 // Real postmaster.pid includes its absolute data-directory path on line 2.
 function validPidMarker(data: string, pid = 123): string {
-  return `${pid}\n${fs.realpathSync(data)}\n`;
+  // PostgreSQL line 3 is the whole-second postmaster launch timestamp.
+  const startEpoch = Math.floor(Date.parse("2026-10-30T12:00:00Z") / 1000);
+  return `${pid}\n${fs.realpathSync(data)}\n${startEpoch}\n`;
 }
 
 it("refuses a hardlinked PG_VERSION before any process inspection or shutdown", async () => {
@@ -194,6 +196,41 @@ it("rejects a foreign PID in an otherwise valid owned cluster marker before shut
       expect(shutdowns).toBe(0);
       expect(inspections).toBe(1);
       expect(fs.existsSync(marker)).toBe(true);
+    }
+  });
+});
+
+it("refuses a reused PID from the pinned postgres.exe when CIM creation is stale", async () => {
+  await fixture(async (data) => {
+    const marker = path.join(data, "postmaster.pid");
+    fs.writeFileSync(marker, validPidMarker(data));
+    let shutdowns = 0;
+    let inspections = 0;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { shutdowns++; },
+      async () => {
+        inspections++;
+        return [{ ...row(), CreationDate: "2026-10-30T11:00:00Z" }];
+      }, noWait)).rejects.toThrow(/postmaster identity/i);
+    expect(inspections).toBe(1);
+    expect(shutdowns).toBe(0);
+    expect(fs.existsSync(marker)).toBe(true);
+  });
+});
+
+it("rejects a missing or malformed postmaster start timestamp before inspecting processes", async () => {
+  await fixture(async (data) => {
+    const marker = path.join(data, "postmaster.pid");
+    for (const line3 of ["", "0", "not-a-timestamp", "0012345678", "9999999999999999999"]) {
+      fs.writeFileSync(marker, `123\n${fs.realpathSync(data)}\n${line3}\n`);
+      let shutdowns = 0;
+      let inspections = 0;
+      await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+        async () => { shutdowns++; },
+        async () => { inspections++; return [row()]; }, noWait))
+        .rejects.toThrow(/PID marker/i);
+      expect(shutdowns).toBe(0);
+      expect(inspections).toBe(0);
     }
   });
 });
