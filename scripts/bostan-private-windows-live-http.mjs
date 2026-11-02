@@ -10,6 +10,7 @@ import {checkBostanWindowsDisk} from "./bostan-private-windows-disk-admission.mj
 import {checkBostanWindowsMemory} from "./bostan-private-windows-memory-admission.mjs";
 import {evaluateWindowsLiveMemory} from "./bostan-private-windows-live-memory-policy.mjs";
 import {buildPrivateWindowsHttpQaEnvironment} from "./bostan-private-windows-qa-env.mjs";
+import {assertPrivateWindowsQaOsExecutablePaths} from "./bostan-private-windows-os-executable-admission.mjs";
 import {proveOwnedWindowsHttpListener} from "./bostan-private-windows-http-listener-proof.mjs";
 import {parsePrivateWindowsQaWave,matchingPrivateWindowsQaWave} from "./bostan-private-windows-qa-wave.mjs";
 import {observeOwnedQaChild} from "./bostan-private-windows-child-lifecycle.mjs";
@@ -51,6 +52,15 @@ for(const key of Object.keys(process.env)){
     console.error("Bostan private QA refuses inherited managed Cloud configuration");
     process.exit(2);
   }
+}
+// A canonical SystemRoot string alone cannot attest an unlinked OS cmd.exe.
+// Inspect the actual drive/Windows/System32/cmd.exe before any QA scratch,
+// database initialization, or HTTP child spawn. Never print inspected paths.
+try {
+  assertPrivateWindowsQaOsExecutablePaths();
+} catch {
+  console.error("BOSTAN_WINDOWS_LIVE_OS_EXECUTABLES_REFUSED");
+  process.exit(2);
 }
 const temp=process.env.TEMP||"";
 if(!existsSync(temp)||lstatSync(temp).isSymbolicLink()||
