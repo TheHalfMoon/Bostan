@@ -79,7 +79,7 @@ test('non-JSON 200 response is not a successful health check',async()=>{
 test('body parsing that finishes after the monotonic deadline is never healthy',async()=>{
   let ms=0;
   const result=await probe({endpoint,childExited:()=>false,now:()=>ms,timeoutMs:100,
-    fetchResponse:async()=>({status:200,json:async()=>{ms=120;return privateHealth;}})});
+    fetchResponse:async()=>({status:200,body:new ReadableStream({pull(controller){ms=120;controller.enqueue(new TextEncoder().encode(JSON.stringify(privateHealth)));controller.close();}})})});
   assert.equal(result.healthy,false);
   assert.equal(result.outcome,'deadline_exceeded');
   assert.equal(result.probes,1);
@@ -87,7 +87,7 @@ test('body parsing that finishes after the monotonic deadline is never healthy',
 test('owned child exiting during response body parsing is never healthy',async()=>{
   let exited=false;
   const result=await probe({endpoint,childExited:()=>exited,timeoutMs:500,
-    fetchResponse:async()=>({status:200,json:async()=>{exited=true;return privateHealth;}})});
+    fetchResponse:async()=>({status:200,body:new ReadableStream({pull(controller){exited=true;controller.enqueue(new TextEncoder().encode(JSON.stringify(privateHealth)));controller.close();}})})});
   assert.equal(result.healthy,false);
   assert.equal(result.outcome,'child_exited');
 });
@@ -105,7 +105,7 @@ test('JSON parser that ignores AbortSignal and never settles is bounded by the s
   const started=Date.now();
   const result=await probe({endpoint,childExited:()=>false,timeoutMs:160,
     requestTimeoutMs:30,maxProbes:2,pollDelayMs:0,
-    fetchResponse:async()=>({status:200,json:()=>new Promise(()=>{})})});
+    fetchResponse:async()=>({status:200,body:new ReadableStream({pull:()=>new Promise(()=>{})})})});
   assert.equal(result.healthy,false);
   assert.equal(result.outcome,'probe_limit');
   assert.equal(result.probes,2);
@@ -122,5 +122,60 @@ test('real localhost HTTP 200 with stalled JSON body never qualifies',async()=>{
     assert.equal(result.healthy,false);
     assert.equal(result.outcome,'probe_limit');
     assert.ok(Date.now()-started<1000);
+  });
+});
+
+
+test('oversized real localhost JSON health body is refused before trust',async()=>{
+  await withServer((_req,res)=>{
+    res.setHeader('Content-Type','application/json');
+    res.end(JSON.stringify({...privateHealth,padding:'x'.repeat(8192)}));
+  },async url=>{
+    const result=await probe({endpoint:url,childExited:()=>false,timeoutMs:500,pollDelayMs:0,maxProbes:1});
+    assert.equal(result.healthy,false);
+    assert.equal(result.observation,'health_invalid_json');
+  });
+});
+
+test('oversized chunked localhost JSON body without content-length is refused',async()=>{
+  await withServer((_req,res)=>{
+    res.writeHead(200,{'content-type':'application/json'});
+    const body=JSON.stringify({...privateHealth,padding:'x'.repeat(8192)});
+    res.write(body.slice(0,2000));
+    res.end(body.slice(2000));
+  },async url=>{
+    const result=await probe({endpoint:url,childExited:()=>false,timeoutMs:500,pollDelayMs:0,maxProbes:1});
+    assert.equal(result.healthy,false);
+    assert.equal(result.observation,'health_invalid_json');
+  });
+});
+
+test('oversized declared health response is rejected before reading stream',async()=>{
+  let reads=0;
+  const result=await probe({endpoint,childExited:()=>false,timeoutMs:500,pollDelayMs:0,maxProbes:1,
+    fetchResponse:async()=>({status:200,headers:{get:()=> '99999'},
+      body:{getReader(){reads++;throw Error('stream must not be read');}},
+      json:async()=>privateHealth})});
+  assert.equal(result.healthy,false);
+  assert.equal(result.observation,'health_invalid_json');
+  assert.equal(reads,0);
+});
+
+test('200 response without bounded byte stream cannot qualify via unbounded json()',async()=>{
+  let called=false;
+  const result=await probe({endpoint,childExited:()=>false,timeoutMs:500,pollDelayMs:0,maxProbes:1,
+    fetchResponse:async()=>({status:200,json:async()=>{called=true;return privateHealth;}})});
+  assert.equal(result.healthy,false);
+  assert.equal(result.observation,'health_invalid_json');
+  assert.equal(called,false);
+});
+
+test('a complete health JSON within the 4096-byte cap remains valid',async()=>{
+  await withServer((_req,res)=>{
+    res.setHeader('Content-Type','application/json');
+    res.end(JSON.stringify({...privateHealth,padding:' '.repeat(3000)}));
+  },async url=>{
+    const result=await probe({endpoint:url,childExited:()=>false,timeoutMs:1000});
+    assert.equal(result.healthy,true);
   });
 });
