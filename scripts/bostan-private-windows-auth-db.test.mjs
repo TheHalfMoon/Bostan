@@ -8,6 +8,8 @@ const src=readFileSync(file,"utf8");
 const live=fileURLToPath(new URL("./bostan-private-windows-live-http.mjs",import.meta.url));
 const liveSource=readFileSync(live,"utf8");
 const envSource=readFileSync(fileURLToPath(new URL("./bostan-private-windows-qa-env.mjs",import.meta.url)),"utf8");
+const executionSource=readFileSync(fileURLToPath(new URL("./bostan-private-windows-auth-db-execution.mjs",import.meta.url)),"utf8");
+const stepsSource=readFileSync(fileURLToPath(new URL("./bostan-private-windows-auth-db-steps.mjs",import.meta.url)),"utf8");
 const invoke=(...args)=>spawnSync(process.execPath,[file,...args],{encoding:"utf8"});
 test("default is read-only, private and explicitly opted in",()=>{
   const out=invoke();
@@ -30,16 +32,19 @@ test("refuse non-Windows host before any dependency or process activity",()=>{
   assert.equal(out.status,2);
   assert.match(out.stderr,/non-Windows/);
 });
-test("script keeps real HTTP/DB tests and process ownership boundaries",()=>{
-  assert.match(src,/bootstrap-claim-routes\.test\.ts/);
-  assert.match(src,/auth-routes\.test\.ts/);
-  assert.match(src,/src\/client\.test\.ts/);
-  assert.match(src,/bostan-native-windows-postgres-no-orphans\.ps1/);
+test("script retains pinned auth/DB tests and always-final read-only orphan gate",()=>{
+  assert.match(executionSource,/bootstrap-claim-routes\.test\.ts/);
+  assert.match(executionSource,/auth-routes\.test\.ts/);
+  assert.match(executionSource,/src\/client\.test\.ts/);
+  assert.match(executionSource,/bostan-native-windows-postgres-no-orphans\.ps1/);
+  assert.match(executionSource,/npm_config_offline/);
   assert.match(src,/parsePrivateWindowsQaWave/);
   assert.match(src,/matchingPrivateWindowsQaWave/);
   assert.match(src,/PAPERCLIP_CLOUD_/);
-  assert.match(src,/BOSTAN_WIN_AUTH_DB_REAL_POSTGRES_PASS/);
-  assert.match(src,/npm_config_offline/);
+  assert.match(src,/executePrivateWindowsAuthDbSteps/);
+  assert.match(stepsSource,/BOSTAN_WIN_AUTH_DB_REAL_POSTGRES_PASS/);
+  assert.match(stepsSource,/const finalGatePassed=run\(6\)/);
+  assert.doesNotMatch(src,/function run\(command\)/);
   assert.doesNotMatch(src,/taskkill|Stop-Process|\bpublish\s*\(/);
 });
 

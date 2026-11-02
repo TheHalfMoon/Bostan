@@ -8,6 +8,7 @@ import {checkBostanWindowsDisk} from "./bostan-private-windows-disk-admission.mj
 import {assertPrivateWindowsQaOsExecutablePaths} from "./bostan-private-windows-os-executable-admission.mjs";
 import {resolvePrivateWindowsPowerShellBinary} from "./bostan-private-windows-powershell-binary.mjs";
 import {buildPrivateWindowsAuthDbExecution} from "./bostan-private-windows-auth-db-execution.mjs";
+import {executePrivateWindowsAuthDbSteps} from "./bostan-private-windows-auth-db-steps.mjs";
 import {parsePrivateWindowsQaWave,matchingPrivateWindowsQaWave} from "./bostan-private-windows-qa-wave.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
@@ -84,22 +85,14 @@ if(stat.bavail*stat.bsize<1024n*1024n*1024n){
   process.exit(2);
 }
 const {env,commands}=execution;
-function run(command){
-  console.log("BOSTAN_WIN_AUTH_DB_STEP="+command.name);
-  const result=spawnSync(command.binary,command.args,{
+const outcome=executePrivateWindowsAuthDbSteps({
+  commands,
+  invoke:command=>spawnSync(command.binary,command.args,{
     cwd:command.cwd,env,stdio:"inherit",windowsHide:true,
     timeout:command.timeout,shell:false,
-  });
-  if(result.error||result.status!==0||result.signal){
-    console.error("Bostan Windows auth/DB step failed: "+command.name);
-    process.exit(1);
-  }
-}
-for(const [index,command] of commands.entries()){
-  run(command);
-  if(index===3)console.log("BOSTAN_WIN_AUTH_DB_PLUGIN_SDK_PASS");
-  if(index===4)console.log("BOSTAN_WIN_AUTH_DB_HTTP_TESTS_PASS");
-  if(index===5)console.log("BOSTAN_WIN_AUTH_DB_REAL_POSTGRES_PASS");
-  if(index===6)console.log("BOSTAN_WIN_AUTH_DB_NO_POSTGRES_ORPHANS_PASS");
-}
+  }),
+  log:line=>console.log(line),
+  error:line=>console.error(line),
+});
+if(!outcome.passed)process.exit(1);
 console.log(JSON.stringify({...plan,run:true,nativeWindows:true,externalProviderCalls:0},null,2));
