@@ -42,6 +42,7 @@ export function isSelfContainedPostgresTemplateTree(root: string): boolean {
           if (depth >= MAX_TEMPLATE_DEPTH) return false;
           stack.push({ dir: file, depth: depth + 1 });
         } else if (!stat.isFile() || stat.nlink !== 1 ||
+                   (uid !== undefined && (stat.mode & 0o022) !== 0) ||
                    !Number.isSafeInteger(stat.size) || stat.size < 0 ||
                    stat.size > MAX_TEMPLATE_FILE_BYTES) {
           return false;
