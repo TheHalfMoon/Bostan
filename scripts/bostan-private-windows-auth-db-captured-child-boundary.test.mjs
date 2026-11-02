@@ -33,8 +33,14 @@ test('rejects foreign PATH even when its name is allowlisted',()=>{
   assert.deepEqual(exercise(base,windowsEnv),{result:{status:1},called:0});
 });
 test('accepts canonical pinned Windows search path with only allowed keys',()=>{
+  const temp='D:\\Bostan-B217-temp';
   const windowsEnv={SystemRoot:'C:\\Windows',WINDIR:'C:\\Windows',SystemDrive:'C:',
     PATH:'C:\\Windows\\System32',PATHEXT:'.COM;.EXE;.BAT;.CMD',
-    ComSpec:'C:\\Windows\\System32\\cmd.exe',CI:'1'};
+    ComSpec:'C:\\Windows\\System32\\cmd.exe',CI:'1',
+    HOME:temp,USERPROFILE:temp,TEMP:temp,TMP:temp,
+    APPDATA:temp,LOCALAPPDATA:temp,XDG_CONFIG_HOME:temp,
+    DO_NOT_TRACK:'1',OTEL_SDK_DISABLED:'true',
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD:'1',npm_config_offline:'true',
+    PAPERCLIP_TEST_POSTGRES_TEMPLATE:'0'};
   assert.deepEqual(exercise(base,windowsEnv),{result:{status:0},called:1});
 });
