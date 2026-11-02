@@ -280,11 +280,10 @@ async function stopEmbeddedPostgresBounded(
   let timer: ReturnType<typeof setTimeout> | undefined;
   const stopped = instance.stop().then(
     () => {
-      try {
-        cleanupFn?.();
-      } catch {
-        // Best-effort reclaim after a verified stop; ignore removal errors.
-      }
+      // A verified native stop is not proof that scratch reclamation succeeded.
+      // Propagate identity/ownership refusal rather than reporting a clean
+      // teardown while an unverified test fixture remains on disk.
+      cleanupFn?.();
     },
     (error: unknown) => {
       // A rejected stop is not proof that PostgreSQL and its workers exited.
