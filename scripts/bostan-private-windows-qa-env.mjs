@@ -19,12 +19,22 @@ export function buildPrivateWindowsHttpQaEnvironment({
   if (!Number.isSafeInteger(portNumber) || portNumber < 1024 || portNumber > 65535 ||
       origin !== `http://127.0.0.1:${portNumber}`)
     throw Error("Private Windows QA requires an ephemeral loopback HTTP origin");
+  // This runner creates a synthetic `paperclip` database. Loopback alone
+  // cannot distinguish that fixture from a pre-existing local database.
+  // Reject other database names, connection options, fragments, missing
+  // credentials, and noncanonical URL spellings before forwarding DATABASE_URL.
   let database;
+  if (typeof connectionString !== "string")
+    throw Error("Invalid private QA database URL");
   try { database = new URL(connectionString); } catch { throw Error("Invalid private QA database URL"); }
   if (!["postgres:", "postgresql:"].includes(database.protocol) ||
       database.hostname !== "127.0.0.1" ||
       !Number.isSafeInteger(Number(database.port)) ||
-      Number(database.port) < 1024 || Number(database.port) > 65535)
+      Number(database.port) < 1024 || Number(database.port) > 65535 ||
+      database.pathname !== "/paperclip" ||
+      !database.username || !database.password ||
+      database.search !== "" || database.hash !== "" ||
+      database.href !== connectionString)
     throw Error("Private Windows QA requires an isolated loopback PostgreSQL URL");
 
   const systemValues = new Map(Object.entries(inherited).map(([key, value]) => [key.toUpperCase(), value]));
