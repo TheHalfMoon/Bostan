@@ -26,15 +26,24 @@ function availableBytes(statfs,volume){
 export function checkBostanWindowsDisk({
   platform=process.platform,workspace,
   systemDrive=process.env.SystemDrive,
+  systemRoot=process.env.SystemRoot,
   tempDir=process.env.TEMP,
   statfs=statfsSync,
 }={}){
   if(platform!=="win32")return {schema:"bostan.private-windows-disk-admission.v1",
     allowed:false,reason:"not_windows",checks:[]};
-  const system=driveRoot(systemDrive+"\\");
+  // SystemDrive is an untrusted environment string. A path such as C:\\Users
+  // must not impersonate the direct Windows drive label, and it must agree
+  // with the OS root independently admitted by the Windows executable gate.
+  const system=typeof systemDrive==="string" && /^[A-Za-z]:$/.test(systemDrive)
+    ? driveRoot(systemDrive+"\\") : null;
+  const expectedSystemRoot=typeof systemRoot==="string" &&
+    /^[A-Za-z]:\\Windows\\?$/i.test(systemRoot)
+      ? systemRoot.slice(0,2).toUpperCase()+"\\" : null;
   const work=driveRoot(workspace);
   const temp=driveRoot(tempDir);
-  if(!system||!work||!temp)return {schema:"bostan.private-windows-disk-admission.v1",
+  if(!system||!expectedSystemRoot||system.toUpperCase()!==expectedSystemRoot||
+     !work||!temp)return {schema:"bostan.private-windows-disk-admission.v1",
     allowed:false,reason:"invalid_volume",checks:[]};
   const volumes=new Map();
   for(const [label,volume,required] of [
