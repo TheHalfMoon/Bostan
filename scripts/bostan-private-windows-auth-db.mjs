@@ -10,6 +10,7 @@ import {resolvePrivateWindowsPowerShellBinary} from "./bostan-private-windows-po
 import {buildPrivateWindowsAuthDbExecution} from "./bostan-private-windows-auth-db-execution.mjs";
 import {executePrivateWindowsAuthDbSteps} from "./bostan-private-windows-auth-db-steps.mjs";
 import {assertPrivateWindowsAuthDbWorkspace} from "./bostan-private-windows-auth-db-workspace-admission.mjs";
+import {inspectPrivateWindowsAuthDbManagedEnvironment} from "./bostan-private-windows-auth-db-managed-env.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const plan={
@@ -51,11 +52,10 @@ try {
   console.error("BOSTAN_WINDOWS_AUTH_DB_WORKSPACE_REFUSED");
   process.exit(2);
 }
-const forbidden=Object.keys(process.env).filter(k=>k.toUpperCase()==="PAPERCLIP_MANAGED_CONFIG"||
-  k.toUpperCase()==="PAPERCLIP_PRIMARY_HOST"||
-  /^PAPERCLIP_CLOUD_|^BOSTAN_CLOUD_/i.test(k));
-if(forbidden.length){
-  console.error("Bostan Windows auth/DB QA refuses managed Cloud keys: "+forbidden.sort().join(","));
+// A managed Cloud key name is untrusted diagnostic text, not safe to echo.
+const managedEnvironment=inspectPrivateWindowsAuthDbManagedEnvironment(process.env);
+if(!managedEnvironment.allowed){
+  console.error(managedEnvironment.marker);
   process.exit(2);
 }
 // Fail closed before any command, test database, or process inspection.
