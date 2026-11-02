@@ -42,5 +42,5 @@ test('accepts canonical pinned Windows search path with only allowed keys',()=>{
     DO_NOT_TRACK:'1',OTEL_SDK_DISABLED:'true',
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD:'1',npm_config_offline:'true',
     PAPERCLIP_TEST_POSTGRES_TEMPLATE:'0'};
-  assert.deepEqual(exercise(base,windowsEnv),{result:{status:0},called:1});
+  assert.deepEqual(exercise({...base,binary:'C:\\Program Files\\nodejs\\node.exe',cwd:'D:\\Bostan-QA'},windowsEnv),{result:{status:0},called:1});
 });
