@@ -15,6 +15,7 @@ import { finalizeOwnedLocalPostgres } from './bostan-local-postgres-safe-finaliz
 import { buildIsolatedLocalPostgresEnv } from './bostan-local-postgres-isolated-env.mjs';
 import { isOwnedClusterDirectory } from './bostan-local-postgres-cluster-ownership.mjs';
 import { captureOwnedLocalPostgresScratch } from './bostan-local-postgres-scratch-identity.mjs';
+import { createLocalPostgresPreExecGate } from './bostan-local-postgres-preexec-gate.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const identity = 'bostan_verify';
@@ -74,6 +75,9 @@ async function run() {
   const originalScratchOwned = captureOwnedLocalPostgresScratch({
     scratch: ephemeral, marker, markerText,
   });
+  const executionGate = createLocalPostgresPreExecGate({
+    scratch: ephemeral, cluster, ownedScratch: originalScratchOwned,
+  });
   let started = false, startAttempted = false;
   let isolatedEnv;
   try {
@@ -88,12 +92,19 @@ async function run() {
       port, identity, database, configPath: join(ephemeral, 'absent-config.json'),
     });
     console.log('Preparing fresh isolated PostgreSQL cluster (loopback only, no existing data).');
+    // Never run initdb against a pre-planted or substituted cluster directory.
+    // A refusal is latched, so even the finally block retains foreign data.
+    executionGate.beforeInitdb();
     exec('initdb', ['--no-instructions', '--no-sync', '--encoding=UTF8', '--locale=C', `--username=${identity}`, '--auth-local=trust', '--auth-host=trust', '-D', cluster], {timeout:60_000, env:isolatedEnv});
+    // Capture the directory initdb really created; pg_ctl must start that
+    // same inode, not an unrelated replacement at the same pathname.
+    executionGate.afterInitdb();
     const postgresArgs = '-c listen_addresses=127.0.0.1 -c port=' + port +
       (process.platform === 'win32' ? '' : ' -c unix_socket_directories=' + socketDir) +
       ' -c fsync=off';
     // A timed-out or failed pg_ctl may have started a background daemon.
     // Never delete scratch unless startup and a later owned stop are proven.
+    executionGate.beforeStart();
     startAttempted = true;
     exec('pg_ctl', ['-D', cluster, '-l', join(ephemeral, 'postgres.log'), '-o',
       postgresArgs, '-w', 'start'], {timeout:45_000, env:isolatedEnv});
@@ -138,6 +149,7 @@ async function run() {
         return true;
       },
       owned: () => {
+        if (!executionGate.ownedForFinalizer()) return false;
         if (!originalScratchOwned()) return false;
         if (!existsSync(ephemeral) || !existsSync(marker)) return false;
         const directory = lstatSync(ephemeral), proof = lstatSync(marker);
