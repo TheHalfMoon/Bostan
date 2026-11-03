@@ -66,14 +66,17 @@ async function run() {
   const canonicalMarker = join(canonicalScratch, 'BOSTAN_OWNED_DISPOSABLE_CLUSTER');
   mkdirSync(socketDir);
   writeFileSync(marker, markerText);
-  const port = await availablePort();
-  // Never inherit PGHOSTADDR/PGSERVICE/PGOPTIONS or other ambient libpq controls.
-  // PGHOSTADDR can redirect even a libpq client passed -h 127.0.0.1.
-  const isolatedEnv = buildIsolatedLocalPostgresEnv(process.env, {
-    port, identity, database, configPath: join(ephemeral, 'absent-config.json'),
-  });
   let started = false, startAttempted = false;
+  let isolatedEnv;
   try {
+    // Port reservation may fail. Keep it inside the owned-scratch finalization
+    // scope, before any PostgreSQL startup or process invocation.
+    const port = await availablePort();
+    // Never inherit PGHOSTADDR/PGSERVICE/PGOPTIONS or other ambient libpq controls.
+    // PGHOSTADDR can redirect even a libpq client passed -h 127.0.0.1.
+    isolatedEnv = buildIsolatedLocalPostgresEnv(process.env, {
+      port, identity, database, configPath: join(ephemeral, 'absent-config.json'),
+    });
     console.log('Preparing fresh isolated PostgreSQL cluster (loopback only, no existing data).');
     exec('initdb', ['--no-instructions', '--no-sync', '--encoding=UTF8', '--locale=C', `--username=${identity}`, '--auth-local=trust', '--auth-host=trust', '-D', cluster], {timeout:60_000, env:isolatedEnv});
     const postgresArgs = '-c listen_addresses=127.0.0.1 -c port=' + port +
