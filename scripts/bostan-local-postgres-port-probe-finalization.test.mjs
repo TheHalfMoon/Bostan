@@ -9,10 +9,11 @@ const runner = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'bosta
 
 test('loopback port probe is inside owned-scratch try/finally', () => {
   const scratch = runner.indexOf('const ephemeral = mkdtempSync(');
-  const guard = runner.indexOf('  try {\n    // Port reservation may fail.', scratch);
+  const guard = runner.indexOf('  try {\n    // A socket-directory failure must still reach owned-scratch finalization.', scratch);
+  const socketSetup = runner.indexOf('mkdirSync(socketDir);', guard);
   const port = runner.indexOf('const port = await availablePort();', scratch);
   const finallyBlock = runner.indexOf('  } finally {\n    const finalized = finalizeOwnedLocalPostgres(', port);
-  assert.ok(scratch >= 0 && guard > scratch && port > guard && finallyBlock > port);
+  assert.ok(scratch >= 0 && guard > scratch && socketSetup > guard && port > socketSetup && finallyBlock > port);
 });
 
 test('port failure occurs before startup and leaves safe finalizer available', () => {
