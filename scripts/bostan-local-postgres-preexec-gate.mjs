@@ -27,6 +27,12 @@ export function createLocalPostgresPreExecGate({scratch, cluster, ownedScratch} 
       return ordinary(info) && same(info, initialized) && realpathSync(cluster) === cluster;
     } catch { return false; }
   };
+  // initdb can fail after creating cluster but before afterInitdb captures its inode.
+  // Such a pathname has no ownership receipt: never authorize recursive removal.
+  const clusterAbsent = () => {
+    try { lstatSync(cluster); return false; }
+    catch (error) { return error?.code === 'ENOENT'; }
+  };
   const refuse = () => { denied = true; deny(); };
   return Object.freeze({
     /** Refuse a pre-planted cluster, symlink, file, or uninspectable path. */
@@ -53,7 +59,7 @@ export function createLocalPostgresPreExecGate({scratch, cluster, ownedScratch} 
     },
     /** If compromised, never stop PG or recursively delete its pathname. */
     ownedForFinalizer() {
-      return checkRoot() && (!initialized || checkCluster());
+      return checkRoot() && (initialized ? checkCluster() : clusterAbsent());
     },
   });
 }
