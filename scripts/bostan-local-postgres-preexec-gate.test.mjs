@@ -63,3 +63,23 @@ test('input errors have fixed reason without leaking scratch path',t=>{
   assert.throws(()=>gate({scratch:f.scratch,cluster:path.join(f.parent,'foreign'),ownedScratch:()=>true}),e=>
     e.message.includes('retaining fixture')&&!e.message.includes(f.parent));
 });
+
+test('failed initdb with unverified newly existing cluster must not authorize deletion',t=>{
+  const f=fixture(t);
+  assert.equal(f.g.beforeInitdb(),true);
+  fs.mkdirSync(f.cluster);
+  const keep=path.join(f.cluster,'KEEP.txt');
+  fs.writeFileSync(keep,'foreign');
+  assert.equal(f.g.ownedForFinalizer(),false);
+  assert.equal(fs.readFileSync(keep,'utf8'),'foreign');
+});
+test('failed initdb with a linked cluster path must not authorize deletion',t=>{
+  const f=fixture(t);
+  assert.equal(f.g.beforeInitdb(),true);
+  const outside=path.join(f.parent,'unrelated');
+  fs.mkdirSync(outside);
+  fs.writeFileSync(path.join(outside,'KEEP.txt'),'foreign');
+  fs.symlinkSync(outside,f.cluster,'dir');
+  assert.equal(f.g.ownedForFinalizer(),false);
+  assert.equal(fs.readFileSync(path.join(outside,'KEEP.txt'),'utf8'),'foreign');
+});
