@@ -64,11 +64,14 @@ async function run() {
   const markerText = 'This directory belongs only to Bostan local qualification.\n';
   const canonicalScratch = realpathSync(ephemeral);
   const canonicalMarker = join(canonicalScratch, 'BOSTAN_OWNED_DISPOSABLE_CLUSTER');
-  mkdirSync(socketDir);
+  // Establish ownership proof before any fallible socket setup. A failed
+  // marker write must retain scratch rather than delete an unverified path.
   writeFileSync(marker, markerText);
   let started = false, startAttempted = false;
   let isolatedEnv;
   try {
+    // A socket-directory failure must still reach owned-scratch finalization.
+    mkdirSync(socketDir);
     // Port reservation may fail. Keep it inside the owned-scratch finalization
     // scope, before any PostgreSQL startup or process invocation.
     const port = await availablePort();
