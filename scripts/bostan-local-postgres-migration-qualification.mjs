@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { finalizeOwnedLocalPostgres } from './bostan-local-postgres-safe-finalize.mjs';
 import { buildIsolatedLocalPostgresEnv } from './bostan-local-postgres-isolated-env.mjs';
 import { isOwnedClusterDirectory } from './bostan-local-postgres-cluster-ownership.mjs';
+import { captureOwnedLocalPostgresScratch } from './bostan-local-postgres-scratch-identity.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const identity = 'bostan_verify';
@@ -67,6 +68,12 @@ async function run() {
   // Establish ownership proof before any fallible socket setup. A failed
   // marker write must retain scratch rather than delete an unverified path.
   writeFileSync(marker, markerText);
+  // Capture the ORIGINAL mkdtemp directory and marker inodes. The former
+  // pathname/marker-text check alone accepts a copied replacement directory.
+  // A missing/ambiguous capture retains scratch instead of deleting it.
+  const originalScratchOwned = captureOwnedLocalPostgresScratch({
+    scratch: ephemeral, marker, markerText,
+  });
   let started = false, startAttempted = false;
   let isolatedEnv;
   try {
@@ -131,6 +138,7 @@ async function run() {
         return true;
       },
       owned: () => {
+        if (!originalScratchOwned()) return false;
         if (!existsSync(ephemeral) || !existsSync(marker)) return false;
         const directory = lstatSync(ephemeral), proof = lstatSync(marker);
         return directory.isDirectory() && !directory.isSymbolicLink() &&
