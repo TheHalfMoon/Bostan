@@ -7,10 +7,11 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createServer } from 'node:net';
-import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, realpathSync, readFileSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { finalizeOwnedLocalPostgres } from './bostan-local-postgres-safe-finalize.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const identity = 'bostan_verify';
@@ -58,8 +59,11 @@ async function run() {
   const cluster = join(ephemeral, 'cluster');
   const socketDir = join(ephemeral, 'sockets');
   const marker = join(ephemeral, 'BOSTAN_OWNED_DISPOSABLE_CLUSTER');
+  const markerText = 'This directory belongs only to Bostan local qualification.\n';
+  const canonicalScratch = realpathSync(ephemeral);
+  const canonicalMarker = join(canonicalScratch, 'BOSTAN_OWNED_DISPOSABLE_CLUSTER');
   mkdirSync(socketDir);
-  writeFileSync(marker, 'This directory belongs only to Bostan local qualification.\n');
+  writeFileSync(marker, markerText);
   const port = await availablePort();
   const connectionString = `postgres://${identity}@127.0.0.1:${port}/${database}`;
   const isolatedEnv = {
@@ -68,13 +72,16 @@ async function run() {
     PGHOST: '127.0.0.1', PGPORT: String(port), PGUSER: identity, PGDATABASE: database,
   };
   for (const key of ['PGPASSWORD', 'PGPASSFILE', 'PGSERVICE', 'PGSERVICEFILE']) delete isolatedEnv[key];
-  let started = false;
+  let started = false, startAttempted = false;
   try {
     console.log('Preparing fresh isolated PostgreSQL cluster (loopback only, no existing data).');
     exec('initdb', ['--no-instructions', '--no-sync', '--encoding=UTF8', '--locale=C', `--username=${identity}`, '--auth-local=trust', '--auth-host=trust', '-D', cluster], {timeout:60_000});
     const postgresArgs = '-c listen_addresses=127.0.0.1 -c port=' + port +
       (process.platform === 'win32' ? '' : ' -c unix_socket_directories=' + socketDir) +
       ' -c fsync=off';
+    // A timed-out or failed pg_ctl may have started a background daemon.
+    // Never delete scratch unless startup and a later owned stop are proven.
+    startAttempted = true;
     exec('pg_ctl', ['-D', cluster, '-l', join(ephemeral, 'postgres.log'), '-o',
       postgresArgs, '-w', 'start'], {timeout:45_000});
     started = true;
@@ -111,11 +118,25 @@ async function run() {
     assert.match(restoredMigration, /No pending migrations/, 'a restored database must preserve migration state');
     console.log(JSON.stringify({kind:'bostan.local-postgres-migration.v1',releaseQualified:false,postgresVersion:exec('psql', ['--version']),isolated:true,localhostOnly:true,initialTables,tableCount,migrationJournalEntries:migrationCount,repeatedMigration:'no-op',backupRestore:'verified',restoredMigration:'no-op',roundTripData:'verified',externalServices:false},null,2));
   } finally {
-    if (started) {
-      try { exec('pg_ctl', ['-D', cluster, '-m', 'immediate', '-w', 'stop'], {timeout:45_000}); }
-      catch(error) { throw new Error(`Refusing to remove a possibly running scratch PostgreSQL cluster: ${error.message}`); }
-    }
-    if (existsSync(marker) && existsSync(ephemeral)) rmSync(ephemeral, {recursive:true,force:true});
+    const finalized = finalizeOwnedLocalPostgres({
+      startAttempted, startConfirmed: started,
+      stop: () => {
+        exec('pg_ctl', ['-D', cluster, '-m', 'immediate', '-w', 'stop'], {timeout:45_000});
+        return true;
+      },
+      owned: () => {
+        if (!existsSync(ephemeral) || !existsSync(marker)) return false;
+        const directory = lstatSync(ephemeral), proof = lstatSync(marker);
+        return directory.isDirectory() && !directory.isSymbolicLink() &&
+          proof.isFile() && !proof.isSymbolicLink() &&
+          realpathSync(ephemeral) === canonicalScratch &&
+          realpathSync(marker) === canonicalMarker &&
+          readFileSync(marker, 'utf8') === markerText;
+      },
+      remove: () => { rmSync(ephemeral, {recursive:true,force:false}); return true; },
+    });
+    if (!finalized.removed)
+      throw new Error('Bostan local PostgreSQL QA scratch retained: ' + finalized.reason);
   }
 }
 
