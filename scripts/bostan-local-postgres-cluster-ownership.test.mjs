@@ -39,3 +39,17 @@ test('invalid input refused', () => {
   assert.equal(isOwnedClusterDirectory(null,null),false);
   assert.equal(isOwnedClusterDirectory('',''),false);
 });
+
+test('pre-start missing cluster can be cleaned but normal ownership still refuses', () => fixture(base => {
+  const cluster=join(base,'cluster');
+  assert.equal(isOwnedClusterDirectory(base,cluster),false);
+  assert.equal(isOwnedClusterDirectory(base,cluster,{allowMissing:true}),true);
+}));
+test('pre-start mode still rejects symlink and file substitution', () => fixture(base => {
+  const cluster=join(base,'cluster');
+  symlinkSync(join(base,'absent'),cluster,'dir');
+  assert.equal(isOwnedClusterDirectory(base,cluster,{allowMissing:true}),false);
+  rmSync(cluster);
+  mkdirSync(cluster);
+  assert.equal(isOwnedClusterDirectory(base,cluster,{allowMissing:true}),true);
+}));
