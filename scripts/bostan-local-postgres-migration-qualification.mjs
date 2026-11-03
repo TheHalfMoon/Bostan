@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { finalizeOwnedLocalPostgres } from './bostan-local-postgres-safe-finalize.mjs';
+import { buildIsolatedLocalPostgresEnv } from './bostan-local-postgres-isolated-env.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const identity = 'bostan_verify';
@@ -65,17 +66,15 @@ async function run() {
   mkdirSync(socketDir);
   writeFileSync(marker, markerText);
   const port = await availablePort();
-  const connectionString = `postgres://${identity}@127.0.0.1:${port}/${database}`;
-  const isolatedEnv = {
-    ...process.env, DATABASE_URL: connectionString,
-    PAPERCLIP_CONFIG: join(ephemeral, 'absent-config.json'),
-    PGHOST: '127.0.0.1', PGPORT: String(port), PGUSER: identity, PGDATABASE: database,
-  };
-  for (const key of ['PGPASSWORD', 'PGPASSFILE', 'PGSERVICE', 'PGSERVICEFILE']) delete isolatedEnv[key];
+  // Never inherit PGHOSTADDR/PGSERVICE/PGOPTIONS or other ambient libpq controls.
+  // PGHOSTADDR can redirect even a libpq client passed -h 127.0.0.1.
+  const isolatedEnv = buildIsolatedLocalPostgresEnv(process.env, {
+    port, identity, database, configPath: join(ephemeral, 'absent-config.json'),
+  });
   let started = false, startAttempted = false;
   try {
     console.log('Preparing fresh isolated PostgreSQL cluster (loopback only, no existing data).');
-    exec('initdb', ['--no-instructions', '--no-sync', '--encoding=UTF8', '--locale=C', `--username=${identity}`, '--auth-local=trust', '--auth-host=trust', '-D', cluster], {timeout:60_000});
+    exec('initdb', ['--no-instructions', '--no-sync', '--encoding=UTF8', '--locale=C', `--username=${identity}`, '--auth-local=trust', '--auth-host=trust', '-D', cluster], {timeout:60_000, env:isolatedEnv});
     const postgresArgs = '-c listen_addresses=127.0.0.1 -c port=' + port +
       (process.platform === 'win32' ? '' : ' -c unix_socket_directories=' + socketDir) +
       ' -c fsync=off';
@@ -83,7 +82,7 @@ async function run() {
     // Never delete scratch unless startup and a later owned stop are proven.
     startAttempted = true;
     exec('pg_ctl', ['-D', cluster, '-l', join(ephemeral, 'postgres.log'), '-o',
-      postgresArgs, '-w', 'start'], {timeout:45_000});
+      postgresArgs, '-w', 'start'], {timeout:45_000, env:isolatedEnv});
     started = true;
     exec('createdb', ['-h', '127.0.0.1', '-p', String(port), '-U', identity, database], {env:isolatedEnv});
     const psql = statement => exec('psql', ['-X', '-A', '-t', '-v', 'ON_ERROR_STOP=1', '-c', statement], {env:isolatedEnv, timeout:30_000});
@@ -121,7 +120,7 @@ async function run() {
     const finalized = finalizeOwnedLocalPostgres({
       startAttempted, startConfirmed: started,
       stop: () => {
-        exec('pg_ctl', ['-D', cluster, '-m', 'immediate', '-w', 'stop'], {timeout:45_000});
+        exec('pg_ctl', ['-D', cluster, '-m', 'immediate', '-w', 'stop'], {timeout:45_000, env:isolatedEnv});
         return true;
       },
       owned: () => {
