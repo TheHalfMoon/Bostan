@@ -132,7 +132,7 @@ async function run() {
           realpathSync(ephemeral) === canonicalScratch &&
           realpathSync(marker) === canonicalMarker &&
           readFileSync(marker, 'utf8') === markerText &&
-          isOwnedClusterDirectory(canonicalScratch, cluster);
+          isOwnedClusterDirectory(canonicalScratch, cluster, {allowMissing: !startAttempted});
       },
       remove: () => { rmSync(ephemeral, {recursive:true,force:false}); return true; },
     });
