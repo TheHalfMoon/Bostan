@@ -13,6 +13,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { finalizeOwnedLocalPostgres } from './bostan-local-postgres-safe-finalize.mjs';
 import { buildIsolatedLocalPostgresEnv } from './bostan-local-postgres-isolated-env.mjs';
+import { isOwnedClusterDirectory } from './bostan-local-postgres-cluster-ownership.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const identity = 'bostan_verify';
@@ -130,7 +131,8 @@ async function run() {
           proof.isFile() && !proof.isSymbolicLink() &&
           realpathSync(ephemeral) === canonicalScratch &&
           realpathSync(marker) === canonicalMarker &&
-          readFileSync(marker, 'utf8') === markerText;
+          readFileSync(marker, 'utf8') === markerText &&
+          isOwnedClusterDirectory(canonicalScratch, cluster);
       },
       remove: () => { rmSync(ephemeral, {recursive:true,force:false}); return true; },
     });
