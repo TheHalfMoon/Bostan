@@ -16,6 +16,7 @@ import { buildIsolatedLocalPostgresEnv } from './bostan-local-postgres-isolated-
 import { isOwnedClusterDirectory } from './bostan-local-postgres-cluster-ownership.mjs';
 import { captureOwnedLocalPostgresScratch } from './bostan-local-postgres-scratch-identity.mjs';
 import { createLocalPostgresPreExecGate } from './bostan-local-postgres-preexec-gate.mjs';
+import { formatLocalPostgresCliFailure } from './bostan-local-postgres-cli-failure.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const identity = 'bostan_verify';
@@ -23,14 +24,23 @@ const database = 'bostan_qualification';
 const mode = process.argv[2] ?? '--help';
 
 function exec(command, args, options = {}) {
-  const result = spawnSync(command, args, {
-    encoding: 'utf8', timeout: options.timeout ?? 120_000,
-    cwd: options.cwd ?? root, env: options.env ?? process.env,
-    maxBuffer: 16 * 1024 * 1024,
-  });
+  let result;
+  try {
+    result = spawnSync(command, args, {
+      encoding: 'utf8', timeout: options.timeout ?? 120_000,
+      cwd: options.cwd ?? root, env: options.env ?? process.env,
+      maxBuffer: 16 * 1024 * 1024,
+    });
+  } catch (error) {
+    // Node's own thrown error may contain untrusted paths/arguments.
+    throw new Error(formatLocalPostgresCliFailure({command,error}));
+  }
   if (result.error || result.status !== 0) {
-    const tail = String(result.stderr || result.stdout || result.error?.message || '').slice(-1200);
-    throw new Error(`${command} failed (exit ${result.status ?? 'unknown'}): ${tail}`);
+    // stderr/stdout may include connection strings, passwords, absolute paths
+    // or migration data. Never leak raw child output to parent evidence.
+    throw new Error(formatLocalPostgresCliFailure({
+      command,status:result.status,signal:result.signal,error:result.error,
+    }));
   }
   return result.stdout.trim();
 }
