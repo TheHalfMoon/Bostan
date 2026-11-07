@@ -17,8 +17,8 @@ test('every named PostgreSQL binary is pinned immediately before its subprocess 
   const end=source.indexOf('  };\n  try {',start);
   const segment=source.slice(start,end);
   assert(start>=0 && end>start);
-  assert(segment.includes("LOCAL_PG_TOOLS.includes(command) ? pinnedPgTools.pathFor(command) : command"));
-  assert(segment.includes('return exec(executable, args, {...options, env:options.env ?? isolatedEnv, diagnosticTool:command});'));
+  assert(segment.includes("const executable = isPg ? pinnedPgTools.pathFor(command) : process.execPath;"));
+  assert(segment.includes('return exec(executable, safeArgs, {...options, env:options.env ?? isolatedEnv, diagnosticTool:command});'));
   for(const cmd of ['initdb','pg_ctl','createdb','psql','pg_dump','pg_restore'])
     assert(!source.includes("exec('"+cmd+"'"),cmd);
 });
@@ -26,14 +26,20 @@ test('real qaExec fragment passes pinned absolute path and refuses after ownersh
   const start=source.indexOf('  const qaExec = (command, args, options = {}) => {');
   const end=source.indexOf('  };\n  try {',start);
   const block=source.slice(start,end+4);
-  const make=vm.runInNewContext('(function(profileOwned,pinnedPgTools,LOCAL_PG_TOOLS,exec,isolatedEnv){'+block+'\nreturn qaExec;})',{Error});
+  const make=vm.runInNewContext('(function(profileOwned,pinnedPgTools,LOCAL_PG_TOOLS,exec,isolatedEnv,pinnedPnpm,process){'+block+'\nreturn qaExec;})',{Error});
   let allowed=true;let calls=[]; const ownedEnv={HOME:'/owned/qa',PGHOST:'127.0.0.1'};
-  const runner=make(()=>allowed,{pathFor:name=>'/private/pg/bin/'+name},['initdb','pg_ctl','createdb','psql','pg_dump','pg_restore'],(command,args,opts)=>{calls.push({command,args,opts});return 'ok';},ownedEnv);
+  const runner=make(()=>allowed,{pathFor:name=>'/private/pg/bin/'+name},['initdb','pg_ctl','createdb','psql','pg_dump','pg_restore'],(command,args,opts)=>{calls.push({command,args,opts});return 'ok';},ownedEnv,
+    {pathForNode:()=>'/private/pnpm/package/bin/pnpm.cjs'}, {execPath:'/trusted/node'});
   assert.equal(runner('initdb',['--version'],{timeout:100}), 'ok');
   assert.equal(calls[0].command,'/private/pg/bin/initdb');
   assert.equal(calls[0].opts.diagnosticTool,'initdb');
   assert.equal(calls[0].opts.env,ownedEnv);
-  assert.equal(runner('pnpm',[],{}),'ok');assert.equal(calls[1].command,'pnpm');
+  assert.equal(runner('pnpm',['--filter','@bostan/db','migrate'],{}),'ok');
+  assert.equal(calls[1].command,'/trusted/node');
+  assert.equal(calls[1].args[0],'/private/pnpm/package/bin/pnpm.cjs');
+  assert.equal(calls[1].args[1],'--filter');
+  assert.equal(calls[1].opts.env,ownedEnv);
+  assert.equal(calls[1].opts.diagnosticTool,'pnpm');
   allowed=false;assert.throws(()=>runner('pg_ctl',[],{}),/retaining fixture/);
   assert.equal(calls.length,2);
 });
@@ -42,5 +48,5 @@ test('real exec wrapper still emits bounded command type rather than pinned path
   assert(source.includes('command:options.diagnosticTool ?? command,status:result.status'));
 });
 test('CLI help discloses explicit PG binary-directory requirement',()=>{
-  assert(source.includes('Requires BOSTAN_PG_BIN_DIR set to the absolute physical PostgreSQL bin directory'));
+  assert(source.includes('Requires BOSTAN_PG_BIN_DIR and BOSTAN_PNPM_PACKAGE_DIR'));
 });
