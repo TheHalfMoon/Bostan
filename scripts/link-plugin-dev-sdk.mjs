@@ -16,6 +16,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, "..");
 const sdkDir = join(repoRoot, "packages", "plugins", "sdk");
 
+// Plugins import the SDK as @bostan/plugin-sdk, so the link must live under the
+// @bostan scope; a link under any other scope is never resolved.
+export const SDK_SCOPE = "@bostan";
+
 // Plugin packages excluded from the workspace that still need @bostan/plugin-sdk
 // linked in for local dev. Keep in sync with pnpm-workspace.yaml exclusions.
 function excludedPluginDirs() {
@@ -68,17 +72,30 @@ export function readPluginsUnder(parentDir) {
   return found;
 }
 
-export function linkSdkInto(packageDir) {
-  const scopeDir = join(packageDir, "node_modules", "@paperclipai");
+// Windows only allows unprivileged directory symlinks in Developer Mode, so a
+// plain "dir" symlink fails with EPERM on a default install. Junctions need no
+// privilege but must point at an absolute path.
+function linkSpec(scopeDir, platform) {
+  return platform === "win32"
+    ? { target: sdkDir, type: "junction" }
+    : { target: relative(scopeDir, sdkDir), type: "dir" };
+}
+
+function pointsAtSdk(scopeDir, existingTarget) {
+  return resolve(scopeDir, existingTarget).replace(/[\/]+$/, "") === resolve(sdkDir);
+}
+
+export function linkSdkInto(packageDir, platform = process.platform) {
+  const scopeDir = join(packageDir, "node_modules", SDK_SCOPE);
   const linkTarget = join(scopeDir, "plugin-sdk");
-  const relativeSdkDir = relative(scopeDir, sdkDir);
+  const spec = linkSpec(scopeDir, platform);
 
   mkdirSync(scopeDir, { recursive: true });
 
   try {
     const stat = lstatSync(linkTarget);
     if (stat.isSymbolicLink()) {
-      if (readlinkSync(linkTarget) === relativeSdkDir) {
+      if (pointsAtSdk(scopeDir, readlinkSync(linkTarget))) {
         // Already linked to the in-repo SDK; nothing to do.
         return false;
       }
@@ -93,6 +110,6 @@ export function linkSdkInto(packageDir) {
     if (error?.code !== "ENOENT") throw error;
   }
 
-  symlinkSync(relativeSdkDir, linkTarget, "dir");
+  symlinkSync(spec.target, linkTarget, spec.type);
   return true;
 }
