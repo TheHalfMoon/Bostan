@@ -50,3 +50,10 @@ test('does not modify caller-provided environment object or keep foreign profile
 test('refuses noncanonical and unverified root without a secret-bearing error',t=>{
  const f=fixture(t);for(const opts of [{scratch:'relative',ownedScratch:()=>true},{scratch:f.root,ownedScratch:()=>false}])assert.throws(()=>make(testEnv,opts),e=>e.message==='Bostan local PostgreSQL private profile unverified; retaining fixture');
 });
+
+test('offline package-manager environment denies implicit Corepack fetches',t=>{
+ const f=fixture(t),p=f.create();
+ assert.equal(p.env.COREPACK_ENABLE_NETWORK,'0');
+ assert.equal(p.env.NPM_CONFIG_OFFLINE,'true');
+ assert.equal(p.env.NPM_CONFIG_UPDATE_NOTIFIER,'false');
+});
