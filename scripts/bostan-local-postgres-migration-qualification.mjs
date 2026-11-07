@@ -20,6 +20,7 @@ import { formatLocalPostgresCliFailure } from './bostan-local-postgres-cli-failu
 import { createOwnedLocalPostgresProfileEnv } from './bostan-local-postgres-owned-profile.mjs';
 import { validatePrivateLocalCloudIsolation } from './bostan-private-local-cloud-isolation.mjs';
 import { captureLocalPostgresToolchain, LOCAL_PG_TOOLS } from './bostan-local-postgres-toolchain.mjs';
+import { captureLocalPinnedPnpm } from './bostan-local-pnpm-entry.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const identity = 'bostan_verify';
@@ -56,15 +57,11 @@ async function availablePort() {
   } finally { await new Promise(resolve => socket.close(resolve)); }
 }
 
-// On Windows, pnpm is a .cmd shim, which spawnSync cannot invoke as a native
-// executable. Keep shell tokens fixed; never embed private paths in commands.
+// Invoke the exact installed pnpm JS entry through the already running Node.
+// Never trust a pnpm.cmd shim, ComSpec, PATH alias or Corepack auto-download.
 function migrateDatabase(env, timeout, qaExec) {
-  // Every child must pass the profile-ownership check, including pnpm.
   if (typeof qaExec !== 'function') throw new Error('Bostan local PostgreSQL QA child profile unavailable; retaining fixture');
-  const args = ['--filter', '@bostan/db', 'migrate'];
-  return process.platform === 'win32'
-    ? qaExec(process.env.ComSpec || 'cmd.exe', ['/d', '/c', 'pnpm.cmd', ...args], {env, timeout})
-    : qaExec('pnpm', args, {env, timeout});
+  return qaExec('pnpm', ['--filter', '@bostan/db', 'migrate'], {env, timeout});
 }
 
 async function run() {
@@ -73,6 +70,11 @@ async function run() {
   // Pin a physically selected PostgreSQL toolchain BEFORE creating scratch.
   // Never resolve an initializer from the operator's mutable PATH.
   const pinnedPgTools = captureLocalPostgresToolchain(process.env.BOSTAN_PG_BIN_DIR);
+  // Verify this repository still pins pnpm 9.15.4; no automatic package
+  // manager downloads or command shims are allowed in disposable QA.
+  const rootPin = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).packageManager;
+  if (rootPin !== 'pnpm@9.15.4') throw new Error('Bostan local pnpm workspace pin unverified; retaining fixture');
+  const pinnedPnpm = captureLocalPinnedPnpm(process.env.BOSTAN_PNPM_PACKAGE_DIR);
   const ephemeral = mkdtempSync(join(tmpdir(), 'bostan-pg-qualification-'));
   const cluster = join(ephemeral, 'cluster');
   const socketDir = join(ephemeral, 'sockets');
@@ -98,10 +100,12 @@ async function run() {
   let profileOwned = null;
   const qaExec = (command, args, options = {}) => {
     if (!profileOwned?.()) throw new Error('Bostan local PostgreSQL child profile ownership unverified; retaining fixture');
-    const executable = LOCAL_PG_TOOLS.includes(command) ? pinnedPgTools.pathFor(command) : command;
-    // Preserve B1-233's no-ambient-env fallback and B1-230's redacted
-    // allowlisted diagnostic tool labels when using an absolute executable.
-    return exec(executable, args, {...options, env:options.env ?? isolatedEnv, diagnosticTool:command});
+    const isPg = LOCAL_PG_TOOLS.includes(command);
+    if (!isPg && command !== 'pnpm') throw new Error('Bostan local QA child executable unverified; retaining fixture');
+    const executable = isPg ? pinnedPgTools.pathFor(command) : process.execPath;
+    const safeArgs = command === 'pnpm' ? [pinnedPnpm.pathForNode(), ...args] : args;
+    // Preserve the no-ambient-env fallback and bounded diagnostic tool name.
+    return exec(executable, safeArgs, {...options, env:options.env ?? isolatedEnv, diagnosticTool:command});
   };
   try {
     // A socket-directory failure must still reach owned-scratch finalization.
@@ -207,7 +211,7 @@ async function run() {
 
 if (mode === '--help' && process.argv.length <= 3) {
   console.log('Bostan isolated PostgreSQL migration qualification. Run only with --run.');
-  console.log('Requires BOSTAN_PG_BIN_DIR set to the absolute physical PostgreSQL bin directory, all six tools, and offline pnpm workspace dependencies.');
+  console.log('Requires BOSTAN_PG_BIN_DIR and BOSTAN_PNPM_PACKAGE_DIR for installed PostgreSQL and pnpm@9.15.4; offline workspace dependencies required.');
   console.log('Creates and deletes ONLY a new disposable localhost database in the system temp folder.');
 } else if (mode === '--run' && process.argv.length <= 3) {
   await run().catch(error => { console.error(`Bostan local database qualification FAILED: ${error.message}`); process.exitCode = 1; });
