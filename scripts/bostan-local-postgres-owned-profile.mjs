@@ -67,6 +67,9 @@ export function createOwnedLocalPostgresProfileEnv(ambient, {scratch, ownedScrat
     PNPM_HOME: join(home,'pnpm'),
     NPM_CONFIG_USERCONFIG: join(home,'config','.npmrc'),
     NPM_CONFIG_CACHE: join(home,'cache'),
+    COREPACK_ENABLE_NETWORK: '0',
+    NPM_CONFIG_OFFLINE: 'true',
+    NPM_CONFIG_UPDATE_NOTIFIER: 'false',
     TMP: join(home,'tmp'), TEMP: join(home,'tmp'), TMPDIR: join(home,'tmp'),
   });
   if (platform==='win32') {
