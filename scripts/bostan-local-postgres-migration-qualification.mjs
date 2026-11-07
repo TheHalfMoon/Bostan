@@ -17,6 +17,8 @@ import { isOwnedClusterDirectory } from './bostan-local-postgres-cluster-ownersh
 import { captureOwnedLocalPostgresScratch } from './bostan-local-postgres-scratch-identity.mjs';
 import { createLocalPostgresPreExecGate } from './bostan-local-postgres-preexec-gate.mjs';
 import { formatLocalPostgresCliFailure } from './bostan-local-postgres-cli-failure.mjs';
+import { createOwnedLocalPostgresProfileEnv } from './bostan-local-postgres-owned-profile.mjs';
+import { validatePrivateLocalCloudIsolation } from './bostan-private-local-cloud-isolation.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const identity = 'bostan_verify';
@@ -55,20 +57,18 @@ async function availablePort() {
 
 // On Windows, pnpm is a .cmd shim, which spawnSync cannot invoke as a native
 // executable. Keep shell tokens fixed; never embed private paths in commands.
-function migrateDatabase(env, timeout) {
+function migrateDatabase(env, timeout, qaExec) {
+  // Every child must pass the profile-ownership check, including pnpm.
+  if (typeof qaExec !== 'function') throw new Error('Bostan local PostgreSQL QA child profile unavailable; retaining fixture');
   const args = ['--filter', '@bostan/db', 'migrate'];
   return process.platform === 'win32'
-    ? exec(process.env.ComSpec || 'cmd.exe', ['/d', '/c', 'pnpm.cmd', ...args], {env, timeout})
-    : exec('pnpm', args, {env, timeout});
+    ? qaExec(process.env.ComSpec || 'cmd.exe', ['/d', '/c', 'pnpm.cmd', ...args], {env, timeout})
+    : qaExec('pnpm', args, {env, timeout});
 }
 
 async function run() {
-  // Probe PostgreSQL CLI directly; POSIX path lookup is unavailable on Windows.
-  for (const bin of ['initdb', 'pg_ctl', 'createdb', 'psql', 'pg_dump', 'pg_restore']) {
-    exec(bin, ['--version'], { timeout: 10_000 });
-  }
-  // Refuse managed Cloud signals before any scratch database creation.
-  exec(process.execPath, [join(root, 'scripts/bostan-private-local-cloud-isolation.mjs'), '--check']);
+  // Pure read-only Cloud admission must precede ALL external child programs.
+  validatePrivateLocalCloudIsolation(process.env);
   const ephemeral = mkdtempSync(join(tmpdir(), 'bostan-pg-qualification-'));
   const cluster = join(ephemeral, 'cluster');
   const socketDir = join(ephemeral, 'sockets');
@@ -90,6 +90,12 @@ async function run() {
   });
   let started = false, startAttempted = false;
   let isolatedEnv;
+  let profileAttempted = false;
+  let profileOwned = null;
+  const qaExec = (command, args, options = {}) => {
+    if (!profileOwned?.()) throw new Error('Bostan local PostgreSQL child profile ownership unverified; retaining fixture');
+    return exec(command, args, options);
+  };
   try {
     // A socket-directory failure must still reach owned-scratch finalization.
     mkdirSync(socketDir);
@@ -101,11 +107,23 @@ async function run() {
     isolatedEnv = buildIsolatedLocalPostgresEnv(process.env, {
       port, identity, database, configPath: join(ephemeral, 'absent-config.json'),
     });
+    // An ordinary inherited HOME still exposes ~/.pgpass, ~/.npmrc, pnpm and
+    // Corepack configuration. Allocate a verified profile only within this
+    // exclusively owned disposable scratch before invoking external programs.
+    profileAttempted = true;
+    const profile = createOwnedLocalPostgresProfileEnv(isolatedEnv, {
+      scratch: ephemeral, ownedScratch: originalScratchOwned,
+    });
+    profileOwned = profile.owned;
+    isolatedEnv = profile.env;
+    for (const bin of ['initdb', 'pg_ctl', 'createdb', 'psql', 'pg_dump', 'pg_restore']) {
+      qaExec(bin, ['--version'], { timeout: 10_000, env: isolatedEnv });
+    }
     console.log('Preparing fresh isolated PostgreSQL cluster (loopback only, no existing data).');
     // Never run initdb against a pre-planted or substituted cluster directory.
     // A refusal is latched, so even the finally block retains foreign data.
     executionGate.beforeInitdb();
-    exec('initdb', ['--no-instructions', '--no-sync', '--encoding=UTF8', '--locale=C', `--username=${identity}`, '--auth-local=trust', '--auth-host=trust', '-D', cluster], {timeout:60_000, env:isolatedEnv});
+    qaExec('initdb', ['--no-instructions', '--no-sync', '--encoding=UTF8', '--locale=C', `--username=${identity}`, '--auth-local=trust', '--auth-host=trust', '-D', cluster], {timeout:60_000, env:isolatedEnv});
     // Capture the directory initdb really created; pg_ctl must start that
     // same inode, not an unrelated replacement at the same pathname.
     executionGate.afterInitdb();
@@ -116,21 +134,21 @@ async function run() {
     // Never delete scratch unless startup and a later owned stop are proven.
     executionGate.beforeStart();
     startAttempted = true;
-    exec('pg_ctl', ['-D', cluster, '-l', join(ephemeral, 'postgres.log'), '-o',
+    qaExec('pg_ctl', ['-D', cluster, '-l', join(ephemeral, 'postgres.log'), '-o',
       postgresArgs, '-w', 'start'], {timeout:45_000, env:isolatedEnv});
     started = true;
-    exec('createdb', ['-h', '127.0.0.1', '-p', String(port), '-U', identity, database], {env:isolatedEnv});
-    const psql = statement => exec('psql', ['-X', '-A', '-t', '-v', 'ON_ERROR_STOP=1', '-c', statement], {env:isolatedEnv, timeout:30_000});
+    qaExec('createdb', ['-h', '127.0.0.1', '-p', String(port), '-U', identity, database], {env:isolatedEnv});
+    const psql = statement => qaExec('psql', ['-X', '-A', '-t', '-v', 'ON_ERROR_STOP=1', '-c', statement], {env:isolatedEnv, timeout:30_000});
     assert.equal(psql('select current_database()'), database, 'must operate only on the newly created scratch DB');
     const initialTables = Number(psql("select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE'"));
     assert.equal(initialTables, 0, 'fresh DB must not have preexisting public tables');
-    const first = migrateDatabase(isolatedEnv, 240_000);
+    const first = migrateDatabase(isolatedEnv, 240_000, qaExec);
     assert.match(first, /Migrations complete/, 'initial migration must finish completely');
     const tableCount = Number(psql("select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE'"));
     const migrationCount = Number(psql('select count(*) from drizzle.__drizzle_migrations'));
     assert.ok(tableCount > 0, 'Bostan must create application schema tables');
     assert.ok(migrationCount > 0, 'the migration journal must record migration history');
-    const second = migrateDatabase(isolatedEnv, 120_000);
+    const second = migrateDatabase(isolatedEnv, 120_000, qaExec);
     assert.match(second, /No pending migrations/, 'repeated application must be idempotent');
     assert.equal(Number(psql('select count(*) from drizzle.__drizzle_migrations')), migrationCount);
     assert.equal(Number(psql("select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE'")), tableCount);
@@ -139,26 +157,29 @@ async function run() {
     psql('create table bostan_qualification_probe.roundtrip (id integer primary key, evidence text not null)');
     psql("insert into bostan_qualification_probe.roundtrip (id,evidence) values (1,'bostan-restored-data')");
     const archive = join(ephemeral, 'qualification.dump');
-    exec('pg_dump', ['-Fc', '-f', archive, '-h', '127.0.0.1', '-p', String(port), '-U', identity, '-d', database], {env:isolatedEnv, timeout:120_000});
+    qaExec('pg_dump', ['-Fc', '-f', archive, '-h', '127.0.0.1', '-p', String(port), '-U', identity, '-d', database], {env:isolatedEnv, timeout:120_000});
     const restoredDb = 'bostan_qualification_restored';
-    exec('createdb', ['-h','127.0.0.1','-p',String(port),'-U',identity,restoredDb], {env:isolatedEnv});
+    qaExec('createdb', ['-h','127.0.0.1','-p',String(port),'-U',identity,restoredDb], {env:isolatedEnv});
     const restoreEnv = {...isolatedEnv, PGDATABASE:restoredDb, DATABASE_URL:`postgres://${identity}@127.0.0.1:${port}/${restoredDb}`};
-    exec('pg_restore', ['--exit-on-error','--no-owner','--no-acl','-h','127.0.0.1','-p',String(port),'-U',identity,'-d',restoredDb,archive], {env:restoreEnv, timeout:180_000});
-    const restoredSql = statement => exec('psql', ['-X','-A','-t','-v','ON_ERROR_STOP=1','-c',statement], {env:restoreEnv, timeout:30_000});
+    qaExec('pg_restore', ['--exit-on-error','--no-owner','--no-acl','-h','127.0.0.1','-p',String(port),'-U',identity,'-d',restoredDb,archive], {env:restoreEnv, timeout:180_000});
+    const restoredSql = statement => qaExec('psql', ['-X','-A','-t','-v','ON_ERROR_STOP=1','-c',statement], {env:restoreEnv, timeout:30_000});
     assert.equal(restoredSql('select evidence from bostan_qualification_probe.roundtrip where id=1'),'bostan-restored-data');
     assert.equal(Number(restoredSql('select count(*) from drizzle.__drizzle_migrations')), migrationCount);
     assert.equal(Number(restoredSql("select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE'")), tableCount);
-    const restoredMigration = migrateDatabase(restoreEnv, 120_000);
+    const restoredMigration = migrateDatabase(restoreEnv, 120_000, qaExec);
     assert.match(restoredMigration, /No pending migrations/, 'a restored database must preserve migration state');
-    console.log(JSON.stringify({kind:'bostan.local-postgres-migration.v1',releaseQualified:false,postgresVersion:exec('psql', ['--version']),isolated:true,localhostOnly:true,initialTables,tableCount,migrationJournalEntries:migrationCount,repeatedMigration:'no-op',backupRestore:'verified',restoredMigration:'no-op',roundTripData:'verified',externalServices:false},null,2));
+    console.log(JSON.stringify({kind:'bostan.local-postgres-migration.v1',releaseQualified:false,postgresVersion:qaExec('psql', ['--version']),isolated:true,localhostOnly:true,initialTables,tableCount,migrationJournalEntries:migrationCount,repeatedMigration:'no-op',backupRestore:'verified',restoredMigration:'no-op',roundTripData:'verified',externalServices:false},null,2));
   } finally {
     const finalized = finalizeOwnedLocalPostgres({
       startAttempted, startConfirmed: started,
       stop: () => {
-        exec('pg_ctl', ['-D', cluster, '-m', 'immediate', '-w', 'stop'], {timeout:45_000, env:isolatedEnv});
+        qaExec('pg_ctl', ['-D', cluster, '-m', 'immediate', '-w', 'stop'], {timeout:45_000, env:isolatedEnv});
         return true;
       },
       owned: () => {
+        // Any partial, swapped or linked profile means an unrelated directory
+        // might occupy this scratch. Retain it rather than recursively remove.
+        if (profileAttempted && !profileOwned?.()) return false;
         if (!executionGate.ownedForFinalizer()) return false;
         if (!originalScratchOwned()) return false;
         if (!existsSync(ephemeral) || !existsSync(marker)) return false;
