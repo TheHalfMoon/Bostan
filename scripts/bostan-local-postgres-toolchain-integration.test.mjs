@@ -18,7 +18,7 @@ test('every named PostgreSQL binary is pinned immediately before its subprocess 
   const segment=source.slice(start,end);
   assert(start>=0 && end>start);
   assert(segment.includes("LOCAL_PG_TOOLS.includes(command) ? pinnedPgTools.pathFor(command) : command"));
-  assert(segment.includes('return exec(executable, args, {...options,diagnosticTool:command});'));
+  assert(segment.includes('return exec(executable, args, {...options, env:options.env ?? isolatedEnv, diagnosticTool:command});'));
   for(const cmd of ['initdb','pg_ctl','createdb','psql','pg_dump','pg_restore'])
     assert(!source.includes("exec('"+cmd+"'"),cmd);
 });
@@ -26,12 +26,13 @@ test('real qaExec fragment passes pinned absolute path and refuses after ownersh
   const start=source.indexOf('  const qaExec = (command, args, options = {}) => {');
   const end=source.indexOf('  };\n  try {',start);
   const block=source.slice(start,end+4);
-  const make=vm.runInNewContext('(function(profileOwned,pinnedPgTools,LOCAL_PG_TOOLS,exec){'+block+'\nreturn qaExec;})',{Error});
-  let allowed=true;let calls=[];
-  const runner=make(()=>allowed,{pathFor:name=>'/private/pg/bin/'+name},['initdb','pg_ctl','createdb','psql','pg_dump','pg_restore'],(command,args,opts)=>{calls.push({command,args,opts});return 'ok';});
+  const make=vm.runInNewContext('(function(profileOwned,pinnedPgTools,LOCAL_PG_TOOLS,exec,isolatedEnv){'+block+'\nreturn qaExec;})',{Error});
+  let allowed=true;let calls=[]; const ownedEnv={HOME:'/owned/qa',PGHOST:'127.0.0.1'};
+  const runner=make(()=>allowed,{pathFor:name=>'/private/pg/bin/'+name},['initdb','pg_ctl','createdb','psql','pg_dump','pg_restore'],(command,args,opts)=>{calls.push({command,args,opts});return 'ok';},ownedEnv);
   assert.equal(runner('initdb',['--version'],{timeout:100}), 'ok');
   assert.equal(calls[0].command,'/private/pg/bin/initdb');
   assert.equal(calls[0].opts.diagnosticTool,'initdb');
+  assert.equal(calls[0].opts.env,ownedEnv);
   assert.equal(runner('pnpm',[],{}),'ok');assert.equal(calls[1].command,'pnpm');
   allowed=false;assert.throws(()=>runner('pg_ctl',[],{}),/retaining fixture/);
   assert.equal(calls.length,2);
