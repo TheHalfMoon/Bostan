@@ -508,9 +508,10 @@ export async function buildLocalProcessSandboxSpawnTarget(input: {
       let physicallyAllowed = true;
       let physicalSource: string | null = null;
       if (await pathExists(normalizedExtraPath)) {
-        physicalSource = await fs.realpath(normalizedExtraPath);
-        physicallyAllowed = isPathWithinRoot(physicalWorkspace, physicalSource) ||
-          physicalRestorePaths.some((restorePath) => restorePath !== null && isPathWithinRoot(restorePath, physicalSource));
+        const resolvedSource = await fs.realpath(normalizedExtraPath);
+        physicalSource = resolvedSource;
+        physicallyAllowed = isPathWithinRoot(physicalWorkspace, resolvedSource) ||
+          physicalRestorePaths.some((restorePath) => restorePath !== null && isPathWithinRoot(restorePath, resolvedSource));
       }
       if ((!synchronized && !restored) || !physicallyAllowed) {
         throw new Error(
