@@ -43,3 +43,20 @@ test('no raw subprocess diagnostics or paths appear in any output',()=>{
   const safe=classify({command:'pnpm.cmd /c '+secret,status:0,error:{message:secret,code:'EUNKNOWN'},signal:secret,stderr:secret,stdout:secret,args:[secret]});
   assert(safe.length<160);assert(!safe.includes(secret));
 });
+
+test('time-varying child error.code getter is read once and cannot bypass allowlist',()=>{
+  let reads=0;
+  const flip={get code(){reads++;return reads===3?secret:'ENOENT';}};
+  const safe=classify({command:'psql',status:9,error:flip});
+  assert.equal(reads,1);
+  assert.match(safe,/tool=psql,exit=9,code=ENOENT,signal=none/);
+  assert.equal(safe.includes(secret),false);
+});
+test('untrusted getter returning an unknown secret is never re-read or disclosed',()=>{
+  let reads=0;
+  const flip={get code(){reads++;return reads===1?secret:'ENOENT';}};
+  const safe=classify({command:'pg_ctl',status:7,error:flip});
+  assert.equal(reads,1);
+  assert.match(safe,/code=unknown/);
+  assert.equal(safe.includes(secret),false);
+});
