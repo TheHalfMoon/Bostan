@@ -94,7 +94,8 @@ async function run() {
   let profileOwned = null;
   const qaExec = (command, args, options = {}) => {
     if (!profileOwned?.()) throw new Error('Bostan local PostgreSQL child profile ownership unverified; retaining fixture');
-    return exec(command, args, options);
+    // Never fall back to the operator's ambient process.env when a caller omits env.
+    return exec(command, args, {...options, env: options.env ?? isolatedEnv});
   };
   try {
     // A socket-directory failure must still reach owned-scratch finalization.
