@@ -67,3 +67,18 @@ test('new profile environment is used by version checks and normal CLIs',()=>{
   assert.match(source,/qaExec\('initdb',[^\n]+/);
   assert.match(source,/qaExec\('pg_ctl', \['-D', cluster/);
 });
+
+test('qaExec never falls back to ambient process.env for omitted child options',()=>{
+  const start=source.indexOf('  const qaExec = (command, args, options = {}) => {');
+  const end=source.indexOf('  };\n  try {',start);
+  assert(start>=0 && end>start);
+  const make=vm.runInNewContext('(function(profileOwned,exec,isolatedEnv){'+source.slice(start,end+4)+'\nreturn qaExec;})',{Error});
+  const ownedEnv={HOME:'/owned/synthetic',PGHOST:'127.0.0.1'};
+  const calls=[];
+  const call=make(()=>true,(_command,_args,options)=>{calls.push(options.env);return 'ok';},ownedEnv);
+  assert.equal(call('psql',['--version']),'ok');
+  assert.equal(calls[0],ownedEnv);
+  const restore={...ownedEnv,PGDATABASE:'restored'};
+  assert.equal(call('psql',['--version'],{env:restore}),'ok');
+  assert.equal(calls[1],restore);
+});
