@@ -9,8 +9,12 @@ export function formatLocalPostgresCliFailure({command,status,signal,error} = {}
   const kind = typeof command === 'string' && COMMANDS.has(command) ? command : 'other';
   const exit = Number.isInteger(status) && status >= 0 && status <= 255 ? String(status) : 'unknown';
   let code = 'unknown';
-  try { if (typeof error?.code === 'string' && ERROR_CODES.has(error.code)) code = error.code; }
-  catch { /* error objects can have untrusted getters */ }
+  // A hostile getter may return different data on successive reads.
+  // Read exactly once; only project the same validated primitive.
+  let candidate;
+  try { candidate = error?.code; }
+  catch { candidate = undefined; }
+  if (typeof candidate === 'string' && ERROR_CODES.has(candidate)) code = candidate;
   const safeSignal = typeof signal === 'string' && SIGNALS.has(signal) ? signal : 'none';
   return `Bostan local PostgreSQL QA child failed (tool=${kind},exit=${exit},code=${code},signal=${safeSignal})`;
 }
