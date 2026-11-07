@@ -1751,7 +1751,9 @@ mod unsupported_verified_stdio_tests {
             .spawn_stdio(&BTreeMap::new())
             .expect_err("unsupported OS must never spawn an unverified program");
         assert!(
-            error.to_string().contains("supported only on Linux and macOS"),
+            error
+                .to_string()
+                .contains("supported only on Linux and macOS"),
             "must reject with the explicit platform boundary"
         );
     }
