@@ -1,8 +1,16 @@
 /**
- * Remove inherited libpq connection controls before contacting a disposable
- * localhost-only PostgreSQL QA cluster. In particular, PGHOSTADDR can override
- * an explicit -h 127.0.0.1 argument in libpq clients.
+ * Minimal inherited environment for disposable localhost-only PostgreSQL QA.
+ * Scrubbing PG* alone is insufficient: a child can read unrelated API tokens,
+ * credentials and loader hooks inherited from the operator's shell.
  */
+const SAFE_RUNTIME_KEYS = new Set([
+  'PATH', 'PATHEXT', 'HOME', 'USER', 'USERNAME', 'LOGNAME', 'SHELL',
+  'TMPDIR', 'TMP', 'TEMP', 'LANG', 'LANGUAGE', 'LC_ALL', 'LC_CTYPE', 'TZ', 'TERM',
+  'SYSTEMROOT', 'SYSTEMDRIVE', 'WINDIR', 'COMSPEC', 'USERPROFILE',
+  'APPDATA', 'LOCALAPPDATA', 'PROGRAMDATA', 'PROGRAMFILES', 'PROGRAMFILES(X86)',
+  'HOMEDRIVE', 'HOMEPATH', 'PNPM_HOME', 'COREPACK_HOME',
+]);
+
 export function buildIsolatedLocalPostgresEnv(ambient, { port, identity, database, configPath } = {}) {
   if (!ambient || typeof ambient !== 'object' || Array.isArray(ambient) ||
       !Number.isInteger(port) || port < 1 || port > 65535 ||
@@ -12,9 +20,16 @@ export function buildIsolatedLocalPostgresEnv(ambient, { port, identity, databas
     throw new Error('invalid_local_postgres_env');
   }
   const env = Object.create(null);
+  const seen = new Set();
   for (const [key, value] of Object.entries(ambient)) {
-    if (/^PG/i.test(key) || /^DATABASE_URL$/i.test(key) || /^PAPERCLIP_CONFIG$/i.test(key)) continue;
-    if (typeof value === 'string') env[key] = value;
+    const folded = key.toUpperCase();
+    if (!SAFE_RUNTIME_KEYS.has(folded)) continue;
+    // Windows environment variables are case-insensitive. Refuse ambiguous
+    // PATH/Path or other duplicated aliases instead of depending on ordering.
+    if (seen.has(folded)) throw new Error('invalid_local_postgres_env');
+    seen.add(folded);
+    if (typeof value !== 'string' || value.includes('\0')) continue;
+    env[key] = value;
   }
   return {
     ...env,
