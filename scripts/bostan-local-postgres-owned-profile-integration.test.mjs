@@ -48,10 +48,11 @@ test('actual qaExec wrapper rejects changed profile before reaching subprocess c
   const end=source.indexOf('  };\n  try {',start);
   assert(start>=0 && end>start);
   const fragment=source.slice(start,end+4);
-  const make=vm.runInNewContext('(function(profileOwned,exec){'+fragment+'\nreturn qaExec;})',{Error});
+  const make=vm.runInNewContext('(function(profileOwned,exec,isolatedEnv,LOCAL_PG_TOOLS,pinnedPgTools){'+fragment+'\nreturn qaExec;})',{Error});
   let calls=0;
   let valid=false;
-  const call=make(()=>valid,()=>{calls++;return 'safe synthetic result';});
+  const call=make(()=>valid,()=>{calls++;return 'safe synthetic result';},
+    {HOME:'/owned/qa'},['psql','pg_ctl'],{pathFor:name=>'/pinned/pg/'+name});
   assert.throws(()=>call('psql',[],{}),e=>e.message.includes('retaining fixture'));
   assert.equal(calls,0);
   valid=true;
@@ -72,10 +73,11 @@ test('qaExec never falls back to ambient process.env for omitted child options',
   const start=source.indexOf('  const qaExec = (command, args, options = {}) => {');
   const end=source.indexOf('  };\n  try {',start);
   assert(start>=0 && end>start);
-  const make=vm.runInNewContext('(function(profileOwned,exec,isolatedEnv){'+source.slice(start,end+4)+'\nreturn qaExec;})',{Error});
+  const make=vm.runInNewContext('(function(profileOwned,exec,isolatedEnv,LOCAL_PG_TOOLS,pinnedPgTools){'+source.slice(start,end+4)+'\nreturn qaExec;})',{Error});
   const ownedEnv={HOME:'/owned/synthetic',PGHOST:'127.0.0.1'};
   const calls=[];
-  const call=make(()=>true,(_command,_args,options)=>{calls.push(options.env);return 'ok';},ownedEnv);
+  const call=make(()=>true,(_command,_args,options)=>{calls.push(options.env);return 'ok';},ownedEnv,
+    ['psql'],{pathFor:name=>'/pinned/pg/'+name});
   assert.equal(call('psql',['--version']),'ok');
   assert.equal(calls[0],ownedEnv);
   const restore={...ownedEnv,PGDATABASE:'restored'};
