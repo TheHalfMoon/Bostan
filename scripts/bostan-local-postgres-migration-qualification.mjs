@@ -19,6 +19,7 @@ import { createLocalPostgresPreExecGate } from './bostan-local-postgres-preexec-
 import { formatLocalPostgresCliFailure } from './bostan-local-postgres-cli-failure.mjs';
 import { createOwnedLocalPostgresProfileEnv } from './bostan-local-postgres-owned-profile.mjs';
 import { validatePrivateLocalCloudIsolation } from './bostan-private-local-cloud-isolation.mjs';
+import { captureLocalPostgresToolchain, LOCAL_PG_TOOLS } from './bostan-local-postgres-toolchain.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const identity = 'bostan_verify';
@@ -35,13 +36,13 @@ function exec(command, args, options = {}) {
     });
   } catch (error) {
     // Node's own thrown error may contain untrusted paths/arguments.
-    throw new Error(formatLocalPostgresCliFailure({command,error}));
+    throw new Error(formatLocalPostgresCliFailure({command:options.diagnosticTool ?? command,error}));
   }
   if (result.error || result.status !== 0) {
     // stderr/stdout may include connection strings, passwords, absolute paths
     // or migration data. Never leak raw child output to parent evidence.
     throw new Error(formatLocalPostgresCliFailure({
-      command,status:result.status,signal:result.signal,error:result.error,
+      command:options.diagnosticTool ?? command,status:result.status,signal:result.signal,error:result.error,
     }));
   }
   return result.stdout.trim();
@@ -69,6 +70,9 @@ function migrateDatabase(env, timeout, qaExec) {
 async function run() {
   // Pure read-only Cloud admission must precede ALL external child programs.
   validatePrivateLocalCloudIsolation(process.env);
+  // Pin a physically selected PostgreSQL toolchain BEFORE creating scratch.
+  // Never resolve an initializer from the operator's mutable PATH.
+  const pinnedPgTools = captureLocalPostgresToolchain(process.env.BOSTAN_PG_BIN_DIR);
   const ephemeral = mkdtempSync(join(tmpdir(), 'bostan-pg-qualification-'));
   const cluster = join(ephemeral, 'cluster');
   const socketDir = join(ephemeral, 'sockets');
@@ -94,8 +98,10 @@ async function run() {
   let profileOwned = null;
   const qaExec = (command, args, options = {}) => {
     if (!profileOwned?.()) throw new Error('Bostan local PostgreSQL child profile ownership unverified; retaining fixture');
-    // Never fall back to the operator's ambient process.env when a caller omits env.
-    return exec(command, args, {...options, env: options.env ?? isolatedEnv});
+    const executable = LOCAL_PG_TOOLS.includes(command) ? pinnedPgTools.pathFor(command) : command;
+    // Preserve B1-233's no-ambient-env fallback and B1-230's redacted
+    // allowlisted diagnostic tool labels when using an absolute executable.
+    return exec(executable, args, {...options, env:options.env ?? isolatedEnv, diagnosticTool:command});
   };
   try {
     // A socket-directory failure must still reach owned-scratch finalization.
@@ -117,7 +123,7 @@ async function run() {
     });
     profileOwned = profile.owned;
     isolatedEnv = profile.env;
-    for (const bin of ['initdb', 'pg_ctl', 'createdb', 'psql', 'pg_dump', 'pg_restore']) {
+    for (const bin of LOCAL_PG_TOOLS) {
       qaExec(bin, ['--version'], { timeout: 10_000, env: isolatedEnv });
     }
     console.log('Preparing fresh isolated PostgreSQL cluster (loopback only, no existing data).');
@@ -201,7 +207,7 @@ async function run() {
 
 if (mode === '--help' && process.argv.length <= 3) {
   console.log('Bostan isolated PostgreSQL migration qualification. Run only with --run.');
-  console.log('Requires local initdb, pg_ctl, createdb, psql and frozen pnpm workspace dependencies.');
+  console.log('Requires BOSTAN_PG_BIN_DIR set to the absolute physical PostgreSQL bin directory, all six tools, and offline pnpm workspace dependencies.');
   console.log('Creates and deletes ONLY a new disposable localhost database in the system temp folder.');
 } else if (mode === '--run' && process.argv.length <= 3) {
   await run().catch(error => { console.error(`Bostan local database qualification FAILED: ${error.message}`); process.exitCode = 1; });
