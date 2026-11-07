@@ -14,7 +14,8 @@ const same = (a,b) => a.dev === b.dev && a.ino === b.ino && a.birthtimeMs === b.
 /** binDir is an explicitly selected installed PostgreSQL bin directory. */
 export function captureLocalPostgresToolchain(binDir, {platform=process.platform}={}) {
   if (!['win32','linux','darwin'].includes(platform) || typeof binDir !== 'string' ||
-      !path.isAbsolute(binDir) || path.normalize(binDir) !== binDir) deny();
+      !path.isAbsolute(binDir) || path.normalize(binDir) !== binDir ||
+      (platform === 'win32' && !/^[A-Za-z]:\\\\/.test(binDir))) deny();
   const names = LOCAL_PG_TOOLS;
   const files = new Map();
   let dirIdentity;
