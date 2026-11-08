@@ -83,6 +83,25 @@ jobs:
           node --test packages/adapters/codex-local/scripts/copy-build-assets.test.mjs
           packages/adapters/grok-local/scripts/copy-build-assets.test.mjs
 
+  # Builds the component library: catches Storybook/Vite dependency breakage
+  # that the unit lanes do not exercise.
+  storybook:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @bostan/ui build-storybook
+        env:
+          STORYBOOK_DISABLE_TELEMETRY: "1"
+
   # The full suite is several hours of vitest time; one 2-core runner cannot
   # finish it. Groups and shards are the ones scripts/run-vitest-stable.mjs
   # already defines.
