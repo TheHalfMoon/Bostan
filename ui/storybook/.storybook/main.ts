@@ -27,6 +27,10 @@ const config: StorybookConfig = {
     name: "@storybook/react-vite",
     options: {},
   },
+  // Storybook reports usage telemetry by default; Bostan sends none (#30).
+  core: {
+    disableTelemetry: true,
+  },
   docs: {
     autodocs: true,
   },
