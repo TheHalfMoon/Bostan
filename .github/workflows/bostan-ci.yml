@@ -84,6 +84,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run preflight:workspace-links
       - run: pnpm --filter @bostan/plugin-sdk ensure-build-deps
+      # @bostan/runner exports only dist/; server suites import it.
+      - run: pnpm --filter @bostan/runner build:typescript
       - run: node scripts/run-vitest-stable.mjs ${{ matrix.args }}
 
   windows:
