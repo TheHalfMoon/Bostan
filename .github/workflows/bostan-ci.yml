@@ -55,6 +55,9 @@ jobs:
         working-directory: server
       - run: node --test scripts/*.test.mjs
         working-directory: ui
+      - run: >-
+          node --test packages/adapters/codex-local/scripts/copy-build-assets.test.mjs
+          packages/adapters/grok-local/scripts/copy-build-assets.test.mjs
 
   # The full suite is several hours of vitest time; one 2-core runner cannot
   # finish it. Groups and shards are the ones scripts/run-vitest-stable.mjs
