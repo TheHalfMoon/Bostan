@@ -1,17 +1,19 @@
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync } from "node:fs";
-import { rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+// npm and pnpm are .cmd shims on Windows; the arguments below are constants.
+const useShell = process.platform === "win32";
 
-function readPackMetadata(packDestination: string) {
-  const output = execFileSync("npm", ["pack", "--json", "--pack-destination", packDestination], {
+// Packaging is locked down (prepack runs scripts/bostan-release-disabled.mjs),
+// so list the would-be artifact without lifecycle scripts or writing a tarball.
+function readPackMetadata() {
+  const output = execFileSync("npm", ["pack", "--dry-run", "--ignore-scripts", "--json"], {
     cwd: packageRoot,
     encoding: "utf8",
+    shell: useShell,
   });
   const metadata = JSON.parse(output);
   if (!Array.isArray(metadata) || metadata.length === 0 || typeof metadata[0]?.filename !== "string") {
@@ -21,28 +23,16 @@ function readPackMetadata(packDestination: string) {
 }
 
 describe("skills catalog package artifacts", () => {
-  const cleanup: string[] = [];
-
-  function createPackDestination() {
-    const destination = mkdtempSync(path.join(tmpdir(), "paperclip-skills-catalog-pack-"));
-    cleanup.push(destination);
-    return destination;
-  }
-
-  afterEach(async () => {
-    await Promise.all(cleanup.map((entry) => rm(entry, { force: true, recursive: true })));
-    cleanup.length = 0;
-  });
-
   it("packs dist manifest and catalog files for npm artifact consumers", () => {
-    let metadata = readPackMetadata(createPackDestination());
+    let metadata = readPackMetadata();
 
     if (!metadata.files.some((entry) => entry.path === "dist/generated/catalog.json")) {
       execFileSync("pnpm", ["--filter", "@bostan/skills-catalog", "build"], {
         cwd: packageRoot,
         stdio: "ignore",
+        shell: useShell,
       });
-      metadata = readPackMetadata(createPackDestination());
+      metadata = readPackMetadata();
     }
 
     const paths = metadata.files.map((entry) => entry.path);
