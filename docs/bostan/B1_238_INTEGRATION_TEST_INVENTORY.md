@@ -126,3 +126,5 @@ Options:
 | (b) Ignore inherited, undeclared values shorter than N characters | Declared secrets stay redacted at any length |
 
 Option (b) trades a small privacy margin for readable diagnostics. It is not changed without owner approval.
+
+**Decision (owner, 2026-11-08): option (a).** The strict redaction stays, and `heartbeat-process-recovery` asserts that the stack is retained, whether readable or redacted (`f094789b`).
