@@ -111,3 +111,18 @@ Lanes that passed: `gates`, `typecheck` (all packages including `server`, `ui` a
 | Verification-agent rule | "Verification must be assigned to a different agent" rejects fixtures in `issue-recovery-actions` and `case-handoff-privacy` |
 | Other server tests | `heartbeat-process-recovery`, `cloud-runtime-identity`, `git-workspace-expiration`, `workspace-runtime`, `plugin-install-autobuild`, `vitest-chat-shards` |
 | CI environment | cargo cold-build timeouts (`dot-runner`, `native-codex-runner`); POSIX PostgreSQL stop timeout (`idle-sleep-safety`) |
+
+### Owner decision: run-failure diagnostic redaction (found in CI run 42440626957)
+
+`collectRunFailureSecretValues` (`server/src/services/run-failure-diagnostics.ts`) deliberately treats every inherited, unrecognised environment value as a secret, whatever its length. `run-failure-diagnostics.test.ts:523` pins `CUSTOM_BINDING: "1"` as redacted.
+
+On a host whose environment contains short values such as `test`, `0` or `1`, every occurrence of those strings in a failure report becomes `***REDACTED***`. CI showed this directly: the stack trace came out as `__***REDACTED***s__/…:2***REDACTED***23`. As a result, `heartbeat-process-recovery` (4 tests) fails on CI.
+
+Options:
+
+| Option | Effect |
+|---|---|
+| (a) Keep the conservative rule | Make the test environment-independent |
+| (b) Ignore inherited, undeclared values shorter than N characters | Declared secrets stay redacted at any length |
+
+Option (b) trades a small privacy margin for readable diagnostics. It is not changed without owner approval.
