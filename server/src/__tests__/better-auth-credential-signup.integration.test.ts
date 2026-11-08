@@ -28,10 +28,8 @@ const ORIGIN = "http://127.0.0.1:41999";
 const EMAIL = "founder@example.com";
 const PASSWORD = "correct-horse-battery-staple";
 
-// The issuer Better Auth stamps on an email/password account:
-// `createLocalAccountIssuer("credential")`. Sign-in matches on it, so a row
-// written with anything else is a row nobody can sign in as.
-const CREDENTIAL_ISSUER = "local:credential";
+// Better Auth 1.7.3+ keys accounts on (providerId, accountId) and no longer
+// writes the 1.7.0-1.7.2 "issuer" column (nullable since migration 0377).
 
 const embeddedPostgresSupport = await getEmbeddedPostgresTestSupport();
 const describeEmbeddedPostgres = embeddedPostgresSupport.supported ? describe : describe.skip;
@@ -107,9 +105,13 @@ describeEmbeddedPostgres("Better Auth credential sign-up against the real schema
     expect(accounts).toHaveLength(1);
     expect(accounts[0]).toMatchObject({
       providerId: "credential",
-      issuer: CREDENTIAL_ISSUER,
+      issuer: null,
     });
     expect(accounts[0]?.password).toBeTruthy();
+
+    // An account written by Better Auth 1.7.0-1.7.2 carries a legacy issuer;
+    // it must keep signing in after the upgrade (1.7 upgrade guide, step 3).
+    await db.update(authAccounts).set({ issuer: "local:credential" });
 
     const signIn = await request(app)
       .post("/api/auth/sign-in/email")
