@@ -221,7 +221,10 @@ async function runCliJson<T>(
   opts: TestPaperclipEnv & { apiBase?: string; includeConfigArg?: boolean },
 ) {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-  const cliArgs = ["--silent", "paperclipai", ...args];
+  // The full CLI source no longer has a root `pnpm paperclipai` script (the
+  // private `bostan` script is the restricted preview); run it directly, the
+  // same way this suite starts the server below.
+  const cliArgs = ["--import", createRequire(import.meta.url).resolve("tsx"), path.join(repoRoot, "cli/src/index.ts"), ...args];
   if (opts.apiBase) {
     cliArgs.push("--api-base", opts.apiBase);
   }
@@ -230,7 +233,7 @@ async function runCliJson<T>(
   }
   cliArgs.push("--json");
   const result = await execFileAsync(
-    "pnpm",
+    process.execPath,
     cliArgs,
     {
       cwd: repoRoot,

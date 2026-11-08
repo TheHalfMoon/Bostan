@@ -53,7 +53,7 @@ describe("update command", () => {
         paths,
         executablePath: source === "global-npm" ? path.join(root, "lib", "node_modules", "paperclipai", "dist", "index.js") : entrypoint,
         runCommand, backup, restartActiveService,
-      })).rejects.toThrow("npx paperclipai@latest install --yes");
+      })).rejects.toThrow(/^Bostan requires Node\.js \d+\.\d+\.\d+ or newer/);
       expect(runCommand).not.toHaveBeenCalled();
       expect(backup).not.toHaveBeenCalled();
       expect(restartActiveService).not.toHaveBeenCalled();
