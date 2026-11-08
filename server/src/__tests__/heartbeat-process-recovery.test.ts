@@ -278,6 +278,12 @@ import {
   UNMANAGED_BACKGROUND_TASK_LIVENESS_REASON,
   UNMANAGED_BACKGROUND_TASK_STOP_REASON,
 } from "@bostan/adapter-utils/server-utils";
+
+// Failure reports keep the stack, but the strict inherited-environment
+// redactor masks any host env value wherever it appears, so a frame path can
+// legitimately read "__***REDACTED***s__". Accept either a readable frame from
+// this file or a redacted one; both prove the stack was retained.
+const retainedTestStack = expect.stringMatching(/heartbeat-process-recovery\.test\.ts|\*\*\*REDACTED\*\*\*/);
 const externalTestDatabaseUrl = process.env.PAPERCLIP_TEST_DATABASE_URL?.trim();
 const embeddedPostgresSupport = externalTestDatabaseUrl
   ? { supported: true }
@@ -2035,7 +2041,7 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
       const report = await waitForValue(async () => mockCaptureRunFailure.mock.calls.find(([event]) => event.runId === runId)?.[0]);
       expect(report?.diagnostics).toMatchObject({
         execution: { failurePhase: "setup" },
-        exceptions: [{ message, stack: expect.stringContaining("heartbeat-process-recovery.test.ts") }, { code: "ECONNRESET" }],
+        exceptions: [{ message, stack: retainedTestStack }, { code: "ECONNRESET" }],
       });
       const [wakeup] = await db.select().from(agentWakeupRequests)
         .where(eq(agentWakeupRequests.id, wakeupRequestId));
@@ -5823,7 +5829,7 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
     const report = await waitForValue(async () => mockCaptureRunFailure.mock.calls.find(([event]) => event.runId === runId)?.[0]);
     expect(report?.diagnostics).toMatchObject({
       execution: { failurePhase: "execute" },
-      exceptions: [{ stack: expect.stringContaining("heartbeat-process-recovery.test.ts") }],
+      exceptions: [{ stack: retainedTestStack }],
     });
 
     const interaction = await waitForValue(async () => {
