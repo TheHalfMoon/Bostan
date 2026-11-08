@@ -303,7 +303,9 @@ describe("GitHub App wizard", () => {
     await render("resume=draft-1&reconnect=1");
     await act(async () => [...container.querySelectorAll("button")].find(button => button.getAttribute("aria-label") === "Reconnect saved App")!.click());
     expect(container.querySelector("output")?.textContent).toContain("/BOT/apps/chat/connect");
-    expect(container.textContent).toContain("Delivery verification is unavailable");
+    // credential-ui-error-privacy: show fixed guidance, never the raw error.
+    expect(container.textContent).toContain("Could not verify this GitHub App");
+    expect(container.textContent).not.toContain("Delivery verification is unavailable");
     expect([...container.querySelectorAll("button")].find(button => button.getAttribute("aria-label") === "Reconnect saved App")?.disabled).toBe(false);
   });
   it.each(["paste", "upload"])("preserves a multiline PEM from %s when replacing credentials", async (source) => {
