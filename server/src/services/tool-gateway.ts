@@ -6670,7 +6670,7 @@ export function createToolGatewayService(
             },
           },
         },
-        notes: ["Use the full Paperclip origin before the endpoint path."],
+        notes: ["Use the full Bostan origin before the endpoint path."],
       },
       {
         client: "claude_desktop",
@@ -6730,7 +6730,7 @@ export function createToolGatewayService(
             },
           },
         },
-        notes: ["Use the full Paperclip origin before the endpoint path."],
+        notes: ["Use the full Bostan origin before the endpoint path."],
       },
     ];
   }
