@@ -142,10 +142,14 @@ describe("boardMutationGuard", () => {
   });
 
   it("accepts a canonical mixed-case HTTPS Origin with a trusted Host", async () => {
+    // b2d88f90 requires the request scheme to match, so arrive over HTTPS
+    // through the trusted loopback proxy like the neighbouring cases.
     const app = createApp("board");
+    app.set("trust proxy", "loopback");
     const res = await request(app)
       .post("/mutate")
       .set("Host", "private.example.invalid:42000")
+      .set("X-Forwarded-Proto", "https")
       .set("Origin", "HTTPS://PRIVATE.EXAMPLE.INVALID:42000")
       .set("Referer", "https://attacker.example.invalid/bait")
       .send({ ok: true });
