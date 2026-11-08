@@ -234,7 +234,9 @@ function cleanupEmbeddedPostgresTestDirs(dataDir: string): void {
 
 // Upper bound (ms) on how long we await a graceful POSIX PostgreSQL stop
 // before reporting an unverified shutdown and retaining the active fixture.
-const EMBEDDED_POSTGRES_STOP_TIMEOUT_MS = 5000;
+// 5s produced spurious "stop timeout" failures on loaded 2-core CI runners
+// (shutdown checkpoint); 20s stays well inside vitest's 30s hookTimeout.
+const EMBEDDED_POSTGRES_STOP_TIMEOUT_MS = 20_000;
 
 // `embedded-postgres@18.1.0-beta.16` exposes only `stop(): Promise<void>` — no
 // shutdown-mode argument. Internally it SIGINTs the postgres process (already
