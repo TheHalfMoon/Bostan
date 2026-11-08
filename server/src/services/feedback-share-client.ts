@@ -30,7 +30,8 @@ export function configuredBostanFeedbackEndpoint(
       || parsed.search || parsed.hash || (parsed.port && parsed.port !== "443")) return null;
     const hostname = parsed.hostname.toLowerCase().replace(/\.$/, "");
     if (hostname === "telemetry.paperclip.ing" || hostname.endsWith(".paperclip.ing")
-      || hostname === "paperclip.ing" || hostname === "localhost" || hostname.endsWith(".localhost")
+      || hostname === "paperclip.ing" || hostname === "paperclip.app" || hostname.endsWith(".paperclip.app")
+      || hostname === "localhost" || hostname.endsWith(".localhost")
       || hostname === "127.0.0.1" || hostname === "[::1]") return null;
     // Intentionally override any caller-supplied path to use the fixed API.
     return new URL("/feedback-traces", parsed).toString();
