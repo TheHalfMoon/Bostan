@@ -1,18 +1,27 @@
+import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
+
+// scripts/*.test.mjs files written for node:test have no vitest suite; CI runs
+// them with `node --test` instead (see .github/workflows/bostan-ci.yml).
+const scriptsDir = fileURLToPath(new URL("./scripts/", import.meta.url));
+const nodeTestScripts = readdirSync(scriptsDir)
+  .filter((name) => name.endsWith(".test.mjs"))
+  .filter((name) => /from\s+["']node:test["']/.test(readFileSync(scriptsDir + name, "utf8")))
+  .map((name) => `scripts/${name}`);
 
 export default defineConfig({
   resolve: {
     alias: [
       {
-        find: /^@paperclipai\/paperclip-runner\/live$/,
+        find: /^@bostan\/runner\/live$/,
         replacement: fileURLToPath(
           new URL("../packages/paperclip-runner/src/live/index.ts", import.meta.url),
         ),
       },
       {
-        find: /^@paperclipai\/paperclip-runner$/,
+        find: /^@bostan\/runner$/,
         replacement: fileURLToPath(
           new URL("../packages/paperclip-runner/src/index.ts", import.meta.url),
         ),
@@ -22,6 +31,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts", "scripts/**/*.test.mjs"],
+    exclude: [...configDefaults.exclude, ...nodeTestScripts],
     // Each server suite boots + tears down its own embedded Postgres in
     // beforeAll/afterAll. Under the loaded serial shard (maxWorkers=1) the
     // graceful shutdown can occasionally cross vitest's default 10s hookTimeout,

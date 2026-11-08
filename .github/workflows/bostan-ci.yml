@@ -50,6 +50,9 @@ jobs:
       - run: pnpm -r --workspace-concurrency=1 typecheck
         env:
           NODE_OPTIONS: --max-old-space-size=6144
+      # node:test suites under server/scripts (excluded from server vitest).
+      - run: node --test $(grep -lE "from ['\"]node:test['\"]" scripts/*.test.mjs)
+        working-directory: server
 
   # The full suite is several hours of vitest time; one 2-core runner cannot
   # finish it. Groups and shards are the ones scripts/run-vitest-stable.mjs
@@ -84,8 +87,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run preflight:workspace-links
       - run: pnpm --filter @bostan/plugin-sdk ensure-build-deps
-      # @bostan/runner exports only dist/; server suites import it.
-      - run: pnpm --filter @bostan/runner build:typescript
       - run: node scripts/run-vitest-stable.mjs ${{ matrix.args }}
 
   windows:
