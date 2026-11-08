@@ -108,10 +108,14 @@ jobs:
       # Mirror each suite's exact cargo invocation: feature unification differs
       # between the single-bin (dot-runner) and two-bin (native-codex-runner)
       # builds, so building only one leaves the other cold.
+      # Run from packages/paperclip-runner like the suites do: rustup selects the
+      # pinned toolchain from its rust-toolchain.toml by working directory, and
+      # a build under the runner's default toolchain is not reusable.
       - if: startsWith(matrix.lane, 'server-')
+        working-directory: packages/paperclip-runner
         run: |
-          cargo build --release --locked --manifest-path packages/paperclip-runner/runner/Cargo.toml -p paperclip-runner-core --bin paperclip-runnerd
-          cargo build --release --locked --manifest-path packages/paperclip-runner/runner/Cargo.toml -p paperclip-runner-core --bin paperclip-runnerd --bin fake-codex-app-server
+          cargo build --release --locked --manifest-path runner/Cargo.toml -p paperclip-runner-core --bin paperclip-runnerd
+          cargo build --release --locked --manifest-path runner/Cargo.toml -p paperclip-runner-core --bin paperclip-runnerd --bin fake-codex-app-server
       - run: node scripts/run-vitest-stable.mjs ${{ matrix.args }}
 
   windows:
