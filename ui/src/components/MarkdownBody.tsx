@@ -19,6 +19,58 @@ import { queryKeys } from "../lib/queryKeys";
 import { parseIssueReferenceFromHref, remarkLinkIssueReferences } from "../lib/issue-reference";
 import { remarkLinkCaseReferences } from "../lib/case-reference";
 
+/**
+ * Images from another origin are not fetched automatically: loading them
+ * would let agent- or user-authored markdown act as a tracking beacon or leak
+ * that the content was viewed. Same-origin, relative, data: and blob: images
+ * (attachments, local assets) render as before.
+ */
+export function isRemoteImageSrc(src: string | undefined, base = typeof window === "undefined" ? undefined : window.location.href): boolean {
+  if (!src) return false;
+  if (/^(data|blob):/i.test(src)) return false;
+  try {
+    const url = new URL(src, base ?? "http://localhost/");
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+    return base ? url.origin !== new URL(base).origin : /^[a-z][a-z0-9+.-]*:/i.test(src);
+  } catch {
+    return false;
+  }
+}
+
+function RemoteMarkdownImage({ src, alt, imgProps, onImageClick }: {
+  src: string;
+  alt: string;
+  imgProps: React.ImgHTMLAttributes<HTMLImageElement>;
+  onImageClick?: (src: string) => void;
+}) {
+  const [load, setLoad] = useState(false);
+  if (!load) {
+    let host = src;
+    try { host = new URL(src).host; } catch { /* keep raw src */ }
+    return (
+      <button
+        type="button"
+        data-markdown-remote-image
+        className="inline-flex items-center gap-1 rounded border border-border px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent"
+        onClick={(event) => { event.preventDefault(); setLoad(true); }}
+        title={src}
+      >
+        Load image from {host}{alt ? `: ${alt}` : ""}
+      </button>
+    );
+  }
+  return (
+    <img
+      {...imgProps}
+      src={src}
+      alt={alt}
+      referrerPolicy="no-referrer"
+      onClick={onImageClick ? (event) => { event.preventDefault(); onImageClick(src); } : undefined}
+      style={onImageClick ? { cursor: "pointer", ...(imgProps.style as React.CSSProperties | undefined) } : imgProps.style as React.CSSProperties | undefined}
+    />
+  );
+}
+
 const CASE_HREF_RE = /^\/cases\/([A-Z][A-Z0-9]*-C\d+)$/i;
 
 /** Recover the case identifier from a `/cases/PAP-C7` href produced by the plugin. */
@@ -1008,10 +1060,13 @@ function MarkdownBodyImpl({
           Image: {alt || "Untitled image"}{src ? ` (${src})` : ""}
         </span>
       );
-    } else if (resolveImageSrc || onImageClick) {
+    } else {
       map.img = ({ node: _node, src, alt, ...imgProps }) => {
         const resolved = resolveImageSrc && src ? resolveImageSrc(src) : null;
         const finalSrc = resolved ?? src;
+        if (finalSrc && isRemoteImageSrc(finalSrc)) {
+          return <RemoteMarkdownImage src={finalSrc} alt={alt ?? ""} imgProps={imgProps} onImageClick={onImageClick} />;
+        }
         return (
           <img
             {...imgProps}

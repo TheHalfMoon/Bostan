@@ -93,3 +93,29 @@ describe("MarkdownBody code block interactions", () => {
     expect(wrapButton?.getAttribute("aria-label")).toBe("Wrap lines");
   });
 });
+
+describe("MarkdownBody remote images", () => {
+  it("does not fetch a cross-origin image until the reader asks for it", () => {
+    const container = renderMarkdown("![pixel](https://tracker.example.test/p.gif)");
+    expect(container.querySelector("img")).toBeNull();
+    const button = container.querySelector("[data-markdown-remote-image]");
+    expect(button?.textContent).toContain("Load image from tracker.example.test");
+
+    click(button);
+    const img = container.querySelector("img");
+    expect(img?.getAttribute("src")).toBe("https://tracker.example.test/p.gif");
+    expect(img?.getAttribute("referrerpolicy")).toBe("no-referrer");
+  });
+
+  it("renders same-origin and relative images immediately", () => {
+    const sameOrigin = `${window.location.origin}/api/attachments/a.png`;
+    const container = renderMarkdown(
+      `![a](/api/attachments/a.png) ![b](${sameOrigin})`,
+    );
+    expect(container.querySelector("[data-markdown-remote-image]")).toBeNull();
+    expect([...container.querySelectorAll("img")].map((img) => img.getAttribute("src"))).toEqual([
+      "/api/attachments/a.png",
+      sameOrigin,
+    ]);
+  });
+});
