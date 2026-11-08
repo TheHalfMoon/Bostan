@@ -2626,6 +2626,13 @@
       "when": 1792783857131,
       "tag": "0376_clear_committed_native_recovery_state",
       "breakpoints": true
+    },
+    {
+      "idx": 377,
+      "version": "7",
+      "when": 1794169905378,
+      "tag": "0377_relax_better_auth_account_issuer",
+      "breakpoints": true
     }
   ]
 }
