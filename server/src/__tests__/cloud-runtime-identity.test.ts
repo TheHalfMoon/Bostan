@@ -157,10 +157,29 @@ describeEmbeddedPostgres("Cloud runtime identity", () => {
     expect(routineWebhookUrl("hook-1")).toBe(
       "https://gonzo.staging.paperclip.app/api/routine-triggers/public/hook-1/fire",
     );
+    // Bostan refuses the Cloud-delivered managed connector identity
+    // (PAPERCLIP_CLOUD_CONNECTOR_INSTANCE_ID/SIGN/SEAL env keys) by design: it
+    // belongs to the donor trust domain. The refusal does not depend on the
+    // origin -- connector enrollment status is only ever "configured" for a
+    // locally enrolled identity bound to an opted-in private Bostan broker, so
+    // applying a runtime identity claim must not surface a usable connection,
+    // with or without a Bostan broker opt-in.
     expect(paperclipCloudConnectorEnrollmentStatus()).toMatchObject({
-      configured: true,
-      status: "active",
-      origins: [CANONICAL_ORIGIN],
+      configured: false,
+      status: "not_configured",
+      instanceId: null,
+      origins: [],
+    });
+    expect(paperclipCloudConnectorEnrollmentStatus({
+      ...process.env,
+      BOSTAN_CLOUD_CONNECTOR_ENABLED: "1",
+      BOSTAN_CLOUD_CONNECTOR_BASE_URL: "https://broker.bostan.example",
+    })).toMatchObject({
+      configured: false,
+      status: "not_configured",
+      brokerBaseUrl: "https://broker.bostan.example",
+      instanceId: null,
+      origins: [],
     });
   });
 
