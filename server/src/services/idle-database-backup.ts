@@ -4,15 +4,11 @@ import path from "node:path";
 import { Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { createGunzip } from "node:zlib";
+import { syncDirectory } from "../lib/durable-directory.js";
 
 // The marker survives process replacement on persistent instance storage.
 // It contains no credentials or tenant data, and never substitutes for a dump.
 export const idleBackupWakeMarker = (directory: string) => path.join(directory, ".idle-backup-wake-required");
-
-async function syncDirectory(directory: string): Promise<void> {
-  const handle = await open(directory, "r");
-  try { await handle.sync(); } finally { await handle.close(); }
-}
 
 export async function markIdleBackupWakeRequired(directory: string): Promise<void> {
   await mkdir(directory, { recursive: true });
@@ -28,7 +24,9 @@ export async function markIdleBackupWakeRequired(directory: string): Promise<voi
  * and directory entry before allowing compute to stop. The backup runner
  * retains its in-flight receipt until this function settles. */
 export async function verifyIdleDatabaseBackup(backupFile: string): Promise<void> {
-  const handle = await open(backupFile, constants.O_RDONLY | constants.O_NOFOLLOW);
+  // Windows FlushFileBuffers needs a writable handle; nothing is written.
+  const access = process.platform === "win32" ? constants.O_RDWR : constants.O_RDONLY;
+  const handle = await open(backupFile, access | constants.O_NOFOLLOW);
   try {
     const stat = await handle.stat();
     if (!stat.isFile() || stat.size === 0) throw new Error("Idle backup archive is empty or invalid");
