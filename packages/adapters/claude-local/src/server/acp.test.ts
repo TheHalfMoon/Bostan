@@ -390,7 +390,7 @@ describe("claude_local ACP lane", () => {
         config: { networkScope: "public" },
         executionTarget: null,
       }),
-    ).rejects.toThrow('networkScope must be "deny" or "allowlist"');
+    ).rejects.toThrow('networkScope must be "deny", "allowlist" or "unrestricted"');
   });
 
   it("uses ACP for bridged sandbox auto runs when the ACP command is configured as a shell command", async () => {
