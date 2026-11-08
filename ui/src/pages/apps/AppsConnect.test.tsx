@@ -215,7 +215,7 @@ async function openAccessAdvanced() {
  */
 async function passAccessStep() {
   const onOAuthEntryScreen = Boolean(
-    document.body.textContent?.includes("Paperclip will open")
+    document.body.textContent?.includes("Bostan will open")
       || document.body.textContent?.includes("Your connection is saved."),
   );
   if (onOAuthEntryScreen) {
@@ -318,7 +318,7 @@ function activeConnectorEnrollment() {
   return {
     configured: true,
     status: "active",
-    brokerBaseUrl: "https://my-staging.paperclip.app",
+    brokerBaseUrl: "https://broker.bostan.example",
     instanceId: "inst-test",
     environment: "staging",
     origins: ["https://paperclip.example.test"],
@@ -329,7 +329,7 @@ function unconfiguredConnectorEnrollment() {
   return {
     configured: false,
     status: "not_configured",
-    brokerBaseUrl: "https://my-staging.paperclip.app",
+    brokerBaseUrl: "https://broker.bostan.example",
     instanceId: null,
     environment: "staging",
     origins: [],
@@ -383,11 +383,11 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     startCloudConnectorEnrollmentMock.mockResolvedValue({
       configured: false,
       status: "pending",
-      brokerBaseUrl: "https://my-staging.paperclip.app",
+      brokerBaseUrl: "https://broker.bostan.example",
       instanceId: "inst-test",
       environment: "staging",
       origins: [],
-      verificationUrl: "https://my-staging.paperclip.app/connections/enroll?id=enroll-test",
+      verificationUrl: "https://broker.bostan.example/connections/enroll?id=enroll-test",
     });
     connectAppMock.mockResolvedValue({
       connectionId: "conn-1",
@@ -1599,7 +1599,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
       "/apps/connect?source=gmail&stage=setup",
     );
     expect(navigateTopLevelMock).toHaveBeenCalledWith(
-      "https://my-staging.paperclip.app/connections/enroll?id=enroll-test",
+      "https://broker.bostan.example/connections/enroll?id=enroll-test",
     );
   });
 
@@ -1617,11 +1617,11 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     if (popupBlocked) {
       expect(popup.location.assign).not.toHaveBeenCalled();
     } else {
-      expect(popup.location.assign).toHaveBeenCalledWith("https://my-staging.paperclip.app/connections/enroll?id=enroll-test");
+      expect(popup.location.assign).toHaveBeenCalledWith("https://broker.bostan.example/connections/enroll?id=enroll-test");
     }
     const fallback = container.querySelector<HTMLAnchorElement>('a[target="_blank"]');
     expect(fallback?.textContent).toBe("Open authorization in a new tab");
-    expect(fallback?.href).toBe("https://my-staging.paperclip.app/connections/enroll?id=enroll-test");
+    expect(fallback?.href).toBe("https://broker.bostan.example/connections/enroll?id=enroll-test");
     expect(navigateTopLevelMock).not.toHaveBeenCalled();
     expect(startCloudConnectorEnrollmentMock).toHaveBeenCalledWith("company-1", "Paperclip", "/apps/connect?source=gmail&stage=setup&intent=intent-1&enrollment_host=dialog");
     listGalleryMock.mockResolvedValue({ apps: [{ ...GMAIL, ownershipAvailability: { ...GMAIL.ownershipAvailability, platform_shared: true } }] });
@@ -1685,11 +1685,11 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
       getCloudConnectorEnrollmentMock.mockResolvedValue({
         configured: false,
         status: "pending",
-        brokerBaseUrl: "https://my-staging.paperclip.app",
+        brokerBaseUrl: "https://broker.bostan.example",
         instanceId: "inst-test",
         environment: "staging",
         origins: [],
-        verificationUrl: "https://my-staging.paperclip.app/connections/enroll?id=cached",
+        verificationUrl: "https://broker.bostan.example/connections/enroll?id=cached",
         expiresAt,
       });
 
@@ -1703,10 +1703,10 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
         "company-1", "Paperclip", "/apps/connect?source=github&stage=setup",
       );
       expect(navigateTopLevelMock).toHaveBeenCalledWith(
-        "https://my-staging.paperclip.app/connections/enroll?id=enroll-test",
+        "https://broker.bostan.example/connections/enroll?id=enroll-test",
       );
       expect(navigateTopLevelMock).not.toHaveBeenCalledWith(
-        "https://my-staging.paperclip.app/connections/enroll?id=cached",
+        "https://broker.bostan.example/connections/enroll?id=cached",
       );
     },
   );
@@ -1956,7 +1956,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
       expect(container.textContent).toContain("needs its own OAuth app");
       expect(container.textContent).toContain("Client ID");
       expect(buttonByText("Continue to sign in")?.disabled).toBe(true);
-      const managedAuth = buttonByText("Use Paperclip instead");
+      const managedAuth = buttonByText("Use Bostan instead");
       expect(managedAuth).toBeDefined();
       expect(managedAuth?.getAttribute("aria-expanded")).toBe("true");
       const fieldsRegion = document.getElementById(managedAuth!.getAttribute("aria-controls")!);
@@ -3335,7 +3335,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
       expect(listConnectionsMock).toHaveBeenCalledTimes(2);
       expect(listApplicationsMock).toHaveBeenCalledTimes(2);
       expect(container.textContent).not.toContain("Couldn’t load connection setup");
-      expect(container.textContent).toContain("Connect Notion to Paperclip");
+      expect(container.textContent).toContain("Connect Notion to Bostan");
     },
   );
 
@@ -4409,7 +4409,7 @@ describe("AppsConnect — guided generic MCP flow (PAP-17087)", () => {
       suggestedDefaults: {},
       auth: {
         kind: "oauth",
-        startUrl: "https://my.paperclip.app/connections/confirm?session=legacy",
+        startUrl: "https://broker.bostan.example/connections/confirm?session=legacy",
         handoff: { kind: "paperclip_cloud", session },
       },
     });
