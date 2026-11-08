@@ -9066,7 +9066,10 @@ describeEmbeddedPostgres("chat channel control-plane integration", () => {
     await expect(executeConnectorTool(db, binding, "slack_post_message", uncertain)).rejects.toMatchObject({ details: { state: "uncertain" } });
     const [uncertainAction] = await db.select().from(chatActions).where(and(eq(chatActions.endpointId, endpoint.id), eq(chatActions.providerActionId, `slack-tool:${binding.issueId}:${uncertain.idempotencyKey}`)));
     const countBefore = postFetch.mock.calls.length;
-    await executeConnectorTool(db, binding, "slack_post_message", uncertain);
+    // B3-05: a same-key replay of an unresolved write fails closed instead of
+    // reporting success; the provider reconciliation below settles it.
+    await expect(executeConnectorTool(db, binding, "slack_post_message", uncertain))
+      .rejects.toMatchObject({ status: 409, reasonCode: "tool_effect_outcome_unresolved" });
     expect(postFetch.mock.calls).toHaveLength(countBefore);
     const receiptSettled = vi.fn();
     const unsubscribeReceipt = subscribeDeliveryWork(db, DELIVERY_QUEUES.chatPublications, receiptSettled);
