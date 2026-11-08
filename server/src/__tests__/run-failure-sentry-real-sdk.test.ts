@@ -5,7 +5,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { buildHeartbeatRunStopMetadata, mergeHeartbeatRunStopMetadata } from "../services/heartbeat-stop-metadata.js";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 import { collectRunFailureDiagnostics, sanitizeRunFailureDiagnostics } from "../services/run-failure-diagnostics.js";
 import type { heartbeatRuns } from "@bostan/db";
 import {
@@ -15,6 +15,14 @@ import {
   withWorkspaceRestoreGitCommand,
 } from "@bostan/adapter-utils/workspace-restore-diagnostics";
 import { createWorkspaceRestoreTeardown } from "@bostan/adapter-utils/workspace-restore-teardown";
+
+
+// These suites exercise the opted-in error reporter; Bostan reports nothing
+// without BOSTAN_ERROR_REPORTING_OPT_IN=1 (see sentry-dsn.test.ts for the gate).
+// Each file's afterEach already calls vi.unstubAllEnvs().
+beforeEach(() => {
+  vi.stubEnv("BOSTAN_ERROR_REPORTING_OPT_IN", "1");
+});
 
 // Sentry is an optional peer. When installed, exercise the real SDK with an
 // in-memory transport, including its context behavior without an OTel manager.

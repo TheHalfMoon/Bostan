@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RunFailureEvent } from "../sentry.js";
 
+
+// These suites exercise the opted-in error reporter; Bostan reports nothing
+// without BOSTAN_ERROR_REPORTING_OPT_IN=1 (see sentry-dsn.test.ts for the gate).
+// Each file's afterEach already calls vi.unstubAllEnvs().
+beforeEach(() => {
+  vi.stubEnv("BOSTAN_ERROR_REPORTING_OPT_IN", "1");
+});
+
 /**
  * Tests for `captureRunFailure`, the Sentry report for a terminal run
  * failure. `@sentry/node` is an optional runtime dependency and is not
