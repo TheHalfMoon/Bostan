@@ -95,3 +95,35 @@ describe("static SPA fallback HTML", () => {
     }
   });
 });
+
+describe("static document content security policy", () => {
+  it("allows exactly the served inline scripts by hash and keeps the rest same-origin", async () => {
+    const { createHash } = await import("node:crypto");
+    const { bostanDocumentContentSecurityPolicy } = await import("../static-index-html.js");
+    const inline = "window.__theme = 'dark';";
+    const html = `<html><head><script>${inline}</script><script type="module" src="/assets/app.js"></script></head></html>`;
+    const policy = bostanDocumentContentSecurityPolicy(html);
+    const expectedHash = createHash("sha256").update(inline, "utf8").digest("base64");
+
+    expect(policy).toContain(`script-src 'self' 'sha256-${expectedHash}'`);
+    expect(policy.match(/'sha256-/g)).toHaveLength(1);
+    expect(policy).toContain("object-src 'none'");
+    expect(policy).toContain("frame-ancestors 'self'");
+    expect(policy).toContain("connect-src 'self' ws: wss:");
+  });
+
+  it("is sent report-only so it cannot break the app before it is enforced", async () => {
+    const express = (await import("express")).default;
+    const request = (await import("supertest")).default;
+    const { setBostanStaticHtmlPrivacyHeaders } = await import("../static-index-html.js");
+    const app = express();
+    app.get("/", (_req, res) => {
+      const html = "<script>1</script>";
+      setBostanStaticHtmlPrivacyHeaders(res, html);
+      res.type("html").send(html);
+    });
+    const response = await request(app).get("/");
+    expect(response.headers["content-security-policy-report-only"]).toContain("default-src 'self'");
+    expect(response.headers["content-security-policy"]).toBeUndefined();
+  });
+});
