@@ -55,6 +55,11 @@ jobs:
         working-directory: server
       - run: node --test scripts/*.test.mjs
         working-directory: ui
+      # bostan-local-install exercises the compiled preview CLI in cli/dist.
+      - run: node scripts/build-bostan-preview.mjs
+        working-directory: cli
+      - run: node --test $(grep -lE "from ['\"]node:test['\"]" src/__tests__/*.test.mjs)
+        working-directory: cli
       - run: >-
           node --test packages/adapters/codex-local/scripts/copy-build-assets.test.mjs
           packages/adapters/grok-local/scripts/copy-build-assets.test.mjs
