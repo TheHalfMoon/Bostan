@@ -28,6 +28,19 @@ function assertNoLinks(location){
     throw Error("Refusing non-file build input or output");
   }
 }
+// A previous build (or an image layer) can leave read-only outputs. Windows
+// cannot overwrite those even with cpSync force, so restore owner write first.
+// Destinations were already verified link-free by assertNoLinks.
+function makeWritable(location){
+  const st=fs.lstatSync(location,{throwIfNoEntry:false});
+  if(!st)return;
+  if(st.isDirectory()){
+    for(const entry of fs.readdirSync(location))
+      makeWritable(path.join(location,entry));
+  }else if(st.isFile()&&(st.mode&0o200)===0){
+    fs.chmodSync(location,st.mode|0o200);
+  }
+}
 function owned(root,relative){
   const absolute=path.resolve(root,relative);
   const rel=path.relative(root,absolute);
@@ -60,6 +73,7 @@ export function copyServerBuildAssets(repoRoot){
   }
   for(const [source,dest] of all){
     fs.mkdirSync(path.dirname(dest),{recursive:true});
+    makeWritable(dest);
     fs.cpSync(source,dest,{recursive:true,force:true,errorOnExist:false});
   }
   return {schema:"bostan.server-portable-build-assets.v1",
