@@ -5,7 +5,7 @@ import { readIdleSleepSafety } from "../services/idle-sleep-safety.js";
 import * as idleLocalWork from "../services/idle-local-work.js";
 import { idleBackupWakeMarker, markIdleBackupWakeRequired } from "../services/idle-database-backup.js";
 import { DELIVERY_QUEUES } from "../services/delivery-work-notifications.js";
-import { reconcileBuiltInAgentsOnStartup, reconcileCodexLocalManagedHomesOnStartup, reconcilePersistedRuntimeServicesOnStartup } from "../services/index.js";
+import { githubConnectionEventService, reconcileBuiltInAgentsOnStartup, reconcileCodexLocalManagedHomesOnStartup, reconcilePersistedRuntimeServicesOnStartup, toolAccessService } from "../services/index.js";
 import { runDatabaseBackup } from "@bostan/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
@@ -946,6 +946,47 @@ describe("startServer feedback export wiring", () => {
       expect(heartbeatIntervals).toHaveLength(1);
     } finally {
       setIntervalSpy.mockRestore();
+    }
+  });
+
+  it.each([false, true])("gates scheduled outbound probes on BOSTAN_OFFLINE (offline=%s)", async (offline) => {
+    if (offline) vi.stubEnv("BOSTAN_OFFLINE", "1");
+    loadConfigMock.mockReturnValue(buildTestConfig({
+      heartbeatSchedulerEnabled: true,
+      heartbeatSchedulerIntervalMs: 30000,
+    }));
+    const heartbeatIntervals: Array<() => void> = [];
+    const setIntervalSpy = vi.spyOn(globalThis, "setInterval").mockImplementation(((
+      callback: () => void,
+      interval: number,
+    ) => {
+      if (interval === 30000) heartbeatIntervals.push(callback);
+      return 1 as unknown as ReturnType<typeof setInterval>;
+    }) as typeof setInterval);
+    try {
+      await expect(startServer()).resolves.toBeDefined();
+      await settleStartupHousekeeping();
+      heartbeatIntervals.forEach((tick) => tick());
+      await settleStartupHousekeeping();
+      const healthSweeps = vi.mocked(toolAccessService).mock.results
+        .flatMap((result) => result.value?.sweepConnectionHealth?.mock.calls ?? []);
+      const githubPolls = vi.mocked(githubConnectionEventService).mock.results
+        .flatMap((result) => result.value?.pollOnce?.mock.calls ?? []);
+      if (offline) {
+        expect(healthSweeps).toHaveLength(0);
+        expect(githubPolls).toHaveLength(0);
+        expect(vi.mocked(logger.info)).toHaveBeenCalledWith(
+          expect.objectContaining({ env: "BOSTAN_OFFLINE", suppressed: expect.arrayContaining(["tool_connection_health"]) }),
+          "offline mode: scheduled outbound jobs are suppressed",
+        );
+      } else {
+        // Control: the same startup does probe when not offline.
+        expect(healthSweeps.length).toBeGreaterThan(0);
+        expect(githubPolls.length).toBeGreaterThan(0);
+      }
+    } finally {
+      setIntervalSpy.mockRestore();
+      vi.unstubAllEnvs();
     }
   });
 

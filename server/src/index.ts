@@ -2,6 +2,7 @@ import { loginCleanupSchedule } from "./services/login-cleanup-state.js";
 import { registerLoginCleanupWork } from "./services/login-cleanup-work.js";
 import { timeStartupRecovery } from "./startup-recovery-timing.js";
 import { skillSourceSyncService } from "./services/skill-source-sync.js";
+import { isBostanOffline, OFFLINE_ENV, OFFLINE_SUPPRESSED_JOBS } from "./bostan-offline.js";
 import {
   SKILL_VERSION_RETENTION_INTERVAL_MS,
   SKILL_VERSION_RETENTION_STARTUP_DELAY_MS,
@@ -252,6 +253,10 @@ async function startServerWithDatabaseTeardown(
   await sentryReady;
   ensureDecisionSigningSecret();
   let config = loadConfig();
+  const offline = isBostanOffline();
+  if (offline) {
+    logger.info({ env: OFFLINE_ENV, suppressed: OFFLINE_SUPPRESSED_JOBS }, "offline mode: scheduled outbound jobs are suppressed");
+  }
   initTelemetry({ enabled: config.telemetryEnabled });
   if (process.env.PAPERCLIP_SECRETS_PROVIDER === undefined) {
     process.env.PAPERCLIP_SECRETS_PROVIDER = config.secretsProvider;
@@ -1297,7 +1302,7 @@ async function startServerWithDatabaseTeardown(
     enabled: async () => (await instanceSettingsService(db).getExperimental()).enableExternalObjects === true,
   });
   const scheduleExternalObjectRefreshSweep = (now = new Date()) => {
-    if (isIdleTaskDrainActive() || heartbeatSchedulerStopped) return;
+    if (offline || isIdleTaskDrainActive() || heartbeatSchedulerStopped) return;
     trackHeartbeatSchedulerWork(externalObjects
       .refreshDueObjectsForActiveCompanies(50, now)
       .then((result) => {
@@ -1433,7 +1438,7 @@ async function startServerWithDatabaseTeardown(
       ?? null,
   });
   const scheduleGitHubConnectionEventPoll = () => {
-    if (isIdleTaskDrainActive() || heartbeatSchedulerStopped) return;
+    if (offline || isIdleTaskDrainActive() || heartbeatSchedulerStopped) return;
     trackHeartbeatSchedulerWork(githubConnectionEvents.pollOnce()
       .then((result) => {
         if (result.leased > 0 || result.failed > 0) {
@@ -1445,7 +1450,7 @@ async function startServerWithDatabaseTeardown(
       }));
   };
   const scheduleGitHubConnectionContinuitySweep = () => {
-    if (isIdleTaskDrainActive() || heartbeatSchedulerStopped) return;
+    if (offline || isIdleTaskDrainActive() || heartbeatSchedulerStopped) return;
     trackHeartbeatSchedulerWork(tools.sweepGitHubConnectionContinuity()
       .then((result) => {
         if (result.due > 0 || result.failed > 0) {
@@ -1508,7 +1513,7 @@ async function startServerWithDatabaseTeardown(
       terminalWorkspaceInspectionBackoffMs: TERMINAL_WORKSPACE_RETRY_MS,
     });
     const scheduleMergedPullRequestConfirmationSweep = () => {
-      if (isIdleTaskDrainActive() || heartbeatSchedulerStopped) return;
+      if (offline || isIdleTaskDrainActive() || heartbeatSchedulerStopped) return;
       trackHeartbeatSchedulerWork(mergedPullRequestConfirmations
         .sweepMergedPullRequestConfirmations()
         .then((result) => {
@@ -1783,6 +1788,7 @@ async function startServerWithDatabaseTeardown(
         }
       });
       await step("tool_connection_health", async () => {
+        if (offline) return;
         const toolHealthSweep = await tools.sweepConnectionHealth();
         if (toolHealthSweep.failed > 0) {
           logger.warn({ ...toolHealthSweep }, "startup tool connection health sweep found failing connections");
@@ -1876,7 +1882,7 @@ async function startServerWithDatabaseTeardown(
             logger.error({ err }, "environment customImage setup cleanup failed");
           }));
 
-        if (isIdleTaskDrainActive() || heartbeatSchedulerStopped) return;
+        if (offline || isIdleTaskDrainActive() || heartbeatSchedulerStopped) return;
         trackHeartbeatSchedulerWork(tools
           .sweepConnectionHealth()
           .then((swept) => {
