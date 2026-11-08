@@ -499,15 +499,18 @@ const paperclipRunnerAdapter: ServerAdapterModule = {
             // Preserve the allowlisted machine-readable code, not raw text.
             checks: [{ code, level: "error" as const, message: "Copilot metadata verification failed." }] };
         }
+        const packageMissing = error instanceof Error && "code" in error && error.code === "ACPX_RUNTIME_PACKAGE_MISSING";
         return {
           adapterType: "paperclip_runner", status: "fail" as const, testedAt: new Date().toISOString(),
           checks: [{
-            code: error instanceof Error && "code" in error && error.code === "ACPX_RUNTIME_PACKAGE_MISSING"
-              ? "acpx_runtime_package_missing" : "acpx_runtime_unavailable",
+            code: packageMissing ? "acpx_runtime_package_missing" : "acpx_runtime_unavailable",
             level: "error" as const,
             // ACPX package/probe exceptions may carry local filesystem
-            // paths and external provider output. Never store raw messages.
-            message: "The ACPX runtime could not be verified.",
+            // paths and external provider output. Never store raw messages;
+            // a known code may still carry fixed, actionable guidance.
+            message: packageMissing
+              ? "The ACPX runtime package is incomplete. Reinstall or rebuild Bostan, then test again."
+              : "The ACPX runtime could not be verified.",
           }],
         };
       }
