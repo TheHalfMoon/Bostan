@@ -64,3 +64,50 @@ Lanes that passed: `gates`, `typecheck` (all packages including `server`, `ui` a
 - Embedded PostgreSQL suites skip themselves on this host.
 - File-symlink fixtures need Windows Developer Mode.
 - Tests shelling out to `python3` or a cold `cargo build --release`.
+
+## Update — after fix batches 1–3 (CI runs 42435409056 and 42438361299, plus local Windows reruns)
+
+### Lane progress
+
+| Lane | First run | Latest |
+|---|---|---|
+| typecheck, gates, windows, workspaces-c, serialized-2, chat | various failures | **pass** |
+| workspaces-a | 14 failed files, 54 failed tests | 3 files, 45 tests |
+| workspaces-b | 1 file | 1 file (`adapter-utils` exports, fixed in `6b31aac4`) |
+| server-1 | 14 files | 8 |
+| server-2 | about 14 | 3 |
+| server-3 | 12 | 3 |
+| serialized-1 | 3 | 2 |
+
+### Newly fixed product defects
+
+| Defect | Commit |
+|---|---|
+| Portable asset copier could not replace read-only outputs on Windows | `291be031` |
+| System notices and voice transcript showed "Paperclip" | `5d929fad` |
+| MCP client snippets said "Use the full Paperclip origin" | `2ed286bf` |
+| A missing ACPX package lost its actionable guidance after the redaction work. Fixed message only, no raw text | `7be756eb` |
+
+### Tests updated to deliberate Bostan behaviour, intent kept
+
+| Area | Commit |
+|---|---|
+| Release lockdown and portable copier | `08d4a942` |
+| Workflow quarantine | `9e0dfa7c` |
+| Same-scheme Origin rule `b2d88f90` | `f6da7e90` |
+| No donor CLI commands shown | `fed7fb66` |
+| Private conditional exports | `6b31aac4` |
+| UI copy | `faf4a279`, `d511a64e` |
+
+### Open — product decisions or deeper work
+
+| Item | Notes |
+|---|---|
+| `tool-access-service` (13) and AppsConnect retained-Workspace and Notion sign-in (about 30) | Tests drive the donor Cloud broker (`my.paperclip.app`), which `07b3b385` deliberately refuses. Rewrite them against an opted-in private broker (`BOSTAN_CLOUD_CONNECTOR_ENABLED=1`, `BOSTAN_CLOUD_CONNECTOR_BASE_URL`). Confirm with the owner whether Workspace connect via a private broker is in scope |
+| User-visible or third-party donor identity still in `server/src` | OAuth `resource_name` (`routes/public-mcp.ts`); git restore-point author and committer (`git-restore-point.ts`); 1Password `integrationName`; GitHub `user-agent`; default skill author (`company-skills.ts`); CLI approval page shows `paperclipai auth login`; "Paperclip Runner" errors (`routes/agents.ts`, `adapters/registry.ts`, `agent-runner-selection.ts`, `external-agents/*`) |
+| OnboardingWizard (4) | Pass alone, fail in the full file: state leaks between tests. The hire-after-Back assertion must be proven on a clean run before closing |
+| GitHubChatSetup (1) | Error copy changed ("Could not verify this GitHub App") |
+| OpenAPI | 12 Bostan routes undocumented; in progress |
+| Verification-agent rule | "Verification must be assigned to a different agent" rejects fixtures in `issue-recovery-actions` and `case-handoff-privacy` |
+| Other server tests | `heartbeat-process-recovery`, `cloud-runtime-identity`, `git-workspace-expiration`, `workspace-runtime`, `plugin-install-autobuild`, `vitest-chat-shards` |
+| CI environment | cargo cold-build timeouts (`dot-runner`, `native-codex-runner`); POSIX PostgreSQL stop timeout (`idle-sleep-safety`) |
