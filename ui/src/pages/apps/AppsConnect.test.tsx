@@ -1388,9 +1388,9 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     expect(container.textContent).toContain("Open Box app settings");
     // The extra work reads as the provider's limitation, not as Box's normal path.
     expect(container.textContent).toContain(
-      "does not let Paperclip register itself automatically",
+      "does not let Bostan register itself automatically",
     );
-    expect(container.textContent).toContain("Paperclip callback URL");
+    expect(container.textContent).toContain("Bostan callback URL");
     expect(container.textContent).toContain(
       "https://paperclip.example.test/api/tools/oauth/callback",
     );
@@ -1631,7 +1631,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     await flushReact();
     if (!popupBlocked) expect(popup.close).toHaveBeenCalled();
     await openAccessAdvanced();
-    expect(container.textContent).toContain("What should Paperclip be able to do?");
+    expect(container.textContent).toContain("What should Bostan be able to do?");
     connectAppMock.mockResolvedValue({ connectionId: "gmail-1", connection: { id: "gmail-1", credentialPolicy: "per_user" }, auth: { kind: "oauth", startUrl: "https://example.test/unbound" } });
     await act(async () => buttonByText("Continue to sign in")?.click());
     await flushReact();
@@ -2024,7 +2024,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     await render();
 
     expect(container.textContent).toContain("Google Workspace");
-    expect(container.textContent).not.toContain("What should Paperclip be able to do?");
+    expect(container.textContent).not.toContain("What should Bostan be able to do?");
     await openAccessAdvanced();
     expect(buttonByText("Use your own Google OAuth app")).toBeDefined();
     expect(buttonByText("Continue to sign in")?.disabled).toBe(false);
@@ -2066,7 +2066,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     );
     expect(duplicateHeadings).toHaveLength(1);
     await openAccessAdvanced();
-    expect(container.textContent).toContain("What should Paperclip be able to do?");
+    expect(container.textContent).toContain("What should Bostan be able to do?");
     expect(container.textContent).toContain("Review requirements");
     expect(container.textContent).not.toContain("Connect Google Calendar to read and manage events.");
     expect(container.textContent).not.toContain("All event mutations require approval.");
@@ -2077,7 +2077,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     expect(container.querySelector('input[placeholder="My app"]')).toBeNull();
 
     const capabilityQuestion = Array.from(container.querySelectorAll("label")).find(
-      (label) => label.textContent === "What should Paperclip be able to do?",
+      (label) => label.textContent === "What should Bostan be able to do?",
     );
     expect(capabilityQuestion?.closest(".max-w-xl")?.classList.contains("bg-card")).toBe(false);
   });
@@ -2520,7 +2520,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
 
     expect(container.textContent).toContain("Use your own OAuth app");
     expect(container.querySelector("#curated-oauth-client-id")).toBeTruthy();
-    expect(container.textContent).toContain("Paperclip callback URL");
+    expect(container.textContent).toContain("Bostan callback URL");
   });
 
   it("shows unavailable Vercel configuration only inside the isolated Vercel entry point", async () => {
@@ -4254,7 +4254,7 @@ describe("AppsConnect — guided generic MCP flow (PAP-17087)", () => {
     await gotoLinkFrame(container, "https://mcp.zapier.com/api/v1/connect?token=t");
 
     // Both routes are present: the branded shortcut and the generic form itself.
-    expect(container.textContent).toContain("Paperclip has a guided setup for Zapier.");
+    expect(container.textContent).toContain("Bostan has a guided setup for Zapier.");
     expect(container.textContent).toContain("Connect your own MCP server");
     expect(buttonByText("Check link")).toBeTruthy();
   });
