@@ -14,7 +14,9 @@ import { createRequire } from "node:module";
 const ENDPOINT_ENV = "OTEL_EXPORTER_OTLP_ENDPOINT";
 const PROTOCOL_ENV = "OTEL_EXPORTER_OTLP_PROTOCOL";
 
+const OPT_IN_ENV = "BOSTAN_TRACING_OPT_IN";
 const originalEndpoint = process.env[ENDPOINT_ENV];
+const originalOptIn = process.env[OPT_IN_ENV];
 const originalProtocol = process.env[PROTOCOL_ENV];
 
 async function importFreshInstrumentation() {
@@ -23,11 +25,15 @@ async function importFreshInstrumentation() {
 }
 
 beforeEach(() => {
+  // These cases exercise the opted-in tracer; the opt-in gate has its own case.
+  process.env[OPT_IN_ENV] = "1";
   delete process.env[ENDPOINT_ENV];
   delete process.env[PROTOCOL_ENV];
 });
 
 afterEach(() => {
+  if (originalOptIn === undefined) delete process.env[OPT_IN_ENV];
+  else process.env[OPT_IN_ENV] = originalOptIn;
   if (originalEndpoint === undefined) delete process.env[ENDPOINT_ENV];
   else process.env[ENDPOINT_ENV] = originalEndpoint;
   if (originalProtocol === undefined) delete process.env[PROTOCOL_ENV];
@@ -85,6 +91,18 @@ describe("instrumentationReady", () => {
       expect.stringContaining("@opentelemetry/* packages are not installed"),
       expect.anything(),
     );
+  });
+
+  it("does not start tracing for an inherited endpoint without the Bostan opt-in", async () => {
+    delete process.env[OPT_IN_ENV];
+    process.env[ENDPOINT_ENV] = "http://collector:4318";
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const { instrumentationReady } = await importFreshInstrumentation();
+
+    // No bootstrap is attempted, so not even the missing-package diagnostic runs.
+    await expect(instrumentationReady).resolves.toBeUndefined();
+    expect(warn).not.toHaveBeenCalled();
   });
 });
 

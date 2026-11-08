@@ -21,7 +21,7 @@ operator turns the feature on. The three exporters below are mutually
 alternative peer dependencies — install exactly **one**, matching
 `OTEL_EXPORTER_OTLP_PROTOCOL`.
 
-When `OTEL_EXPORTER_OTLP_ENDPOINT` is unset, none of the `@opentelemetry/*` SDK
+When `BOSTAN_TRACING_OPT_IN=1` and `OTEL_EXPORTER_OTLP_ENDPOINT` are not both set, none of the `@opentelemetry/*` SDK
 packages are imported and there is no SDK or exporter overhead. Local request
 timings still use the performance clock.
 
@@ -146,6 +146,9 @@ pnpm add @opentelemetry/exporter-trace-otlp-grpc@0.221.0
 Minimal setup:
 
 ```bash
+# Required — Bostan exports no traces without this explicit opt-in; an
+# inherited OTEL_EXPORTER_OTLP_ENDPOINT alone is ignored.
+BOSTAN_TRACING_OPT_IN=1
 # Required — turns the feature on. Point at your collector.
 # For grpc this is the gRPC target (typically port 4317). For the HTTP
 # protocols give the collector's BASE URL (typically port 4318) — the
