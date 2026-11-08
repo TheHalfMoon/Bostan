@@ -1,5 +1,5 @@
 import path from "path";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
@@ -12,5 +12,7 @@ export default defineConfig({
     environment: "node",
     css: { include: [/motion-tokens\.css/] },
     setupFiles: ["./vitest.setup.ts"],
+    // scripts/*.test.mjs are node:test suites; CI runs them with `node --test`.
+    exclude: [...configDefaults.exclude, "scripts/**/*.test.mjs"],
   },
 });
