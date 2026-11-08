@@ -31,6 +31,22 @@ interface AppLogoProps {
 }
 
 /**
+ * Third-party catalog logos (e.g. aggregator CDNs) are never fetched: loading
+ * them would contact an outside host whenever the gallery opens. Bundled marks
+ * and same-origin URLs are used; anything else falls back to the letter tile.
+ */
+export function isSameOriginLogoUrl(url: string | null | undefined, base = typeof window === "undefined" ? undefined : window.location.href): boolean {
+  if (!url) return false;
+  if (/^(data|blob):/i.test(url)) return true;
+  try {
+    const parsed = new URL(url, base ?? "http://localhost/");
+    return base ? parsed.origin === new URL(base).origin : !/^[a-z][a-z0-9+.-]*:/i.test(url);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * App icon for the gallery and connected-apps surfaces. Renders the manifest
  * official local provider mark when available, including a dark-mode variant.
  * The deterministic letter tile is reserved for runtime image failures.
@@ -59,12 +75,12 @@ export function AppLogo({
   // chance to resolve this provider. Otherwise the browser requests the
   // remote asset during the first render even when a bundled mark exists.
   const resolvedLogoUrl = localLookupComplete
-    ? localAssets?.light ?? (allowRemoteFallback ? logoUrl : null)
+    ? localAssets?.light ?? (allowRemoteFallback && isSameOriginLogoUrl(logoUrl) ? logoUrl : null)
     : null;
   const resolvedDarkLogoUrl = localLookupComplete
     ? localAssets
       ? localAssets.dark ?? localAssets.light
-      : (allowRemoteFallback ? darkLogoUrl : null)
+      : (allowRemoteFallback && isSameOriginLogoUrl(darkLogoUrl) ? darkLogoUrl : null)
     : null;
   const lightLogoUrlForRender = resolvedLogoUrl && !failedLogoUrls.has(resolvedLogoUrl)
     ? resolvedLogoUrl

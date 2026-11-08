@@ -4,7 +4,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetAppBrandManifestCacheForTests } from "@/lib/app-brand-assets";
-import { AppLogo } from "./AppLogo";
+import { AppLogo, isSameOriginLogoUrl } from "./AppLogo";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -233,7 +233,24 @@ describe("AppLogo local brand assets", () => {
     expect(container.querySelector("img")?.getAttribute("src")).toBe("/brands/apps/github.svg");
   });
 
-  it("keeps the caller logo when the manifest has no matching provider", async () => {
+  it("keeps a same-origin caller logo when the manifest has no matching provider", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ schemaVersion: 1, providers: [] }),
+    }));
+    root = createRoot(container);
+    const sameOrigin = `${window.location.origin}/api/apps/custom.svg`;
+
+    await act(async () => {
+      root.render(<AppLogo name="Custom MCP" logoUrl={sameOrigin} />);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(container.querySelector("img")?.getAttribute("src")).toBe(sameOrigin);
+  });
+
+  it("never fetches a third-party caller logo and shows the letter tile instead", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ schemaVersion: 1, providers: [] }),
@@ -246,6 +263,16 @@ describe("AppLogo local brand assets", () => {
       await Promise.resolve();
     });
 
-    expect(container.querySelector("img")?.getAttribute("src")).toBe("https://remote.example/custom.svg");
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.textContent).toContain("C");
+  });
+
+  it("classifies logo URLs by origin", () => {
+    const base = "https://bostan.local/apps";
+    expect(isSameOriginLogoUrl("/assets/logo.svg", base)).toBe(true);
+    expect(isSameOriginLogoUrl("https://bostan.local/x.svg", base)).toBe(true);
+    expect(isSameOriginLogoUrl("data:image/svg+xml,<svg/>", base)).toBe(true);
+    expect(isSameOriginLogoUrl("https://logos.composio.dev/a.svg", base)).toBe(false);
+    expect(isSameOriginLogoUrl(null, base)).toBe(false);
   });
 });
