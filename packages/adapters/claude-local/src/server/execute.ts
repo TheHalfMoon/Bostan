@@ -60,8 +60,9 @@ import { buildSkillLibraryManifestMarkdown } from "@bostan/adapter-utils/skill-l
 import {
   parseLocalProcessFilesystemScope,
   parseLocalProcessSandboxExtraPaths,
-  parseLocalProcessNetworkAllowlist,
-  parseLocalProcessNetworkScope,
+  describeAgentNetworkPosture,
+  localProcessNetworkSandboxAvailable,
+  resolveAgentNetworkPosture,
   type LocalProcessSandboxOptions,
 } from "@bostan/adapter-utils/local-process-sandbox";
 import {
@@ -104,6 +105,10 @@ import {
   resolveClaudeExecutionEngineForRun,
 } from "./acp.js";
 
+
+// Default network allowlist for Claude runs (docs/bostan/B2_07_AGENT_NETWORK_POSTURE.md).
+// UNVERIFIED against live accounts; owners extend it with networkAllowlist.
+export const CLAUDE_DEFAULT_NETWORK_HOSTS = ["api.anthropic.com"] as const;
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const executeClaudeAcp = createClaudeAcpExecutor();
 
@@ -581,8 +586,18 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   });
   const localMcpConfigDir = path.dirname(localMcpConfigPath);
   const sharedClaudeConfigDir = config.managedAiConnection ? asString(configEnv.CLAUDE_CONFIG_DIR, "") : resolveSharedClaudeConfigDir(process.env);
-  const networkScope = parseLocalProcessNetworkScope(config.networkScope);
+  const sandboxCommand = asString(config.filesystemSandboxCommand, "bwrap");
+  const networkPosture = resolveAgentNetworkPosture({
+    networkScope: config.networkScope,
+    networkAllowlist: config.networkAllowlist,
+    providerHosts: CLAUDE_DEFAULT_NETWORK_HOSTS,
+    executionTargetIsRemote,
+    sandboxAvailable: () => localProcessNetworkSandboxAvailable(sandboxCommand),
+  });
+  const networkScope = networkPosture.mode === "enforced" ? networkPosture.scope : null;
   const filesystemScope = parseLocalProcessFilesystemScope(config.filesystemScope);
+  await onLog("stdout", `[bostan] Agent ${describeAgentNetworkPosture(networkPosture)}.
+`);
   const localProcessSandbox: LocalProcessSandboxOptions | null =
     (filesystemScope || networkScope) && !executionTargetIsRemote
       ? {
@@ -597,12 +612,12 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
           extraPaths: parseLocalProcessSandboxExtraPaths(config.filesystemExtraPaths),
           homeDir: filesystemScope ? path.dirname(sharedClaudeConfigDir) : null,
           networkScope,
-          networkAllowlist: parseLocalProcessNetworkAllowlist(config.networkAllowlist),
+          networkAllowlist: networkPosture.mode === "enforced" ? networkPosture.allowlist : [],
           networkTrustedUrls: [
             env.PAPERCLIP_API_URL,
             ...runtimeMcpServers.map((server) => server.url),
           ].filter((value): value is string => typeof value === "string" && value.length > 0),
-          command: asString(config.filesystemSandboxCommand, "bwrap"),
+          command: sandboxCommand,
         }
       : null;
   if (localProcessSandbox) {

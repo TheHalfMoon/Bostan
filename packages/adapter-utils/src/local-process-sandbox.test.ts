@@ -4,7 +4,7 @@ import http from "node:http";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createNetworkProxyBridge,
   buildLocalProcessSandboxSpawnTarget,
@@ -15,6 +15,8 @@ import {
   isValidLocalProcessProxyConnectPort,
   parseLocalProcessNetworkScope,
   parseLocalProcessSandboxExtraPaths,
+  resolveAgentNetworkPosture,
+  describeAgentNetworkPosture,
 } from "./local-process-sandbox.js";
 import { runChildProcess } from "./server-utils.js";
 
@@ -82,7 +84,7 @@ describe("local process sandbox", () => {
     for (const malformedPort of ["https://api.example.test:", "https://api.example.test:/"]) {
       expect(() => parseLocalProcessNetworkAllowlist([malformedPort])).toThrow("hostname, hostname:port, or origin URL");
     }
-    expect(() => parseLocalProcessNetworkScope("public")).toThrow('"deny" or "allowlist"');
+    expect(() => parseLocalProcessNetworkScope("public")).toThrow('"deny", "allowlist" or "unrestricted"');
   });
 
   it("preserves an explicitly pinned default port instead of granting every port", () => {
@@ -1597,4 +1599,41 @@ function request(url) {
       }
     },
   );
+});
+
+describe("agent network posture", () => {
+  const base = { networkScope: undefined, networkAllowlist: undefined, providerHosts: ["api.anthropic.com"] };
+
+  it("defaults to a provider allowlist on Linux when the sandbox works", () => {
+    expect(resolveAgentNetworkPosture({ ...base, networkAllowlist: ["github.com"], platform: "linux", sandboxAvailable: () => true }))
+      .toEqual({ mode: "enforced", scope: "allowlist", allowlist: ["api.anthropic.com", "github.com"], defaulted: true });
+  });
+
+  it("reports why access stays unrestricted where it cannot be enforced", () => {
+    expect(resolveAgentNetworkPosture({ ...base, platform: "win32", sandboxAvailable: () => true }))
+      .toEqual({ mode: "unrestricted", reason: "unsupported_platform" });
+    expect(resolveAgentNetworkPosture({ ...base, platform: "linux", sandboxAvailable: () => false }))
+      .toEqual({ mode: "unrestricted", reason: "sandbox_unavailable" });
+    expect(resolveAgentNetworkPosture({ ...base, platform: "linux", executionTargetIsRemote: true, sandboxAvailable: () => true }))
+      .toEqual({ mode: "unrestricted", reason: "remote_execution" });
+  });
+
+  it("honours an explicit opt-out and explicit scopes on any platform", () => {
+    const probe = vi.fn(() => true);
+    expect(resolveAgentNetworkPosture({ ...base, networkScope: "unrestricted", platform: "linux", sandboxAvailable: probe }))
+      .toEqual({ mode: "unrestricted", reason: "explicit_opt_out" });
+    expect(resolveAgentNetworkPosture({ ...base, networkScope: "deny", platform: "win32", sandboxAvailable: probe }))
+      .toEqual({ mode: "enforced", scope: "deny", allowlist: [], defaulted: false });
+    expect(probe).not.toHaveBeenCalled();
+  });
+
+  it("accepts unrestricted as no scope and rejects unknown values", () => {
+    expect(parseLocalProcessNetworkScope("unrestricted")).toBeNull();
+    expect(() => parseLocalProcessNetworkScope("open")).toThrow('"deny", "allowlist" or "unrestricted"');
+  });
+
+  it("describes unrestricted posture loudly", () => {
+    expect(describeAgentNetworkPosture({ mode: "unrestricted", reason: "sandbox_unavailable" }))
+      .toBe("network access is UNRESTRICTED (the bubblewrap sandbox is unavailable on this host)");
+  });
 });

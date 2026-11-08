@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs/promises";
 import http from "node:http";
 import net from "node:net";
@@ -183,9 +184,81 @@ export function parseLocalProcessNetworkAllowlist(value: unknown): string[] {
 }
 
 export function parseLocalProcessNetworkScope(value: unknown): LocalProcessNetworkScope | null {
-  if (value == null || value === "") return null;
+  // "unrestricted" is the owner's explicit opt-out from the default posture.
+  if (value == null || value === "" || value === "unrestricted") return null;
   if (value === "deny" || value === "allowlist") return value;
-  throw new Error('networkScope must be "deny" or "allowlist".');
+  throw new Error('networkScope must be "deny", "allowlist" or "unrestricted".');
+}
+
+export type AgentNetworkPosture =
+  | { mode: "enforced"; scope: LocalProcessNetworkScope; allowlist: string[]; defaulted: boolean }
+  | {
+    mode: "unrestricted";
+    reason: "explicit_opt_out" | "remote_execution" | "unsupported_platform" | "sandbox_unavailable";
+  };
+
+/**
+ * Resolve a local agent's network posture (docs/bostan/B2_07_AGENT_NETWORK_POSTURE.md).
+ * An explicit deny/allowlist is kept as is (enforcement still fails closed when
+ * the sandbox cannot apply it). With no explicit scope, a Linux host whose
+ * sandbox works defaults to an allowlist of the adapter's provider hosts plus
+ * the owner's networkAllowlist; anywhere else the run is unrestricted and the
+ * reason is reported so it can be surfaced to the owner.
+ */
+export function resolveAgentNetworkPosture(input: {
+  networkScope: unknown;
+  networkAllowlist: unknown;
+  providerHosts: readonly string[];
+  executionTargetIsRemote?: boolean;
+  platform?: NodeJS.Platform;
+  sandboxAvailable: () => boolean;
+}): AgentNetworkPosture {
+  if (input.networkScope === "unrestricted") return { mode: "unrestricted", reason: "explicit_opt_out" };
+  const explicitScope = parseLocalProcessNetworkScope(input.networkScope);
+  const ownerAllowlist = parseLocalProcessNetworkAllowlist(input.networkAllowlist);
+  if (explicitScope) return { mode: "enforced", scope: explicitScope, allowlist: ownerAllowlist, defaulted: false };
+  if (input.executionTargetIsRemote) return { mode: "unrestricted", reason: "remote_execution" };
+  if ((input.platform ?? process.platform) !== "linux") return { mode: "unrestricted", reason: "unsupported_platform" };
+  if (!input.sandboxAvailable()) return { mode: "unrestricted", reason: "sandbox_unavailable" };
+  const allowlist = [...new Set([...parseLocalProcessNetworkAllowlist([...input.providerHosts]), ...ownerAllowlist])];
+  return { mode: "enforced", scope: "allowlist", allowlist, defaulted: true };
+}
+
+const sandboxProbeResults = new Map<string, boolean>();
+
+/**
+ * Whether the bubblewrap sandbox can create a network namespace on this host.
+ * Cached per command for the life of the process; containers without user
+ * namespaces or hosts without bwrap report false.
+ */
+export function localProcessNetworkSandboxAvailable(command = "bwrap"): boolean {
+  const cached = sandboxProbeResults.get(command);
+  if (cached !== undefined) return cached;
+  let available = false;
+  if (process.platform === "linux") {
+    const probe = spawnSync(command, ["--die-with-parent", "--unshare-net", "--ro-bind", "/", "/", "--dev", "/dev", "true"], {
+      stdio: "ignore",
+      timeout: 5000,
+    });
+    available = probe.status === 0;
+  }
+  sandboxProbeResults.set(command, available);
+  return available;
+}
+
+export function describeAgentNetworkPosture(posture: AgentNetworkPosture): string {
+  if (posture.mode === "enforced") {
+    return posture.scope === "deny"
+      ? "network access denied"
+      : `network limited to ${posture.allowlist.join(", ")}${posture.defaulted ? " (default)" : ""}`;
+  }
+  const reasons = {
+    explicit_opt_out: "the owner opted out",
+    remote_execution: "remote execution target",
+    unsupported_platform: `network rules are not enforceable on ${process.platform}`,
+    sandbox_unavailable: "the bubblewrap sandbox is unavailable on this host",
+  } as const;
+  return `network access is UNRESTRICTED (${reasons[posture.reason]})`;
 }
 
 export function parseLocalProcessFilesystemScope(value: unknown): "workspace" | null {

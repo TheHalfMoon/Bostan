@@ -62,8 +62,9 @@ import {
 import {
   parseLocalProcessFilesystemScope,
   parseLocalProcessSandboxExtraPaths,
-  parseLocalProcessNetworkAllowlist,
-  parseLocalProcessNetworkScope,
+  describeAgentNetworkPosture,
+  localProcessNetworkSandboxAvailable,
+  resolveAgentNetworkPosture,
   type LocalProcessSandboxOptions,
 } from "@bostan/adapter-utils/local-process-sandbox";
 import {
@@ -116,6 +117,10 @@ import {
 } from "./acp.js";
 import { codexShellEnvironmentKeys } from "@bostan/adapter-utils/codex-shell-environment";
 
+
+// Default network allowlist for Codex runs (docs/bostan/B2_07_AGENT_NETWORK_POSTURE.md).
+// UNVERIFIED against live accounts; owners extend it with networkAllowlist.
+export const CODEX_DEFAULT_NETWORK_HOSTS = ["api.openai.com", "chatgpt.com", "auth.openai.com"] as const;
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const executeCodexAcp = createCodexAcpExecutor();
 const CODEX_ROLLOUT_NOISE_RE =
@@ -1041,8 +1046,18 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     const managedBilling = resolveManagedOpenAiBilling(config.managedAiRouting);
     const billingType = managedBilling?.billingType ?? resolveCodexBillingType(effectiveEnv);
     const biller = managedBilling?.biller ?? resolveCodexBiller(effectiveEnv, billingType);
-    const networkScope = parseLocalProcessNetworkScope(config.networkScope);
+    const sandboxCommand = asString(config.filesystemSandboxCommand, "bwrap");
+    const networkPosture = resolveAgentNetworkPosture({
+      networkScope: config.networkScope,
+      networkAllowlist: config.networkAllowlist,
+      providerHosts: CODEX_DEFAULT_NETWORK_HOSTS,
+      executionTargetIsRemote,
+      sandboxAvailable: () => localProcessNetworkSandboxAvailable(sandboxCommand),
+    });
+    const networkScope = networkPosture.mode === "enforced" ? networkPosture.scope : null;
     const filesystemScope = parseLocalProcessFilesystemScope(config.filesystemScope);
+    await onLog("stdout", `[bostan] Agent ${describeAgentNetworkPosture(networkPosture)}.
+`);
     const localProcessSandbox: LocalProcessSandboxOptions | null =
       (filesystemScope || networkScope) && !executionTargetIsRemote
         ? {
@@ -1056,12 +1071,12 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
             outboundRestorePaths: targetWorkspaceRealization?.outboundRestorePaths ?? [],
             homeDir: filesystemScope ? effectiveCodexHome : null,
             networkScope,
-            networkAllowlist: parseLocalProcessNetworkAllowlist(config.networkAllowlist),
+            networkAllowlist: networkPosture.mode === "enforced" ? networkPosture.allowlist : [],
             networkTrustedUrls: [
               paperclipBaseEnv.PAPERCLIP_API_URL,
               ...runtimeMcpGateways.map((gateway) => gateway.endpointPath),
             ],
-            command: asString(config.filesystemSandboxCommand, "bwrap"),
+            command: sandboxCommand,
           }
         : null;
     if (localProcessSandbox) {
