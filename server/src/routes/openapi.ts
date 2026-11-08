@@ -4557,6 +4557,91 @@ registry.registerPath({
   responses: { 200: r.ok(), 401: r.unauthorized, 403: r.forbidden, 404: r.notFound },
 });
 
+const bostanSnapshotHmacSchema = z.string().regex(/^[a-f0-9]{64}$/);
+const bostanEvidenceAuthDescription = "Board-only; requires company access and company_scope:read, and only tasks the caller can read are considered.";
+
+registry.registerPath({
+  method: "get",
+  path: "/api/companies/{companyId}/issues/{issueId}/bostan-evidence/documents/{documentId}",
+  tags: ["issues"],
+  summary: "Read scoped Bostan evidence for a task document",
+  description: `${bostanEvidenceAuthDescription} Returns the Bostan evidence record for the document on the task; 404 when it is not found or not readable.`,
+  request: { params: z.object({ companyId: z.uuid(), issueId: z.uuid(), documentId: z.uuid() }) },
+  responses: { 200: r.ok(), 400: r.badRequest, 401: r.unauthorized, 403: r.forbidden, 404: r.notFound },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/api/companies/{companyId}/issues/{issueId}/bostan-evidence/documents/{documentId}/freshness",
+  tags: ["issues"],
+  summary: "Check a task document against a Bostan snapshot commitment",
+  description: `${bostanEvidenceAuthDescription} Read-only: compares the current document with the supplied snapshot HMAC and returns the freshness assessment (Cache-Control: no-store); 404 when the scoped source is no longer accessible.`,
+  request: {
+    params: z.object({ companyId: z.uuid(), issueId: z.uuid(), documentId: z.uuid() }),
+    body: jsonBody(z.object({ expectedSnapshotHmacSha256: bostanSnapshotHmacSchema }).strict()),
+  },
+  responses: { 200: r.ok(), 400: r.badRequest, 401: r.unauthorized, 403: r.forbidden, 404: r.notFound },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/api/companies/{companyId}/bostan-evidence/snapshots/freshness",
+  tags: ["issues"],
+  summary: "Check a bounded set of Bostan citations for freshness",
+  description: `${bostanEvidenceAuthDescription} Read-only POST (keeps snapshot commitments out of URLs): accepts 1-10 unique issue/document citations with expected snapshot HMACs and returns the batch freshness result (Cache-Control: no-store). No model, action or decision is dispatched.`,
+  request: {
+    params: z.object({ companyId: z.uuid() }),
+    body: jsonBody(z.object({
+      sources: z.array(z.object({
+        issueId: z.uuid(),
+        documentId: z.uuid(),
+        expectedSnapshotHmacSha256: bostanSnapshotHmacSchema,
+      }).strict()).min(1).max(10),
+    }).strict()),
+  },
+  responses: { 200: r.ok(), 400: r.badRequest, 401: r.unauthorized, 403: r.forbidden },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/api/companies/{companyId}/issues/{issueId}/bostan-evidence/ocr-preview",
+  tags: ["issues"],
+  summary: "Preview offline OCR text for an image on a readable task",
+  description: `${bostanEvidenceAuthDescription} Returns 404 unless local OCR preview is enabled on the instance, or when the task is hidden or not readable. Returns untrusted preview text only (Cache-Control: no-store); it never creates a document revision, citation, recommendation, decision or action permission. 429 with Retry-After when local OCR capacity is busy; 503 when the image cannot be processed.`,
+  request: {
+    params: z.object({ companyId: z.uuid(), issueId: z.uuid() }),
+    body: jsonBody(z.object({
+      mimeType: z.enum(["image/png", "image/jpeg"]),
+      base64: z.string().min(12).max(349_528),
+      language: z.enum(["eng", "ara", "eng+ara"]),
+    }).strict()),
+  },
+  responses: {
+    200: r.ok(), 400: r.badRequest, 401: r.unauthorized, 403: r.forbidden, 404: r.notFound,
+    429: r.tooManyRequests, 503: { description: "Local offline OCR could not process this image", content: { "application/json": { schema: ErrorSchema } } },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/companies/{companyId}/bostan-analytics/task-insights",
+  tags: ["issues"],
+  summary: "Read Bostan task insights for a time window",
+  description: "Board-only; requires company access and company_scope:read. Aggregates over the tasks the caller can read for the last 7, 30 or 90 days without returning task titles, details or agent conversations (Cache-Control: private, no-store).",
+  request: { params: z.object({ companyId: z.string() }), query: z.object({ days: z.enum(["7", "30", "90"]).optional() }).strict() },
+  responses: { 200: r.ok(), 400: r.badRequest, 401: r.unauthorized, 403: r.forbidden },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/cases/{id}/bostan-verification",
+  tags: ["Cases"],
+  summary: "Read the board summary of a case's Bostan independent verification",
+  description: "Requires enableCases, a board actor and read access to the case. Returns 404 unless the case requires Bostan independent verification and has a work task. Returns a bostan.verification.board-summary.v1 snapshot: whether the current verifier report's cited evidence is current, a bounded report summary and cited document count, with factualRelevanceVerified=false, sourceContentIsUntrusted=true and executionAuthorized=false (Cache-Control: private, no-store). No model runs, source bodies or approvals.",
+  request: { params: z.object({ id: z.string() }) },
+  responses: { 200: r.ok(), 401: r.unauthorized, 403: r.forbidden, 404: r.notFound },
+});
+
 registry.registerPath({
   method: "put",
   path: "/api/issues/{id}/documents/{key}",
@@ -6567,6 +6652,51 @@ registerCurrentRoute({
     404: r.notFound,
     409: r.conflict,
   },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/decisions/{id}/bostan-freshness",
+  tags: ["decisions"],
+  summary: "Check whether a Bostan decision recommendation is still current",
+  description: "Board-only; the caller must already be able to access the decision. Applies only to decisions with ruleKey bostan.decision_recommendation.v1 (others return 404). Returns the decision ID and status, a `current` freshness boolean (always false unless the decision is open), whether a positive choice is allowed, the IDs of effect-free defer/request_evidence options, and authoritativeExecutionAllowed=false. No amounts, HMACs or evidence bodies are returned.",
+  request: { params: z.object({ id: z.string() }) },
+  responses: { 200: r.ok(), 401: r.unauthorized, 403: r.forbidden, 404: r.notFound },
+});
+
+// Mirrors bostanRecommendationSchema in services/bostan-decision-recommendations
+// (kept local so the spec builder does not import database-bound services).
+// Cross-field uniqueness/membership refinements are enforced by the handler.
+const bostanOptionIdSchema = z.string().regex(/^[a-z][a-z0-9_-]{0,59}$/);
+const bostanDecisionRecommendationBodySchema = z.object({
+  title: z.string().trim().min(1).max(500),
+  rationale: z.string().trim().min(1).max(4_000),
+  alternatives: z.array(z.object({
+    id: bostanOptionIdSchema,
+    label: z.string().trim().min(1).max(240),
+    rationale: z.string().trim().min(1).max(1_000),
+  }).strict()).min(2).max(6),
+  recommendedOptionId: bostanOptionIdSchema,
+  confidence: z.number().min(0).max(1).describe("Self-reported by the agent; not calibrated accuracy"),
+  estimatedCostUsd: z.number().min(0).max(1_000_000),
+  costCeilingUsd: z.number().min(0).max(1_000_000),
+  evidenceIssueIds: z.array(z.uuid()).min(1).max(10),
+  evidenceDocuments: z.array(z.object({
+    issueId: z.uuid(),
+    documentId: z.uuid(),
+    expectedSnapshotHmacSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  }).strict()).max(10).optional(),
+  idempotencyKey: z.string().trim().min(1).max(500),
+}).strict();
+
+registry.registerPath({
+  method: "post",
+  path: "/api/companies/{companyId}/bostan-decision-recommendations",
+  tags: ["decisions"],
+  summary: "Create a Bostan decision recommendation for board review",
+  description: "Agent-only with an active run context and company access. Evidence issue IDs must be unique, belong to the company and be readable by the agent; cited documents must belong to a cited issue and match their current snapshot commitment; the recommended option must be one of the alternatives. Creates a company-scoped board decision and returns it with 201. A recommendation never authorizes tool dispatch or task changes.",
+  request: { params: z.object({ companyId: z.string() }), body: jsonBody(bostanDecisionRecommendationBodySchema) },
+  responses: { 201: r.ok(), 400: r.badRequest, 401: r.unauthorized, 403: r.forbidden, 422: r.unprocessable },
 });
 
 // ─── Decision training ──────────────────────────────────────────────────────
@@ -12542,6 +12672,57 @@ registerCurrentRoute({
     search: z.string().optional(),
     cursor: z.string().optional(),
   }),
+});
+
+// Mirrors bostanLocalReadbackSchema in routes/tool-gateway.ts.
+const bostanLocalFileReadbackBodySchema = z.object({
+  companyId: z.uuid(),
+  workspaceId: z.uuid(),
+  invocationId: z.uuid(),
+  relativePath: z.string().min(1).max(1024),
+  expectedSha256: z.string().regex(/^[0-9a-f]{64}$/),
+  expectedByteSize: z.number().int().nonnegative().max(8 * 1024 * 1024).describe("At most BOSTAN_FILE_READBACK_LIMIT_BYTES (8 MiB)"),
+}).strict();
+const bostanLocalReadbackAuthDescription = "Board-only; requires both tools:view_audit and tools:manage_runtime for the company (local implicit board and instance admins pass).";
+
+registry.registerPath({
+  method: "post",
+  path: "/api/tool-gateway/bostan-local-file-readback",
+  tags: ["tool-gateway"],
+  summary: "Record a bounded Bostan local file readback for a tool invocation",
+  description: `${bostanLocalReadbackAuthDescription} Reads back a file at a relative path inside the scoped local invocation workspace and compares it with the expected SHA-256 and byte size. Returns the observed readback receipt; 404 when the scoped workspace is not found.`,
+  request: { body: jsonBody(bostanLocalFileReadbackBodySchema) },
+  responses: { 200: r.ok(), 400: r.badRequest, 401: r.unauthorized, 403: r.forbidden, 404: r.notFound },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/tool-gateway/bostan-local-file-readback/{receiptId}",
+  tags: ["tool-gateway"],
+  summary: "Inspect a Bostan local file readback receipt",
+  description: `${bostanLocalReadbackAuthDescription} Returns the company-scoped readback receipt; 404 when it is not found.`,
+  request: { params: z.object({ receiptId: z.uuid() }), query: z.object({ companyId: z.uuid() }) },
+  responses: { 200: r.ok(), 400: r.badRequest, 401: r.unauthorized, 403: r.forbidden, 404: r.notFound },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/api/tool-gateway/bostan-local-file-readback/{receiptId}/recheck",
+  tags: ["tool-gateway"],
+  summary: "Recheck a Bostan local file readback receipt",
+  description: `${bostanLocalReadbackAuthDescription} Re-reads the file for an existing receipt using the same bounded request shape and returns the fresh result; 404 when the receipt is not found and 409 with a reasonCode when the historical receipt cannot be rechecked with this request.`,
+  request: { params: z.object({ receiptId: z.uuid() }), body: jsonBody(bostanLocalFileReadbackBodySchema) },
+  responses: { 200: r.ok(), 400: r.badRequest, 401: r.unauthorized, 403: r.forbidden, 404: r.notFound, 409: r.conflict },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/tool-gateway/bostan-action-evidence/{invocationId}",
+  tags: ["tool-gateway"],
+  summary: "Read the Bostan action evidence assessment for a tool invocation",
+  description: "Board-only; requires tools:view_audit for the company. Returns the evidence assessment for the company-scoped invocation; 404 when the invocation is not found.",
+  request: { params: z.object({ invocationId: z.uuid() }), query: z.object({ companyId: z.uuid() }) },
+  responses: { 200: r.ok(), 400: r.badRequest, 401: r.unauthorized, 403: r.forbidden, 404: r.notFound },
 });
 
 // Every experimental REST route remains discoverable while its runtime feature
