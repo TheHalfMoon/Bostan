@@ -221,7 +221,7 @@ function buildConnectionErrorMessage(input: {
 }): string {
   const healthUrl = buildHealthCheckUrl(input.url);
   const lines = [
-    "Could not reach the Paperclip API.",
+    "Could not reach the Bostan API.",
     "",
     `Request: ${input.method} ${input.url}`,
   ];
