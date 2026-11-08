@@ -9,7 +9,8 @@ describe("B6-03 agent invitation and connection identity", () => {
       onboardingTextUrl: "https://bostan.example/api/invites/invite-1/onboarding.txt",
     });
     expect(instructions).toContain("join a Bostan company");
-    expect(instructions).toContain("npx paperclipai allowed-hostname");
+    expect(instructions).toContain("BOSTAN_ALLOWED_HOSTNAMES=<host>");
+    expect(instructions).not.toContain("npx paperclipai");
     expect(instructions).toContain("PAPERCLIP_API_KEY");
     expect(instructions).toContain("agentDefaultsPayload.paperclipApiUrl");
     expect(instructions).not.toMatch(/\bPaperclip\b/);

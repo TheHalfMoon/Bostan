@@ -239,7 +239,8 @@ describe("CloudAccessGate", () => {
 
     expect(container.textContent).toContain("Finish setting up Bostan");
     expect(container.textContent).toContain("Sign in / Create account");
-    expect(container.textContent).toContain("npx paperclipai auth bootstrap-ceo");
+    expect(container.textContent).toContain("does not provide a first-admin bootstrap command");
+    expect(container.textContent).not.toContain("paperclipai");
     expect(mockAccessApi.getCurrentBoardAccess).not.toHaveBeenCalled();
 
     unmountRoot(root);
