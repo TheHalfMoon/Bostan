@@ -264,6 +264,11 @@ vi.mock("@bostan/db", async (importOriginal) => ({
 
 vi.mock("../app.js", () => ({
   createApp: createAppMock,
+  // index.ts gates the private-hostname guard with this pure helper; keep the
+  // app.ts rule here rather than importing app.js past the createApp mock.
+  shouldEnablePrivateHostnameGuard: (opts: { deploymentMode: string; deploymentExposure: string }) =>
+    opts.deploymentExposure === "private" &&
+    (opts.deploymentMode === "local_trusted" || opts.deploymentMode === "authenticated"),
 }));
 
 // Startup owns registration. Durable budget/accounting state and coordinator
