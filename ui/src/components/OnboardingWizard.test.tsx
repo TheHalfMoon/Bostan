@@ -311,10 +311,21 @@ function renderWizardView(root: ReturnType<typeof createRoot>, queryClient: Quer
 
 const SESSION_USER_ID = "user-b";
 
+// Clearing document.body does not unmount React trees: a wizard left mounted by
+// one test keeps its effects and pending requests alive and can hire or move
+// login state inside the next test. Track roots and unmount leftovers.
+const liveRoots = new Set<ReturnType<typeof createRoot>>();
+
 function render(staleTime = 0) {
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
+  liveRoots.add(root);
+  const unmountRoot = root.unmount.bind(root);
+  root.unmount = () => {
+    liveRoots.delete(root);
+    unmountRoot();
+  };
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime } },
   });
@@ -440,7 +451,10 @@ describe("OnboardingWizard restore-gate (stale localStorage across accounts)", (
     mockGoalsApi.list.mockResolvedValue([]);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await act(async () => {
+      for (const root of [...liveRoots]) root.unmount();
+    });
     document.body.innerHTML = "";
     vi.clearAllMocks();
   });
@@ -2991,7 +3005,9 @@ describe("OnboardingWizard restore-gate (stale localStorage across accounts)", (
       for (let i = 0; i < 8; i++) await flushReact();
 
       expect(mockAgentsApi.submitClaudeSetupTokenBrowserCode).toHaveBeenCalledTimes(1);
-      expect(document.body.textContent).toContain("That authorization code was not accepted.");
+      // adapter-error-privacy: fixed guidance replaces the raw adapter error.
+      expect(document.body.textContent).toContain("Could not submit the authorization code. Retry.");
+      expect(document.body.textContent).not.toContain("That authorization code was not accepted.");
       expect(cta()).toBe("Sign in to Claude");
       expect(mockAgentsApi.hire).not.toHaveBeenCalled();
 
@@ -3456,7 +3472,8 @@ describe("OnboardingWizard restore-gate (stale localStorage across accounts)", (
       await pickSource(/OpenAI/);
 
       expect(mockAgentsApi.startAdapterAuthLogin).not.toHaveBeenCalled();
-      expect(document.body.textContent).toContain("Service unavailable");
+      expect(document.body.textContent).toContain("Could not check the active sign-in session. Retry.");
+      expect(document.body.textContent).not.toContain("Service unavailable");
 
       await act(async () => root.unmount());
     });
@@ -3472,7 +3489,8 @@ describe("OnboardingWizard restore-gate (stale localStorage across accounts)", (
       await pickSource(/Claude/);
 
       expect(mockAgentsApi.startClaudeSetupTokenLogin).not.toHaveBeenCalled();
-      expect(document.body.textContent).toContain("Service unavailable");
+      expect(document.body.textContent).toContain("Could not check the active sign-in session. Retry.");
+      expect(document.body.textContent).not.toContain("Service unavailable");
 
       await act(async () => root.unmount());
     });
