@@ -184,6 +184,14 @@ describe.skipIf(!support.supported)('skill source persistence', () => {
     } finally { files = originalFiles; commit = originalCommit; }
   });
 
+  it('creates company sources without automatic updates until the owner enables them', async () => {
+    const created = await skillSourceService(db).create(companyId, { repositoryUrl: 'https://github.com/acme/skills', trackingRef: 'auto-default', commitSha: sha, selectedPaths: [] }, context);
+    const [stored] = await db.select().from(companySkillSources).where(eq(companySkillSources.id, created.source.id));
+    // No automatic outbound fetches for a company source by default (#30).
+    expect(stored!.automaticUpdates).toBe(false);
+    expect(created.source.syncState).toBe('paused');
+  });
+
   it('persists automatic work limits, refills capacity, and allows explicit refresh', async () => {
     const originalFiles = files, originalCommit = commit;
     try {
