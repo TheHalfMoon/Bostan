@@ -84,7 +84,7 @@ describe("local process sandbox", () => {
     for (const malformedPort of ["https://api.example.test:", "https://api.example.test:/"]) {
       expect(() => parseLocalProcessNetworkAllowlist([malformedPort])).toThrow("hostname, hostname:port, or origin URL");
     }
-    expect(() => parseLocalProcessNetworkScope("public")).toThrow('"deny" or "allowlist"');
+    expect(() => parseLocalProcessNetworkScope("public")).toThrow('"deny", "allowlist" or "unrestricted"');
   });
 
   it("preserves an explicitly pinned default port instead of granting every port", () => {
