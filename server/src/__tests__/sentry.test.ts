@@ -11,6 +11,14 @@ import { finalizeServerShutdown } from "../shutdown.js";
 import { authRoutes } from "../routes/auth.js";
 import * as sentryModule from "../sentry.js";
 
+
+// These suites exercise the opted-in error reporter; Bostan reports nothing
+// without BOSTAN_ERROR_REPORTING_OPT_IN=1 (see sentry-dsn.test.ts for the gate).
+// Each file's afterEach already calls vi.unstubAllEnvs().
+beforeEach(() => {
+  vi.stubEnv("BOSTAN_ERROR_REPORTING_OPT_IN", "1");
+});
+
 /**
  * Tests for the opt-in Sentry error-monitoring gate. `@sentry/node` is an
  * optional runtime dependency and is NOT installed in CI, which is itself

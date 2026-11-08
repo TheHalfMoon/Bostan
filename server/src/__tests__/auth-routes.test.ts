@@ -1,8 +1,16 @@
 import express from "express";
 import request from "supertest";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 import { errorHandler } from "../middleware/index.js";
 import { authRoutes } from "../routes/auth.js";
+
+
+// These suites exercise the opted-in error reporter; Bostan reports nothing
+// without BOSTAN_ERROR_REPORTING_OPT_IN=1 (see sentry-dsn.test.ts for the gate).
+// Each file's afterEach already calls vi.unstubAllEnvs().
+beforeEach(() => {
+  vi.stubEnv("BOSTAN_ERROR_REPORTING_OPT_IN", "1");
+});
 
 function createSelectChain(rows: unknown[]) {
   return {

@@ -19,7 +19,14 @@ function normalize(value: string | undefined): string | null {
   return value ? value : null;
 }
 
+// Bostan sends no error reports to any Sentry project unless the operator
+// opts in explicitly; a DSN inherited through the environment is not consent.
+export const ERROR_REPORTING_OPT_IN_ENV = "BOSTAN_ERROR_REPORTING_OPT_IN";
+
 export function resolveSentryDsns(env: NodeJS.ProcessEnv = process.env): SentryDsns {
+  if (env[ERROR_REPORTING_OPT_IN_ENV] !== "1") {
+    return { frontend: null, backend: null, legacyFallbackUsed: false };
+  }
   const legacy = normalize(env.SENTRY_DSN);
   const specificFrontend = normalize(env.SENTRY_DSN_FRONTEND);
   const specificBackend = normalize(env.SENTRY_DSN_BACKEND);

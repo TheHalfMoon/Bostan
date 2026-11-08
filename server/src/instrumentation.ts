@@ -39,7 +39,12 @@ import { checkExactPeerVersions } from "./peer-version-check.js";
 
 export { checkExactPeerVersions } from "./peer-version-check.js";
 
-const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT?.trim();
+// Bostan exports no traces unless the operator opts in explicitly; an inherited
+// OTEL_EXPORTER_OTLP_ENDPOINT alone is not consent.
+export const TRACING_OPT_IN_ENV = "BOSTAN_TRACING_OPT_IN";
+const endpoint = process.env[TRACING_OPT_IN_ENV] === "1"
+  ? process.env.OTEL_EXPORTER_OTLP_ENDPOINT?.trim()
+  : undefined;
 
 let sdkShutdown: (() => Promise<void>) | null = null;
 let shutdownPromise: Promise<void> | null = null;
