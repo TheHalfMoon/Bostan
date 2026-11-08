@@ -114,7 +114,36 @@ export interface Agent {
   updatedAt: Date;
 }
 
+/**
+ * The agent's resolved network posture on the server host
+ * (docs/bostan/B2_07_AGENT_NETWORK_POSTURE.md). "unrestricted" postures must
+ * be acknowledged by an operator for the specific reason shown.
+ */
+export type AgentNetworkPostureView =
+  | { mode: "not_applicable" }
+  | {
+    mode: "enforced";
+    scope: "deny" | "allowlist";
+    allowlist: string[];
+    defaulted: boolean;
+    description: string;
+    acknowledged: boolean;
+  }
+  | {
+    mode: "unrestricted";
+    reason:
+      | "explicit_opt_out"
+      | "remote_execution"
+      | "unsupported_platform"
+      | "sandbox_unavailable"
+      | "adapter_unsupported"
+      | "invalid_settings";
+    description: string;
+    acknowledged: boolean;
+  };
+
 export interface AgentDetail extends Agent {
+  networkPosture?: AgentNetworkPostureView;
   chainOfCommand: AgentChainOfCommandEntry[];
   access: AgentAccessState;
 }

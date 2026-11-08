@@ -60,6 +60,7 @@ import { Identity } from "../components/Identity";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { AgentActionButtons } from "../components/AgentActionButtons";
 import { InlineBanner } from "../components/InlineBanner";
+import { AgentNetworkPostureBanner } from "../components/AgentNetworkPostureBanner";
 import { BuiltInBundlePanel } from "../components/BuiltInBundlePanel";
 import { ConfigureBuiltInAgentModal } from "../components/ConfigureBuiltInAgentModal";
 import { TrustPresetSection } from "../components/TrustPresetSection";
@@ -2111,6 +2112,12 @@ export function ConfigurationTab({
 
   return (
     <div className="agent-settings-form space-y-6">
+      {content !== "permissions" ? (
+        <AgentNetworkPostureBanner
+          agent={agent}
+          onAcknowledge={(patch) => updateAgent.mutateAsync({ target: agent, patch })}
+        />
+      ) : null}
       {content !== "permissions" ? <AgentConfigForm
         mode="edit"
         agent={agent}
