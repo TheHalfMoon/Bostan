@@ -20,7 +20,7 @@ import {
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   chatActions,
@@ -28,7 +28,7 @@ import {
   chatEndpoints,
   chatPublications,
   chatTeamsFileTransfers,
-} from "@paperclipai/db";
+} from "@bostan/db";
 
 import { logger } from "../../../middleware/logger.js";
 

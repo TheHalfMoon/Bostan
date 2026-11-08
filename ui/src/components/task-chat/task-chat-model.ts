@@ -20,11 +20,11 @@ import type {
   IssueDocument,
   IssueDocumentSummary,
   IssueWorkProduct,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import type {
   PaperclipQuestionResponse,
   PaperclipQuestionSet,
-} from "@paperclipai/adapter-utils";
+} from "@bostan/adapter-utils";
 
 export type { PaperclipQuestionResponse, PaperclipQuestionSet };
 

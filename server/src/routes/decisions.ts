@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   createDecisionArchiveProposalSchema,
   decisionInputsSchema,
@@ -9,9 +9,11 @@ import {
   type AttentionArchiveTargetSnapshot,
   type AttentionItem,
   type CreateDecisionArchiveProposalInput,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { validate } from "../middleware/validate.js";
 import { decisionService, type DecisionServiceOptions } from "../services/decisions.js";
+import { bostanRecommendationSchema, createBostanRecommendation } from "../services/bostan-decision-recommendations.js";
+import { isBostanRecommendationFresh } from "../services/bostan-recommendation-freshness.js";
 import { assertBoard, assertBoardOrAgent, assertCompanyAccess, getAccessibleResource, getActorInfo } from "./authz.js";
 import { attentionService } from "../services/attention.js";
 import { authorizationDeniedDetails, authorizationService } from "../services/authorization.js";
@@ -135,6 +137,16 @@ export function decisionRoutes(db: Db, options: DecisionServiceOptions) {
       res.status(201).json(created);
     },
   );
+  router.post("/companies/:companyId/bostan-decision-recommendations", validate(bostanRecommendationSchema), async (req, res) => {
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const agent = agentContext(req);
+    if (!agent) { res.status(403).json({ error: "Agent run context required" }); return; }
+    const result = await createBostanRecommendation({
+      db, serviceOptions: options, companyId, actor: req.actor, ...agent, body: req.body,
+    });
+    res.status(201).json(result);
+  });
   router.post("/companies/:companyId/decisions", validate(createSchema), async (req, res) => {
     const companyId = req.params.companyId as string; assertCompanyAccess(req, companyId);
     const agent = agentContext(req); if (!agent) { res.status(403).json({ error: "Agent run context required" }); return; }
@@ -170,6 +182,28 @@ export function decisionRoutes(db: Db, options: DecisionServiceOptions) {
     }
     const originAgentId = req.actor.type === "agent" ? req.actor.agentId : query.data.originAgentId;
     res.json(await svc.stats(companyId, { originAgentId, since: query.data.since }));
+  });
+  router.get("/decisions/:id/bostan-freshness", async (req, res) => {
+    // An agent must not probe private board financial-policy decisions; show
+    // only a safe boolean to an authorized human already entitled to this
+    // decision. No amounts, HMACs or evidence body are returned.
+    assertBoard(req);
+    const decision = await getAccessibleResource(req, res, svc.get(req.params.id as string), "Decision not found");
+    if (!decision) return;
+    if (decision.ruleKey !== "bostan.decision_recommendation.v1") {
+      res.status(404).json({ error: "Bostan recommendation not found" }); return;
+    }
+    const current = decision.status === "open"
+      ? await isBostanRecommendationFresh(db, decision, req.actor)
+      : false;
+    res.json({ decisionId: decision.id, status: decision.status, current,
+      positiveChoiceAllowed: current && decision.status === "open",
+      safeAvailableOptions: decision.options.filter(option =>
+        ["defer", "request_evidence"].includes(option.id) && option.effects.length === 0,
+      ).map(option => option.id),
+      // Advisory readiness only; this never authorizes real execution.
+      authoritativeExecutionAllowed: false,
+    });
   });
   router.get("/decisions/:id", async (req, res) => {
     assertBoardOrAgent(req);

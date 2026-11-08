@@ -6,8 +6,8 @@ import type {
   ConnectionGrant,
   ToolConnection,
   ToolConnectionCredentialPolicy,
-} from "@paperclipai/shared";
-import { connectionCredentialConfigPath, credentialConfigPath, getAvailableConnectionMethod, humanizeConnectionDisplayName } from "@paperclipai/shared";
+} from "@bostan/shared";
+import { connectionCredentialConfigPath, credentialConfigPath, getAvailableConnectionMethod, humanizeConnectionDisplayName } from "@bostan/shared";
 import { toolsApi } from "@/api/tools";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { ToggleSwitch } from "@/components/ui/toggle-switch";
 import { useToast } from "@/context/ToastContext";
 import { redactUrlSecrets } from "@/lib/redact-url-secrets";
+import { safeCredentialUiError } from "@/lib/credential-ui-error-privacy";
 import { navigateTopLevel } from "@/lib/browserNavigation";
 import { prepareOAuthNavigation, savePendingCloudHandoff } from "@/lib/oauthHandoff";
 import { cn } from "@/lib/utils";
@@ -177,7 +178,7 @@ export function ReconnectCard({
       } catch (error) {
         pushToast({
           title: "Couldn’t start sign-in",
-          body: error instanceof Error ? error.message : "Please try again.",
+          body: safeCredentialUiError(error, "appReconnect"),
           tone: "error",
         });
       }
@@ -185,7 +186,7 @@ export function ReconnectCard({
     onError: (error) =>
       pushToast({
         title: "Couldn’t start sign-in",
-        body: error instanceof Error ? error.message : "Please try again.",
+        body: safeCredentialUiError(error, "appReconnect"),
         tone: "error",
       }),
   });
@@ -201,7 +202,7 @@ export function ReconnectCard({
     },
     onError: (error) => pushToast({
       title: "Credential still needs attention",
-      body: error instanceof Error ? error.message : "Review the connector in Vercel Connect and try again.",
+      body: safeCredentialUiError(error, "appCredential"),
       tone: "error",
     }),
   });
@@ -218,9 +219,7 @@ export function ReconnectCard({
         <p className="mt-0.5 text-sm text-amber-800 dark:text-amber-200">
           {methodUnavailable
             ? "Add a supported connection from Connectors, then remove this connection."
-            : connection.healthMessage?.trim() || (oauth
-            ? "Authorization expired or was revoked. Sign in again to restore access."
-            : "The key stopped working. Paste a new one to get it back online.")}
+            : safeCredentialUiError(connection.healthMessage, "appHealth")}
         </p>
       </div>
       <div className="shrink-0">
@@ -326,7 +325,7 @@ function ReconnectForm({
       } else {
         pushToast({
           title: "Still not working",
-          body: result.connection.healthMessage?.trim() || "That key didn't check out. Try another.",
+          body: safeCredentialUiError(result.connection.healthMessage, "appCredential"),
           tone: "error",
         });
       }
@@ -334,7 +333,7 @@ function ReconnectForm({
     onError: (error) =>
       pushToast({
         title: "That key didn't work",
-        body: error instanceof Error ? error.message : "Check the key and try again.",
+        body: safeCredentialUiError(error, "appCredential"),
         tone: "error",
       }),
   });

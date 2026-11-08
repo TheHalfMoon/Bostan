@@ -48,7 +48,7 @@ import type {
   Agent,
   ExternalObjectLivenessState,
   ExternalObjectStatusCategory,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 function MarkdownAgentMention({ agentId, children, style }: {
   agentId: string;

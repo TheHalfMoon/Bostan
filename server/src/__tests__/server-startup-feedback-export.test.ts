@@ -6,7 +6,7 @@ import * as idleLocalWork from "../services/idle-local-work.js";
 import { idleBackupWakeMarker, markIdleBackupWakeRequired } from "../services/idle-database-backup.js";
 import { DELIVERY_QUEUES } from "../services/delivery-work-notifications.js";
 import { reconcileBuiltInAgentsOnStartup, reconcileCodexLocalManagedHomesOnStartup, reconcilePersistedRuntimeServicesOnStartup } from "../services/index.js";
-import { runDatabaseBackup } from "@paperclipai/db";
+import { runDatabaseBackup } from "@bostan/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
@@ -249,8 +249,8 @@ vi.mock("detect-port", () => ({
   default: detectPortMock,
 }));
 
-vi.mock("@paperclipai/db", async (importOriginal) => ({
-  ...await importOriginal<typeof import("@paperclipai/db")>(),
+vi.mock("@bostan/db", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@bostan/db")>(),
   createDb: createDbMock,
   ensurePostgresDatabase: vi.fn(),
   getPostgresDataDirectory: vi.fn(),
@@ -264,6 +264,11 @@ vi.mock("@paperclipai/db", async (importOriginal) => ({
 
 vi.mock("../app.js", () => ({
   createApp: createAppMock,
+  // index.ts gates the private-hostname guard with this pure helper; keep the
+  // app.ts rule here rather than importing app.js past the createApp mock.
+  shouldEnablePrivateHostnameGuard: (opts: { deploymentMode: string; deploymentExposure: string }) =>
+    opts.deploymentExposure === "private" &&
+    (opts.deploymentMode === "local_trusted" || opts.deploymentMode === "authenticated"),
 }));
 
 // Startup owns registration. Durable budget/accounting state and coordinator
@@ -449,7 +454,8 @@ vi.mock("../storage/index.js", () => ({
   createStorageServiceFromConfig: vi.fn(() => ({ id: "storage-service" })),
 }));
 
-vi.mock("../services/feedback-share-client.js", () => ({
+vi.mock("../services/feedback-share-client.js", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../services/feedback-share-client.js")>(),
   createFeedbackTraceShareClientFromConfig: vi.fn(() => ({ id: "feedback-share-client" })),
 }));
 

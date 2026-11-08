@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, linkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -13,6 +14,12 @@ it("packages a full source commit without a Docker build argument", () => {
     mkdirSync(scriptDir, { recursive: true });
     const script = join(scriptDir, "write-build-stamp.mjs");
     copyFileSync(new URL("../../scripts/write-build-stamp.mjs", import.meta.url), script);
+    const compiled = join(root, "server", "dist");
+    mkdirSync(join(compiled, "vendor", "paperclip-runner"), {recursive:true});
+    const compiledEntry = "compiled-fixture-entry";
+    const runnerEntry = "runner-fixture-entry";
+    writeFileSync(join(compiled, "index.js"), compiledEntry);
+    writeFileSync(join(compiled, "vendor", "paperclip-runner", "index.js"), runnerEntry);
     const git = (...args: string[]) => execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
     git("init", "--quiet");
     git("-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "--allow-empty", "--no-gpg-sign", "-m", "fixture");
@@ -22,6 +29,66 @@ it("packages a full source commit without a Docker build argument", () => {
     const stamp = JSON.parse(readFileSync(join(root, "server", "dist", "build-info.json"), "utf8"));
     expect(stamp.commit).toBe(git("rev-parse", "HEAD"));
     expect(stamp.commit).toMatch(/^[0-9a-f]{40}$/);
+    const hash = (value: string) => createHash("sha256").update(value).digest("hex");
+    expect(stamp.indexSha256).toBe(hash(compiledEntry));
+    expect(stamp.vendorSha256).toBe(hash(runnerEntry));
+    expect(Object.keys(stamp).sort()).toEqual(["commit","indexSha256","vendorSha256"].sort());
+    // Hardlinked entries are not exclusively owned even when bytes hash the
+    // same. The test controls both names and verifies stamp is left unchanged.
+    const stampPath = join(compiled, "build-info.json");
+    const priorStamp = readFileSync(stampPath, "utf8");
+    const linkedIndex = join(root, "hardlinked-index.js");
+    linkSync(join(compiled, "index.js"), linkedIndex);
+    expect(() => execFileSync(process.execPath, [script], {
+      cwd: root, env, stdio: "pipe",
+    })).toThrow();
+    expect(readFileSync(stampPath, "utf8")).toBe(priorStamp);
+    unlinkSync(linkedIndex);
+    const linkedRunner = join(root, "hardlinked-runner.js");
+    linkSync(join(compiled, "vendor", "paperclip-runner", "index.js"), linkedRunner);
+    expect(() => execFileSync(process.execPath, [script], {
+      cwd: root, env, stdio: "pipe",
+    })).toThrow();
+    expect(readFileSync(stampPath, "utf8")).toBe(priorStamp);
+    unlinkSync(linkedRunner);
+    // A build stamp must never overwrite a linked file outside dist.
+    const outsideStamp = join(root, "outside-stamp.json");
+    writeFileSync(outsideStamp, "foreign-owned-sentinel");
+    rmSync(stampPath);
+    let stampSymlinkAvailable = true;
+    try { symlinkSync(outsideStamp, stampPath); }
+    catch (error: any) {
+      // Normal Windows accounts may not have Developer Mode symlink rights.
+      // Do not elevate or replace the symlink with a junction.
+      if (process.platform !== "win32" || error?.code !== "EPERM") throw error;
+      stampSymlinkAvailable = false;
+    }
+    if (stampSymlinkAvailable) {
+      expect(() => execFileSync(process.execPath, [script], {
+        cwd: root, env, stdio: "pipe",
+      })).toThrow();
+      expect(readFileSync(outsideStamp, "utf8")).toBe("foreign-owned-sentinel");
+      rmSync(stampPath);
+    }
+
+    // A linked intermediate compiled directory is not an owned artifact.
+    const vendorDir = join(compiled, "vendor", "paperclip-runner");
+    const outsideRunner = join(root, "outside-runner");
+    mkdirSync(outsideRunner);
+    writeFileSync(join(outsideRunner, "index.js"), runnerEntry);
+    rmSync(vendorDir, {recursive: true});
+    let runnerSymlinkAvailable = true;
+    try { symlinkSync(outsideRunner, vendorDir, "dir"); }
+    catch (error: any) {
+      if (process.platform !== "win32" || error?.code !== "EPERM") throw error;
+      runnerSymlinkAvailable = false;
+    }
+    if (runnerSymlinkAvailable) {
+      expect(() => execFileSync(process.execPath, [script], {
+        cwd: root, env, stdio: "pipe",
+      })).toThrow();
+      expect(readFileSync(join(outsideRunner, "index.js"), "utf8")).toBe(runnerEntry);
+    }
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

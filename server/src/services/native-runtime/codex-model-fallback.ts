@@ -5,9 +5,9 @@ import {
   minimumCodexCliVersionForModel,
   models,
   normalizeCodexModel,
-} from "@paperclipai/adapter-codex-local";
-import type { AdapterExecutionTarget } from "@paperclipai/adapter-utils/execution-target";
-import type { CommandManagedRuntimeRunner } from "@paperclipai/adapter-utils/command-managed-runtime";
+} from "@bostan/adapter-codex-local";
+import type { AdapterExecutionTarget } from "@bostan/adapter-utils/execution-target";
+import type { CommandManagedRuntimeRunner } from "@bostan/adapter-utils/command-managed-runtime";
 import { createNativeSshCommandRunner } from "./native-ssh-command-runner.js";
 import { isSupportedRemoteCodexVersion, parseCodexCliVersion } from "./codex-runtime-compatibility.js";
 

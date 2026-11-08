@@ -5,7 +5,7 @@ import {
   resolveDefaultEmbeddedPostgresDir,
   resolvePaperclipConfigPathForInstance,
   resolvePaperclipEnvPathForConfig,
-} from "@paperclipai/shared/home-paths";
+} from "@bostan/shared/home-paths";
 
 const CONFIG_BASENAME = "config.json";
 

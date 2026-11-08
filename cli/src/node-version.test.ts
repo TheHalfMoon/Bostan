@@ -5,7 +5,7 @@ import {
   MINIMUM_NODE_VERSION,
   NODE_VERSION_INSTALL_GUIDE_URL,
   warnIfUnsupportedNodeVersion,
-} from "@paperclipai/shared/node-version";
+} from "@bostan/shared/node-version";
 
 describe("isSupportedNodeVersion", () => {
   it("accepts the Node 24 LTS floor and newer releases", () => {
@@ -27,8 +27,8 @@ describe("isSupportedNodeVersion", () => {
     expect(warning).toContain("Node.js v22.23.0 is unsupported");
     expect(warning).toContain("requires Node.js 24.11.0 or newer");
     expect(warning).toContain(NODE_VERSION_INSTALL_GUIDE_URL);
-    expect(warning).toContain("piped install.sh form cannot upgrade");
-    expect(warning).toContain("Restart Paperclip after upgrading");
+    expect(warning).toContain("Do not run the retired inherited public install.sh workflow.");
+    expect(warning).toContain("Restart Bostan after upgrading");
     expect(warning).toContain(process.execPath);
     expect(warning).toContain("startup executable and PATH");
   });

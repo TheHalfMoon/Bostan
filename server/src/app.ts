@@ -1,7 +1,7 @@
 import { promptInjectionPreventionRoutes } from "./routes/prompt-injection-prevention.js";
 import { voiceSessionRoutes, voiceWebhookRoutes } from "./routes/voice-sessions.js";
 import { eq } from "drizzle-orm";
-import { chatEndpoints } from "@paperclipai/db";
+import { chatEndpoints } from "@bostan/db";
 import { fastResponseRoutes } from "./routes/fast-responses.js";
 import { fastResponseService } from "./services/fast-responses.js";
 import { createDeliveryWorkCoordinator } from "./services/delivery-work-coordinator.js";
@@ -51,12 +51,12 @@ import {
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   derivePaperclipViteHmrPort,
   type DeploymentExposure,
   type DeploymentMode,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import type { InspectDatabaseBackupHealthOptions } from "./services/database-backup-health.js";
 import type { StorageService } from "./storage/types.js";
 import { httpLogger, errorHandler } from "./middleware/index.js";
@@ -165,7 +165,7 @@ import { adapterRoutes } from "./routes/adapters.js";
 import { managedAgentProfileRoutes } from "./routes/managed-agent-profiles.js";
 import { remoteAgentProfileRoutes } from "./routes/remote-agent-profiles.js";
 import { pluginUiStaticRoutes } from "./routes/plugin-ui-static.js";
-import { readBrandedStaticIndexHtml } from "./static-index-html.js";
+import { readBrandedStaticIndexHtml, setBostanStaticHtmlPrivacyHeaders } from "./static-index-html.js";
 import { staticUiCacheControl } from "./static-ui-cache.js";
 import { staticUiCompression } from "./middleware/static-ui-compression.js";
 import { applyUiBranding } from "./ui-branding.js";
@@ -213,7 +213,7 @@ import { setPluginEventBus } from "./services/activity-log.js";
 import { createPluginDevWatcher } from "./services/plugin-dev-watcher.js";
 import { createPluginHostServiceCleanup } from "./services/plugin-host-service-cleanup.js";
 import { pluginRegistryService } from "./services/plugin-registry.js";
-import { createHostClientHandlers } from "@paperclipai/plugin-sdk";
+import { createHostClientHandlers } from "@bostan/plugin-sdk";
 import type { BetterAuthSessionResult } from "./auth/better-auth.js";
 import { createCachedViteHtmlRenderer } from "./vite-html-renderer.js";
 import {
@@ -508,6 +508,7 @@ export async function createApp(
     uiMode: UiMode;
     serverPort: number;
     storageService: StorageService;
+    feedbackExportAllowed?: boolean;
     feedbackExportService?: {
       hasPendingFeedbackTraces(): Promise<boolean>;
       flushPendingFeedbackTraces(input?: {
@@ -552,7 +553,6 @@ export async function createApp(
   },
 ) {
   const app = express();
-  app.use(idleAdmissionMiddleware);
   const staticUi = express.Router();
   app.locals.paperclipDb = db;
   const isWarmStandby = opts.cloudWarmStandby ?? (() => false);
@@ -577,6 +577,29 @@ export async function createApp(
   // when the server may be reachable without a known reverse proxy in front.
   applyTrustProxy(app, parseTrustProxyEnv(process.env.TRUST_PROXY));
 
+  // Refuse untrusted private-mode authorities before any JSON, webhook, or
+  // import body parser consumes attacker-supplied bytes. A rejected Host must
+  // not incur parsing/copying of large bodies or trigger webhook diagnostics.
+  const privateHostnameGateEnabled = shouldEnablePrivateHostnameGuard({
+    deploymentMode: opts.deploymentMode,
+    deploymentExposure: opts.deploymentExposure,
+  });
+  const privateHostnameAllowSet = resolvePrivateHostnameAllowSet({
+    allowedHostnames: opts.allowedHostnames,
+    bindHost: opts.bindHost,
+  });
+  app.use(
+    privateHostnameGuard({
+      enabled: privateHostnameGateEnabled,
+      allowedHostnames: opts.allowedHostnames,
+      bindHost: opts.bindHost,
+    }),
+  );
+  // A rejected private Host must not increment idle-work generation or keep
+  // the instance awake. Track only admitted ingress; retain idle tracking
+  // before every body parser, authentication handler, and route.
+  app.use(idleAdmissionMiddleware);
+
   app.use(
     COMPANY_IMPORT_API_PATH,
     express.json({
@@ -597,21 +620,6 @@ export async function createApp(
   app.use((req, res, next) => ["/mcp/files/upload", "/mcp/runner/files/upload"].includes(req.path) ? next() : jsonBodyParser(req, res, next));
   app.use("/api", apiCompression());
   app.use(httpLogger);
-  const privateHostnameGateEnabled = shouldEnablePrivateHostnameGuard({
-    deploymentMode: opts.deploymentMode,
-    deploymentExposure: opts.deploymentExposure,
-  });
-  const privateHostnameAllowSet = resolvePrivateHostnameAllowSet({
-    allowedHostnames: opts.allowedHostnames,
-    bindHost: opts.bindHost,
-  });
-  app.use(
-    privateHostnameGuard({
-      enabled: privateHostnameGateEnabled,
-      allowedHostnames: opts.allowedHostnames,
-      bindHost: opts.bindHost,
-    }),
-  );
   let mcpConfig: ReturnType<typeof publicMcpConfig> = null;
   try { mcpConfig = publicMcpConfig(process.env, opts.authPublicBaseUrl); }
   catch { logger.warn("Assistant connections require an HTTPS public URL (HTTP loopback is allowed for development)."); }
@@ -946,6 +954,7 @@ export async function createApp(
   // issue approval endpoints delegate to it. The intervening routers use distinct
   // route prefixes, so this dependency does not change issue-route precedence.
   api.use(issueRoutes(db, opts.storageService, {
+    feedbackExportAllowed: opts.feedbackExportAllowed === true,
     chatRunRetries: chatChannels,
     pluginWorkerManager: workerManager,
     approveToolActionRequest: (input) => toolGateway.approveActionRequest(input),
@@ -1132,6 +1141,7 @@ export async function createApp(
       );
       // Serve root/index through the same runtime HTML transform as SPA routes.
       staticUi.get(["/", "/index.html"], (_req, res) => {
+        setBostanStaticHtmlPrivacyHeaders(res);
         res.type("html").set("Cache-Control", "no-cache").send(readBrandedStaticIndexHtml(uiDist));
       });
       // Non-hashed static files (favicon.ico, manifest, robots.txt, etc.):
@@ -1160,6 +1170,7 @@ export async function createApp(
           res.status(404).end();
           return;
         }
+        setBostanStaticHtmlPrivacyHeaders(res);
         res
           .status(200)
           .set("Content-Type", "text/html")

@@ -159,16 +159,16 @@ describe("plugin install and upgrade authz", () => {
     const byPackageName = new Map(
       res.body.map((plugin: { packageName: string; experimental: boolean; hasBuiltEntrypoints: boolean }) => [plugin.packageName, plugin]),
     );
-    expect(packageNames).toContain("@paperclipai/plugin-workspace-diff");
-    expect(packageNames).toContain("@paperclipai/plugin-llm-wiki");
-    expect(packageNames).toContain("@paperclipai/plugin-modal");
-    expect(packageNames).toContain("@paperclipai/plugin-authoring-smoke-example");
-    expect(packageNames).not.toContain("@paperclipai/plugin-sdk");
-    expect(byPackageName.get("@paperclipai/plugin-workspace-diff")?.experimental).toBe(true);
-    expect(byPackageName.get("@paperclipai/plugin-llm-wiki")?.experimental).toBe(true);
-    expect(byPackageName.get("@paperclipai/plugin-modal")?.experimental).toBe(true);
-    expect(byPackageName.get("@paperclipai/plugin-authoring-smoke-example")?.experimental).toBe(false);
-    expect(typeof byPackageName.get("@paperclipai/plugin-workspace-diff")?.hasBuiltEntrypoints).toBe("boolean");
+    expect(packageNames).toContain("@bostan/plugin-workspace-diff");
+    expect(packageNames).toContain("@bostan/plugin-llm-wiki");
+    expect(packageNames).toContain("@bostan/plugin-modal");
+    expect(packageNames).toContain("@bostan/plugin-authoring-smoke-example");
+    expect(packageNames).not.toContain("@bostan/plugin-sdk");
+    expect(byPackageName.get("@bostan/plugin-workspace-diff")?.experimental).toBe(true);
+    expect(byPackageName.get("@bostan/plugin-llm-wiki")?.experimental).toBe(true);
+    expect(byPackageName.get("@bostan/plugin-modal")?.experimental).toBe(true);
+    expect(byPackageName.get("@bostan/plugin-authoring-smoke-example")?.experimental).toBe(false);
+    expect(typeof byPackageName.get("@bostan/plugin-workspace-diff")?.hasBuiltEntrypoints).toBe("boolean");
   }, 20_000);
 
   it("rejects plugin installation for non-admin board users", async () => {
@@ -1120,7 +1120,7 @@ describe("operator-hidden plugin management floor", () => {
     readyPlugin();
 
     const attempts: Array<[string, request.Test]> = [
-      ["install", request(app).post("/api/plugins/install").send({ packageName: "@paperclipai/plugin-modal" })],
+      ["install", request(app).post("/api/plugins/install").send({ packageName: "@bostan/plugin-modal" })],
       ["uninstall", request(app).delete(`/api/plugins/${pluginId}`)],
       ["enable", request(app).post(`/api/plugins/${pluginId}/enable`)],
       ["disable", request(app).post(`/api/plugins/${pluginId}/disable`).send({})],

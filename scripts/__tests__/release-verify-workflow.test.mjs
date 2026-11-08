@@ -751,7 +751,7 @@ test("direct Grok qualification installs the pinned binary and scopes the select
   const workflow = readWorkflow("runner-protocol-live-evals.yml");
   assert.ok(workflow.includes("XAI_API_KEY: ${{ matrix.credentialName == 'XAI_API_KEY' && secrets.XAI_API_KEY || '' }}"));
   assert.ok(workflow.includes("if [ -f packages/paperclip-runner/scripts/provision-grok.mjs ]; then"));
-  assert.ok(workflow.indexOf("sudo node packages/paperclip-runner/scripts/provision-grok.mjs /opt/paperclip/providers/grok/1.0.13/grok") < workflow.indexOf("pnpm --filter @paperclipai/paperclip-runner deploy --prod"));
+  assert.ok(workflow.indexOf("sudo node packages/paperclip-runner/scripts/provision-grok.mjs /opt/paperclip/providers/grok/1.0.13/grok") < workflow.indexOf("pnpm --filter @bostan/runner deploy --prod"));
   assert.ok(workflow.includes("PAPERCLIP_ACPX_GROK_AUTH_JSON_SECRET: ${{ matrix.credentialName == 'PAPERCLIP_ACPX_GROK_AUTH_JSON_SECRET' && secrets.GROK_AUTH_JSON || '' }}"));
   assert.equal((workflow.match(/secrets\.GROK_AUTH_JSON/gu) ?? []).length, 1);
 });
@@ -968,7 +968,7 @@ test('native preparation overlaps independent outputs and joins both before reco
     for (const name of ['native', 'typescript']) assert.equal(readFileSync(path.join(root, name + '.finished'), 'utf8'), 'joined');
     assert.equal(JSON.parse(readFileSync(path.join(root, 'native.started'), 'utf8')).cwd, path.join(root, 'packages/paperclip-runner'));
     assert.deepEqual(JSON.parse(readFileSync(path.join(root, 'native.started'), 'utf8')).args, ['build:binary']);
-    assert.deepEqual(JSON.parse(readFileSync(path.join(root, 'typescript.started'), 'utf8')).args, ['--filter', '@paperclipai/paperclip-runner', 'build:typescript']);
+    assert.deepEqual(JSON.parse(readFileSync(path.join(root, 'typescript.started'), 'utf8')).args, ['--filter', '@bostan/runner', 'build:typescript']);
     const results = result.stdout.split('\n').filter(line => line.startsWith('{')).map(line => JSON.parse(line));
     assert.deepEqual(results.map(item => [item.build, item.status, item.exitCode]), [['typescript', 'fulfilled', 0], ['native', 'fulfilled', 0]]);
   });
@@ -1434,7 +1434,7 @@ test("metadata must identify the exact published artifact with valid SHA512 synt
   const fixtures = [
     { status: 404 }, { status: 401 }, { status: 403 }, { status: 302 }, { redirected: true },
     { responseUrl: "https://registry.example.invalid/metadata" }, { rawBody: "not json" },
-    { manifest: { name: "@paperclipai/shared" } }, { manifest: { version: "2026.1009.0-canary.2" } },
+    { manifest: { name: "@bostan/shared" } }, { manifest: { version: "2026.1009.0-canary.2" } },
     { manifest: { dist: { tarball: canaryTarball + "?query=1" } } },
     ...[undefined, "", "sha512-A===", `sha256-${Buffer.alloc(32).toString("base64")}`, `sha512-${Buffer.alloc(64).toString("base64")} extra`]
       .map((integrity) => ({ manifest: { dist: { integrity } } })),

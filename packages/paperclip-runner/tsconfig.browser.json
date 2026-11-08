@@ -16,16 +16,16 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@paperclipai/paperclip-runner/browser": [
+      "@bostan/runner/browser": [
         "src/browser/index.ts"
       ],
-      "@paperclipai/paperclip-runner/react": [
+      "@bostan/runner/react": [
         "src/react/index.ts"
       ],
-      "@paperclipai/paperclip-runner/standalone": [
+      "@bostan/runner/standalone": [
         "src/standalone/index.ts"
       ],
-      "@paperclipai/paperclip-runner/styles.css": [
+      "@bostan/runner/styles.css": [
         "styles.css"
       ],
       "@paperclip-runner-local/capability": [

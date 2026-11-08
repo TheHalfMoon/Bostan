@@ -9,7 +9,7 @@ import type {
   RemoteSecretImportCandidate,
   RemoteSecretImportPreviewResult,
   RemoteSecretImportResult,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../api/client";
 
@@ -347,7 +347,7 @@ describe("ImportFromVaultDialog", () => {
     await flush();
 
     // Review step: error message visible, Import button disabled.
-    expect(document.body.textContent?.toLowerCase()).toContain("a paperclip secret already uses this");
+    expect(document.body.textContent?.toLowerCase()).toContain("a bostan secret already uses this");
 
     const importBtn = Array.from(document.querySelectorAll("button")).find(
       (btn) => btn.textContent?.startsWith("Import "),
@@ -594,7 +594,7 @@ describe("ImportFromVaultDialog", () => {
           name: "gamma",
           key: "gamma",
           status: "error",
-          reason: "AWS Secrets Manager denied the request. Check IAM permissions for this provider vault.",
+          reason: "https://provider.invalid/authorize?code=SYNTHETIC-SECRET&state=private",
           secretId: null,
           conflicts: [],
         },
@@ -655,7 +655,9 @@ describe("ImportFromVaultDialog", () => {
     expect(document.body.textContent).toContain("1 created");
     expect(document.body.textContent).toContain("1 skipped");
     expect(document.body.textContent).toContain("1 failed");
-    expect(document.body.textContent).toContain("AWS Secrets Manager denied the request");
+    expect(document.body.textContent).toContain("Import failed. Check the vault permissions and retry.");
+    expect(document.body.textContent).not.toContain("SYNTHETIC-SECRET");
+    expect(document.querySelector('[title*="SYNTHETIC-SECRET"]')).toBeNull();
     expect(document.body.textContent).not.toContain("AccessDeniedException");
     expect(document.body.textContent).not.toContain("123456789012");
 

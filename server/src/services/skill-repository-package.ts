@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { CompanySkillVersionFileInventoryEntry, SkillRepositoryPackage } from '@paperclipai/shared';
+import type { CompanySkillVersionFileInventoryEntry, SkillRepositoryPackage } from '@bostan/shared';
 import { z } from 'zod';
 import { assertSkillSnapshotPath, skillFileBytes } from './skill-snapshot.js';
 

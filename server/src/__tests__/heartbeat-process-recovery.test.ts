@@ -1,5 +1,5 @@
 import { enableRunFailureReporting } from "./helpers/run-failure-reporting.js";
-import { EMBEDDED_POSTGRES_TEST_TIMEOUT_MS } from "@paperclipai/db";
+import { EMBEDDED_POSTGRES_TEST_TIMEOUT_MS } from "@bostan/db";
 import { createSystemRecovery } from "../services/system-recovery-state.js";
 import * as conversationContinuation from "../services/conversation-continuation.js";
 import { classifyEnvironmentCapabilities, environmentRuntimeService } from "../services/environment-runtime.js";
@@ -101,7 +101,7 @@ import {
   toolConnections,
   workAssessments,
   workspaceOperations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,
@@ -117,7 +117,7 @@ import { NativeRunnerOwnershipUnverifiedError } from "../services/native-runtime
 import { nativeCompletionSource } from "../services/native-runtime/completion-contracts.js";
 import { nativeCompletionFeedback } from "../services/native-runtime/native-completion-feedback.js";
 import type { PrpStructuredRunResult } from "../vendor/paperclip-runner/index.js";
-import { buildNativeModelEnvelope } from "@paperclipai/paperclip-runner";
+import { buildNativeModelEnvelope } from "@bostan/runner";
 import {
   CHAT_CONTROL_RECOVERY_ADMISSION_KEY,
   CHAT_CONTROL_RECOVERY_STOP_CODE,
@@ -211,10 +211,10 @@ vi.mock("../services/local-service-supervisor.js", async () => {
   };
 });
 
-vi.mock("@paperclipai/shared/telemetry", async () => {
+vi.mock("@bostan/shared/telemetry", async () => {
   const actual = await vi.importActual<
-    typeof import("@paperclipai/shared/telemetry")
-  >("@paperclipai/shared/telemetry");
+    typeof import("@bostan/shared/telemetry")
+  >("@bostan/shared/telemetry");
   return {
     ...actual,
     trackAgentFirstHeartbeat: mockTrackAgentFirstHeartbeat,
@@ -277,7 +277,13 @@ import { collectDispositionRepairSourceState } from "../services/recovery/dispos
 import {
   UNMANAGED_BACKGROUND_TASK_LIVENESS_REASON,
   UNMANAGED_BACKGROUND_TASK_STOP_REASON,
-} from "@paperclipai/adapter-utils/server-utils";
+} from "@bostan/adapter-utils/server-utils";
+
+// Failure reports keep the stack, but the strict inherited-environment
+// redactor masks any host env value wherever it appears, so a frame path can
+// legitimately read "__***REDACTED***s__". Accept either a readable frame from
+// this file or a redacted one; both prove the stack was retained.
+const retainedTestStack = expect.stringMatching(/heartbeat-process-recovery\.test\.ts|\*\*\*REDACTED\*\*\*/);
 const externalTestDatabaseUrl = process.env.PAPERCLIP_TEST_DATABASE_URL?.trim();
 const embeddedPostgresSupport = externalTestDatabaseUrl
   ? { supported: true }
@@ -2035,7 +2041,7 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
       const report = await waitForValue(async () => mockCaptureRunFailure.mock.calls.find(([event]) => event.runId === runId)?.[0]);
       expect(report?.diagnostics).toMatchObject({
         execution: { failurePhase: "setup" },
-        exceptions: [{ message, stack: expect.stringContaining("heartbeat-process-recovery.test.ts") }, { code: "ECONNRESET" }],
+        exceptions: [{ message, stack: retainedTestStack }, { code: "ECONNRESET" }],
       });
       const [wakeup] = await db.select().from(agentWakeupRequests)
         .where(eq(agentWakeupRequests.id, wakeupRequestId));
@@ -5823,7 +5829,7 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
     const report = await waitForValue(async () => mockCaptureRunFailure.mock.calls.find(([event]) => event.runId === runId)?.[0]);
     expect(report?.diagnostics).toMatchObject({
       execution: { failurePhase: "execute" },
-      exceptions: [{ stack: expect.stringContaining("heartbeat-process-recovery.test.ts") }],
+      exceptions: [{ stack: retainedTestStack }],
     });
 
     const interaction = await waitForValue(async () => {
@@ -8289,7 +8295,7 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
     await db.insert(budgetPolicies).values({ companyId, scopeType: "company", scopeId: companyId,
       metric: "billed_cents", windowKind: "calendar_month_utc", amount: 100, reservationCents: "10.0000000", isActive: true });
     mockAdapterExecute.mockImplementationOnce(async (raw?: unknown) => {
-      const input = raw as { onUsage: (receipt: import("@paperclipai/adapter-utils").AdapterUsageCheckpoint) => Promise<void> };
+      const input = raw as { onUsage: (receipt: import("@bostan/adapter-utils").AdapterUsageCheckpoint) => Promise<void> };
       await input.onUsage({ costUsd: 0, complete: true });
       const transaction = vi.spyOn(db, "transaction").mockRejectedValueOnce(new Error("Database temporarily unavailable"));
       const rename = vi.spyOn(fs, "rename").mockRejectedValueOnce(new Error("Receipt disk full"));

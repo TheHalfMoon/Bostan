@@ -1,12 +1,13 @@
 import { COPILOT_MODEL_DISCOVERY_QUERY_OPTIONS } from "@/lib/copilot-task-model-catalog";
 import { useConnectionModels } from "./ai-connections/useConnectionModels";
-import { agentHarnessType, agentRunner, paperclipRunnerProfileForHarness, type AgentRunnerChoice } from "@paperclipai/shared";
+import { agentHarnessType, agentRunner, paperclipRunnerProfileForHarness, type AgentRunnerChoice } from "@bostan/shared";
 import { adaptersApi } from "../api/adapters";
 import { AgentRunnerSelect } from "./AgentRunnerSelect";
-import { aiRoutingHarness } from "@paperclipai/shared";
+import { aiRoutingHarness } from "@bostan/shared";
 import { AiConnectionField } from "./ai-connections/AiConnectionField";
-import { aiConnectionBindingSchema, aiRuntimeConnectionBindingSchema } from "@paperclipai/shared";
+import { aiConnectionBindingSchema, aiRuntimeConnectionBindingSchema } from "@bostan/shared";
 import { testAgentSetup } from "@/lib/test-agent-setup";
+import { safeAdapterRequestError } from "@/lib/adapter-error-privacy";
 import { setupEfforts } from "../lib/agent-setup-fields";
 import { RuntimeTestCard } from "./RuntimeTestCard";
 import { useState, useEffect, useRef, useMemo, useCallback, Children, isValidElement, type ReactNode } from "react";
@@ -24,8 +25,8 @@ import type {
   EnvBinding,
   EnvSecretRefBinding,
   Environment,
-} from "@paperclipai/shared";
-import { AGENT_DEFAULT_MAX_CONCURRENT_RUNS, supportedEnvironmentDriversForAdapter, isValidBrowserCode, ADAPTER_AUTH_MISSING_CHECK_CODE } from "@paperclipai/shared";
+} from "@bostan/shared";
+import { AGENT_DEFAULT_MAX_CONCURRENT_RUNS, supportedEnvironmentDriversForAdapter, isValidBrowserCode, ADAPTER_AUTH_MISSING_CHECK_CODE } from "@bostan/shared";
 import type { AdapterModel } from "../api/agents";
 import { agentsApi } from "../api/agents";
 import { ApiError } from "../api/client";
@@ -36,12 +37,12 @@ import { assetsApi } from "../api/assets";
 import {
   DEFAULT_CODEX_LOCAL_BYPASS_APPROVALS_AND_SANDBOX,
   DEFAULT_CODEX_LOCAL_MODEL,
-} from "@paperclipai/adapter-codex-local";
-import { DEFAULT_CLAUDE_LOCAL_MODEL } from "@paperclipai/adapter-claude-local";
-import { DEFAULT_CURSOR_LOCAL_MODEL } from "@paperclipai/adapter-cursor-local";
-import { DEFAULT_GEMINI_LOCAL_MODEL } from "@paperclipai/adapter-gemini-local";
-import { DEFAULT_KIMI_LOCAL_MODEL } from "@paperclipai/adapter-kimi-local";
-import { DEFAULT_OPENCODE_LOCAL_MODEL } from "@paperclipai/adapter-opencode-local";
+} from "@bostan/adapter-codex-local";
+import { DEFAULT_CLAUDE_LOCAL_MODEL } from "@bostan/adapter-claude-local";
+import { DEFAULT_CURSOR_LOCAL_MODEL } from "@bostan/adapter-cursor-local";
+import { DEFAULT_GEMINI_LOCAL_MODEL } from "@bostan/adapter-gemini-local";
+import { DEFAULT_KIMI_LOCAL_MODEL } from "@bostan/adapter-kimi-local";
+import { DEFAULT_OPENCODE_LOCAL_MODEL } from "@bostan/adapter-opencode-local";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, SelectPopover } from "@/components/ui/select";
@@ -100,14 +101,14 @@ import { codexReasoningEffortOptions } from "../lib/codex-reasoning-effort";
 
 /* ---- Create mode values ---- */
 
-// Canonical type lives in @paperclipai/adapter-utils; re-exported here
+// Canonical type lives in @bostan/adapter-utils; re-exported here
 // so existing imports from this file keep working.
-export type { CreateConfigValues } from "@paperclipai/adapter-utils";
+export type { CreateConfigValues } from "@bostan/adapter-utils";
 import {
   PAPERCLIP_RUNNER_PERMISSION_CAPABILITIES,
   paperclipRunnerTransitionConfig,
   type CreateConfigValues,
-} from "@paperclipai/adapter-utils";
+} from "@bostan/adapter-utils";
 import { Badge } from "@/components/ui/badge";
 
 /* ---- Props ---- */
@@ -655,7 +656,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
       setRunnerUpgrade(current => current?.agentId === agentId ? { agentId, status: "upgraded" } : current);
     } catch (error) {
       setRunnerUpgrade(current => current?.agentId === agentId ? {
-        agentId, status: "failed", error: error instanceof Error ? error.message : "Could not upgrade this agent. Try again.",
+        agentId, status: "failed", error: safeAdapterRequestError(error, "upgrade"),
       } : current);
     }
   };
@@ -958,7 +959,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
   const inheritedEnvironmentLabel = instanceDefaultEnvironment
     ? environmentDisplayLabel(instanceDefaultEnvironment)
     : managedSandboxOnly
-      ? "Paperclip Computer"
+      ? "Bostan Computer"
       : "Local";
 
   const modelProvider = adapterType === "opencode_local" && aiConnectionBindingSchema.safeParse(
@@ -1261,7 +1262,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
     try {
       return await testEnvironment.mutateAsync();
     } catch (error) {
-      setTestActionError(error instanceof Error ? error.message : "Environment test failed");
+      setTestActionError(safeAdapterRequestError(error, "test"));
       throw error;
     } finally {
       setTestActionPending(false);
@@ -1311,11 +1312,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
     if (!props.onTestFeedbackChange) return;
     props.onTestFeedbackChange({
       errorMessage: testActionError
-        ?? (testEnvironment.error instanceof Error
-          ? testEnvironment.error.message
-          : testEnvironment.error
-            ? "Environment test failed"
-            : null),
+        ?? (testEnvironment.error ? safeAdapterRequestError(testEnvironment.error, "test") : null),
       result: testEnvironment.data ?? null,
       // `showAdapterLogin` already requires a selected company and a non-empty
       // environment id, so both are present here.
@@ -1352,7 +1349,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
       const refreshed = await agentsApi.adapterModels(selectedCompanyId, modelAdapterType, { refresh: true, environmentId: currentDefaultEnvironmentId || null, provider: modelProvider, ...(runnerAcpxAgent === "copilot" ? { acpxAgent: runnerAcpxAgent, aiConnection: modelAiBinding, agentId: !isCreate ? props.agent.id : undefined } : {}) });
       queryClient.setQueryData(modelQueryKey, refreshed);
     } catch (error) {
-      setRefreshModelsError(error instanceof Error ? error.message : "Failed to refresh adapter models.");
+      setRefreshModelsError(safeAdapterRequestError(error, "models"));
     } finally {
       setRefreshingModels(false);
     }
@@ -1529,7 +1526,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
         <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
           <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
             <div className="min-w-0 flex-1 space-y-1">
-              <p className="text-sm font-medium">Upgrade to Paperclip Runner</p>
+              <p className="text-sm font-medium">Upgrade to Bostan Runner</p>
               <p className="text-sm text-muted-foreground">
                 Keep {harnessType === "claude_local" ? "Claude" : "Codex"}, your model, account, and compatible settings.
                 New sessions start fresh; past runs stay available.
@@ -1544,7 +1541,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
           {runnerUpgradeError ? <p role="alert" className="text-sm text-destructive">{runnerUpgradeError}</p> : null}
         </div>
       ) : null}
-      {runnerUpgraded ? <p role="status" className="text-sm text-muted-foreground">Upgraded to Paperclip Runner.</p> : null}
+      {runnerUpgraded ? <p role="status" className="text-sm text-muted-foreground">Upgraded to Bostan Runner.</p> : null}
     <ConfigSections order={props.sectionOrder} className={cn("relative", cards && "space-y-6")}>
       {/* ---- Floating Save button (edit mode, when dirty) ---- */}
       {isDirty && !props.hideInlineSave && (
@@ -1804,9 +1801,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
           {showInlineAdapterTestEnvironmentFeedback && !props.compactTestFeedback && (testActionError || testEnvironment.error) && (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               {testActionError
-                ?? (testEnvironment.error instanceof Error
-                  ? testEnvironment.error.message
-                  : "Environment test failed")}
+                ?? safeAdapterRequestError(testEnvironment.error, "test")}
             </div>
           )}
 
@@ -1904,9 +1899,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
               {(refreshModelsError || modelError) && (
                 <p className="text-xs text-destructive">
                   {refreshModelsError
-                    ?? (modelError instanceof Error
-                      ? modelError.message
-                      : "Failed to load adapter models.")}
+                    ?? safeAdapterRequestError(modelError, "models")}
                 </p>
               )}
               {adapterType === "opencode_local"
@@ -2278,7 +2271,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
               <div className="mt-3 flex items-start gap-2 rounded-md border border-border bg-background/60 px-3 py-2 text-xs text-foreground">
                 <Bug className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>
-                  Raw tracing is on for future runs. Paperclip keeps at most 64 MiB per run and automatically deletes it after 24 hours.
+                  Raw tracing is on for future runs. Bostan keeps at most 64 MiB per run and automatically deletes it after 24 hours.
                 </span>
               </div>
             ) : null}
@@ -2292,7 +2285,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
           metadataOnly={adapterType === "paperclip_runner" && runnerAcpxAgent === "copilot"}
           state={testActionPending ? "running" : testActionError || testEnvironment.error ? "fail" : testResult?.status ?? "idle"}
           result={testResult ?? null}
-          error={testActionError ?? (testEnvironment.error instanceof Error ? testEnvironment.error.message : null)}
+          error={testActionError ?? (testEnvironment.error ? safeAdapterRequestError(testEnvironment.error, "test") : null)}
           onTest={triggerTestEnvironment}
           disabled={testEnvironmentDisabled}
         />
@@ -2418,7 +2411,7 @@ export type AdapterLoginDescriptor = {
 // correctly, and the first thing to rot would have been the timeout and
 // cleanup paths, which are the ones nobody exercises by hand.
 export type AdapterLoginPanelProps = AdapterLoginDescriptor & {
-  aiConnection?: import("@paperclipai/shared").AiConnectionLoginIntent;
+  aiConnection?: import("@bostan/shared").AiConnectionLoginIntent;
   onStored?: (storedSessionId: string) => void;
   onApplyStored?: () => void;
   // Applies the non-secret Codex account-binding claim from an authenticated
@@ -2544,7 +2537,7 @@ function DisplayedCodeLoginPanel({
       setSessionId(session.sessionId);
     },
     onError: (error) => {
-      setStartError(error instanceof Error ? error.message : "Could not start the login.");
+      setStartError(safeAdapterRequestError(error, "login"));
     },
   });
 
@@ -2561,7 +2554,7 @@ function DisplayedCodeLoginPanel({
     mutationFn: () => agentsApi.cancelAdapterAuthLogin(companyId, adapterType, sessionId!),
     onSuccess: clearActiveSession,
     onError: (error) => {
-      setStartError(error instanceof Error ? error.message : "Could not cancel the login.");
+      setStartError(safeAdapterRequestError(error, "cancel"));
     },
   });
 
@@ -2704,9 +2697,7 @@ function DisplayedCodeLoginPanel({
     if (activeSessionQuery.isError) {
       autoStartedRef.current = true;
       setStartError(
-        activeSessionQuery.error instanceof Error
-          ? activeSessionQuery.error.message
-          : "Could not check for an active login.",
+        safeAdapterRequestError(activeSessionQuery.error, "session"),
       );
       return;
     }
@@ -3117,7 +3108,7 @@ function SubmittedBrowserCodeLoginPanel({
       setSessionId(session.sessionId);
     },
     onError: (error) => {
-      setStartError(error instanceof Error ? error.message : "Could not start the login.");
+      setStartError(safeAdapterRequestError(error, "login"));
     },
   });
 
@@ -3144,7 +3135,7 @@ function SubmittedBrowserCodeLoginPanel({
         clearActiveSession();
         return;
       }
-      setStartError(error instanceof Error ? error.message : "Could not cancel the login.");
+      setStartError(safeAdapterRequestError(error, "cancel"));
     },
   });
 
@@ -3308,7 +3299,7 @@ function SubmittedBrowserCodeLoginPanel({
     mutationFn: (code: string) =>
       agentsApi.submitClaudeSetupTokenBrowserCode(companyId, sessionId!, code),
     onError: (error) => {
-      setStartError(error instanceof Error ? error.message : "Could not submit the browser code.");
+      setStartError(safeAdapterRequestError(error, "browserCode"));
     },
   });
 
@@ -3439,9 +3430,7 @@ function SubmittedBrowserCodeLoginPanel({
     if (activeSessionQuery.isError) {
       autoStartedRef.current = true;
       setStartError(
-        activeSessionQuery.error instanceof Error
-          ? activeSessionQuery.error.message
-          : "Could not check for an active login.",
+        safeAdapterRequestError(activeSessionQuery.error, "session"),
       );
       return;
     }

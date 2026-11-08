@@ -4,11 +4,11 @@ import { flushSync } from "react-dom";
 import { MemoryRouter } from "react-router-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { INSTANCE_FEATURE_KEYS } from "@paperclipai/shared";
+import { INSTANCE_FEATURE_KEYS } from "@bostan/shared";
 import type {
   InstanceExperimentalSettings as InstanceExperimentalSettingsPayload,
   InstanceExperimentalSettingsWithManaged,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { InstanceExperimentalSettings } from "./InstanceExperimentalSettings";
 import { queryKeys } from "../lib/queryKeys";
@@ -61,7 +61,7 @@ const DECISIONS_TOGGLE_SELECTOR =
 const SERVER_INFO_TOGGLE_SELECTOR =
   'button[aria-label="Toggle server info debug view experimental setting"]';
 const PAPERCLIP_DEVELOPER_MODE_TOGGLE_SELECTOR =
-  'button[aria-label="Toggle Paperclip developer mode experimental setting"]';
+  'button[aria-label="Toggle Bostan developer mode experimental setting"]';
 const BUILT_IN_AGENTS_TOGGLE_SELECTOR =
   'button[aria-label="Toggle built-in agents experimental setting"]';
 const BETA_SKILLS_TOGGLE_SELECTOR =
@@ -71,7 +71,7 @@ const SUMMARIES_TOGGLE_SELECTOR =
 const STATUS_CARDS_TOGGLE_SELECTOR =
   'button[aria-label="Toggle status cards experimental setting"]';
 const PAPERCLIP_RUNNER_TOGGLE_SELECTOR =
-  'button[aria-label="Toggle Paperclip Runner experimental setting"]';
+  'button[aria-label="Toggle Bostan Runner experimental setting"]';
 
 function defaultExperimentalSettings(): InstanceExperimentalSettingsPayload {
   return {
@@ -391,10 +391,10 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
     )).toBeNull();
   });
 
-  it("keeps Paperclip Runner default-off and exposes an explicit opt-in", async () => {
+  it("keeps Bostan Runner default-off and exposes an explicit opt-in", async () => {
     await renderPage();
 
-    expect(container.textContent).toContain("Paperclip Runner");
+    expect(container.textContent).toContain("Bostan Runner");
     expect(container.textContent).toContain("First-run setup offers qualified GitHub Copilot");
     const toggle = container.querySelector<HTMLButtonElement>(
       PAPERCLIP_RUNNER_TOGGLE_SELECTOR,
@@ -685,7 +685,7 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
     await renderPage();
 
     expect(container.textContent).toContain("Built-in Agents");
-    expect(container.textContent).toContain("Show Paperclip-managed built-in agent surfaces");
+    expect(container.textContent).toContain("Show Bostan-managed built-in agent surfaces");
 
     const toggle = container.querySelector<HTMLButtonElement>(BUILT_IN_AGENTS_TOGGLE_SELECTOR);
     expect(toggle?.getAttribute("aria-checked")).toBe("false");
@@ -705,7 +705,7 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
     await renderPage();
 
     expect(container.textContent).toContain("Beta skills");
-    expect(container.textContent).toContain("pin beta releases of the Paperclip core skill");
+    expect(container.textContent).toContain("pin beta releases of the Bostan core skill");
 
     const toggle = container.querySelector<HTMLButtonElement>(BETA_SKILLS_TOGGLE_SELECTOR);
     expect(toggle?.getAttribute("aria-checked")).toBe("false");
@@ -811,10 +811,10 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
     expect(toggle?.getAttribute("aria-checked")).toBe("true");
   });
 
-  it("renders and patches Paperclip Developer Mode", async () => {
+  it("renders and patches Bostan Developer Mode", async () => {
     await renderPage();
 
-    expect(container.textContent).toContain("Paperclip Developer Mode");
+    expect(container.textContent).toContain("Bostan Developer Mode");
     expect(container.textContent).toContain("including Honeycomb trace queries on run pages");
 
     const toggle = container.querySelector<HTMLButtonElement>(
@@ -836,7 +836,7 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
 });
 
 describe("InstanceExperimentalSettings — cloud-managed keys", () => {
-  const MANAGED_BADGE_TEXT = "Managed by Paperclip Cloud";
+  const MANAGED_BADGE_TEXT = "Managed by hosting provider";
 
   let container: HTMLDivElement;
   let root: Root | null = null;
@@ -1043,7 +1043,7 @@ describe("InstanceExperimentalSettings — card ordering and headings (PAP-393)"
     );
     expect(headings).toEqual([
       "Experimental features",
-      "Paperclip Developer Mode",
+      "Bostan Developer Mode",
       "Legacy",
     ]);
 
@@ -1203,7 +1203,7 @@ describe("InstanceExperimentalSettings — operator-hidden cards", () => {
   it("retains a section when one of its controls is visible", async () => {
     const visible = new Set(["enablePaperclipDeveloperMode", "enableGoalsSidebarLink"]);
     await renderPage(INSTANCE_FEATURE_KEYS.filter((key) => !visible.has(key)).map((key) => `instance.experimental.${key}`));
-    expect(container.querySelector('[aria-labelledby="developer-mode-heading"] h3')?.textContent).toBe("Paperclip Developer Mode");
+    expect(container.querySelector('[aria-labelledby="developer-mode-heading"] h3')?.textContent).toBe("Bostan Developer Mode");
     expect(container.querySelector('[aria-labelledby="legacy-heading"] h3')?.textContent).toBe("Goals Sidebar Link");
   });
 

@@ -1,8 +1,8 @@
 import { and, eq } from "drizzle-orm";
-import { agents, companies, type Db } from "@paperclipai/db";
-import type { AdapterEnvironmentTestResult } from "@paperclipai/adapter-utils";
-import { ADAPTER_AUTH_MISSING_CHECK_CODE, aiRuntimeConnectionBindingSchema } from "@paperclipai/shared";
-import { isForbiddenConfigEnvKey, parseObject } from "@paperclipai/adapter-utils/server-utils";
+import { agents, companies, type Db } from "@bostan/db";
+import type { AdapterEnvironmentTestResult } from "@bostan/adapter-utils";
+import { ADAPTER_AUTH_MISSING_CHECK_CODE, aiRuntimeConnectionBindingSchema } from "@bostan/shared";
+import { isForbiddenConfigEnvKey, parseObject } from "@bostan/adapter-utils/server-utils";
 import { requireServerAdapter } from "../adapters/index.js";
 import { agentEnvironmentTestService } from "./agent-environment-test.js";
 import { aiConnectionRouterService } from "./ai-connection-router.js";
@@ -23,11 +23,16 @@ export function assertHarnessTestPassed(result: AdapterEnvironmentTestResult) {
   if (result.status === "fail" || authenticationFailed || incomplete) {
     const has = (suffix: string) => result.checks.some(check => check.code.endsWith(suffix));
     const code = authenticationFailed ? "harness_auth_failed"
+      : result.checks.some(check => ["opencode_free_usage_limit_reached",
+          "opencode_free_provider_capacity_unavailable"].includes(check.code))
+        ? "harness_free_provider_limited"
       : has("_hello_probe_model_unavailable") || has("_model_invalid") ? "harness_model_unavailable"
       : has("_command_unresolvable") ? "harness_command_unavailable"
       : has("_cwd_invalid") ? "harness_cwd_invalid"
       : has("_hello_probe_timed_out") ? "harness_probe_timed_out"
       : has("_hello_probe_unexpected_output") ? "harness_probe_unexpected_output"
+      : has("_hello_probe_transport_unavailable") ? "harness_probe_transport_unavailable"
+      : has("_hello_probe_failed") ? "harness_probe_failed"
       : "harness_test_failed";
     throw Object.assign(new Error("The harness test failed"), { code });
   }

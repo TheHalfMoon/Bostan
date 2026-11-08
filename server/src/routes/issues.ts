@@ -1,7 +1,14 @@
 import { taskInterruptionPresentation, taskInterruptionPresentations } from "../services/task-interruption-presentation.js";
+import { readBostanIssueDocumentEvidence, checkBostanIssueDocumentSnapshot,
+  checkBostanDocumentSnapshotBatch } from "../services/bostan-knowledge-evidence.js";
+import { bostanVerifierReport } from "../services/bostan-current-verification-evidence.js";
+import { BostanLocalOcrBusyError, BostanLocalOcrInputError,
+  previewBostanLocalImageOcr } from "../services/bostan-local-ocr.js";
+import { parseTaskInsightWindow, readBostanTaskInsights
+} from "../services/bostan-task-insights.js";
 import { parseObject } from "../adapters/utils.js";
 import { prepareRestrictedWorkspaceRetry } from "../services/restricted-workspace-retry.js";
-import { issueSummariesQuerySchema, type IssueSummary } from "@paperclipai/shared";
+import { issueSummariesQuerySchema, type IssueSummary } from "@bostan/shared";
 import { listIssueSummaries } from "../services/issue-summaries.js";
 import { assertNoCaseHandoffMutation } from "../services/heartbeat/case-handoff-lifecycle.js";
 import { assertLegacyRunTaskOwnership } from "../legacy-run-task-ownership.js";
@@ -9,7 +16,7 @@ import { enqueueFastResponse } from "../services/fast-responses.js";
 import { hasRequiredWorkspaceRecovery, LEGACY_WORKSPACE_RECOVERY_SCHEMA } from "../services/workspace-restore-recovery-state.js";
 import { hasUnverifiedNativeWorkspaceFinalizationOwner } from "../services/native-runtime/native-workspace-finalization-recovery-state.js";
 import { monitorPoliciesEqual, applyActorMonitorScheduledBy, assertCanManageIssueMonitor, summarizeIssueMonitor } from "../services/issue-monitors.js";
-import type { IssuePrivacyConstraints } from "@paperclipai/shared";
+import type { IssuePrivacyConstraints } from "@bostan/shared";
 import { canActorReadHeartbeatRun } from "../services/heartbeat-run-privacy.js";
 import {
   loadCreationSourceAgent,
@@ -18,19 +25,19 @@ import {
 } from "../services/issue-creation-source.js";
 import { activeIssueInteractionCondition, readTaskQuestionContext } from "../services/issue-question-context.js";
 import { setIssueTitle } from "../services/issue-title.js";
-import { setIssueTitleSchema } from "@paperclipai/shared";
+import { setIssueTitleSchema } from "@bostan/shared";
 import { resolveConfirmationFromComment } from "../services/confirmation-comment-resolution.js";
 import { createIssueReadTiming } from "../services/issue-read-timing.js";
-import { isNativeWorkspaceExportRepairCause } from "@paperclipai/shared";
+import { isNativeWorkspaceExportRepairCause } from "@bostan/shared";
 import { resumeNativeWorkspaceAfterOwnerStop } from "../services/native-runtime/native-workspace-owner-recovery.js";
 import { retryNativeWorkspaceExport } from "../services/native-runtime/native-workspace-export-retry.js";
 import { reconstructNativeWorkspace, unreconciledNativeExportPredicate } from "../services/native-runtime/native-workspace-reconstruction.js";
-import { reconstructWorkspaceSchema } from "@paperclipai/shared";
+import { reconstructWorkspaceSchema } from "@bostan/shared";
 import { queuedInteractionId, readQueuedInteractionResponse, hasQueuedInteractionResponse } from "../services/queued-interaction-response.js";
 import { deliverConversationComments, isConversation } from "../services/agent-conversations.js";
 import { issueRecoveryActionReadModel } from "../services/issue-recovery-actions.js";
 import { getExecutionBlocker } from "../services/execution-blocker.js";
-import { EXECUTION_RECONCILIATION_CAUSES, requiresExecutionReconciliation } from "@paperclipai/shared";
+import { EXECUTION_RECONCILIATION_CAUSES, requiresExecutionReconciliation } from "@bostan/shared";
 import {
   validateExecutionReconciliation,
   markExecutionReconciliation,
@@ -47,7 +54,7 @@ import { Router, type Request, type Response } from "express";
 import multer from "multer";
 import { z } from "zod";
 import { and, asc, desc, eq, inArray, isNull, notInArray, or, sql, type SQL } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import type { ChatChannelService } from "../services/chat-channels.js";
 import {
   activityLog,
@@ -59,6 +66,8 @@ import {
   chatEndpoints,
   chatPublications,
   companyMemberships,
+  caseHandoffs,
+  cases,
   documents,
   executionWorkspaces,
   heartbeatRuns,
@@ -76,7 +85,7 @@ import {
   projectWorkspaces,
   projectAccessMembers,
   projects,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   addIssueCommentSchema,
   acceptIssueThreadInteractionSchema,
@@ -166,8 +175,8 @@ import {
   issueWriteDenialResponse,
   type IssueWriteDenialCode,
   type IssueWriteDenialContext,
-} from "@paperclipai/shared";
-import { trackAgentTaskCompleted } from "@paperclipai/shared/telemetry";
+} from "@bostan/shared";
+import { trackAgentTaskCompleted } from "@bostan/shared/telemetry";
 import { getTelemetryClient } from "../telemetry.js";
 import { isUniqueViolation } from "../db-errors.js";
 import type { StorageService } from "../storage/types.js";
@@ -3354,6 +3363,7 @@ export function issueRoutes(
   db: Db,
   storage: StorageService,
   opts: {
+    feedbackExportAllowed?: boolean;
     chatRunRetries?: Pick<
       ChatChannelService,
       "prepareFailedChatRunRetry" | "processFailedChatRunRetry"
@@ -8126,6 +8136,201 @@ export function issueRoutes(
     });
   });
 
+  // An explicitly read-only POST avoids putting a private source commitment
+  // into browser history, logs and intermediary URL caches. No model, action
+  // or board decision is dispatched here.
+  router.post("/companies/:companyId/bostan-evidence/snapshots/freshness", async (req, res) => {
+    assertBoard(req);
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    if (!z.string().uuid().safeParse(companyId).success) {
+      res.status(400).json({ error: "Valid company UUID required" }); return;
+    }
+    const item = z.object({
+      issueId: z.string().uuid(), documentId: z.string().uuid(),
+      expectedSnapshotHmacSha256: z.string().regex(/^[a-f0-9]{64}$/),
+    }).strict();
+    const parsed = z.object({ sources: z.array(item).min(1).max(10) }).strict().safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: "Invalid bounded Bostan citation set" }); return; }
+    const ids = parsed.data.sources.map(source => `${source.issueId}:${source.documentId}`);
+    if (new Set(ids).size !== ids.length) {
+      res.status(400).json({ error: "Duplicate citation source identifiers" }); return;
+    }
+    const verdict = await access.decide({ actor: req.actor, action: "company_scope:read",
+      resource: { type: "company", companyId } });
+    if (!verdict.allowed) { res.status(403).json({ error: "Citation set is unauthorized" }); return; }
+    const result = await checkBostanDocumentSnapshotBatch({ db, companyId,
+      issueReadCondition: await issueReadSqlCondition(db, req.actor), sources: parsed.data.sources });
+    res.setHeader("Cache-Control", "no-store");
+    res.json(result);
+  });
+
+  // Explicitly opt-in, preview-only offline OCR for a readable task.
+  // The result is untrusted text, never an automatic document revision,
+  // B4 citation, recommendation, signed decision or action permission.
+  router.post("/companies/:companyId/issues/:issueId/bostan-evidence/ocr-preview", async (req, res) => {
+    assertBoard(req);
+    res.setHeader("Cache-Control", "no-store");
+    if (process.env.BOSTAN_LOCAL_OCR_PREVIEW_ENABLE !== "1") {
+      res.status(404).json({ error: "Bostan local OCR preview is not enabled" }); return;
+    }
+    const companyId = req.params.companyId as string;
+    const issueId = req.params.issueId as string;
+    assertCompanyAccess(req, companyId);
+    if (![companyId, issueId].every(id => z.string().uuid().safeParse(id).success)) {
+      res.status(400).json({ error: "Valid company and task identifiers required" }); return;
+    }
+    const parsed = z.object({
+      mimeType: z.enum(["image/png", "image/jpeg"]),
+      base64: z.string().min(12).max(349_528),
+      language: z.enum(["eng", "ara", "eng+ara"]),
+    }).strict().safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid bounded local OCR preview request" }); return;
+    }
+    const companyAccess = await access.decide({ actor: req.actor, action: "company_scope:read",
+      resource: { type: "company", companyId } });
+    if (!companyAccess.allowed) { res.status(403).json({ error: "OCR task read unauthorized" }); return; }
+    const [visibleIssue] = await db.select({ id: issueRows.id }).from(issueRows).where(and(
+      eq(issueRows.id, issueId), eq(issueRows.companyId, companyId),
+      isNull(issueRows.hiddenAt), isNull(issueRows.harnessKind),
+      await issueReadSqlCondition(db, req.actor),
+    )).limit(1);
+    if (!visibleIssue) { res.status(404).json({ error: "OCR source task not accessible" }); return; }
+    try {
+      const preview = await previewBostanLocalImageOcr(parsed.data);
+      res.json(preview);
+    } catch (error) {
+      if (error instanceof BostanLocalOcrInputError) {
+        res.status(400).json({ error: "Invalid local OCR image data" }); return;
+      }
+      if (error instanceof BostanLocalOcrBusyError) {
+        res.setHeader("Retry-After", "1");
+        res.status(429).json({ error: "Local OCR concurrency capacity reached" }); return;
+      }
+      // Never reflect raw OCR stderr, image contents, host paths or token text.
+      res.status(503).json({ error: "Local offline OCR could not process this image" });
+    }
+  });
+
+  router.post("/companies/:companyId/issues/:issueId/bostan-evidence/documents/:documentId/freshness", async (req, res) => {
+    assertBoard(req);
+    const companyId = req.params.companyId as string;
+    const issueId = req.params.issueId as string;
+    const documentId = req.params.documentId as string;
+    assertCompanyAccess(req, companyId);
+    if (![companyId, issueId, documentId].every(id => z.string().uuid().safeParse(id).success)) {
+      res.status(400).json({ error: "Valid company, issue and document UUIDs are required" }); return;
+    }
+    const body = z.object({ expectedSnapshotHmacSha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict().safeParse(req.body);
+    if (!body.success) { res.status(400).json({ error: "Invalid Bostan source snapshot commitment" }); return; }
+    const authorization = await access.decide({ actor: req.actor, action: "company_scope:read",
+      resource: { type: "company", companyId } });
+    if (!authorization.allowed) { res.status(403).json({ error: "Company source verification is unauthorized" }); return; }
+    const assessment = await checkBostanIssueDocumentSnapshot({ db, companyId, issueId, documentId,
+      expectedSnapshotHmacSha256: body.data.expectedSnapshotHmacSha256,
+      issueReadCondition: await issueReadSqlCondition(db, req.actor) });
+    if (!assessment) { res.status(404).json({ error: "Scoped source no longer accessible" }); return; }
+    res.setHeader("Cache-Control", "no-store");
+    res.json(assessment);
+  });
+
+  // The B5 verifier must be able to author a B4-linked review report
+  // without inheriting the board's company-wide knowledge read permission.
+  // This narrow digest-only route requires the ORIGINAL running agent,
+  // current assigned work item and an actually delivered independent
+  // verification handoff. No excerpts, body or document title are emitted.
+  router.get("/companies/:companyId/issues/:issueId/bostan-verification/sources/:documentId/snapshot", async (req, res) => {
+    const companyId = req.params.companyId as string;
+    const issueId = req.params.issueId as string;
+    const documentId = req.params.documentId as string;
+    if (req.actor.type !== "agent" || !req.actor.agentId || !req.actor.runId) {
+      res.status(403).json({ error: "Active verification agent execution required" }); return;
+    }
+    assertCompanyAccess(req, companyId);
+    if (![companyId, issueId, documentId].every(id => z.string().uuid().safeParse(id).success)) {
+      res.status(400).json({ error: "Valid company, task and source UUIDs are required" }); return;
+    }
+    const [task] = await db.select({ id: issueRows.id, assigneeAgentId: issueRows.assigneeAgentId })
+      .from(issueRows).where(and(eq(issueRows.id, issueId), eq(issueRows.companyId, companyId))).limit(1);
+    if (!task || task.assigneeAgentId !== req.actor.agentId) {
+      res.status(403).json({ error: "Active task verifier identity required" }); return;
+    }
+    const [run] = await db.select({ id: heartbeatRuns.id, startedAt: heartbeatRuns.startedAt })
+      .from(heartbeatRuns).where(and(
+        eq(heartbeatRuns.id, req.actor.runId),
+        eq(heartbeatRuns.companyId, companyId),
+        eq(heartbeatRuns.agentId, req.actor.agentId),
+        eq(heartbeatRuns.status, "running"),
+        or(eq(heartbeatRuns.issueId, issueId), eq(heartbeatRuns.nativeIssueId, issueId),
+          sql`${heartbeatRuns.contextSnapshot} ->> 'issueId' = ${issueId}`),
+      )).limit(1);
+    if (!run?.startedAt) {
+      res.status(403).json({ error: "Current verifier run is not active for this task" }); return;
+    }
+    const [activeCase] = await db.select({ id: cases.id, fields: cases.fields,
+      phase: cases.phase, version: cases.handoffVersion })
+      .from(cases).where(and(eq(cases.companyId, companyId), eq(cases.workIssueId, issueId))).limit(1);
+    if (!activeCase || activeCase.fields?.bostanIndependentVerificationRequired !== true ||
+      activeCase.phase !== "verification") {
+      res.status(403).json({ error: "This task is not in governed independent verification" }); return;
+    }
+    // After the board accepts an inert terminal intent, the newest case
+    // version belongs to its `awaiting_completion` row. The same reviewer
+    // may need to re-review a changed source before final Issue Done.
+    // Recognize only an authentic current terminal intent from this same
+    // agent, then bind to the immediately preceding delivered review.
+    const [terminalIntent] = await db.select({ id: caseHandoffs.id }).from(caseHandoffs).where(and(
+      eq(caseHandoffs.companyId, companyId), eq(caseHandoffs.caseId, activeCase.id),
+      eq(caseHandoffs.issueId, issueId), eq(caseHandoffs.version, activeCase.version),
+      eq(caseHandoffs.destinationKind, "done"), eq(caseHandoffs.state, "awaiting_completion"),
+      eq(caseHandoffs.fromAgentId, req.actor.agentId),
+    )).limit(1);
+    const reviewVersion = terminalIntent ? activeCase.version - 1 : activeCase.version;
+    const [delivered] = await db.select({ deliveredAt: caseHandoffs.deliveredAt })
+      .from(caseHandoffs).where(and(
+        eq(caseHandoffs.companyId, companyId), eq(caseHandoffs.caseId, activeCase.id),
+        eq(caseHandoffs.issueId, issueId), eq(caseHandoffs.version, reviewVersion),
+        eq(caseHandoffs.phase, "verification"), eq(caseHandoffs.state, "delivered"),
+        eq(caseHandoffs.toAgentId, req.actor.agentId),
+        sql`${caseHandoffs.fromAgentId} is not null and ${caseHandoffs.fromAgentId} <> ${caseHandoffs.toAgentId}`,
+      )).limit(1);
+    if (!delivered?.deliveredAt || run.startedAt < delivered.deliveredAt) {
+      res.status(403).json({ error: "Independent reviewer handoff has not authorized this run" }); return;
+    }
+    const source = await readBostanIssueDocumentEvidence({ db, companyId, issueId, documentId,
+      issueReadCondition: await issueReadSqlCondition(db, req.actor) });
+    if (!source || source.documentKey === "bostan-verification") {
+      res.status(404).json({ error: "Scoped source document not found" }); return;
+    }
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json({ schema: "bostan.verification.source-snapshot.v1", documentId,
+      latestRevisionNumber: source.latestRevisionNumber,
+      sourceSnapshotHmacSha256: source.sourceSnapshotHmacSha256,
+      sourceContentIsUntrusted: true, executionAuthorized: false,
+      factualRelevanceVerified: false });
+  });
+
+  router.get("/companies/:companyId/issues/:issueId/bostan-evidence/documents/:documentId", async (req, res) => {
+    assertBoard(req);
+    const companyId = req.params.companyId as string;
+    const issueId = req.params.issueId as string;
+    const documentId = req.params.documentId as string;
+    assertCompanyAccess(req, companyId);
+    if (![companyId, issueId, documentId].every(id => z.string().uuid().safeParse(id).success)) {
+      res.status(400).json({ error: "Valid company, issue and document UUIDs are required" }); return;
+    }
+    const authorization = await access.decide({ actor: req.actor, action: "company_scope:read",
+      resource: { type: "company", companyId } });
+    if (!authorization.allowed) {
+      res.status(403).json({ error: "Company evidence is outside this actor's authorization boundary" }); return;
+    }
+    const result = await readBostanIssueDocumentEvidence({ db, companyId, issueId, documentId,
+      issueReadCondition: await issueReadSqlCondition(db, req.actor) });
+    if (!result) { res.status(404).json({ error: "Scoped document evidence not found" }); return; }
+    res.json(result);
+  });
+
   router.get("/companies/:companyId/search/extract", async (req, res) => {
     const companyId = req.params.companyId as string;
     assertCompanyAccess(req, companyId);
@@ -8217,6 +8422,28 @@ export function issueRoutes(
       projectReadCondition: await projectReadSqlCondition(db, req.actor),
     });
     res.json(result);
+  });
+
+  // Board-only time-window analytics over the same task privacy scope as
+  // task lists, without returning titles, details or agent conversations.
+  router.get("/companies/:companyId/bostan-analytics/task-insights", async (req, res) => {
+    assertBoard(req);
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const parsed = z.object({ days: z.enum(["7", "30", "90"]).optional() })
+      .strict().safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Choose exactly 7, 30 or 90 days" }); return;
+    }
+    const permission = await access.decide({ actor: req.actor,
+      action: "company_scope:read", resource: { type: "company", companyId } });
+    if (!permission.allowed) { res.status(403).json({ error: "Task insights unauthorized" }); return; }
+    const insights = await readBostanTaskInsights(db, {
+      companyId, days: parseTaskInsightWindow(parsed.data.days),
+      visible: await issueReadSqlCondition(db, req.actor),
+    });
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json(insights);
   });
 
   router.get("/companies/:companyId/issues/summaries", async (req, res) => {
@@ -10733,7 +10960,11 @@ export function issueRoutes(
 
   router.put(
     "/issues/:id/documents/:key",
-    validate(upsertIssueDocumentSchema),
+    // Existing issue documents remain markdown-only. The B5 independently
+    // reviewed report has one narrow JSON exception using its own key.
+    validate(upsertIssueDocumentSchema.or(
+      upsertIssueDocumentSchema.extend({ format: z.literal("json") }),
+    )),
     async (req, res) => {
       const id = req.params.id as string;
       const issue = await getAccessibleResource(
@@ -10761,6 +10992,56 @@ export function issueRoutes(
         return;
       }
 
+      if (req.body.format === "json") {
+        if (keyParsed.data !== "bostan-verification") {
+          res.status(400).json({ error: "JSON document format is reserved for Bostan verification reports" });
+          return;
+        }
+        // B5-11: JSON is an exception for the actual *running* assigned
+        // independent verifier, not a general-purpose document format or a
+        // board shortcut for minting agent-authored provenance.
+        if (req.actor.type !== "agent" || !req.actor.runId || !req.actor.agentId ||
+          req.actor.companyId !== issue.companyId || req.actor.agentId !== issue.assigneeAgentId) {
+          res.status(403).json({ error: "Active assigned verifier agent required" }); return;
+        }
+        const [reviewRun] = await db.select({ startedAt: heartbeatRuns.startedAt }).from(heartbeatRuns)
+          .where(and(eq(heartbeatRuns.id, req.actor.runId), eq(heartbeatRuns.companyId, issue.companyId),
+            eq(heartbeatRuns.agentId, req.actor.agentId), eq(heartbeatRuns.status, "running"),
+            or(eq(heartbeatRuns.issueId, issue.id), eq(heartbeatRuns.nativeIssueId, issue.id),
+              sql`${heartbeatRuns.contextSnapshot}->>'issueId' = ${issue.id}`))).limit(1);
+        const [reviewCase] = await db.select({ id: cases.id, version: cases.handoffVersion,
+          phase: cases.phase }).from(cases).where(and(eq(cases.companyId, issue.companyId),
+            eq(cases.workIssueId, issue.id), sql`${cases.fields}->>'bostanIndependentVerificationRequired' = 'true'`)).limit(1);
+        if (!reviewRun?.startedAt || !reviewCase || reviewCase.phase !== "verification") {
+          res.status(403).json({ error: "Current independent verifier run required" }); return;
+        }
+        // A board may have already admitted an inert terminal intent while
+        // a newer reviewer run is correcting a stale source. In that case
+        // look at the immediately preceding independent delivery version.
+        const [terminalIntent] = await db.select({ id: caseHandoffs.id }).from(caseHandoffs).where(and(
+          eq(caseHandoffs.companyId, issue.companyId), eq(caseHandoffs.caseId, reviewCase.id),
+          eq(caseHandoffs.issueId, issue.id), eq(caseHandoffs.version, reviewCase.version),
+          eq(caseHandoffs.destinationKind, "done"), eq(caseHandoffs.state, "awaiting_completion"),
+          eq(caseHandoffs.fromAgentId, req.actor.agentId))).limit(1);
+        const version = terminalIntent ? reviewCase.version - 1 : reviewCase.version;
+        const [delivered] = await db.select({ deliveredAt: caseHandoffs.deliveredAt }).from(caseHandoffs)
+          .where(and(eq(caseHandoffs.companyId, issue.companyId), eq(caseHandoffs.caseId, reviewCase.id),
+            eq(caseHandoffs.issueId, issue.id), eq(caseHandoffs.version, version),
+            eq(caseHandoffs.phase, "verification"), eq(caseHandoffs.destinationKind, "agent"),
+            eq(caseHandoffs.state, "delivered"), eq(caseHandoffs.toAgentId, req.actor.agentId),
+            sql`${caseHandoffs.fromAgentId} is not null and ${caseHandoffs.fromAgentId} <> ${caseHandoffs.toAgentId}`))
+          .limit(1);
+        if (!delivered?.deliveredAt || reviewRun.startedAt < delivered.deliveredAt) {
+          res.status(403).json({ error: "Delivered independent verifier handoff required" }); return;
+        }
+        let candidate: unknown;
+        try { candidate = JSON.parse(req.body.body); } catch { candidate = null; }
+        const report = bostanVerifierReport.safeParse(candidate);
+        if (!report.success) {
+          res.status(400).json({ error: "Invalid bounded Bostan verifier report" });
+          return;
+        }
+      }
       const actor = getActorInfo(req);
       const sourceTrust = await sourceTrustForActorWrite(issue, actor);
       const referenceSummaryBefore =
@@ -12170,7 +12451,9 @@ export function issueRoutes(
     if (!(await assertCanManageIssueApprovalLinks(req, res, issue.companyId)))
       return;
 
-    await issueApprovalsSvc.unlink(id, approvalId);
+    // A CEO/privileged agent may manage historical links but cannot remove
+    // a pending human approval to self-certify the task as Done.
+    await issueApprovalsSvc.unlink(id, approvalId, { isBoard: req.actor.type === "board" });
 
     const actor = getActorInfo(req);
     await logActivity(db, {
@@ -19335,7 +19618,9 @@ export function issueRoutes(
         vote: req.body.vote,
         reason: req.body.reason,
         authorUserId: req.actor.userId ?? "local-board",
-        allowSharing: req.body.allowSharing === true,
+        // Save feedback locally even if a stale client sends consent. The
+        // destination must pass the Bostan-only server admission first.
+        allowSharing: opts.feedbackExportAllowed === true && req.body.allowSharing === true,
       });
 
       await logActivity(db, {

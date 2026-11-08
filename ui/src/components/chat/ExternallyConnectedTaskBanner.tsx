@@ -6,7 +6,7 @@ import type {
   ChatPublicationState,
   ChatFileTransferPhase,
   IssueAttachment,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   chatEndpointsApi,
   type ChatProvider,

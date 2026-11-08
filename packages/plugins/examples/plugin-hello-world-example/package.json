@@ -1,5 +1,5 @@
 {
-  "name": "@paperclipai/plugin-hello-world-example",
+  "name": "@bostan/plugin-hello-world-example",
   "version": "0.1.0",
   "description": "First-party reference plugin that adds a Hello World dashboard widget",
   "type": "module",
@@ -13,13 +13,15 @@
     "ui": "./dist/ui/"
   },
   "scripts": {
-    "prebuild": "pnpm --filter @paperclipai/plugin-sdk ensure-build-deps",
+    "prebuild": "pnpm --filter @bostan/plugin-sdk ensure-build-deps",
     "build": "tsc",
     "clean": "rm -rf dist",
-    "typecheck": "pnpm --filter @paperclipai/plugin-sdk ensure-build-deps && tsc --noEmit"
+    "typecheck": "pnpm --filter @bostan/plugin-sdk ensure-build-deps && tsc --noEmit",
+    "prepack": "node ../../../../scripts/bostan-release-disabled.mjs",
+    "prepublishOnly": "node ../../../../scripts/bostan-release-disabled.mjs"
   },
   "dependencies": {
-    "@paperclipai/plugin-sdk": "workspace:*"
+    "@bostan/plugin-sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
@@ -34,5 +36,14 @@
   },
   "engines": {
     "node": ">=24.11.0"
+  },
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
+  "bugs": {
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheHalfMoon/Bostan",
+    "directory": "packages/plugins/examples/plugin-hello-world-example"
   }
 }

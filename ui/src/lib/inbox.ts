@@ -1,4 +1,4 @@
-import { isHeartbeatRunVisibleInMine } from "@paperclipai/shared";
+import { isHeartbeatRunVisibleInMine } from "@bostan/shared";
 import type {
   Approval,
   DashboardSummary,
@@ -6,7 +6,7 @@ import type {
   InboxDismissal,
   Issue,
   JoinRequest,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   applyIssueFilters,
   defaultIssueFilterState,

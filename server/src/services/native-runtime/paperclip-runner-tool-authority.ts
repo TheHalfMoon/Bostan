@@ -4,12 +4,12 @@ import { caseHandoffService } from "../case-handoffs.js";
 import { caseIdForApiCapture, createNativeCaseSchema, executeNativeCaseTool, NATIVE_CASE_OPERATIONS } from "./native-case-tools.js";
 import { executeNativeWorkflowTool } from "./native-workflow-tools.js";
 import { assertNoCaseHandoffMutation } from "../heartbeat/case-handoff-lifecycle.js";
-import { handoffCaseSchema } from "@paperclipai/shared";
+import { handoffCaseSchema } from "@bostan/shared";
 import { skillAccessService } from "../skill-access.js";
 import { withExternalExecutionAdmission, type ExternalAdmissionTransaction } from "../../modules/external-agents/index.js";
 import { callTaskWorkspaceTool, pendingTaskRepositoryContinuation } from "../task-workspace-tools.js";
 import { TaskAttachmentReadCache, TASK_ATTACHMENT_DEFINITIONS, TASK_ATTACHMENT_SCHEMAS, listTaskAttachments, readTaskAttachment } from "./runner-task-attachments.js";
-import { RUNNER_BRIDGE_SCHEMAS, runnerBridgeDefinitions, readAssignedSkill, executeWorkspaceTool, readWorkspaceUploadFile, settleRunnerBridgeRead, assertRunnerWorkspacePathAllowed } from "./runner-bridge-tools.js";
+import { RUNNER_BRIDGE_SCHEMAS, runnerBridgeDefinitions, runnerTaskDocumentFormatAllowed, readAssignedSkill, executeWorkspaceTool, readWorkspaceUploadFile, settleRunnerBridgeRead, assertRunnerWorkspacePathAllowed } from "./runner-bridge-tools.js";
 import type { NativeRuntimeContextSnapshot } from "../../vendor/paperclip-runner/index.js";
 import { assertCanManageIssueMonitor, eligibleIssueMonitorWait, prepareIssueMonitorUpdate, setTaskMonitorSchema, summarizeIssueMonitor } from "../issue-monitors.js";
 import { readTaskQuestionContext } from "../issue-question-context.js";
@@ -17,12 +17,12 @@ import { isConversation } from "../agent-conversations.js";
 import { setIssueTitle } from "../issue-title.js";
 import { externalObjectService } from "../external-objects.js";
 import { instanceSettingsService } from "../instance-settings.js";
-import { fastResponseHistoryBody, setIssueTitleSchema } from "@paperclipai/shared";
+import { fastResponseHistoryBody, setIssueTitleSchema } from "@bostan/shared";
 import { authorizeInstructionCommit } from "../agent-instruction-authorization.js";
 import { executeAgentInstructionTool } from "./agent-instruction-tools.js";
 import { createReadStream } from "node:fs";
 import { publicChatTaskUrl } from "../chat-task-url.js";
-import { agentCommentaryToolInputSchema } from "@paperclipai/shared";
+import { agentCommentaryToolInputSchema } from "@bostan/shared";
 import { submitAgentCommentary } from "../agent-commentary.js";
 import type { createAssignedMcpTools } from "./assigned-mcp-tools.js";
 import { captureRunnerToolResult, fitRunnerToolResultPage, READ_TOOL_RESULT, READ_TOOL_RESULT_DEFINITION, readToolResultSchema, RUNNER_TOOL_RESULT_MAX_BYTES } from "./runner-tool-results.js";
@@ -38,13 +38,13 @@ import { isConnectorTool, executeConnectorTool, type ConnectorAssignment } from 
 import { resolveNativeRuntimeMcpSnapshot } from "./runtime-context.js";
 import { connectionIntentService } from "../connection-intents.js";
 import { RUNTIME_CONNECTION_TOOL_DEFINITIONS } from "../connection-tool-definitions.js";
-import { connectionsSearchInputSchema, connectionRequestInputSchema, CONNECTION_INTENT_AGENT_GUIDANCE } from "@paperclipai/shared";
+import { connectionsSearchInputSchema, connectionRequestInputSchema, CONNECTION_INTENT_AGENT_GUIDANCE } from "@bostan/shared";
 import { createHash, randomUUID } from "node:crypto";
-import { paperclipChatFilePreparationDelivery } from "@paperclipai/adapter-utils/chat-file-delivery";
+import { paperclipChatFilePreparationDelivery } from "@bostan/adapter-utils/chat-file-delivery";
 import {
   isPaperclipExternalChatContractTurn,
   normalizePaperclipWakePayload,
-} from "@paperclipai/adapter-utils/server-utils";
+} from "@bostan/adapter-utils/server-utils";
 import { runnerApiToolsEnabled } from "./runner-api-rollout.js";
 import { openRunnerApiWorkspaceFile } from "./runner-api-files.js";
 import { basename } from "node:path";
@@ -61,7 +61,7 @@ import { runnerApiCatalog, searchRunnerApi } from "./runner-api-catalog.js";
 import { executeRunnerApi, validateRunnerApiCall, RUNNER_API_MAX_BYTES, type RunnerApiFile, type RunnerApiIo } from "./runner-api-client.js";
 import { acquireRunnerApiResponseSlot, runnerApiCompanyCaptureMaxBytes, RUNNER_API_RESPONSE_MAX_BYTES, RUNNER_API_RESPONSE_RUN_MAX_BYTES, RunnerApiResponseLimitError } from "./runner-api-response-limits.js";
 import { and, desc, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   authUsers,
   companyMemberships,
@@ -83,7 +83,7 @@ import {
   issues,
   projects,
   issueThreadInteractions,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { CAPABILITY_SEMANTIC_TOOL_CATALOG, runnerCodexDynamicToolsFit, SemanticToolOutcomeUnknownError } from "../../vendor/paperclip-runner/index.js";
 import { agentService } from "../agents.js";
 import { approvalService } from "../approvals.js";
@@ -435,7 +435,15 @@ export class PaperclipRunnerToolAuthority {
       const [method, path] = paths[call.tool]!;
       const operation = runnerApiCatalog().find(operation => operation.method === method && operation.path === path);
       if (!operation) throw new Error("runner_task_api_operation_unavailable");
-      const body = call.tool === "comment_on_task" ? { body: input.body } : call.tool === "write_task_document" ? { title: input.title, format: "markdown", body: input.body, baseRevisionId: input.baseRevisionId } : undefined;
+      // The bridge schema has already validated the full argument record.
+      // Project only the format-guard inputs to retain the required key
+      // contract when TypeScript infers input as a dynamic tool record.
+      if (call.tool === "write_task_document" && !runnerTaskDocumentFormatAllowed({
+        key: input.key, format: input.format,
+      })) {
+        throw badRequest("JSON task documents are reserved for Bostan independent verification reports");
+      }
+      const body = call.tool === "comment_on_task" ? { body: input.body } : call.tool === "write_task_document" ? { title: input.title, format: input.format ?? "markdown", body: input.body, baseRevisionId: input.baseRevisionId } : undefined;
       const { operationId, ...response } = record(await this.#callApi(call.callId, { operationId: operation.operationId, pathParams: { id: input.taskId, ...(input.key ? { key: input.key } : {}) }, ...(body ? { body } : {}) }));
       return { ...response, apiOperationId: operationId };
     }

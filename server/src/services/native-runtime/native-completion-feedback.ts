@@ -22,7 +22,7 @@ import {
   issueThreadInteractions,
   issues,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   normalizePrpResultSignals,
   type PrpStructuredRunResult,

@@ -3,9 +3,9 @@ import { createSlackIdentityLinks, type SlackIdentityEffectStager } from "./slac
 import { createHash, randomBytes } from "node:crypto";
 import { and, asc, eq, gt, inArray, ne, sql } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
-import { authUsers, chatEndpoints, chatExternalPrincipals, chatIdentityLinks, companies, companyMemberships } from "@paperclipai/db";
+import { authUsers, chatEndpoints, chatExternalPrincipals, chatIdentityLinks, companies, companyMemberships } from "@bostan/db";
 
 import { conflict, forbidden, notFound, unprocessable } from "../../errors.js";
 

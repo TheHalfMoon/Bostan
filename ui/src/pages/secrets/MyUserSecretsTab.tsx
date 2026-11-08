@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CompanySecret } from "@paperclipai/shared";
+import type { CompanySecret } from "@bostan/shared";
 import { AlertCircle, KeyRound, Trash2, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { cn } from "../../lib/utils";
 import { useToastActions } from "../../context/ToastContext";
 import { SetMyUserSecretDialog } from "./SetMyUserSecretDialog";
 import { SecretPathName } from "./SecretPathName";
+import { safeSecretUiError } from "./secret-error-messages";
 import {
   myValueLabel,
   myValueState,
@@ -43,7 +44,7 @@ export function MyUserSecretsTab({ companyId }: { companyId: string }) {
     onError: (err) =>
       pushToast({
         title: "Could not clear value",
-        body: err instanceof Error ? err.message : undefined,
+        body: safeSecretUiError(err),
         tone: "error",
       }),
   });
@@ -73,7 +74,7 @@ export function MyUserSecretsTab({ companyId }: { companyId: string }) {
         {mySecretsQuery.isError ? (
           <div className="flex items-center gap-2 py-4 text-sm text-destructive">
             <AlertCircle className="h-4 w-4" /> Failed to load your secrets:{" "}
-            {(mySecretsQuery.error as Error).message}
+            {safeSecretUiError(mySecretsQuery.error)}
             <Button variant="ghost" size="sm" onClick={() => mySecretsQuery.refetch()}>
               Retry
             </Button>

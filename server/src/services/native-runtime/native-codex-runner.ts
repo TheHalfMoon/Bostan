@@ -5,10 +5,10 @@ import { dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { and, eq } from "drizzle-orm";
 
-import type { AdapterExecutionResult } from "@paperclipai/adapter-utils";
-import type { CommandManagedRuntimeRunner } from "@paperclipai/adapter-utils/command-managed-runtime";
-import type { Db } from "@paperclipai/db";
-import { agentSessionGoalActions, agentTaskSessions } from "@paperclipai/db";
+import type { AdapterExecutionResult } from "@bostan/adapter-utils";
+import type { CommandManagedRuntimeRunner } from "@bostan/adapter-utils/command-managed-runtime";
+import type { Db } from "@bostan/db";
+import { agentSessionGoalActions, agentTaskSessions } from "@bostan/db";
 
 import { resolvePaperclipInstanceRoot } from "../../home-paths.js";
 import { failRunnerGoalAction } from "../runner-goals.js";
@@ -204,7 +204,7 @@ export function resolvePaperclipRunnerBinary(
     }
   }
   throw new Error(
-    "paperclip_runner_binary_missing: build @paperclipai/paperclip-runner or set PAPERCLIP_RUNNER_BINARY",
+    "paperclip_runner_binary_missing: build @bostan/runner or set PAPERCLIP_RUNNER_BINARY",
   );
 }
 

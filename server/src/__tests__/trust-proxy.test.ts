@@ -37,6 +37,62 @@ describe("parseTrustProxyEnv", () => {
     expect(appWithEnv("2").get("trust proxy")).toBe(2);
   });
 
+  it.each([
+    "33",
+    "1000",
+    "9007199254740992",
+    "999999999999999999999999",
+    "9".repeat(400),
+  ])("rejects unsafe or infinite numeric trusted-proxy hop counts (%s)", (raw) => {
+    // Number(raw) may round an unsafe integer or become Infinity, which
+    // effectively trusts every X-Forwarded-For hop.
+    expect(() => parseTrustProxyEnv(raw)).toThrow(/invalid integer/);
+    expect(() => parseTrustProxyEnv(raw)).toThrow(/between 1 and 32/);
+  });
+
+  it("allows at most 32 explicitly configured trusted proxy hops", () => {
+    expect(parseTrustProxyEnv("32")).toBe(32);
+    expect(parseTrustProxyEnv(" 2 ")).toBe(2);
+  });
+
+  it.each([
+    "999.999.999.999",
+    "010.0.0.1",
+    ":::",
+    "2001:db8:::1",
+    "loopback,999.999.999.999",
+    "loopback,:::",
+  ])("rejects malformed trusted proxy IP/subnet tokens (%s)", (raw) => {
+    expect(() => parseTrustProxyEnv(raw)).toThrow(/unrecognized token/);
+  });
+
+  it.each([
+    "loopback,",
+    ",loopback",
+    "loopback,,uniquelocal",
+    "loopback,   ,10.0.0.0/8",
+    ",",
+    " , ",
+  ])("rejects empty comma-separated trust-proxy subnet entries (%s)", (raw) => {
+    // Dropping empty tokens silently turns malformed operator configuration
+    // into a live trust policy. Refuse startup instead of trusting a subset.
+    expect(() => parseTrustProxyEnv(raw)).toThrow(/empty proxy subnet entry/);
+  });
+
+  it("preserves legitimate whitespace around nonempty subnet entries", () => {
+    expect(parseTrustProxyEnv(" loopback , 10.0.0.0/8 ")).toEqual([
+      "loopback",
+      "10.0.0.0/8",
+    ]);
+  });
+
+  it("retains valid IPv4 and IPv6 CIDR trust-proxy configuration", () => {
+    expect(parseTrustProxyEnv("192.0.2.0/24,2001:db8::/32")).toEqual([
+      "192.0.2.0/24",
+      "2001:db8::/32",
+    ]);
+  });
+
   it("'01' throws (strict integer, no leading zeros)", () => {
     expect(() => parseTrustProxyEnv("01")).toThrow(/invalid integer/);
   });

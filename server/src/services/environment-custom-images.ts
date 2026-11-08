@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { withoutCleanupVerification } from "./cleanup-verification-proof.js";
 import { and, desc, eq, inArray, lte } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   environmentCustomImageSetupSessions,
   environmentCustomImageTemplates,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   ENVIRONMENT_CUSTOM_IMAGE_SETUP_CONNECTION_TYPES,
   ENVIRONMENT_CUSTOM_IMAGE_SETUP_SESSION_STATUSES,
@@ -17,7 +17,7 @@ import {
   type EnvironmentCustomImageTemplateKind,
   type SandboxEnvironmentConfig,
   redactEnvironmentCustomImageValue,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import type {
   PluginEnvironmentCancelInteractiveSetupResult,
   PluginEnvironmentCaptureTemplateResult,
@@ -25,7 +25,7 @@ import type {
   PluginEnvironmentInteractiveSetupSession,
   PluginEnvironmentLeaseObservation,
   PluginEnvironmentTemplateRefKind,
-} from "@paperclipai/plugin-sdk";
+} from "@bostan/plugin-sdk";
 import { conflict, notFound, unprocessable } from "../errors.js";
 import {
   parseEnvironmentDriverConfig,

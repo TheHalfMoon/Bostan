@@ -1,3 +1,4 @@
+import { BOSTAN_CHAT_ATTACHMENTS_USER_AGENT } from "./bostan-user-agents.js";
 import type { Attachment, Message } from "chat";
 import { createHash } from "node:crypto";
 import { JSDOM } from "jsdom";
@@ -746,7 +747,7 @@ export async function prepareGitHubPublicAttachment(
           redirect: "manual",
           credentials: "omit",
           signal,
-          headers: { accept: "*/*", "user-agent": "Paperclip/ChatAttachments" },
+          headers: { accept: "*/*", "user-agent": BOSTAN_CHAT_ATTACHMENTS_USER_AGENT },
         },
         {
           allowPrivateNetwork: false,

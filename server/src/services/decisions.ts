@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, count, desc, eq, gt, gte, inArray, lte, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { companyMemberships, decisionBundles, decisionEffectExecutions, decisionRetention, decisions, decisionTargetIssues, heartbeatRuns, issueRelations, issues } from "@paperclipai/db";
-import { ATTENTION_SOURCE_KINDS, decisionEffectTargetIssueIds } from "@paperclipai/shared";
-import type { AttentionArchiveManifestEntry, DecisionEffect, DecisionInput, DecisionOption, DecisionStatsCounts, DecisionStatsResponse } from "@paperclipai/shared";
+import type { Db } from "@bostan/db";
+import { companyMemberships, decisionBundles, decisionEffectExecutions, decisionRetention, decisions, decisionTargetIssues, heartbeatRuns, issueRelations, issues } from "@bostan/db";
+import { ATTENTION_SOURCE_KINDS, decisionEffectTargetIssueIds } from "@bostan/shared";
+import type { AttentionArchiveManifestEntry, DecisionEffect, DecisionInput, DecisionOption, DecisionStatsCounts, DecisionStatsResponse } from "@bostan/shared";
 import { conflict, forbidden, notFound, tooManyRequests, unprocessable } from "../errors.js";
 import { authorizationService, type AuthorizationActor } from "./authorization.js";
 import { logActivity, publishActivity, type ActivityPublication } from "./activity-log.js";
@@ -13,6 +13,7 @@ import {
   type IssuePostCommitAction,
 } from "./issues.js";
 import { decisionRetentionService, hashAttentionArchiveManifest } from "./decision-retention.js";
+import { isBostanRecommendationFresh } from "./bostan-recommendation-freshness.js";
 
 type Snapshot = { status: string; assigneeAgentId: string | null; assigneeUserId: string | null; updatedAt: string;
   descendantCount?: number; descendantIds?: string[]; childCount?: number; attentionArchive?: unknown };
@@ -664,12 +665,34 @@ export function decisionService(db: Db, options: DecisionServiceOptions) {
     if (!current.options.some((option) => option.id === input.optionId)) throw unprocessable("Unknown optionId");
     const values = input.inputValues ?? {};
     for (const field of current.inputs ?? []) { const value = values[field.id] ?? ""; if (field.required && !value.trim()) throw unprocessable(`Input ${field.id} is required`); if (field.maxLength && value.length > field.maxLength) throw unprocessable(`Input ${field.id} is too long`); }
-    const [claimed] = await db.update(decisions).set({ status: "decided", executionStatus: "running", chosenOptionId: input.optionId, inputValues: values,
-      decidedByUserId: input.decidedByUserId, decidedAt: new Date(), updatedAt: new Date(), metadata: { ...metadata,
+    const claim = (dbOrTx: Db, claimMetadata: Record<string, unknown> = metadata) => dbOrTx.update(decisions).set({ status: "decided", executionStatus: "running", chosenOptionId: input.optionId, inputValues: values,
+      decidedByUserId: input.decidedByUserId, decidedAt: new Date(), updatedAt: new Date(), metadata: { ...claimMetadata,
         decideIdempotencyKey: input.idempotencyKey ?? null,
         ...(current.continuationPolicy === "wake_origin_agent" ? { continuationPending: true } : {}),
         ...(input.dismissed ? { dismissed: true, dismissReason: input.dismissReason ?? null } : {}) } })
       .where(and(eq(decisions.id, current.id), eq(decisions.status, "open"))).returning();
+    const safeAbstention = input.dismissed || ["defer", "request_evidence"].includes(input.optionId);
+    const isBostanAdvice = current.ruleKey === "bostan.decision_recommendation.v1";
+    const [claimed] = isBostanAdvice
+      ? await db.transaction(async (tx) => {
+        const [locked] = await tx.select().from(decisions)
+          .where(and(eq(decisions.id, current.id), eq(decisions.companyId, current.companyId)))
+          .for("update");
+        if (!locked || locked.status !== "open") throw conflict("decision_already_resolved", { code: "decision_already_resolved" });
+        if (locked.expiresAt <= new Date()) throw conflict("decision_expired", { code: "decision_expired" });
+        // All Bostan advice MUST be inert, even if a malformed decision
+        // attempts to disguise privileged effects behind "defer" or dismiss.
+        if (locked.options.some(option => option.effects.length > 0)) {
+          throw forbidden("Bostan recommendations cannot execute effects");
+        }
+        if (!safeAbstention && !(await isBostanRecommendationFresh(tx as unknown as Db, locked, input.userActor))) {
+          throw conflict("Recommendation evidence or budget has changed; request fresh advice", {
+            code: "bostan_recommendation_stale",
+          });
+        }
+        return claim(tx as unknown as Db, locked.metadata);
+      })
+      : await claim(db);
     if (!claimed) throw conflict("decision_already_resolved", { code: "decision_already_resolved" });
     const run = await db.select({ responsibleUserId: heartbeatRuns.responsibleUserId }).from(heartbeatRuns).where(eq(heartbeatRuns.id, claimed.originRunId)).then((rows) => rows[0] ?? null);
     await logActivity(db, { companyId: claimed.companyId, actorType: "system", actorId: "decision-executor", agentId: claimed.originAgentId, runId: claimed.originRunId,

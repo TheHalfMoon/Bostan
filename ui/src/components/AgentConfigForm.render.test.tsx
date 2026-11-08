@@ -5,8 +5,8 @@ import { createRoot, type Root } from "react-dom/client";
 import { flushSync } from "react-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Agent, Environment, UserSecretDefinition } from "@paperclipai/shared";
-import { getEnvironmentCapabilities } from "@paperclipai/shared";
+import type { Agent, Environment, UserSecretDefinition } from "@bostan/shared";
+import { getEnvironmentCapabilities } from "@bostan/shared";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ToastProvider } from "../context/ToastContext";
 import { AgentConfigForm, AdapterLoginPanel, ModelDropdown, subtractPersistedOverlay, type AdapterLoginDescriptor } from "./AgentConfigForm";
@@ -18,8 +18,8 @@ import { ApiError } from "../api/client";
 import { aiConnectionsApi } from "../api/ai-connections";
 import { CodexLocalConfigFields } from "../adapters/codex-local/config-fields";
 import type { AdapterConfigFieldsProps } from "../adapters/types";
-import { buildClaudeLocalConfig } from "@paperclipai/adapter-claude-local/ui";
-import { DEFAULT_CODEX_LOCAL_MODEL } from "@paperclipai/adapter-codex-local";
+import { buildClaudeLocalConfig } from "@bostan/adapter-claude-local/ui";
+import { DEFAULT_CODEX_LOCAL_MODEL } from "@bostan/adapter-codex-local";
 
 const mockAgentsApi = vi.hoisted(() => ({
   get: vi.fn(),
@@ -710,7 +710,7 @@ describe("AgentConfigForm environment selector", () => {
     roots.push(result.root);
     expect(result.container.querySelector('[aria-label="Harness"]')?.textContent).toContain("Codex");
     await clickByText(result.container, "Advanced");
-    expect(result.container.querySelector('[aria-label="Runner"]')?.textContent).toContain(adapterType === "paperclip_runner" ? "Paperclip Runner" : "Legacy runner");
+    expect(result.container.querySelector('[aria-label="Runner"]')?.textContent).toContain(adapterType === "paperclip_runner" ? "Bostan Runner" : "Legacy runner");
     await act(async () => setInputValue(result.container.querySelector<HTMLInputElement>('[placeholder="Agent name"]')!, "Renamed Cody"));
     await flushReact();
     await clickByText(result.container, "Save");
@@ -721,7 +721,7 @@ describe("AgentConfigForm environment selector", () => {
     mockAdaptersApi.list.mockResolvedValueOnce([{ type: adapterType, supportedRunners: ["legacy", "paperclip"], defaultRunner: "paperclip" }]);
     const result = await renderForm([], { adapterType, adapterConfig: { model: "existing-model", effort: "high" } });
     roots.push(result.root);
-    expect(result.container.textContent).toContain("Upgrade to Paperclip Runner");
+    expect(result.container.textContent).toContain("Upgrade to Bostan Runner");
     await act(async () => setInputValue(result.container.querySelector<HTMLInputElement>('[placeholder="Agent name"]')!, "Renamed agent"));
     await flushReact();
     await clickByText(result.container, "Upgrade runner");
@@ -754,9 +754,10 @@ describe("AgentConfigForm environment selector", () => {
     mockAdaptersApi.list.mockResolvedValueOnce([{ type: "codex_local", supportedRunners: ["legacy", "paperclip"], defaultRunner: "paperclip" }]);
     const result = await renderForm([]);
     roots.push(result.root);
-    result.onSave.mockRejectedValueOnce(new Error("Paperclip Runner cannot honor these settings: extraArgs."));
+    result.onSave.mockRejectedValueOnce(new Error("Bostan Runner cannot honor settings: extraArgs?token=sk-private-test."));
     await clickByText(result.container, "Upgrade runner");
-    expect(result.container.querySelector('[role="alert"]')?.textContent).toContain("extraArgs");
+    expect(result.container.querySelector('[role="alert"]')?.textContent).toContain("Could not upgrade this agent.");
+    expect(result.container.querySelector('[role="alert"]')?.textContent).not.toContain("sk-private-test");
     expect(result.onSave).toHaveBeenLastCalledWith({ runner: "paperclip" });
     await clickByText(result.container, "Upgrade runner");
     expect(result.onSave).toHaveBeenCalledTimes(2);
@@ -783,7 +784,7 @@ describe("AgentConfigForm environment selector", () => {
     await act(async () => changeAgent());
     await act(async () => finishUpgrade());
     await flushReact();
-    expect(container.textContent).not.toContain("Upgraded to Paperclip Runner.");
+    expect(container.textContent).not.toContain("Upgraded to Bostan Runner.");
     expect(findButton(container, "Upgrade runner")).toBeDefined();
   });
 
@@ -821,7 +822,7 @@ describe("AgentConfigForm environment selector", () => {
     ], { adapterType, adapterConfig, defaultEnvironmentId: "sandbox-1" }, { showAdapterTypeField: true });
     roots.push(result.root);
     await clickByText(result.container, "Advanced");
-    const runnerLabel = adapterType === "paperclip_runner" ? "Paperclip Runner" : "Legacy runner";
+    const runnerLabel = adapterType === "paperclip_runner" ? "Bostan Runner" : "Legacy runner";
 
     await selectEnvironment(result.container, "sandbox-2");
     expect(result.container.querySelector('[aria-label="Environment override"]')?.textContent).toContain("Daytona Two");
@@ -877,7 +878,7 @@ describe("AgentConfigForm environment selector", () => {
     roots.push(result.root);
     expect(result.container.querySelector('[aria-label="Harness"]')?.textContent).toContain("Claude");
     await clickByText(result.container, "Advanced");
-    expect(result.container.querySelector('[aria-label="Runner"]')?.textContent).toContain("Paperclip Runner");
+    expect(result.container.querySelector('[aria-label="Runner"]')?.textContent).toContain("Bostan Runner");
     const labels = Array.from(result.container.querySelectorAll("label")).map(label => label.textContent?.trim());
     expect(labels).not.toContain("Command");
     expect(labels).not.toContain("Extra args (comma-separated)");
@@ -894,7 +895,7 @@ describe("AgentConfigForm environment selector", () => {
     if (adapterConfig.provider === "opencode" || adapterConfig.acpxAgent === "pi") {
       expect(result.container.querySelector('[aria-label="Harness"]')?.textContent).toContain(adapterConfig.provider === "opencode" ? "OpenCode" : "Pi");
       await clickByText(result.container, "Advanced");
-      expect(result.container.querySelector('[aria-label="Runner"]')?.textContent).toContain("Paperclip Runner");
+      expect(result.container.querySelector('[aria-label="Runner"]')?.textContent).toContain("Bostan Runner");
     } else expect(result.container.querySelector('[aria-label="Runner"]')).toBeNull();
     if (adapterConfig.acpxAgent === "pi") {
       expect(result.container.querySelector('[aria-label="Pi thinking level"]')).not.toBeNull();
@@ -1531,7 +1532,7 @@ describe("AgentConfigForm environment selector", () => {
   });
 
   it("surfaces request failures instead of converting them into model test checks", async () => {
-    mockAgentsApi.testEnvironment.mockRejectedValueOnce(new Error("Network unavailable"));
+    mockAgentsApi.testEnvironment.mockRejectedValueOnce(new Error("Network unavailable https://auth.invalid/callback?code=sk-test-private&state=secret"));
 
     const result = await renderForm([
       makeEnvironment({ id: "local-1", name: "Local", driver: "local" }),
@@ -1553,7 +1554,9 @@ describe("AgentConfigForm environment selector", () => {
     await flushReact();
 
     expect(mockAgentsApi.testEnvironment).toHaveBeenCalledTimes(1);
-    expect(result.container.textContent).toContain("Network unavailable");
+    expect(result.container.textContent).toContain("Environment test failed. Check the adapter connection and retry.");
+    expect(result.container.textContent).not.toContain("sk-test-private");
+    expect(document.body.textContent).not.toContain("state=secret");
   });
 
   it("moves through model options with the same keyboard controls as the harness picker", async () => {

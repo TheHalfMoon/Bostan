@@ -14,8 +14,8 @@ import {
   labels,
   projectAccessMembers,
   projects,
-} from "@paperclipai/db";
-import { companySearchQuerySchema, COMPANY_SEARCH_MAX_QUERY_LENGTH } from "@paperclipai/shared";
+} from "@bostan/db";
+import { companySearchQuerySchema, COMPANY_SEARCH_MAX_QUERY_LENGTH } from "@bostan/shared";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

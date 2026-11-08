@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { MuseInvitation } from "@paperclipai/shared";
+import type { MuseInvitation } from "@bostan/shared";
 import { ApiError } from "@/api/client";
 import { museInvitationsApi } from "@/api/museInvitations";
 import { useAccountIdentity } from "@/api/companies-query";
@@ -41,7 +41,7 @@ export function ExternalAgentInviteDialog({ companyId, onClose, onBack, initialP
       ? "Enable OpenAI Dot and Assistant connections (MCP) in experimental settings." : undefined;
   const grokDisabledReason = experimental.isPending ? "Loading available agents…" : experimental.error ? "Unable to load experimental settings."
     : !experimental.data?.enableGrokBot || !experimental.data.enablePublicMcp || !experimental.data.enableNativeRunner
-      ? "Enable Grok Bot, Assistant connections (MCP), and Paperclip Runner in experimental settings." : undefined;
+      ? "Enable Grok Bot, Assistant connections (MCP), and Bostan Runner in experimental settings." : undefined;
   const key = ["dot-binding", companyId, invitation?.agent.id];
   const state = useQuery({ queryKey: key,
     queryFn: ({ signal }) => dotInvitationsApi.connection(companyId, invitation!.agent.id, signal),
@@ -139,7 +139,7 @@ export function ExternalAgentInviteDialog({ companyId, onClose, onBack, initialP
       preset === "grok_bot" ? <GrokBotSetup companyId={companyId} companyName={selectedCompany?.name ?? "your organization"} onClose={onClose} onBack={() => setPreset(null)} /> :
       <ExternalAgentInviteContent preset={preset === "muse" ? null : preset} prompt={prompt} companyName={selectedCompany?.name ?? "your organization"}
         connection={connection} museEnabled={experimental.data?.enableMuse === true && experimental.data?.enableNativeRunner === true} dotDisabledReason={dotDisabledReason} grokDisabledReason={grokDisabledReason} busy={busy}
-        error={preset === "muse" ? experimental.isPending ? undefined : "Enable Muse and Paperclip Runner in experimental settings to connect your personal Muse." : error?.message ?? (unavailable ? state.data?.agentLifecycleState === "terminated" ? "This agent was terminated. Invite another agent to connect Dot." : "Resume this agent before connecting Dot." : undefined)}
+        error={preset === "muse" ? experimental.isPending ? undefined : "Enable Muse and Bostan Runner in experimental settings to connect your personal Muse." : error?.message ?? (unavailable ? state.data?.agentLifecycleState === "terminated" ? "This agent was terminated. Invite another agent to connect Dot." : "Resume this agent before connecting Dot." : undefined)}
         approvalHref={pendingApproval && invitation?.approvalId ? `/approvals/${invitation.approvalId}` : undefined}
         onSelect={kind => { setPreset(kind); if (kind !== "muse" && kind !== "grok_bot" && (kind === "dot" ? !invitation : !genericPrompt)) generate.mutate(kind); }}
         onBack={() => setPreset(null)} onClose={preset ? onClose : onBack} onCopied={() => { if (preset === "dot") void state.refetch(); }}

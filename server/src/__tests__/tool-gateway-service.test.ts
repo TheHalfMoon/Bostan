@@ -34,7 +34,7 @@ import {
   toolGatewaySessions,
   toolInvocations,
   toolPolicies,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { PluginToolDispatcher } from "../services/plugin-tool-dispatcher.js";
 import type { VercelConnectClient } from "../services/vercel-connect.js";
 import { initializeRunIdentity, reserveSteeredIdentity, reconcileSteeredIdentity } from "../services/run-identity.js";
@@ -50,9 +50,9 @@ import {
 } from "../services/tool-gateway.js";
 import { canonicalToolArguments, signToolArguments } from "../services/tool-content-guards.js";
 import {
-  getEmbeddedPostgresTestSupport,
-  startEmbeddedPostgresTestDatabase,
-} from "./helpers/embedded-postgres.js";
+  getBostanFeedbackPostgresTestSupport as getEmbeddedPostgresTestSupport,
+  startBostanFeedbackPostgresTestDatabase as startEmbeddedPostgresTestDatabase,
+} from "./helpers/bostan-postgres-test-backend.js";
 
 const embeddedPostgresSupport = await getEmbeddedPostgresTestSupport();
 const describeEmbeddedPostgres = embeddedPostgresSupport.supported ? describe : describe.skip;
@@ -205,9 +205,9 @@ describeEmbeddedPostgres("tool gateway service", () => {
   let tempDb: Awaited<ReturnType<typeof startEmbeddedPostgresTestDatabase>> | null = null;
 
   beforeAll(async () => {
-    tempDb = await startEmbeddedPostgresTestDatabase("paperclip-tool-gateway-");
+    tempDb = await startEmbeddedPostgresTestDatabase("bostan-tool-gateway-");
     db = createDb(tempDb.connectionString);
-  }, 20_000);
+  }, 120_000);
 
   afterEach(async () => {
     vi.unstubAllEnvs();

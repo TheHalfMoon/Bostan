@@ -1,10 +1,10 @@
-import { isProvisionedSlackSetup } from "@paperclipai/shared";
+import { isProvisionedSlackSetup } from "@bostan/shared";
 import type { EndpointRow, DbOrTransaction, SlackCallbackSurface, InternalSetupState } from "../runtime-types.js";
 
 import { notifyChatVerificationWork } from "../../chat-work-notifications.js";
 
 import { slackChatRegistrationService } from "../../chat-slack-registration.js";
-import { chatSlackRegistrations } from "@paperclipai/db";
+import { chatSlackRegistrations } from "@bostan/db";
 
 import { runtimeCanonicalOrigin } from "../../cloud-runtime-identity.js";
 
@@ -18,15 +18,15 @@ import {
   eq,
 } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   chatEndpoints,
   toolConnections,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ToolCredentialSecretRef,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   logActivity,

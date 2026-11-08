@@ -1,5 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
-import { issueComments, issueRecoveryActions, type Db } from "@paperclipai/db";
+import { issueComments, issueRecoveryActions, type Db } from "@bostan/db";
 import { createSystemRecovery, readSystemRecovery, type SystemRecoveryState } from "./system-recovery-state.js";
 import type { WorkspaceRecoverySourceIdentity } from "./workspace-recovery-source.js";
 

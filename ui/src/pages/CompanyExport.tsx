@@ -7,7 +7,7 @@ import type {
   CompanyPortabilityExportResult,
   CompanyPortabilityManifest,
   Project,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { useNavigate, useLocation } from "@/lib/router";
 import { useCompany } from "../context/CompanyContext";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
@@ -443,7 +443,7 @@ function generateReadmeFromSelection(
 
   lines.push("## What's Inside");
   lines.push("");
-  lines.push("This is an [Agent Company](https://paperclip.ing) package.");
+  lines.push("This is an [Agent Company](https://github.com/TheHalfMoon/Bostan) package.");
   lines.push("");
 
   const counts: Array<[string, number]> = [];
@@ -486,14 +486,18 @@ function generateReadmeFromSelection(
 
   lines.push("## Getting Started");
   lines.push("");
+  lines.push("The private Bostan CLI preview can inspect this downloaded local ZIP offline:");
+  lines.push("");
   lines.push("```bash");
-  lines.push("npx paperclipai company import this-github-url-or-folder");
+  lines.push("bostan company inspect <local-export.zip>");
   lines.push("```");
   lines.push("");
-  lines.push("See [Paperclip](https://paperclip.ing) for more information.");
+  lines.push("Inspection validates archive integrity only. Importing a company into an instance is not yet supported by the private Bostan CLI preview.");
+  lines.push("");
+  lines.push("See [Bostan](https://github.com/TheHalfMoon/Bostan) for more information.");
   lines.push("");
   lines.push("---");
-  lines.push(`Exported from [Paperclip](https://paperclip.ing) on ${new Date().toISOString().split("T")[0]}`);
+  lines.push(`Exported from [Bostan](https://github.com/TheHalfMoon/Bostan) on ${new Date().toISOString().split("T")[0]}`);
   lines.push("");
 
   return lines.join("\n");

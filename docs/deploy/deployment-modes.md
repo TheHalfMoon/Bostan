@@ -1,88 +1,16 @@
 ---
-title: Deployment Modes
-summary: local_trusted vs authenticated (private/public)
+title: Bostan deployment modes — engineering review
+summary: Mode names are inherited configuration contracts, not approved deployment procedures
 ---
 
-Paperclip supports two runtime modes with different security profiles. Reachability is configured separately with `bind`.
+**Bostan is not release-qualified.** Mode descriptions below document the current code model and do not authorize production hosting.
 
-## `local_trusted`
+| Source configuration mode | Intended trust boundary | Qualification required |
+|---|---|---|
+| `local_trusted` | Single owner on loopback only | Local-only binding and no unauthorized requests |
+| `authenticated` + `private` | Authenticated private network | Host validation, identity, company isolation and secure consent |
+| `authenticated` + `public` | Internet-exposed authenticated service | Independent external security and deployment qualification |
 
-The default mode. Optimized for single-operator local use.
+A mode flag alone does not establish secure authorization. Public-mode support must be treated as unavailable until real installed cross-platform tests, automated access-control checks, secrets redaction and agent tool-effect governance all pass.
 
-- **Host binding**: loopback only (localhost)
-- **Bind**: `loopback`
-- **Authentication**: no login required
-- **Use case**: local development, solo experimentation
-- **Board identity**: auto-created local board user
-
-```sh
-# Set during onboard
-pnpm paperclipai onboard
-# Choose "local_trusted"
-```
-
-## `authenticated`
-
-Login required. Supports two exposure policies.
-
-### `authenticated` + `private`
-
-For private network access (Tailscale, VPN, LAN).
-
-- **Authentication**: login required via Better Auth
-- **URL handling**: auto base URL mode (lower friction)
-- **Host trust**: private-host trust policy required
-- **Bind**: choose `loopback`, `lan`, `tailnet`, or `custom`
-
-```sh
-pnpm paperclipai onboard
-# Choose "authenticated" -> "private"
-```
-
-Allow custom Tailscale hostnames:
-
-```sh
-npx paperclipai allowed-hostname my-machine
-```
-
-### `authenticated` + `public`
-
-For internet-facing deployment.
-
-- **Authentication**: login required
-- **URL**: explicit public URL required
-- **Security**: stricter deployment checks in doctor
-- **Bind**: usually `loopback` behind a reverse proxy; `lan/custom` is advanced
-
-```sh
-pnpm paperclipai onboard
-# Choose "authenticated" -> "public"
-```
-
-## Board Claim Flow
-
-When migrating from `local_trusted` to `authenticated`, Paperclip emits a one-time claim URL at startup:
-
-```
-/board-claim/<token>?code=<code>
-```
-
-A signed-in user visits this URL to claim board ownership. This:
-
-- Promotes the current user to instance admin
-- Demotes the auto-created local board admin
-- Ensures active company membership for the claiming user
-
-## Changing Modes
-
-Update the deployment mode:
-
-```sh
-pnpm paperclipai configure --section server
-```
-
-Runtime override via environment variable:
-
-```sh
-PAPERCLIP_DEPLOYMENT_MODE=authenticated PAPERCLIP_BIND=lan pnpm paperclipai run
-```
+Do not invoke inherited onboarding, hostname or external-cloud commands as Bostan setup instructions. The source may still contain old compatibility identifiers; changing them requires a tested migration path. Consult [deployment overview](/deploy/overview) and [local development preview](/deploy/local-development).

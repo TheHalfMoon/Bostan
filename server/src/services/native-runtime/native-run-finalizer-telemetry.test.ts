@@ -18,7 +18,7 @@ import {
   agentWakeupRequests,
   workspaceOperations,
   activityLog,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

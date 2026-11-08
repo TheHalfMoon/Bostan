@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { GitHubAppWizardState } from "@paperclipai/shared";
+import type { GitHubAppWizardState } from "@bostan/shared";
 import { githubChatApi } from "@/api/githubChat";
 import { useSearchParams } from "@/lib/router";
 import { SetupWizardNavigation, SetupWizardSidebar } from "../SetupWizard";

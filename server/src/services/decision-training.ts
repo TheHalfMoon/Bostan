@@ -10,7 +10,7 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   approvals,
   decisionTrainingExamples,
@@ -22,13 +22,13 @@ import {
   issues,
   issueThreadInteractions,
   projectWorkspaces,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   DecisionTrainingNotesHistoryEntry,
   DecisionTrainingSnapshotV1,
   DecisionTrainingSourceKind,
-} from "@paperclipai/shared";
-import { DECISION_TRAINING_RETENTION_POLICY } from "@paperclipai/shared";
+} from "@bostan/shared";
+import { DECISION_TRAINING_RETENTION_POLICY } from "@bostan/shared";
 import { conflict, notFound } from "../errors.js";
 
 type CaptureInput = {

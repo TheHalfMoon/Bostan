@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Link } from "@/lib/router";
+import { safeCredentialUiError } from "@/lib/credential-ui-error-privacy";
 import { gitHubAppSettingsUrl } from "./GitHubAppIdentity";
 
 export function GitHubConnectionRecoveryNotice({ endpoint }: { endpoint: ChatEndpoint }) {
@@ -17,12 +18,12 @@ export function GitHubConnectionRecoveryNotice({ endpoint }: { endpoint: ChatEnd
       <div className="min-w-0 space-y-3">
         <div className="space-y-1">
           <h2 className="text-base font-semibold">{endpoint.status === "revoked" ? "GitHub bot is disconnected" : "GitHub connection needs repair"}</h2>
-          <p className="text-sm">Reconnect this bot to restore GitHub reviews and @mentions. Start with the App already saved in Paperclip.</p>
+          <p className="text-sm">Reconnect this bot to restore GitHub reviews and @mentions. Start with the App already saved in Bostan.</p>
         </div>
         <Button asChild><Link to={`/apps/chat/connect?provider=github&resume=${endpoint.id}&reconnect=1`}>Reconnect GitHub</Link></Button>
         {(endpoint.lastError || endpoint.healthMessage) && <details className="text-sm">
           <summary className="cursor-pointer text-muted-foreground">Connection details</summary>
-          <p className="mt-2 break-words">{endpoint.lastError ?? endpoint.healthMessage}</p>
+          <p className="mt-2 break-words">{safeCredentialUiError(endpoint.lastError ?? endpoint.healthMessage, "githubHealth")}</p>
         </details>}
       </div>
     </section>
@@ -63,12 +64,12 @@ export function GitHubAppRecovery({ endpoint, reconnect, onConnect, onExit }: {
     setPending(true);
     setError("");
     try { await onConnect(replace ? credentials : undefined); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Could not reconnect GitHub. Try again."); }
+    catch (cause) { setError(safeCredentialUiError(cause, "githubCredential")); }
     finally { setPending(false); }
   }
   return <div className="space-y-6">
     {reconnect && <div className="space-y-3">
-      <p className="text-sm">Restore <strong>{appName}</strong> using its saved credentials. Paperclip will check the App and its installation, then repair event delivery.</p>
+      <p className="text-sm">Restore <strong>{appName}</strong> using its saved credentials. Bostan will check the App and its installation, then repair event delivery.</p>
       <p className="text-sm text-muted-foreground">Your agent, repository choices, review settings, and task history stay attached to this connection. You don’t need to create another GitHub App.</p>
     </div>}
     {error && <div role="alert" className="space-y-2 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm">

@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# Bostan: inherited public registry/managed installer is retired and unqualified.
+# Refuse before any command/network action, even under --help or --dry-run.
+printf '%s\n' 'Bostan: inherited public npm/release workflow disabled; use the private Bostan source QA only.' >&2
+exit 2
+
 # End-to-end proof that `paperclipai update` works ACROSS VERSIONS, including
 # database migrations, against a real managed install with a live service.
 #

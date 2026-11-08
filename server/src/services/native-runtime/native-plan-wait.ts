@@ -3,8 +3,8 @@ import {
   completionContracts, heartbeatRunEvents, heartbeatRuns, issues, issueComments,
   nativeRunFinalizations, nativeRunResults, statusDecisions,
   issueQuestionResponseDeliveries, issueThreadInteractions, type Db,
-} from "@paperclipai/db";
-import type { AskUserQuestionsInteraction } from "@paperclipai/shared";
+} from "@bostan/db";
+import type { AskUserQuestionsInteraction } from "@bostan/shared";
 import {
   parsePaperclipQuestionResponse, parsePaperclipQuestionSet,
   type PrpStructuredRunResult,

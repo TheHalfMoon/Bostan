@@ -20,9 +20,9 @@ afterEach(() => { hooks.mkdir = undefined; hooks.rename = undefined; hooks.open 
 const hash = (bytes: string | Buffer) => createHash("sha256").update(bytes).digest("hex");
 const canonical = (v: any): string => Array.isArray(v) ? `[${v.map(canonical).join(",")}]` : v && typeof v === "object" ? `{${Object.keys(v).sort().map(k => `${JSON.stringify(k)}:${canonical(v[k])}`).join(",")}}` : JSON.stringify(v);
 async function fixture() {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "paperclip-companion-"))); roots.push(root);
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "bostan-companion-"))); roots.push(root);
   const source = "a".repeat(40); const serverRoot = join(root, "server"); const directory = join(root, "release");
-  mkdirSync(join(serverRoot, "dist"), { recursive: true }); writeFileSync(join(serverRoot, "package.json"), '{"name":"@paperclipai/server"}'); writeFileSync(join(serverRoot, "dist/build-info.json"), JSON.stringify({ commit: source }));
+  mkdirSync(join(serverRoot, "dist"), { recursive: true }); writeFileSync(join(serverRoot, "package.json"), '{"name":"@bostan/server"}'); writeFileSync(join(serverRoot, "dist/build-info.json"), JSON.stringify({ commit: source }));
   mkdirSync(join(directory, "bin"), { recursive: true }); mkdirSync(join(directory, "provider-pack"));
   // Synthetic ELF header; these tests never launch it or claim native qualification.
   const elf = Buffer.alloc(128); Buffer.from([127, 69, 76, 70, 2, 1]).copy(elf); elf.writeUInt16LE(62, 18); writeFileSync(join(directory, "bin/paperclip-runnerd"), elf, { mode: 0o755 });
@@ -30,6 +30,13 @@ async function fixture() {
   writeFileSync(join(directory, "provider-pack/provider-pack.json"), JSON.stringify({ schema: "paperclip-runner/remote-provider-pack/v1", digest: `sha256:${hash(canonical(payload))}`, payload }));
   const manifest = await createRemotePiCompanionManifest(directory, source); const bytes = JSON.stringify(manifest); writeFileSync(join(directory, "companion.json"), bytes); return { root, directory, serverRoot, sha256: hash(bytes), manifest, source };
 }
+it("rejects an inherited donor server identity before installing any companion files", async () => {
+  const f = await fixture();
+  writeFileSync(join(f.serverRoot, "package.json"), '{"name":"@paperclipai/server"}');
+  await expect(importRemotePiCompanion(f)).rejects.toThrow("Bostan server package required");
+  expect(() => readdirSync(join(f.serverRoot, "remote-companions"))).toThrow();
+});
+
 it("imports the release-generated closure and resolves target bytes without environment overrides", async () => {
   const f = await fixture(); const result = await importRemotePiCompanion(f); expect(result.status).toBe("imported_verified");
   expect(result.runnerBinary).toBe(join(f.serverRoot, "remote-companions/linux-x64/bin/paperclip-runnerd"));

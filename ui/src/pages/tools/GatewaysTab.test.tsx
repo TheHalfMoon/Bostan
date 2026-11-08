@@ -4,10 +4,11 @@ import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import type { ToolMcpGatewayToken, ToolMcpGatewayWithTokens, ToolProfileWithDetails } from "@paperclipai/shared";
+import type { ToolMcpGatewayToken, ToolMcpGatewayWithTokens, ToolProfileWithDetails } from "@bostan/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GatewaysTab } from "./GatewaysTab";
 import { RelativeTime } from "./shared";
+import { toolsApi } from "@/api/tools";
 
 const listGatewaysMock = vi.hoisted(() => vi.fn());
 const listProfilesMock = vi.hoisted(() => vi.fn());
@@ -223,6 +224,48 @@ describe("GatewaysTab", () => {
 
     expect(container.textContent).toContain("in 2d");
     expect(container.textContent).toContain("2d ago");
+  });
+
+  it("never echoes a bearer token in gateway creation API errors", async () => {
+    listGatewaysMock.mockResolvedValue({ gateways: [] });
+    vi.mocked(toolsApi.createGateway).mockRejectedValue(
+      new Error("Bearer PRIVATE_BOSTAN_GATEWAY_TOKEN_DO_NOT_SHOW"),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    await render(<QueryClientProvider client={client}><GatewaysTab companyId="company-1" /></QueryClientProvider>);
+    const choose = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Create gateway",
+    )!;
+    await act(async () => { choose.click(); });
+    await flushReact();
+    const name = container.querySelector('input[placeholder="Engineering laptops"]') as HTMLInputElement;
+    await act(async () => {
+      const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+      set?.call(name, "Gateway QA");
+      name.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await flushReact();
+    const form = name.closest("form")!;
+    await act(async () => { form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); });
+    await flushReact();
+    expect(toolsApi.createGateway).toHaveBeenCalledTimes(1);
+    expect(pushToastMock).toHaveBeenCalledWith(expect.objectContaining({
+      title: "Gateway was not created",
+      body: "Gateway could not be created. Check the setup and try again.",
+      tone: "error",
+    }));
+    expect(JSON.stringify(pushToastMock.mock.calls)).not.toContain("PRIVATE_BOSTAN_GATEWAY_TOKEN_DO_NOT_SHOW");
+  });
+
+  it("hides untrusted gateway list errors that include private bearer tokens", async () => {
+    listGatewaysMock.mockRejectedValue(new Error(
+      "Provider signed URL https://api.example.invalid?token=PRIVATE_GATEWAY_LIST_SECRET",
+    ));
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    await render(<QueryClientProvider client={client}><GatewaysTab companyId="company-1" /></QueryClientProvider>);
+    expect(container.textContent).toContain("Could not load the gateways.");
+    expect(container.textContent).not.toContain("PRIVATE_GATEWAY_LIST_SECRET");
+    expect(container.textContent).not.toContain("api.example.invalid");
   });
 
   it("renders token expiry, revocation date, and empty snippets copy", async () => {

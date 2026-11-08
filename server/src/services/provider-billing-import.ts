@@ -1,17 +1,18 @@
+import { BOSTAN_USER_AGENT } from "./bostan-user-agents.js";
 import { z } from "zod";
 import { and, eq, gte, inArray, lt } from "drizzle-orm";
 import {
   companySecrets,
   providerBillingSnapshots,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   centsToUnits,
   usdToUnits,
   unitsToCents,
   importProviderCostsSchema,
   type ImportProviderCosts,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { secretService } from "./secrets.js";
 import { withAccountingTransaction } from "./accounting-transaction.js";
 import { createFinanceEventInTransaction } from "./finance.js";
@@ -115,7 +116,7 @@ export async function fetchProviderDailyCosts(
           "OpenAI-Organization": parsed.accountId,
         }
       : { "x-api-key": credential, "anthropic-version": "2023-06-01" };
-  headers["User-Agent"] = "Paperclip/1.0 (https://paperclip.ing)";
+  headers["User-Agent"] = BOSTAN_USER_AGENT;
   const totals = new Map<string, bigint>();
   const seen = new Set<string>();
   const days = new Set<number>();

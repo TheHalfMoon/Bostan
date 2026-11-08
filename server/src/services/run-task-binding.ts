@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { heartbeatRuns } from "@paperclipai/db";
+import { heartbeatRuns } from "@bostan/db";
 
 type RunTaskBinding = {
   nativeIssueId?: string | null;

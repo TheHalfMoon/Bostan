@@ -48,7 +48,10 @@ describe("GitHub commit details", () => {
       "https://api.github.com/repos/acme/app/commits/abc1234?per_page=100&page=2",
     ]);
     expect(fetch.mock.calls[0]?.[1]).toEqual(expect.objectContaining({
-      headers: expect.objectContaining({ authorization: "Bearer secret-token" }),
+      headers: expect.objectContaining({
+        authorization: "Bearer secret-token",
+        "user-agent": "Bostan/CommitResolver",
+      }),
     }));
   });
 

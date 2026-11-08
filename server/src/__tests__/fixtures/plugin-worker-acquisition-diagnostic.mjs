@@ -1,4 +1,4 @@
-import { definePlugin, PluginEnvironmentCreationCleanupError, runWorker } from "@paperclipai/plugin-sdk";
+import { definePlugin, PluginEnvironmentCreationCleanupError, runWorker } from "@bostan/plugin-sdk";
 
 function failure(params) {
   const cleanup = {

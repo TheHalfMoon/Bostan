@@ -4,7 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { RoutineDetail, RoutineTrigger } from "@paperclipai/shared";
+import type { RoutineDetail, RoutineTrigger } from "@bostan/shared";
 import { BreadcrumbProvider } from "@/context/BreadcrumbContext";
 import { queryKeys } from "@/lib/queryKeys";
 import { TriggersSection } from "./editable-sections";
@@ -101,7 +101,7 @@ describe("TriggersSection", () => {
     await render();
     await click("Resume setup");
     expect(container.textContent).toContain("This webhook URL appears to be private");
-    expect(container.querySelector('a[href="https://docs.paperclip.ing/reference/deploy/https/"]')).not.toBeNull();
+    expect(container.querySelector('a[href="https://github.com/TheHalfMoon/Bostan/blob/main/doc/DEPLOYMENT-MODES.md"]')).not.toBeNull();
     expect(button("Check connection").disabled).toBe(false);
     await click("Check connection");
     expect(container.textContent).toContain("This webhook URL appears to be private");

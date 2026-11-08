@@ -11,7 +11,7 @@ import os from "node:os";
 import { skillFileBytes, snapshotFile, assertSkillSnapshotPath, skillSnapshotHash } from "./skill-snapshot.js";
 import { fileURLToPath } from "node:url";
 import { and, asc, desc, eq, inArray, isNull, isNotNull, lt, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents as agentsTable,
   assets,
@@ -31,12 +31,12 @@ import {
   issues,
   issueThreadInteractions,
   issueWorkProducts,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { readPaperclipSkillSyncPreference, writePaperclipSkillSyncPreference, resolvePaperclipDesiredSkillNames,
-  resolveLegacyPaperclipDesiredSkillNames } from "@paperclipai/adapter-utils/server-utils";
+  resolveLegacyPaperclipDesiredSkillNames } from "@bostan/adapter-utils/server-utils";
 import { REPOSITORY_CONTENT_DIR, repositorySkillProjection } from "./skill-repository-package.js";
 import { runVersionSnapshotFlight } from "./skill-version-retention.js";
-import type { PaperclipDesiredSkillEntry, PaperclipSkillEntry } from "@paperclipai/adapter-utils/server-utils";
+import type { PaperclipDesiredSkillEntry, PaperclipSkillEntry } from "@bostan/adapter-utils/server-utils";
 import type {
   AgentDesiredSkillEntry,
   CatalogSkill,
@@ -102,7 +102,7 @@ import type {
   CompanySkillVersionFileInventoryEntry,
   IssueAttachment,
   IssueDocument,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   isUuidLike,
   joinFrontmatterBlock,
@@ -110,7 +110,7 @@ import {
   parseFrontmatterMarkdown,
   splitFrontmatterBlock,
   stringifyFrontmatter,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { resolvePaperclipInstanceRoot } from "../home-paths.js";
 import { conflict, forbidden, notFound, unprocessable } from "../errors.js";
 import { ghFetch, gitHubApiBase, resolveRawGitHubUrl } from "./github-fetch.js";

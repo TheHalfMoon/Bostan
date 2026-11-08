@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// Dev-only: link the in-repo @paperclipai/plugin-sdk into plugin packages that
+// Dev-only: link the in-repo @bostan/plugin-sdk into plugin packages that
 // are excluded from the pnpm workspace (see pnpm-workspace.yaml). Workspace
 // members get their SDK link from pnpm automatically; excluded packages do not.
 //
@@ -16,7 +16,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, "..");
 const sdkDir = join(repoRoot, "packages", "plugins", "sdk");
 
-// Plugin packages excluded from the workspace that still need @paperclipai/plugin-sdk
+// Plugins import the SDK as @bostan/plugin-sdk, so the link must live under the
+// @bostan scope; a link under any other scope is never resolved.
+export const SDK_SCOPE = "@bostan";
+
+// Plugin packages excluded from the workspace that still need @bostan/plugin-sdk
 // linked in for local dev. Keep in sync with pnpm-workspace.yaml exclusions.
 function excludedPluginDirs() {
   return [
@@ -44,7 +48,7 @@ export function linkExcludedPlugins() {
 // single package after a fresh install.
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const { linked, skipped } = linkExcludedPlugins();
-  console.log(`  ✓ Linked @paperclipai/plugin-sdk into ${linked} excluded plugin(s) (skipped ${skipped})`);
+  console.log(`  ✓ Linked @bostan/plugin-sdk into ${linked} excluded plugin(s) (skipped ${skipped})`);
 }
 
 // Recursively collect package directories (those containing a package.json)
@@ -68,23 +72,36 @@ export function readPluginsUnder(parentDir) {
   return found;
 }
 
-export function linkSdkInto(packageDir) {
-  const scopeDir = join(packageDir, "node_modules", "@paperclipai");
+// Windows only allows unprivileged directory symlinks in Developer Mode, so a
+// plain "dir" symlink fails with EPERM on a default install. Junctions need no
+// privilege but must point at an absolute path.
+function linkSpec(scopeDir, platform) {
+  return platform === "win32"
+    ? { target: sdkDir, type: "junction" }
+    : { target: relative(scopeDir, sdkDir), type: "dir" };
+}
+
+function pointsAtSdk(scopeDir, existingTarget) {
+  return resolve(scopeDir, existingTarget).replace(/[\/]+$/, "") === resolve(sdkDir);
+}
+
+export function linkSdkInto(packageDir, platform = process.platform) {
+  const scopeDir = join(packageDir, "node_modules", SDK_SCOPE);
   const linkTarget = join(scopeDir, "plugin-sdk");
-  const relativeSdkDir = relative(scopeDir, sdkDir);
+  const spec = linkSpec(scopeDir, platform);
 
   mkdirSync(scopeDir, { recursive: true });
 
   try {
     const stat = lstatSync(linkTarget);
     if (stat.isSymbolicLink()) {
-      if (readlinkSync(linkTarget) === relativeSdkDir) {
+      if (pointsAtSdk(scopeDir, readlinkSync(linkTarget))) {
         // Already linked to the in-repo SDK; nothing to do.
         return false;
       }
       rmSync(linkTarget, { force: true });
     } else {
-      // A real install has already populated @paperclipai/plugin-sdk (e.g. the
+      // A real install has already populated @bostan/plugin-sdk (e.g. the
       // plugin host did `npm install` of the published tarball). Leave it.
       return false;
     }
@@ -93,6 +110,6 @@ export function linkSdkInto(packageDir) {
     if (error?.code !== "ENOENT") throw error;
   }
 
-  symlinkSync(relativeSdkDir, linkTarget, "dir");
+  symlinkSync(spec.target, linkTarget, spec.type);
   return true;
 }

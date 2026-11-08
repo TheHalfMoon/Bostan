@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { PaperclipPluginManifestV1 } from "@paperclipai/shared";
+import type { PaperclipPluginManifestV1 } from "@bostan/shared";
 import { createManagedBundledPluginWorkerRecovery } from "../app.js";
 import { listReadyPluginEnvironmentDrivers } from "../services/plugin-environment-driver.js";
 import { pluginLoader, type PluginLoader } from "../services/plugin-loader.js";

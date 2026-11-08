@@ -1,5 +1,5 @@
 import { measureRunPhase } from "./execution-preparation-timing.js";
-import { agents, executionWorkspaces, heartbeatRuns, issues, projects, projectWorkspaces, type Db } from "@paperclipai/db";
+import { agents, executionWorkspaces, heartbeatRuns, issues, projects, projectWorkspaces, type Db } from "@bostan/db";
 import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { forbidden } from "../errors.js";
 import { accessService } from "./access.js";
@@ -8,7 +8,7 @@ import { canonicalExecutionUuid } from "./execution-identity.js";
 import { assertSelectedWorkspaceTrust, runRetainsIssueIdentity, taskRepositoryRunColumns, taskRepositoryResponsibleUserMatches } from "./task-repository-acquisition.js";
 import { resolveCoreTrustPreset } from "./trust-preset-resolver.js";
 import { isDeepStrictEqual } from "node:util";
-import { taskWorkspaceSelectionSchema, type TaskWorkspaceSelection } from "@paperclipai/shared";
+import { taskWorkspaceSelectionSchema, type TaskWorkspaceSelection } from "@bostan/shared";
 
 type DbTransaction = Parameters<Parameters<Db["transaction"]>[0]>[0];
 

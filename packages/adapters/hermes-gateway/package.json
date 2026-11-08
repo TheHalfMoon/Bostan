@@ -1,21 +1,21 @@
 {
-  "name": "@paperclipai/adapter-hermes-gateway",
+  "name": "@bostan/adapter-hermes-gateway",
   "version": "0.1.0",
-  "description": "Deprecated compatibility shim for Hermes Gateway; use @paperclipai/hermes-paperclip-adapter/gateway",
+  "description": "Deprecated compatibility shim for Hermes Gateway; use @bostan/adapter-hermes/gateway",
   "type": "module",
   "license": "MIT",
-  "author": "Paperclip",
+  "author": "Bostan contributors",
   "repository": {
     "type": "git",
-    "url": "https://github.com/paperclipai/paperclip",
+    "url": "https://github.com/TheHalfMoon/Bostan",
     "directory": "packages/adapters/hermes-gateway"
   },
   "bugs": {
-    "url": "https://github.com/paperclipai/paperclip/issues"
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
   },
-  "homepage": "https://github.com/paperclipai/paperclip/tree/master/packages/adapters/hermes#readme",
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
   "keywords": [
-    "paperclip",
+    "bostan",
     "hermes",
     "gateway",
     "adapter",
@@ -31,31 +31,6 @@
   "paperclip": {
     "adapterUiParser": "1.0.0"
   },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js"
-      },
-      "./server": {
-        "types": "./dist/server/index.d.ts",
-        "import": "./dist/server/index.js"
-      },
-      "./ui": {
-        "types": "./dist/ui/index.d.ts",
-        "import": "./dist/ui/index.js"
-      },
-      "./cli": {
-        "types": "./dist/cli/index.d.ts",
-        "import": "./dist/cli/index.js"
-      },
-      "./ui-parser": "./ui-parser.cjs"
-    },
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
-    "provenance": true
-  },
   "files": [
     "dist",
     "ui-parser.cjs",
@@ -65,10 +40,12 @@
     "build": "tsc",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepack": "node ../../../scripts/bostan-release-disabled.mjs",
+    "prepublishOnly": "node ../../../scripts/bostan-release-disabled.mjs"
   },
   "dependencies": {
-    "@paperclipai/hermes-paperclip-adapter": "workspace:*"
+    "@bostan/adapter-hermes": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
@@ -77,5 +54,6 @@
   },
   "engines": {
     "node": ">=24.11.0"
-  }
+  },
+  "private": true
 }

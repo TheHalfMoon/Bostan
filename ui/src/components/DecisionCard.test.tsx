@@ -128,6 +128,40 @@ afterEach(() => {
 });
 
 describe("DecisionCard", () => {
+  it("B2-07 disables positive board advice choice until a current budget/evidence snapshot is confirmed", () => {
+    const decision = mkDecision({ ruleKey: "bostan.decision_recommendation.v1", options: [
+      { id: "pilot", label: "Approve pilot", effects: [] },
+      { id: "defer", label: "Defer", effects: [] },
+    ] });
+    const el = render({ decision, adviceFreshnessPending: true, adviceFreshness: null });
+    const approve = [...el.querySelectorAll("button")].find(button => button.textContent?.includes("Approve pilot"));
+    const defer = [...el.querySelectorAll("button")].find(button => button.textContent?.includes("Defer"));
+    expect(approve?.disabled).toBe(true);
+    expect(defer?.disabled).toBe(false);
+    expect(el.textContent).toContain("Checking Bostan recommendation");
+  });
+  it("B2-07 blocks a stale positive choice but permits explicitly safe defer", () => {
+    const decision = mkDecision({ ruleKey: "bostan.decision_recommendation.v1", options: [
+      { id: "pilot", label: "Approve pilot", effects: [] },
+      { id: "defer", label: "Defer", effects: [] },
+    ] });
+    const el = render({ decision, adviceFreshness: { current: false, positiveChoiceAllowed: false } });
+    const approve = [...el.querySelectorAll("button")].find(button => button.textContent?.includes("Approve pilot"));
+    const defer = [...el.querySelectorAll("button")].find(button => button.textContent?.includes("Defer"));
+    expect(approve?.disabled).toBe(true);
+    expect(defer?.disabled).toBe(false);
+    expect(el.textContent).toContain("Request an updated recommendation");
+  });
+  it("B2-07 permits positive advisory review only after a fresh snapshot is confirmed", () => {
+    const decision = mkDecision({ ruleKey: "bostan.decision_recommendation.v1", options: [
+      { id: "pilot", label: "Approve pilot", effects: [] },
+      { id: "defer", label: "Defer", effects: [] },
+    ] });
+    const el = render({ decision, adviceFreshness: { current: true, positiveChoiceAllowed: true } });
+    const approve = [...el.querySelectorAll("button")].find(button => button.textContent?.includes("Approve pilot"));
+    expect(approve?.disabled).toBe(false);
+    expect(el.textContent).toContain("The server will check again when you approve");
+  });
   it("renders a pending decision with provenance, effect summary and dismiss", () => {
     const el = render({});
     expect(el.textContent).toContain("Pending");

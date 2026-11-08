@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, inArray } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { agents, connectionTokenIssuances, authUsers, heartbeatRuns, issues, toolActionRequests, toolConnections, toolCallEvents, toolInvocations } from "@paperclipai/db";
-import type { ToolConnectionActivityResponse, ToolRunDecision, ToolRunDecisionLookup } from "@paperclipai/shared";
+import type { Db } from "@bostan/db";
+import { agents, connectionTokenIssuances, authUsers, heartbeatRuns, issues, toolActionRequests, toolConnections, toolCallEvents, toolInvocations } from "@bostan/db";
+import type { ToolConnectionActivityResponse, ToolRunDecision, ToolRunDecisionLookup } from "@bostan/shared";
 import { notFound } from "../../../errors.js";
 import { listConnectionLifecycleEvents } from "../../tool-connection-activity.js";
 import { toToolInvocation, toToolActionRequest, toToolCallEvent, userFallbackName, denialReasonForDecision } from "./projection.js";

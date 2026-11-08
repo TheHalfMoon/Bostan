@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { approvals, issueApprovals, issues } from "@paperclipai/db";
-import { notFound, unprocessable } from "../errors.js";
+import type { Db } from "@bostan/db";
+import { approvals, issueApprovals, issues } from "@bostan/db";
+import { conflict, forbidden, notFound, unprocessable } from "../errors.js";
 import { redactEventPayload } from "../redaction.js";
 
 interface LinkActor {
@@ -41,6 +41,45 @@ export function issueApprovalService(db: Db) {
   }
 
   return {
+    /**
+     * The gateway's formal approval and task link are one unit: no orphan
+     * pending approval and no link inserted after the agent commits Done.
+     * Matches the issue-row lock ordering of B1-01/B1-03.
+     */
+    createPendingToolApproval: async (input: {
+      companyId: string;
+      issueId: string;
+      requestedByAgentId: string | null;
+      payload: typeof approvals.$inferInsert.payload;
+    }): Promise<string> => {
+      return db.transaction(async tx => {
+        const [task] = await tx.select({
+          id: issues.id, companyId: issues.companyId, status: issues.status,
+        }).from(issues)
+          .where(and(eq(issues.id, input.issueId), eq(issues.companyId, input.companyId)))
+          .for("update");
+        if (!task) throw notFound("Issue not found");
+        if (task.status === "done" || task.status === "cancelled") {
+          throw conflict("Cannot request approval for a completed task", {
+            code: "issue_terminal_approval_link", issueId: input.issueId,
+          });
+        }
+        const [approval] = await tx.insert(approvals).values({
+          companyId: input.companyId,
+          type: "request_board_approval",
+          status: "pending",
+          requestedByAgentId: input.requestedByAgentId,
+          payload: input.payload,
+        }).returning({ id: approvals.id });
+        await tx.insert(issueApprovals).values({
+          companyId: input.companyId,
+          issueId: input.issueId,
+          approvalId: approval.id,
+          linkedByAgentId: input.requestedByAgentId,
+        });
+        return approval.id;
+      });
+    },
     listApprovalsForIssue: async (issueId: string) => {
       const issue = await getIssue(issueId);
       if (!issue) throw notFound("Issue not found");
@@ -104,71 +143,96 @@ export function issueApprovalService(db: Db) {
         .orderBy(desc(issueApprovals.createdAt));
     },
 
-    link: async (issueId: string, approvalId: string, actor?: LinkActor) => {
-      const { issue } = await assertIssueAndApprovalSameCompany(issueId, approvalId);
-
-      await db
-        .insert(issueApprovals)
-        .values({
-          companyId: issue.companyId,
-          issueId,
-          approvalId,
-          linkedByAgentId: actor?.agentId ?? null,
-          linkedByUserId: actor?.userId ?? null,
-        })
-        .onConflictDoNothing();
-
-      return db
-        .select()
-        .from(issueApprovals)
-        .where(and(eq(issueApprovals.issueId, issueId), eq(issueApprovals.approvalId, approvalId)))
-        .then((rows) => rows[0] ?? null);
-    },
-
-    unlink: async (issueId: string, approvalId: string) => {
-      await assertIssueAndApprovalSameCompany(issueId, approvalId);
-      await db
-        .delete(issueApprovals)
-        .where(and(eq(issueApprovals.issueId, issueId), eq(issueApprovals.approvalId, approvalId)));
-    },
-
-    linkManyForApproval: async (approvalId: string, issueIds: string[], actor?: LinkActor) => {
-      if (issueIds.length === 0) return;
-
-      const approval = await getApproval(approvalId);
-      if (!approval) throw notFound("Approval not found");
-
-      const uniqueIssueIds = Array.from(new Set(issueIds));
-      const rows = await db
-        .select({
-          id: issues.id,
-          companyId: issues.companyId,
-        })
-        .from(issues)
-        .where(inArray(issues.id, uniqueIssueIds));
-
-      if (rows.length !== uniqueIssueIds.length) {
-        throw notFound("One or more issues not found");
-      }
-
-      for (const row of rows) {
-        if (row.companyId !== approval.companyId) {
+    link: async (issueId: string, approvalId: string, actor?: LinkActor): Promise<typeof issueApprovals.$inferSelect | null> => {
+      return db.transaction(async tx => {
+        // Lock before deciding: a concurrent agent Done and link creation must
+        // serialize on the same issue row. Checking outside this transaction
+        // permitted a pending approval to appear after Done had committed.
+        const [issue] = await tx.select({ id: issues.id, companyId: issues.companyId, status: issues.status })
+          .from(issues).where(eq(issues.id, issueId)).for("update");
+        if (!issue) throw notFound("Issue not found");
+        const [approval] = await tx.select({ id: approvals.id, companyId: approvals.companyId, status: approvals.status })
+          .from(approvals).where(eq(approvals.id, approvalId)).for("share");
+        if (!approval) throw notFound("Approval not found");
+        if (issue.companyId !== approval.companyId) {
           throw unprocessable("Issue and approval must belong to the same company");
         }
-      }
+        if (["done", "cancelled"].includes(issue.status)
+          && ["pending", "revision_requested"].includes(approval.status)) {
+          throw conflict("Cannot attach unresolved approval to a completed task", {
+            code: "issue_terminal_approval_link", issueId, approvalId,
+          });
+        }
+        await tx.insert(issueApprovals).values({
+          companyId: issue.companyId, issueId, approvalId,
+          linkedByAgentId: actor?.agentId ?? null,
+          linkedByUserId: actor?.userId ?? null,
+        }).onConflictDoNothing();
+        return tx.select().from(issueApprovals)
+          .where(and(eq(issueApprovals.issueId, issueId), eq(issueApprovals.approvalId, approvalId)))
+          .then((rows) => rows[0] ?? null);
+      });
+    },
 
-      await db
-        .insert(issueApprovals)
-        .values(
-          uniqueIssueIds.map((issueId) => ({
-            companyId: approval.companyId,
-            issueId,
-            approvalId,
-            linkedByAgentId: actor?.agentId ?? null,
-            linkedByUserId: actor?.userId ?? null,
-          })),
-        )
-        .onConflictDoNothing();
+    unlink: async (issueId: string, approvalId: string, actor: { isBoard?: boolean } = {}): Promise<void> => {
+      return db.transaction(async tx => {
+        // A CEO-class agent may manage historical link records, but must not
+        // defeat a still-pending *human* approval by deleting the task link.
+        // Lock the task row just like link() and issueService.update(), so
+        // unlink vs Done cannot bypass the same company-scoped authority.
+        const [issue] = await tx.select({ id: issues.id, companyId: issues.companyId })
+          .from(issues).where(eq(issues.id, issueId)).for("update");
+        if (!issue) throw notFound("Issue not found");
+        const [approval] = await tx.select({ id: approvals.id, companyId: approvals.companyId, status: approvals.status })
+          .from(approvals).where(eq(approvals.id, approvalId)).for("share");
+        if (!approval) throw notFound("Approval not found");
+        if (issue.companyId !== approval.companyId) {
+          throw unprocessable("Issue and approval must belong to the same company");
+        }
+        if (!actor.isBoard && ["pending", "revision_requested"].includes(approval.status)) {
+          throw forbidden("Only an authorized board actor may unlink an unresolved human approval", {
+            code: "unresolved_approval_board_only", issueId, approvalId,
+          });
+        }
+        await tx.delete(issueApprovals).where(and(
+          eq(issueApprovals.companyId, issue.companyId),
+          eq(issueApprovals.issueId, issueId),
+          eq(issueApprovals.approvalId, approvalId),
+        ));
+      });
+    },
+
+    linkManyForApproval: async (approvalId: string, issueIds: string[], actor?: LinkActor): Promise<void> => {
+      if (issueIds.length === 0) return;
+      return db.transaction(async tx => {
+        // Stable row order prevents two overlapping bulk link requests from
+        // taking issue locks in opposite orders. All-or-nothing validation
+        // forbids half-linked approvals when one task closes concurrently.
+        const uniqueIssueIds = Array.from(new Set(issueIds)).sort();
+        const rows = await tx.select({ id: issues.id, companyId: issues.companyId, status: issues.status })
+          .from(issues).where(inArray(issues.id, uniqueIssueIds))
+          .orderBy(issues.id).for("update");
+        if (rows.length !== uniqueIssueIds.length) throw notFound("One or more issues not found");
+        const [approval] = await tx.select({ id: approvals.id, companyId: approvals.companyId, status: approvals.status })
+          .from(approvals).where(eq(approvals.id, approvalId)).for("share");
+        if (!approval) throw notFound("Approval not found");
+        for (const issue of rows) {
+          if (issue.companyId !== approval.companyId) {
+            throw unprocessable("Issue and approval must belong to the same company");
+          }
+          if (["done", "cancelled"].includes(issue.status)
+            && ["pending", "revision_requested"].includes(approval.status)) {
+            throw conflict("Cannot attach unresolved approval to a completed task", {
+              code: "issue_terminal_approval_link", issueId: issue.id, approvalId,
+            });
+          }
+        }
+        await tx.insert(issueApprovals).values(uniqueIssueIds.map(issueId => ({
+          companyId: approval.companyId, issueId, approvalId,
+          linkedByAgentId: actor?.agentId ?? null,
+          linkedByUserId: actor?.userId ?? null,
+        }))).onConflictDoNothing();
+      });
     },
   };
 }

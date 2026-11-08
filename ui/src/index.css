@@ -3,7 +3,7 @@
 @plugin "@tailwindcss/typography";
 
 /* offline-recovery:start */
-.paperclip-offline {
+.bostan-offline {
   --offline-background: #171716;
   --offline-foreground: #fafafa;
   --offline-muted: #a3a3a3;
@@ -18,13 +18,7 @@
   --offline-copy-gap: 0.75rem;
   --offline-title-size: 1.75rem;
   --offline-body-size: 0.9375rem;
-  --offline-character-size: 9.6rem;
-  --offline-character-outer-start: #252525;
-  --offline-character-outer-end: #686c6e;
-  --offline-character-inner-start: #292929;
-  --offline-character-inner-end: #727679;
-  --offline-character-face: #333333;
-  --offline-character-tear: #f6fdff;
+  --offline-mark-size: 5rem;
   --offline-content-width: 32rem;
   --offline-control-height: 2.75rem;
   --offline-radius: 0.5rem;
@@ -50,7 +44,7 @@
   line-height: var(--offline-leading);
   text-align: center;
 }
-.paperclip-offline main {
+.bostan-offline main {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -58,23 +52,32 @@
   width: 100%;
   max-width: var(--offline-content-width);
 }
-.paperclip-offline-message,
-.paperclip-offline-identity {
+.bostan-offline-message,
+.bostan-offline-identity {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
-.paperclip-offline-message {
+.bostan-offline-message {
   gap: var(--offline-message-gap);
 }
-.paperclip-offline-identity {
+.bostan-offline-identity {
   gap: var(--offline-identity-gap);
 }
-.paperclip-offline-character {
-  width: var(--offline-character-size);
-  height: var(--offline-character-size);
+.bostan-offline-mark {
+  display: grid;
+  place-items: center;
+  width: var(--offline-mark-size);
+  height: var(--offline-mark-size);
+  border: var(--offline-stroke) solid var(--offline-border);
+  border-radius: 1.25rem;
+  background: var(--offline-control);
+  color: var(--offline-foreground);
+  font-size: 2.5rem;
+  font-weight: var(--offline-weight);
+  line-height: 1;
 }
-.paperclip-offline h1 {
+.bostan-offline h1 {
   margin: 0;
   font-size: var(--offline-title-size);
   font-weight: var(--offline-weight);
@@ -82,12 +85,12 @@
   letter-spacing: var(--offline-tracking);
   text-wrap: balance;
 }
-.paperclip-offline p {
+.bostan-offline p {
   margin: 0;
   color: var(--offline-muted);
   text-wrap: pretty;
 }
-.paperclip-offline button {
+.bostan-offline button {
   min-height: var(--offline-control-height);
   padding: var(--offline-copy-gap) var(--offline-space);
   border: var(--offline-stroke) solid var(--offline-border);
@@ -98,10 +101,10 @@
   font-weight: var(--offline-weight);
   cursor: pointer;
 }
-.paperclip-offline button:hover {
+.bostan-offline button:hover {
   background: var(--offline-control-hover);
 }
-.paperclip-offline button:focus-visible {
+.bostan-offline button:focus-visible {
   outline: var(--offline-focus-width) solid var(--offline-focus);
   outline-offset: var(--offline-focus-offset);
 }

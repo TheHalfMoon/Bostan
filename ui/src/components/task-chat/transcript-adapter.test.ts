@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TranscriptEntry } from "@/adapters";
-import type { HeartbeatRunEvent } from "@paperclipai/shared";
+import type { HeartbeatRunEvent } from "@bostan/shared";
 import {
   assembleThreadItems,
   attachSettledTurns,
@@ -1144,7 +1144,7 @@ describe("buildTurnTimelineRows (DOT-217)", () => {
     ]);
   });
 
-  it("keeps runtime requests in the Paperclip Runner timeline input", () => {
+  it("keeps runtime requests in the Bostan Runner timeline input", () => {
     const pending = request("pending", "pending");
     expect(
       paperclipRunnerTimelineItems([

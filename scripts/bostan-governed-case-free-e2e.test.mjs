@@ -1,0 +1,193 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { qualifyGovernedCaseQa, verifyGovernedCaseReceipt, requireLiveSourceHandoffOwner, nativeGovernedCaseAgentConfig, evaluateNativeCaseQaHost,
+  buildNativeSourceCaseInstructions, buildNativeVerifierCaseInstructions,
+  requireNativeCaseApiToolAdmission } from "./bostan-governed-case-free-e2e.mjs";
+
+test("governed Case E2E refuses missing real-free-model or overlapping scenario opt-in", () => {
+  for (const env of [
+    {}, { BOSTAN_LIVE_LOCAL_GOVERNED_CASE_E2E: "1" },
+    { BOSTAN_LIVE_LOCAL_GOVERNED_CASE_E2E: "1", BOSTAN_E2E_TWO_AGENT_TEAM: "1" },
+    { BOSTAN_LIVE_LOCAL_GOVERNED_CASE_E2E: "1", BOSTAN_E2E_REVIEW_FIRST_AGENT: "1" },
+  ]) {
+    assert.throws(() => qualifyGovernedCaseQa(env));
+  }
+});
+const SOURCE = randomUUID(), REVIEW = randomUUID(), SRC_RUN = randomUUID(), REV_RUN = randomUUID();
+function good() {
+  const caseId = randomUUID();
+  const reportDocumentId = randomUUID();
+  return {
+    implementationAgentId: SOURCE, reviewerAgentId: REVIEW,
+    sourceRun: { id: SRC_RUN, agentId: SOURCE, status: "succeeded", exitCode: 0,
+      errorCode: null, usageJson: { costUsd: 0 } },
+    reviewRun: { id: REV_RUN, agentId: REVIEW, status: "succeeded", exitCode: 0,
+      errorCode: null, usageJson: { costUsd: 0 } },
+    sourceDocument: { id: randomUUID() },
+    reportDocument: { id: reportDocumentId, format: "json" },
+    caseState: { id: caseId, status: "done" },
+    summary: { schema: "bostan.verification.board-summary.v1", caseId,
+      caseStatus: "done", current: true, provenanceCurrent: true,
+      reviewerAgentId: REVIEW, reviewRunId: REV_RUN, reportDocumentId,
+      citedDocumentCount: 1, factualRelevanceVerified: false,
+      sourceContentIsUntrusted: true, executionAuthorized: false },
+  };
+}
+test("governed Case accepts only actual distinct green models, current board summary, and $0 reported cost", () => {
+  assert.deepEqual(verifyGovernedCaseReceipt(good()), {
+    caseDone: true, twoDistinctRealAgentRuns: true,
+    verifierAuthoredStructuredReport: true, independentCurrentSourceCitation: true,
+    boardSummaryCurrent: true, reportedCostUsd: 0,
+  });
+  const mutations = [
+    a => { a.reviewRun.agentId = SOURCE; },
+    a => { a.reviewRun.id = SRC_RUN; },
+    a => { a.sourceRun.status = "failed"; },
+    a => { a.reviewRun.exitCode = 1; },
+    a => { a.reviewRun.usageJson.costUsd = 0.01; },
+    a => { a.sourceRun.usageJson.costUsd = 2; },
+    a => { a.caseState.status = "in_progress"; },
+    a => { a.summary.current = false; },
+    a => { a.summary.provenanceCurrent = false; },
+    a => { a.summary.reviewerAgentId = SOURCE; },
+    a => { a.summary.reviewRunId = SRC_RUN; },
+    a => { a.summary.reviewRunId = randomUUID(); },
+    a => { a.summary.reportDocumentId = randomUUID(); },
+    a => { delete a.summary.reportDocumentId; },
+    a => { delete a.summary.reviewRunId; },
+    a => { a.summary.caseId = randomUUID(); },
+    a => { a.summary.caseStatus = "in_progress"; },
+    a => { a.caseState.id = randomUUID(); },
+    a => { a.summary.schema = "test.fake.review"; },
+    a => { a.summary.factualRelevanceVerified = true; },
+    a => { a.summary.sourceContentIsUntrusted = false; },
+    a => { a.summary.executionAuthorized = true; },
+    a => { a.summary.citedDocumentCount = 0; },
+    a => { a.reportDocument.format = "markdown"; },
+    a => { a.reportDocument.id = a.sourceDocument.id; },
+  ];
+  for (const mutate of mutations) {
+    const value = good();
+    mutate(value);
+    assert.throws(() => verifyGovernedCaseReceipt(value));
+  }
+});
+
+
+test("case handoff binds ONLY to a live original source assignment after a real source comment", () => {
+  const id = randomUUID(), comment = randomUUID();
+  const issue = { id: randomUUID(), status: "in_progress", executionRunId: id };
+  const assignmentRun = { id, status: "running" };
+  assert.equal(requireLiveSourceHandoffOwner({ issue, assignmentRun, sourceCommentId: comment }), true);
+  for (const changes of [
+    { issue: { ...issue, executionRunId: randomUUID() } },
+    { issue: { ...issue, executionRunId: null } },
+    { issue: { ...issue, status: "done" } },
+    { assignmentRun: { ...assignmentRun, id: randomUUID() } },
+    { assignmentRun: { ...assignmentRun, status: "succeeded" } },
+    { assignmentRun: { ...assignmentRun, status: "cancelled" } },
+    { sourceCommentId: null },
+  ]) {
+    assert.throws(() => requireLiveSourceHandoffOwner({ issue, assignmentRun,
+      sourceCommentId: comment, ...changes }), /Refusing governed Case handoff/);
+  }
+});
+
+test("governed Case only admits native signed-API runner with all general OpenCode tools denied", () => {
+  const config = nativeGovernedCaseAgentConfig({
+    model: "opencode/deepseek-v4.1-flash-free", workspace: "/tmp/bostan-qa-only",
+  });
+  assert.equal(config.provider, "opencode");
+  assert.equal(config.opencodePermissionMode, "deny");
+  assert.equal(config.lifecycleMode, "per_turn");
+  assert.equal(config.cwd, "/tmp/bostan-qa-only");
+  assert.ok(!Object.hasOwn(config, "dangerouslySkipPermissions"));
+  assert.throws(() => nativeGovernedCaseAgentConfig({
+    model: "anthropic/claude-opus-5", workspace: "/tmp/private",
+  }), /Only explicitly permitted free test models/);
+  assert.throws(() => nativeGovernedCaseAgentConfig({
+    model: "opencode/deepseek-v4.1-flash-free", workspace: "relative",
+  }), /absolute disposable workspace/);
+});
+
+test("native governed Case host preflight refuses low-memory Macs and sparse TEMP, not ordinary app installs", () => {
+  const G = 1024 ** 3;
+  const good = { platform: "darwin", totalMemoryBytes: 16 * G, freeMemoryBytes: 9 * G, tempFreeBytes: 30 * G };
+  assert.deepEqual(evaluateNativeCaseQaHost(good), {
+    schema: "bostan.native-governed-case-qa-host.v1",
+    qualified: true, blocked: [],
+  });
+  assert.deepEqual(evaluateNativeCaseQaHost({ ...good, totalMemoryBytes: 8 * G }).blocked,
+    ["enoughTotalMemory"]);
+  assert.deepEqual(evaluateNativeCaseQaHost({ ...good, freeMemoryBytes: 2 * G }).blocked,
+    ["enoughFreeMemory"]);
+  assert.deepEqual(evaluateNativeCaseQaHost({ ...good, tempFreeBytes: 4 * G }).blocked,
+    ["enoughTempDisk"]);
+  assert.deepEqual(evaluateNativeCaseQaHost({ ...good, platform: "win32" }).blocked,
+    ["supportedNativePlatform"]);
+  assert.equal(evaluateNativeCaseQaHost({ ...good, freeMemoryBytes: null }).qualified, false);
+});
+test("unreported, unknown or incorrect cost rejects the actual governed Case PASS receipt", () => {
+  for (const update of [
+    a => { a.reviewRun.usageJson = null; },
+    a => { a.sourceRun.usageJson = {}; },
+    a => { a.reviewRun.usageJson.costUsd = undefined; },
+    a => { a.sourceRun.usageJson.costUsd = "0"; },
+    a => { a.reviewRun.usageJson.costUsd = 0.001; },
+    a => { a.sourceRun.usageJson.costUsd = -1; },
+  ]) {
+    const value = good();
+    update(value);
+    assert.throws(() => verifyGovernedCaseReceipt(value), /explicitly measured zero cost/);
+  }
+});
+
+test("native specialist instructions require named persisted Bostan tools, not host-shell writes", () => {
+  const prompt = buildNativeSourceCaseInstructions();
+  for (const name of ["get_task", "list_task_documents", "read_task_document", "comment_on_task",
+    "bostan-source", "BOSTAN_CLEAN_RUN_PASS"]) {
+    assert.ok(prompt.includes(name), "Expected real native tool or source marker: " + name);
+  }
+  assert.match(prompt, /DO NOT mark this Case or task Done/);
+  assert.match(prompt, /DO NOT call shell/);
+});
+
+test("native reviewer discovers signed source snapshot and writes only authenticated JSON with readback", () => {
+  const ids = {companyId: randomUUID(), issueId: randomUUID(), documentId: randomUUID()};
+  const prompt = buildNativeVerifierCaseInstructions(ids);
+  for (const name of ["get_task", "read_task_document", "search_api", "call_api",
+    "write_task_document", "bostan-verification", "sourceSnapshotHmacSha256",
+    "expectedSnapshotHmacSha256", "format=json", "baseRevisionId=null",
+    "baseRevisionId is REQUIRED", "JSON STRING",
+    "bostan.verification.report.v1"]) {
+    assert.ok(prompt.includes(name), "Missing verified Bostan native tool/contract: " + name);
+  }
+  for (const id of Object.values(ids)) assert.ok(prompt.includes(id));
+  assert.match(prompt, /operationId actually RETURNED BY search_api/);
+  assert.match(prompt, /If any named tool is unavailable/);
+  assert.match(prompt, /DO NOT mark task Done/);
+  for (const malformed of [
+    { ...ids, companyId: "https://evil.invalid/credential?token=secret" },
+    { ...ids, documentId: "" },
+    { ...ids, issueId: "fake;exec;curl" },
+  ]) assert.throws(() => buildNativeVerifierCaseInstructions(malformed), /real company/);
+});
+
+test("native reviewer refuses disabled or company-scoped API tools before source app/model setup", () => {
+  assert.equal(requireNativeCaseApiToolAdmission({}), true);
+  assert.equal(requireNativeCaseApiToolAdmission({
+    PAPERCLIP_RUNNER_API_TOOLS_ENABLED: "true",
+  }), true);
+  for (const value of ["false", "", "1", "TRUE"]) {
+    assert.throws(() => requireNativeCaseApiToolAdmission({
+      PAPERCLIP_RUNNER_API_TOOLS_ENABLED: value,
+    }), /rollout is disabled/);
+  }
+  assert.throws(() => requireNativeCaseApiToolAdmission({
+    PAPERCLIP_RUNNER_API_TOOLS_COMPANY_IDS: "11111111-1111-4111-8111-111111111111",
+  }), /random disposable company/);
+  assert.throws(() => requireNativeCaseApiToolAdmission({
+    PAPERCLIP_RUNNER_API_TOOLS_COMPANY_IDS: "",
+  }), /random disposable company/);
+});

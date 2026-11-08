@@ -12,7 +12,7 @@ import type {
   SecretProviderDescriptor,
   UserSecretCoverageSummary,
   UserSecretDefinition,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ProviderVaultsTab, Secrets } from "./Secrets";
 import { ApiError } from "../api/client";
@@ -525,12 +525,12 @@ describe("Secrets page layout", () => {
     await flushReact();
 
     expect(document.body.textContent).toContain("Remove provider vault");
-    expect(document.body.textContent).toContain("from Paperclip only");
+    expect(document.body.textContent).toContain("from Bostan only");
     expect(document.body.textContent).toContain("does not delete");
     expect(document.body.textContent).toContain("AWS Secrets Manager");
 
     const confirmButton = [...document.querySelectorAll("button")].find(
-      (button) => button.textContent?.includes("Remove from Paperclip"),
+      (button) => button.textContent?.includes("Remove from Bostan"),
     ) as HTMLButtonElement | undefined;
     await act(async () => {
       confirmButton?.click();
@@ -793,6 +793,49 @@ describe("Secrets page layout", () => {
     });
   });
 
+  it("does not expose upstream failure payloads on secret and vault loading errors", async () => {
+    const syntheticSecret = "sk-proj-BOSTAN-TEST-NEVER-DISPLAY-oauth_state=private";
+    mockSecretsApi.list.mockRejectedValueOnce(new Error(syntheticSecret));
+    mockSecretsApi.providerConfigs.mockRejectedValueOnce(new ApiError(syntheticSecret, 503, null));
+    const root = await renderSecrets(container);
+    expect(document.body.textContent).toContain("Failed to load secrets:");
+    expect(document.body.textContent).not.toContain(syntheticSecret);
+
+    const vaultTabButton = [...document.querySelectorAll("button")].find(
+      (button) => button.textContent?.includes("Provider vaults"),
+    ) as HTMLButtonElement | undefined;
+    await act(async () => {
+      vaultTabButton?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      vaultTabButton?.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter" }));
+      vaultTabButton?.click();
+    });
+    await flushReact();
+    expect(document.body.textContent).toContain("Failed to load provider vaults.");
+    expect(document.body.textContent).not.toContain(syntheticSecret);
+    await act(async () => { root.unmount(); });
+  });
+
+  it("does not show secret-like upstream errors when a provider vault save fails", async () => {
+    const syntheticSecret = "https://provider.invalid/callback?code=BOSTAN-TEST-SECRET&state=private";
+    mockSecretsApi.createProviderConfig.mockRejectedValueOnce(new Error(syntheticSecret));
+    const root = await renderSecrets(container);
+    await openAwsVaultDialog();
+    await act(async () => {
+      setInputValue(document.getElementById("vault-name") as HTMLInputElement, "Test vault");
+      setInputValue(document.getElementById("provider-vault-aws-region") as HTMLInputElement, "us-east-1");
+    });
+    await flushReact();
+    const createButton = [...document.querySelectorAll("button")].find(
+      (button) => button.textContent?.trim() === "Create vault",
+    );
+    await act(async () => { createButton?.click(); });
+    await waitForReact(() => mockSecretsApi.createProviderConfig.mock.calls.length > 0);
+    await flushReact();
+    expect(document.body.textContent).toContain("Could not save the provider vault.");
+    expect(document.body.textContent).not.toContain(syntheticSecret);
+    await act(async () => { root.unmount(); });
+  });
+
   it("opens the New secret dialog when provider queries fail", async () => {
     mockSecretsApi.providers.mockRejectedValueOnce(new ApiError("Providers unavailable", 403, null));
     mockSecretsApi.providerConfigs.mockRejectedValueOnce(new ApiError("Provider vaults unavailable", 403, null));
@@ -895,14 +938,12 @@ describe("Secrets page layout", () => {
           code: "access_denied",
           provider: "aws_secrets_manager",
           operation: "secret.create",
-          providerConfigId: "vault-aws",
+          providerConfigId: rawProviderMessage,
           region: "us-east-1",
-          credentialPath: "Paperclip server runtime/provider credential path",
-          requiredCapability: "secretsmanager:CreateSecret",
-          actionableMessage:
-            "AWS managed secret creation needs secretsmanager:CreateSecret in the selected region for this provider vault.",
-          safeAlternative:
-            "If the secret already exists in AWS, link it as an external reference instead of creating a Paperclip-managed value.",
+          credentialPath: rawProviderMessage,
+          requiredCapability: rawProviderMessage,
+          actionableMessage: rawProviderMessage,
+          safeAlternative: rawProviderMessage,
         },
       }),
     );
@@ -974,7 +1015,7 @@ describe("Secrets page layout", () => {
     await flushReact();
 
     const errorBanner = document.querySelector('[data-testid="secret-create-error"]');
-    expect(errorBanner?.textContent).toBe("Secret creation failed");
+    expect(errorBanner?.textContent).toBe("Secret request failed. Retry or contact the instance operator.");
 
     await act(async () => {
       root.unmount();
@@ -1054,15 +1095,13 @@ describe("Secrets page layout", () => {
           code: "access_denied",
           provider: "aws_secrets_manager",
           operation: "secret_provider_config.discovery.preview",
-          providerConfigId: "discovery-preview",
-          providerVaultContext: "draft_config",
-          region: "us-west-2",
-          credentialPath: "Paperclip server runtime/provider credential path",
-          requiredCapability: "secretsmanager:ListSecrets",
-          actionableMessage:
-            "AWS discovery preview needs secretsmanager:ListSecrets in the selected region for the Paperclip server runtime/provider credential path.",
-          safeAlternative:
-            "If the operator already knows the exact AWS Secrets Manager ARN, paste/link that ARN instead of using discovery. Exact-resource DescribeSecret and runtime read permissions are still required.",
+          providerConfigId: rawProviderMessage,
+          providerVaultContext: rawProviderMessage,
+          region: rawProviderMessage,
+          credentialPath: rawProviderMessage,
+          requiredCapability: rawProviderMessage,
+          actionableMessage: rawProviderMessage,
+          safeAlternative: rawProviderMessage,
         },
       }),
     );
@@ -1090,7 +1129,7 @@ describe("Secrets page layout", () => {
     expect(errorBanner).not.toBeNull();
     expect(errorBanner?.textContent).toContain("AWS discovery needs ListSecrets permission");
     expect(errorBanner?.textContent).toContain("secretsmanager:ListSecrets");
-    expect(errorBanner?.textContent).toContain("Paperclip server runtime/provider credential path");
+    expect(errorBanner?.textContent).toContain("Bostan server runtime/provider credential path");
     expect(errorBanner?.textContent).toContain("paste/link that ARN");
     expect(errorBanner?.textContent).toContain("DescribeSecret");
     expect(errorBanner?.textContent).toContain("us-west-2");
@@ -1137,8 +1176,8 @@ describe("Secrets page layout", () => {
     const errorBanner = document.querySelector('[data-testid="aws-vault-discovery-error"]');
     expect(errorBanner).not.toBeNull();
     expect(errorBanner?.textContent).toContain("AWS discovery failed");
-    expect(errorBanner?.textContent).toContain("AWS discovery request failed before IAM evaluation.");
-    expect(errorBanner?.textContent).toContain("proxy_forbidden");
+    expect(errorBanner?.textContent).toContain("Secret request failed. Retry or contact the instance operator.");
+    expect(errorBanner?.textContent).not.toContain("proxy_forbidden");
     expect(errorBanner?.textContent).not.toContain("AWS discovery needs ListSecrets permission");
 
     await act(async () => {

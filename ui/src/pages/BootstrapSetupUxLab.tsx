@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
-import { Loader2, ShieldCheck, Terminal, TriangleAlert } from "lucide-react";
-import { BOOTSTRAP_FALLBACK_COMMAND } from "@/bootstrapSetup";
+import { Loader2, ShieldCheck, TriangleAlert } from "lucide-react";
+import { BOSTAN_BOOTSTRAP_PREVIEW_NOTICE } from "@/bootstrapSetup";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -34,17 +34,16 @@ function CliFallback({ hasActiveInvite }: { hasActiveInvite: boolean }) {
   return (
     <div className="mt-6 border-t border-border pt-5">
       <div className="flex items-center gap-2 text-sm font-medium">
-        <Terminal className="size-4 text-muted-foreground" aria-hidden />
         <span>Prefer to finish setup from the host?</span>
       </div>
       <p className="mt-2 text-sm text-muted-foreground">
         {hasActiveInvite
-          ? "A bootstrap invite is already active. Check your Paperclip startup logs for the first‑admin URL, or run this command on the host to rotate it:"
-          : "Run this command on the host that runs Paperclip to print a one‑time first‑admin invite URL:"}
+          ? "A first-admin invite is already active. The instance operator can find the invitation URL in the Bostan startup logs."
+          : "Ask the instance operator for a first-admin invitation URL. This private Bostan CLI preview cannot create or rotate invitations."}
       </p>
-      <pre className="mt-3 overflow-x-auto rounded-md border border-border bg-muted/30 p-3 font-mono text-xs">
-{BOOTSTRAP_FALLBACK_COMMAND}
-      </pre>
+      <p className="mt-3 rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+        {BOSTAN_BOOTSTRAP_PREVIEW_NOTICE}
+      </p>
     </div>
   );
 }
@@ -60,9 +59,9 @@ function StateChrome({ children }: { children: ReactNode }) {
 function SignedOutPrivate() {
   return (
     <StateChrome>
-      <h1 className="text-xl font-semibold">Finish setting up this Paperclip</h1>
+      <h1 className="text-xl font-semibold">Finish setting up Bostan</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        No admin has claimed this instance yet. Sign in or create your Paperclip account to become the first
+        No admin has claimed this instance yet. Sign in or create your Bostan account to become the first
         admin from this browser.
       </p>
       <div className="mt-5">
@@ -78,7 +77,7 @@ function SignedOutPrivate() {
 function SignedInPrivate() {
   return (
     <StateChrome>
-      <h1 className="text-xl font-semibold">Finish setting up this Paperclip</h1>
+      <h1 className="text-xl font-semibold">Finish setting up Bostan</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         No admin has claimed this instance yet. Claim it now to become the first admin and start onboarding.
       </p>
@@ -103,7 +102,7 @@ function SignedInPrivate() {
 function ClaimingPrivate() {
   return (
     <StateChrome>
-      <h1 className="text-xl font-semibold">Finish setting up this Paperclip</h1>
+      <h1 className="text-xl font-semibold">Finish setting up Bostan</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         No admin has claimed this instance yet. Claim it now to become the first admin and start onboarding.
       </p>
@@ -124,7 +123,7 @@ function ClaimingPrivate() {
 function ClaimErrorPrivate() {
   return (
     <StateChrome>
-      <h1 className="text-xl font-semibold">Finish setting up this Paperclip</h1>
+      <h1 className="text-xl font-semibold">Finish setting up Bostan</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         No admin has claimed this instance yet. Claim it now to become the first admin and start onboarding.
       </p>
@@ -182,7 +181,7 @@ function ClaimSuccess() {
 function PublicInviteOnly() {
   return (
     <StateChrome>
-      <h1 className="text-xl font-semibold">This Paperclip is waiting on its first admin</h1>
+      <h1 className="text-xl font-semibold">This Bostan instance is waiting on its first admin</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         This instance runs in invite‑only mode. The operator must generate a one‑time first‑admin invite URL
         from the host. Once you have the link, open it from this browser to finish setup.

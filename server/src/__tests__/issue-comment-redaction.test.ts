@@ -21,11 +21,11 @@ import {
   issueComments,
   issueReferenceMentions,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   companySearchQuerySchema,
   LOW_TRUST_REVIEW_PRESET,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

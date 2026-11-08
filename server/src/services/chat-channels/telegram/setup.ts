@@ -3,11 +3,11 @@ import type { EndpointRow, RuntimeContext } from "../runtime-types.js";
 
 import { type CredentialMutationLeaseGuard } from "../../chat-credential-mutation-lease.js";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import type {
   ConfigureChatEndpointInput,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   unprocessable,

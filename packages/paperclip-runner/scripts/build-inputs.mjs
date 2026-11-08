@@ -3,7 +3,7 @@
 // nothing it depends on has changed.
 //
 // server's `prepare:runner-vendor` runs the Runner's full `build`, because a
-// standalone `pnpm --filter @paperclipai/server build` (the Dockerfile's path)
+// standalone `pnpm --filter @bostan/server build` (the Dockerfile's path)
 // must produce a current vendored Runner on its own. Inside `pnpm -r build`
 // the same command has just built the Runner a few seconds earlier, and the
 // rebuild cost 12-16s on the CI Build job's critical path (six master runs,
@@ -33,7 +33,7 @@
 //
 // Inputs: every file under packages/paperclip-runner except its build outputs
 // (dist, dist-browser, runner/target), node_modules and dot-directories (tool
-// caches); every file under packages/paperclip-eval-kernel except dist and
+// caches); every file under packages/bostan-eval-kernel except dist and
 // node_modules, because build:typescript builds that package first; every
 // file under the root patches directory, because check:acpx-profiles hashes
 // the acpx patch and build-verified-provider-entrypoints.mjs copies the pi-acp
@@ -66,7 +66,7 @@ import { fileURLToPath } from "node:url";
 export const BUILD_INPUTS_SCHEMA = "paperclip.runner-build-inputs.v2";
 
 const RUNNER_PACKAGE_RELATIVE = "packages/paperclip-runner";
-const EVAL_KERNEL_PACKAGE_RELATIVE = "packages/paperclip-eval-kernel";
+const EVAL_KERNEL_PACKAGE_RELATIVE = "packages/bostan-eval-kernel";
 const ROOT_INPUT_DIRECTORIES = ["patches"];
 const ROOT_INPUT_FILES = [
   "package.json",

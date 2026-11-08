@@ -1,10 +1,10 @@
 import { useCompany } from "@/context/CompanyContext";
-import { PAPERCLIP_RUNNER_ACPX_PROFILES } from "@paperclipai/adapter-utils";
+import { PAPERCLIP_RUNNER_ACPX_PROFILES } from "@bostan/adapter-utils";
 import { useAgentAppearanceDraft } from "@/hooks/useAgentAppearanceDraft";
 import { AdapterMark } from "../AdapterMark";
 import { AgentCharacter } from "../AgentCharacter";
 import { useEffect, useId, useRef, useState } from "react";
-import type { Agent } from "@paperclipai/shared";
+import type { Agent } from "@bostan/shared";
 import { agentsApi } from "@/api/agents";
 import { buildNewAgentRuntimeConfig } from "@/lib/new-agent-runtime-config";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -302,8 +302,8 @@ export function AgentBasicsDialog({
                       placeholder="Choose a native harness…"
                       onValueChange={provider => { setRunnerProvider(provider); setAdapterType("paperclip_runner"); }}
                       options={[
-                        { value: "grok", label: "Grok Build (Paperclip Runner)" },
-                        { value: "opencode", label: "OpenCode (Paperclip Runner)" },
+                        { value: "grok", label: "Grok Build (Bostan Runner)" },
+                        { value: "opencode", label: "OpenCode (Bostan Runner)" },
                       ]} />
                   </div>
                 </details>}

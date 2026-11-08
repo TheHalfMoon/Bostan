@@ -16,7 +16,7 @@ import { errorHandler } from "../../../middleware/error-handler.js";
 import { createLifecycleDriver } from "../../../services/agent-lifecycle-driver.js";
 import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
-import { agents, approvals, projects, issues, heartbeatRuns, nativeRunFinalizations, budgetPolicies, environmentLeases, agentApiKeys, activityLog, agentConfigRevisions, userCompanyPreferences, companies, companyMemberships, principalPermissionGrants, plugins, pluginCompanySettings, createDb, type Db } from "@paperclipai/db";
+import { agents, approvals, projects, issues, heartbeatRuns, nativeRunFinalizations, budgetPolicies, environmentLeases, agentApiKeys, activityLog, agentConfigRevisions, userCompanyPreferences, companies, companyMemberships, principalPermissionGrants, plugins, pluginCompanySettings, createDb, type Db } from "@bostan/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "../../../__tests__/helpers/embedded-postgres.js";
 import { createAgentLifecycle, configureAgentLifecycle, startAgentLifecycle } from "../../../services/agent-lifecycle.js";
@@ -736,8 +736,8 @@ const support = await getEmbeddedPostgresTestSupport();
       manifestJson: { agentLifecycle: true, capabilities: ["agents.lifecycle.manage"] } as never });
     let resourcesReady = false;
     let resourcesRemoved = false;
-    const requests: import("@paperclipai/shared").AgentLifecycleRequest[] = [];
-    const call = async (id: string, method: string, input: import("@paperclipai/shared").AgentLifecycleRequest) => {
+    const requests: import("@bostan/shared").AgentLifecycleRequest[] = [];
+    const call = async (id: string, method: string, input: import("@bostan/shared").AgentLifecycleRequest) => {
       expect(id).toBe(pluginId);
       expect(method).toBe("agentLifecycle");
       expect(input.companyId).toBe(companyId);

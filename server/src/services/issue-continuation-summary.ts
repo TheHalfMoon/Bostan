@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { documents, issueDocuments, issues } from "@paperclipai/db";
-import { ISSUE_CONTINUATION_SUMMARY_DOCUMENT_KEY, type SourceTrustMetadata } from "@paperclipai/shared";
+import type { Db } from "@bostan/db";
+import { documents, issueDocuments, issues } from "@bostan/db";
+import { ISSUE_CONTINUATION_SUMMARY_DOCUMENT_KEY, type SourceTrustMetadata } from "@bostan/shared";
 import { documentService } from "./documents.js";
 import { summarizeRunErrorForModel } from "./heartbeat-run-summary.js";
 

@@ -5,7 +5,7 @@ import type {
   BrowserUseViewportState,
   BrowserUseViewportRequest,
   TaskBrowser,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { api } from "./client";
 export const browserUseApi = {
   list: (issueId: string) =>

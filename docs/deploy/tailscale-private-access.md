@@ -1,82 +1,16 @@
 ---
-title: Tailscale Private Access
-summary: Run Paperclip with Tailscale-friendly bind presets and connect from other devices
+title: Bostan private-network access — qualification pending
+summary: Network-access planning reference, not a Tailscale deployment recipe
 ---
 
-Use this when you want to access Paperclip over Tailscale (or a private LAN/VPN) instead of only `localhost`.
+**Bostan is not release-qualified.** No shared LAN/Tailscale instance is approved for team use. A VPN or tailnet is not a replacement for authenticated authorization, consent or application security.
 
-## 1. Start Paperclip in private authenticated mode
+## Intended architecture
 
-```sh
-pnpm dev --bind tailnet
-```
+A future private-network mode could require application-level login, explicit hostname restrictions, TLS or a justified private transport, auditable device access and company-level isolation. Verify that unauthenticated local-trusted mode cannot be exposed via a bind preset.
 
-Recommended behavior:
+## Required tests before any network-access instructions
 
-- `PAPERCLIP_DEPLOYMENT_MODE=authenticated`
-- `PAPERCLIP_DEPLOYMENT_EXPOSURE=private`
-- `PAPERCLIP_BIND=tailnet`
+Demonstrate real installed-runtime host binding on every supported OS, strict authentication for non-loopback requests, scoped invitations, safe session expiry, CSRF/origin handling and rejection of cross-tenant operations. Exercise agent execution and secrets effects with synthetic data, including restart and forced-crash recovery.
 
-If you want the old broad private-network behavior instead, use:
-
-```sh
-pnpm dev --bind lan
-```
-
-Legacy aliases still map to `authenticated/private + bind=lan`:
-
-pnpm dev --authenticated-private
-pnpm dev --tailscale-auth
-```
-
-## 2. Find your reachable Tailscale address
-
-From the machine running Paperclip:
-
-```sh
-tailscale ip -4
-```
-
-You can also use your Tailscale MagicDNS hostname (for example `my-macbook.tailnet.ts.net`).
-
-## 3. Open Paperclip from another device
-
-Use the Tailscale IP or MagicDNS host with the Paperclip port:
-
-```txt
-http://<tailscale-host-or-ip>:3100
-```
-
-Example:
-
-```txt
-http://my-macbook.tailnet.ts.net:3100
-```
-
-## 4. Allow custom private hostnames when needed
-
-If you access Paperclip with a custom private hostname, add it to the allowlist:
-
-```sh
-npx paperclipai allowed-hostname my-macbook.tailnet.ts.net
-```
-
-## 5. Verify the server is reachable
-
-From a remote Tailscale-connected device:
-
-```sh
-curl http://<tailscale-host-or-ip>:3100/api/health
-```
-
-Expected result:
-
-```json
-{"status":"ok"}
-```
-
-## Troubleshooting
-
-- Login or redirect errors on a private hostname: add it with `paperclipai allowed-hostname`.
-- App only works on `localhost`: make sure you started with `--bind lan` or `--bind tailnet` instead of plain `pnpm dev`.
-- Can connect locally but not remotely: verify both devices are on the same Tailscale network and port `3100` is reachable.
+Do not follow inherited donor bind presets, copy credentials into a VPN-connected host, or reuse upstream service configuration as a Bostan release. See [deployment overview](/deploy/overview) and [security-conscious development guidance](/start/quickstart).

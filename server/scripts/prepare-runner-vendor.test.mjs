@@ -51,14 +51,14 @@ function makeRepo() {
     "tsconfig.base.json": "{}\n",
     "patches/acpx@0.13.1.patch": "--- a\n+++ b\n",
     "server/package.json": '{"name":"@paperclipai/server"}\n',
-    "packages/paperclip-runner/package.json": '{"name":"@paperclipai/paperclip-runner"}\n',
+    "packages/paperclip-runner/package.json": '{"name":"@bostan/runner"}\n',
     "packages/paperclip-runner/src/index.ts": "export const one = 1;\n",
     "packages/paperclip-runner/dist/index.js": "export const one = 1;\n",
     "packages/paperclip-runner/dist/live/index.js": "export {};\n",
     "packages/paperclip-runner/dist/testing.js": "export {};\n",
     "packages/paperclip-runner/dist/cli/acpx-runtime-sidecar.cjs": "module.exports = {};\n",
     [`packages/paperclip-runner/dist/bin/${executable}`]: "binary\n",
-    "packages/paperclip-eval-kernel/src/index.ts": "export const kernel = 1;\n",
+    "packages/bostan-eval-kernel/src/index.ts": "export const kernel = 1;\n",
   });
   const packageRoot = path.join(repoRoot, "packages", "paperclip-runner");
   return { repoRoot, packageRoot };
@@ -134,7 +134,7 @@ describe("prepareRunnerVendor", () => {
   it("still runs the Runner build the server build has always run", () => {
     // The Dockerfile's standalone `pnpm --filter @paperclipai/server build`
     // depends on this exact command producing a current vendored Runner.
-    expect(RUNNER_VENDOR_BUILD_COMMAND).toBe("pnpm --filter @paperclipai/paperclip-runner build");
+    expect(RUNNER_VENDOR_BUILD_COMMAND).toBe("pnpm --filter @bostan/runner build");
   });
 
   it("skips the rebuild when the recorded build is current and reports the check time", () => {
@@ -285,7 +285,7 @@ describe("prepareRunnerVendor", () => {
       const calls = () => readFileSync(argvLog, "utf8").split("\n").filter(Boolean);
 
       const first = await run();
-      expect(calls()).toEqual(["--filter @paperclipai/paperclip-runner build"]);
+      expect(calls()).toEqual(["--filter @bostan/runner build"]);
       expect(first.stdout).toMatch(/action:rebuild,reason:no_stamp,/);
       expect(assessRunnerBuild({ repoRoot, packageRoot }).current).toBe(true);
 

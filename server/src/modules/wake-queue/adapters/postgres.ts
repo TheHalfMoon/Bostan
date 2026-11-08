@@ -6,8 +6,8 @@ import { instanceSettingsService } from "../../../services/instance-settings.js"
 import { currentConversationCommentCondition } from "../../../services/agent-conversations.js";
 import { getExecutionBlocker, hasPendingRunCleanup } from "../../../services/execution-blocker.js";
 import { and, asc, eq, inArray, isNull, notInArray, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { extractIssueReferenceIdentifiers, isUuidLike } from "@paperclipai/shared";
+import type { Db } from "@bostan/db";
+import { extractIssueReferenceIdentifiers, isUuidLike } from "@bostan/shared";
 import {
   activityLog,
   agentWakeupRequests,
@@ -19,7 +19,7 @@ import {
   issueRelations,
   issues,
   nativeRunFinalizations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { hasConversationContinuationPolicy } from "../../../services/conversation-continuation.js";
 import { legacyExecutionNeedsReconciliationWithEvidence } from "../../../services/legacy-execution-recovery.js";
 import {

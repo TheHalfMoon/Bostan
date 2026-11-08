@@ -36,7 +36,10 @@ import { describe, expect, it } from "vitest";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const dockerfile = readFileSync(path.join(repoRoot, "Dockerfile"), "utf8");
-const workflow = readFileSync(path.join(repoRoot, ".github", "workflows", "release.yml"), "utf8");
+// Publishing workflows were removed by the B1-237 quarantine (#494). Checks
+// on them are skipped while absent and resume automatically if restored.
+const releaseWorkflowPath = path.join(repoRoot, ".github", "workflows", "release.yml");
+const workflow = existsSync(releaseWorkflowPath) ? readFileSync(releaseWorkflowPath, "utf8") : "";
 const serverPackageJson = JSON.parse(
   readFileSync(path.join(repoRoot, "server", "package.json"), "utf8"),
 ) as { peerDependencies?: Record<string, string> };

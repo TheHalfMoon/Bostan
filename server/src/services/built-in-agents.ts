@@ -4,12 +4,12 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { readPaperclipSkillSyncPreference, writePaperclipSkillSyncPreference } from "@paperclipai/adapter-utils/server-utils";
+import { readPaperclipSkillSyncPreference, writePaperclipSkillSyncPreference } from "@bostan/adapter-utils/server-utils";
 import { and, desc, eq, ne } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { activityLog, agents, builtInManagedResources, companies, issueThreadInteractions, issues, routines, routineTriggers } from "@paperclipai/db";
-import { agentHarnessType, agentRunner, syncRoutineVariablesWithTemplate, type AgentRunnerChoice } from "@paperclipai/shared";
-import type { Agent, Approval, CompanySkill, PermissionKey, Routine, RoutineTrigger, RoutineVariable } from "@paperclipai/shared";
+import type { Db } from "@bostan/db";
+import { activityLog, agents, builtInManagedResources, companies, issueThreadInteractions, issues, routines, routineTriggers } from "@bostan/db";
+import { agentHarnessType, agentRunner, syncRoutineVariablesWithTemplate, type AgentRunnerChoice } from "@bostan/shared";
+import type { Agent, Approval, CompanySkill, PermissionKey, Routine, RoutineTrigger, RoutineVariable } from "@bostan/shared";
 import { conflict, HttpError, notFound, unprocessable } from "../errors.js";
 import { logActivity } from "./activity-log.js";
 import { adoptAgentFiles, agentFilePath, fileHash, readAgentFile, snapshotAgentFiles } from "./agent-file-store.js";
@@ -269,7 +269,7 @@ function readBuiltInText(relativePath: string, fallbackText: string) {
   );
 }
 
-const skillsCatalogRoot = resolvePackageRoot("@paperclipai/skills-catalog");
+const skillsCatalogRoot = resolvePackageRoot("@bostan/skills-catalog");
 const REFLECTION_COACH_INSTRUCTIONS = readBuiltInText("reflection-coach/AGENTS.md", FALLBACK_REFLECTION_COACH_INSTRUCTIONS);
 const REFLECTION_COACH_ROUTINE = readBuiltInText(
   "reflection-coach/routines/recent-agent-reflection.md",

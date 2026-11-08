@@ -14,7 +14,7 @@ import {
   heartbeatRuns,
   issues,
   projects,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { costService } from "../services/costs.ts";
 import { financeService } from "../services/finance.ts";
 import {

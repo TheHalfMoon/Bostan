@@ -16,7 +16,7 @@ describe("chat endpoint lifecycle health presentation", () => {
     ["verifying", "Connection verification is in progress."],
     ["attention", "Connection needs attention."],
     ["revoked", "Connection access is revoked. Reconnect to verify access."],
-    ["archived", "Connection has been removed from Paperclip."],
+    ["archived", "Connection has been removed from Bostan."],
   ])("prioritizes %s over stale connected health", (status, message) => {
     const presentation = connectionHealthPresentation({
       status,
@@ -24,8 +24,22 @@ describe("chat endpoint lifecycle health presentation", () => {
       lastError: null,
     });
     expect(presentation.message).toBe(message);
-    expect(presentation.previousHealth).toBe("Connected");
+    expect(presentation.previousHealth).toBe("Provider connection status is available. Check connection settings if needed.");
     expect(presentation.error).toBeNull();
+  });
+
+  it("does not return provider bearer secrets from active or failed chat health", () => {
+    const token = "PRIVATE_CHAT_WEBHOOK_TOKEN_DO_NOT_RENDER";
+    for (const status of ["active", "attention", "paused", "revoked"] as const) {
+      const visible = connectionHealthPresentation({
+        status,
+        healthMessage: "https://provider.invalid?token=" + token,
+        lastError: "Authorization: Bearer " + token,
+      });
+      expect(JSON.stringify(visible)).not.toContain(token);
+      expect(JSON.stringify(visible)).not.toContain("provider.invalid");
+      expect(visible.error).toContain("Chat provider reported an error.");
+    }
   });
 
   it("shows the paused lifecycle even without a previous health event", () => {
@@ -43,7 +57,7 @@ describe("chat endpoint lifecycle health presentation", () => {
           lastError: "Gateway timed out",
         }),
       ).toMatchObject({
-        error: "Gateway timed out",
+        error: "Chat provider reported an error. Check its connection settings and retry.",
         errorLabel: "Last reported error",
       });
     },
@@ -54,7 +68,7 @@ describe("chat endpoint lifecycle health presentation", () => {
     (status) => {
       expect(
         connectionHealthPresentation({ status, lastError: "Access denied" }),
-      ).toMatchObject({ error: "Access denied", errorLabel: "Reason" });
+      ).toMatchObject({ error: "Chat provider reported an error. Check its connection settings and retry.", errorLabel: "Reason" });
     },
   );
 
@@ -64,7 +78,7 @@ describe("chat endpoint lifecycle health presentation", () => {
         status: "active",
         healthMessage: "Reconnecting",
       }),
-    ).toMatchObject({ message: "Reconnecting", previousHealth: null });
+    ).toMatchObject({ message: "Provider connection status is available. Check connection settings if needed.", previousHealth: null });
     expect(connectionHealthPresentation({ status: "active" })).toMatchObject({
       message: null,
       previousHealth: null,

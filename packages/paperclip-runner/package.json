@@ -1,5 +1,5 @@
 {
-  "name": "@paperclipai/paperclip-runner",
+  "name": "@bostan/runner",
   "version": "0.0.0",
   "private": true,
   "license": "MIT",
@@ -8,11 +8,11 @@
   },
   "type": "module",
   "bin": {
-    "paperclip-runner-eval-session": "./dist/cli/eval-session.js",
-    "paperclip-runner-codex-proxy": "./dist/cli/codex-app-server-unix-proxy.js",
-    "paperclip-runner-opencode-proxy": "./dist/cli/opencode-app-server-proxy.js",
-    "paperclip-runner-acpx-sidecar": "./dist/cli/acpx-runtime-sidecar.js",
-    "paperclip-runner-copilot-metadata-probe": "./dist/cli/copilot-metadata-probe.js"
+    "bostan-runner-eval-session": "./dist/cli/eval-session.js",
+    "bostan-runner-codex-proxy": "./dist/cli/codex-app-server-unix-proxy.js",
+    "bostan-runner-opencode-proxy": "./dist/cli/opencode-app-server-proxy.js",
+    "bostan-runner-acpx-sidecar": "./dist/cli/acpx-runtime-sidecar.js",
+    "bostan-runner-copilot-metadata-probe": "./dist/cli/copilot-metadata-probe.js"
   },
   "exports": {
     ".": {
@@ -59,12 +59,6 @@
     "scripts/materialize-copilot-binary.mjs",
     "scripts/copilot-inner-distribution.mjs"
   ],
-  "publishConfig": {
-    "executableFiles": [
-      "./dist/bin/paperclip-runnerd",
-      "./dist/bin/paperclip-runnerd.exe"
-    ]
-  },
   "sideEffects": false,
   "scripts": {
     "build": "node scripts/record-build-inputs.mjs --begin && pnpm run check:protocol-manifest && pnpm run build:typescript && pnpm run check:capability-contract && pnpm run check:capability-inventory && pnpm run check:protocol-coverage && node scripts/generate-semantic-contracts.mjs --check && node scripts/check-runner-workflow-traceability.mjs && pnpm run build:binary && node scripts/generate-replay-goldens.mjs --check && node scripts/generate-semantic-action-catalog.mjs --check && node scripts/record-build-inputs.mjs --finish",
@@ -122,8 +116,8 @@
     "check:numbered-milestones": "node scripts/check-numbered-milestones.mjs",
     "check:package-boundaries": "node scripts/check-package-boundaries.mjs",
     "check:clean-consumers": "node scripts/check-clean-consumers.mjs",
-    "check:eval-kernel": "pnpm --filter @paperclipai/paperclip-eval-kernel test",
-    "ensure:eval-build-deps": "pnpm --filter @paperclipai/paperclip-eval-kernel build",
+    "check:eval-kernel": "pnpm --filter @bostan/eval-kernel test",
+    "ensure:eval-build-deps": "pnpm --filter @bostan/eval-kernel build",
     "generate:capability-inventory": "node scripts/generate-capability-inventory.mjs",
     "generate:protocol-coverage": "pnpm run build:typescript && node scripts/generate-protocol-coverage.mjs",
     "check:protocol-coverage": "node scripts/generate-protocol-coverage.mjs --check",
@@ -174,11 +168,14 @@
     "test:opencode:qualification": "PAPERCLIP_OPENCODE_QUALIFY=1 node --test scripts/qualify-opencode-runtime.test.mjs",
     "generate:acpx-profiles": "node scripts/generate-acpx-profiles.mjs",
     "check:acpx-profiles": "node scripts/generate-acpx-profiles.mjs --check",
-    "postinstall": "node scripts/install-copilot-assets.mjs"
+    "postinstall": "node scripts/install-copilot-assets.mjs",
+    "prepack": "node ../../scripts/bostan-release-disabled.mjs",
+    "prepublishOnly": "node ../../scripts/bostan-release-disabled.mjs"
   },
   "dependencies": {
     "@agentclientprotocol/claude-agent-acp": "0.73.0",
     "@agentclientprotocol/codex-acp": "1.6.2",
+    "@anthropic-ai/sdk": "0.129.0",
     "@openai/codex": "0.160.0",
     "acpx": "0.13.1",
     "ajv": "^8.20.0",
@@ -201,7 +198,7 @@
     }
   },
   "devDependencies": {
-    "@paperclipai/paperclip-eval-kernel": "workspace:*",
+    "@bostan/eval-kernel": "workspace:*",
     "@playwright/test": "^1.61.1",
     "@types/node": "^24.0.0",
     "@types/react": "^19.2.17",
@@ -219,5 +216,14 @@
     "@github/copilot-darwin-arm64": "1.0.88",
     "@github/copilot-darwin-x64": "1.0.88",
     "@github/copilot-linux-x64": "1.0.88"
+  },
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
+  "bugs": {
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheHalfMoon/Bostan",
+    "directory": "packages/paperclip-runner"
   }
 }

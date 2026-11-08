@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { posix, resolve } from "node:path";
-import type { CommandManagedRuntimeRunner } from "@paperclipai/adapter-utils/command-managed-runtime";
+import type { CommandManagedRuntimeRunner } from "@bostan/adapter-utils/command-managed-runtime";
 import type { NativeRuntimeContextSnapshot } from "../../vendor/paperclip-runner/index.js";
 import type { NativeRunTrace } from "./native-run-trace.js";
 

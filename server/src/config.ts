@@ -1,4 +1,5 @@
 import { readConfigFile, resolveDeploymentMode } from "./config-file.js";
+import { resolveBostanAnnouncementPolicy } from "./announcement-policy.js";
 import { parseChatWebhookPublicBaseUrl } from "./chat-webhook-public-url.js";
 import { execFileSync } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
@@ -23,7 +24,7 @@ import {
   inferBindModeFromHost,
   resolveRuntimeBind,
   validateConfiguredBindMode,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   resolveDefaultBackupDir,
   resolveDefaultEmbeddedPostgresDir,
@@ -179,14 +180,15 @@ export function loadConfig(): Config {
     process.env.PAPERCLIP_STORAGE_S3_FORCE_PATH_STYLE !== undefined
       ? process.env.PAPERCLIP_STORAGE_S3_FORCE_PATH_STYLE === "true"
       : (fileStorage?.s3?.forcePathStyle ?? false);
-  const feedbackExportBackendUrl =
-    process.env.PAPERCLIP_FEEDBACK_EXPORT_BACKEND_URL?.trim() ||
-    process.env.PAPERCLIP_TELEMETRY_BACKEND_URL?.trim() ||
-    undefined;
-  const feedbackExportBackendToken =
-    process.env.PAPERCLIP_FEEDBACK_EXPORT_BACKEND_TOKEN?.trim() ||
-    process.env.PAPERCLIP_TELEMETRY_BACKEND_TOKEN?.trim() ||
-    undefined;
+  // Bostan never inherits the donor's telemetry configuration. A feedback
+  // trace may leave this machine only after a Bostan-specific operator opt-in.
+  const feedbackExportEnabled = process.env.BOSTAN_FEEDBACK_EXPORT_ENABLED === "1";
+  const feedbackExportBackendUrl = feedbackExportEnabled
+    ? process.env.BOSTAN_FEEDBACK_EXPORT_BACKEND_URL?.trim() || undefined
+    : undefined;
+  const feedbackExportBackendToken = feedbackExportEnabled
+    ? process.env.BOSTAN_FEEDBACK_EXPORT_BACKEND_TOKEN?.trim() || undefined
+    : undefined;
 
   const deploymentMode = resolveDeploymentMode(fileConfig);
   const strictModeFromEnv = process.env.PAPERCLIP_SECRETS_STRICT_MODE;
@@ -243,7 +245,7 @@ export function loadConfig(): Config {
     disableSignUpFromEnv !== undefined
       ? disableSignUpFromEnv === "true"
       : (fileConfig?.auth?.disableSignUp ?? false);
-  const allowedHostnamesFromEnvRaw = process.env.PAPERCLIP_ALLOWED_HOSTNAMES;
+  const allowedHostnamesFromEnvRaw = process.env.BOSTAN_ALLOWED_HOSTNAMES ?? process.env.PAPERCLIP_ALLOWED_HOSTNAMES;
   const allowedHostnamesFromEnv = allowedHostnamesFromEnvRaw
     ? allowedHostnamesFromEnvRaw
       .split(",")
@@ -368,6 +370,8 @@ export function loadConfig(): Config {
     throw new Error(resolvedBind.errors[0]);
   }
 
+  const announcements = resolveBostanAnnouncementPolicy();
+
   return {
     deploymentMode,
     deploymentExposure,
@@ -437,8 +441,8 @@ export function loadConfig(): Config {
     heartbeatSchedulerEnabled: process.env.HEARTBEAT_SCHEDULER_ENABLED !== "false",
     heartbeatSchedulerIntervalMs: Math.max(10000, Number(process.env.HEARTBEAT_SCHEDULER_INTERVAL_MS) || 30000),
     companyDeletionEnabled,
-    telemetryEnabled: fileConfig?.telemetry?.enabled ?? true,
-    announcementsEnabled: process.env.PAPERCLIP_ANNOUNCEMENTS_ENABLED !== "false",
-    announcementsFeedUrl: process.env.PAPERCLIP_ANNOUNCEMENTS_FEED_URL?.trim() || "https://pages.paperclip.ing/announcements/v1/current.json",
+    telemetryEnabled: fileConfig?.telemetry?.enabled ?? false,
+    announcementsEnabled: announcements.enabled,
+    announcementsFeedUrl: announcements.feedUrl,
   };
 }

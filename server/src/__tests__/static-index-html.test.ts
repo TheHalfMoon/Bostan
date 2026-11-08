@@ -4,7 +4,7 @@ import path from "node:path";
 import express from "express";
 import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readBrandedStaticIndexHtml } from "../static-index-html.js";
+import { readBrandedStaticIndexHtml, setBostanStaticHtmlPrivacyHeaders } from "../static-index-html.js";
 
 describe("static SPA fallback HTML", () => {
   const tempDirs: string[] = [];
@@ -37,6 +37,7 @@ describe("static SPA fallback HTML", () => {
     const indexPath = path.join(tempDir, "index.html");
     const app = express();
     app.get(/.*/, (_req, res) => {
+      setBostanStaticHtmlPrivacyHeaders(res);
       res
         .status(200)
         .set("Content-Type", "text/html")
@@ -61,5 +62,36 @@ describe("static SPA fallback HTML", () => {
     const res = await request(app).get("/PAP/issues/PAP-9939");
     expect(res.text).toContain("/assets/index-new.js");
     expect(res.text).not.toContain("/assets/index-old.js");
+    expect(res.headers["referrer-policy"]).toBe("no-referrer");
+    expect(res.headers["x-content-type-options"]).toBe("nosniff");
+    expect(res.headers["cache-control"]).toBe("no-cache");
+  });
+
+  it("protects synthetic OAuth callback parameters in static HTML navigation responses", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-private-static-html-"));
+    tempDirs.push(tempDir);
+    fs.writeFileSync(path.join(tempDir, "index.html"), "<html><body>Private Bostan</body></html>");
+    const app = express();
+    app.get(["/", "/index.html"], (_req, res) => {
+      setBostanStaticHtmlPrivacyHeaders(res);
+      res.type("html").set("Cache-Control", "no-cache").send(readBrandedStaticIndexHtml(tempDir));
+    });
+    app.get(/.*/, (_req, res) => {
+      setBostanStaticHtmlPrivacyHeaders(res);
+      res.type("html").set("Cache-Control", "no-cache").send(readBrandedStaticIndexHtml(tempDir));
+    });
+    for (const route of [
+      "/", "/index.html", "/oauth-handoff?code=SYNTHETIC_SECRET&state=SYNTHETIC_STATE",
+      "/BO/issues/123?view=private",
+    ]) {
+      const res = await request(app).get(route);
+      expect(res.status).toBe(200);
+      expect(res.headers["content-type"]).toMatch(/text\/html/);
+      expect(res.headers["cache-control"]).toBe("no-cache");
+      expect(res.headers["referrer-policy"]).toBe("no-referrer");
+      expect(res.headers["x-content-type-options"]).toBe("nosniff");
+      expect(res.text).not.toContain("SYNTHETIC_SECRET");
+      expect(res.text).not.toContain("SYNTHETIC_STATE");
+    }
   });
 });

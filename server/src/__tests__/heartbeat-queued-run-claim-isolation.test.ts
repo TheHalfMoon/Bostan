@@ -8,7 +8,7 @@ import {
   createDb,
   heartbeatRuns,
   externalAgentHolds,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

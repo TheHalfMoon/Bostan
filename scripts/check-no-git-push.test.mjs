@@ -80,6 +80,97 @@ test("findGitPushOffenses does not flag args-array form when allow marker is pre
   assert.deepEqual(findGitPushOffenses(text), []);
 });
 
+test("findGitPushOffenses detects git push after shell Git scope and config flags", () => {
+  const calls = [
+    "execSync('git -C /tmp/work push origin main');",
+    "execSync('git -C \"/tmp/work space\" push origin main');",
+    "execSync('git -c core.hooksPath=/tmp/hooks push origin main');",
+    "execSync('git --git-dir /tmp/work/.git push origin main');",
+    "execSync('git --git-dir=/tmp/work/.git push origin main');",
+    "execSync('git --work-tree=/tmp/work push origin main');",
+  ];
+  for (const command of calls) {
+    assert.equal(findGitPushOffenses(command).length, 1, command);
+  }
+});
+
+test("findGitPushOffenses detects Git scope/config flags before push in spawn arrays", () => {
+  const calls = [
+    `spawn("git", ["-C", "/tmp/work", "push", "origin", "main"]);`,
+    `spawn("git", ["-c", "core.hooksPath=/tmp/hooks", "push", "origin", "main"]);`,
+    `execFile("git", ["--git-dir", "/tmp/work/.git", "push", "origin"]);`,
+    `execFile("git", ["--git-dir=/tmp/work/.git", "push", "origin"]);`,
+    `["git", "-C", "/tmp/work", "push"];`,
+  ];
+  for (const command of calls) {
+    assert.equal(findGitPushOffenses(command).length, 1, command);
+  }
+});
+
+test("findGitPushOffenses does not flag scoped Git read operations or unrelated text", () => {
+  const safe = [
+    "execSync('git -C /tmp/work fetch origin main');",
+    "execSync('git --git-dir /tmp/work/.git status');",
+    `spawn("git", ["-C", "/tmp/work", "fetch"]);`,
+    `spawn("git", ["-c", "core.hooksPath=/tmp/hooks", "pull"]);`,
+    `spawn("git", ["--git-dir", "/tmp/work/.git", "status"]);`,
+    "const note = 'git -C /tmp/work pushers';",
+  ];
+  for (const command of safe) assert.deepEqual(findGitPushOffenses(command), [], command);
+});
+
+test("runCheck rejects a flagged Git push in an adapter source file", () => {
+  const tmpRoot = mkdtempSync(path.join(os.tmpdir(), "bostan-no-git-push-flags-"));
+  try {
+    const sourceDir = path.join(tmpRoot, "packages/adapters/sample/src");
+    mkdirSync(sourceDir, { recursive: true });
+    writeFileSync(path.join(sourceDir, "index.ts"),
+      `import { spawn } from "node:child_process";\nspawn("git", ["-C", "/tmp/work", "push", "origin", "main"]);\n`);
+    const errors = [];
+    const exitCode = runCheck({
+      repoRoot: tmpRoot,
+      scanRoots: ["packages/adapters"],
+      log: () => {},
+      error: (message) => errors.push(message),
+    });
+    assert.equal(exitCode, 1);
+    assert.ok(errors.some((line) => line.includes("index.ts:2")));
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test("standalone reviewed-marker strings do not masquerade as Git push commands", () => {
+  const values = [ALLOW_MARKER, "paperclip:allow-git-push"];
+  for (const marker of values) {
+    assert.deepEqual(findGitPushOffenses(`const marker = "${marker}";\n`), []);
+    assert.deepEqual(findGitPushOffenses(`const url = "https://example.invalid/${marker}";\n`), []);
+  }
+});
+
+test("findGitPushOffenses does not accept an opt-in marker inside ordinary source strings", () => {
+  const code = [
+    `const marker = "${ALLOW_MARKER}";`,
+    `spawn("git", ["push", "origin", "main"]);`,
+  ].join("\n");
+  assert.equal(findGitPushOffenses(code).length, 1);
+  const inline = `spawn("git", ["push", "origin", "main"]); const marker = "${ALLOW_MARKER}";`;
+  assert.equal(findGitPushOffenses(inline).length, 1);
+});
+
+test("findGitPushOffenses honors the legacy opt-in marker only inside a real comment", () => {
+  const legacy = "paperclip:allow-git-push";
+  const permitted = `// ${legacy}: existing operator-reviewed exception\nspawn("git", ["push", "origin", "main"]);\n`;
+  assert.deepEqual(findGitPushOffenses(permitted), []);
+  const denied = `const marker = "${legacy}";\nspawn("git", ["push", "origin", "main"]);\n`;
+  assert.equal(findGitPushOffenses(denied).length, 1);
+});
+
+test("findGitPushOffenses does not mistake URL text for an opt-in comment", () => {
+  const code = `const url = "https://example.invalid/${ALLOW_MARKER}";\nspawn("git", ["push", "origin", "main"]);\n`;
+  assert.equal(findGitPushOffenses(code).length, 1);
+});
+
 test("runCheck passes when scoped tree has no offenses", () => {
   const tmpRoot = mkdtempSync(path.join(os.tmpdir(), "no-git-push-pass-"));
   try {

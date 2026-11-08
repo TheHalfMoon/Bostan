@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { Db } from "@paperclipai/db";
-import { emailSendSchema } from "@paperclipai/shared";
+import type { Db } from "@bostan/db";
+import { emailSendSchema } from "@bostan/shared";
 import { emailChannelService } from "../email-channels.js";
 import { forbidden, notFound } from "../../errors.js";
 

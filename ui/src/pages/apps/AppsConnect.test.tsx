@@ -3,7 +3,7 @@
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { CONNECTABLE_APP_DEFINITIONS, GOOGLE_WORKSPACE_CONNECTOR_PROFILES, getAppStoreDefinition } from "@paperclipai/shared";
+import { CONNECTABLE_APP_DEFINITIONS, GOOGLE_WORKSPACE_CONNECTOR_PROFILES, getAppStoreDefinition } from "@bostan/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/api/client";
 import { aiConnectionsApi } from "@/api/ai-connections";
@@ -215,7 +215,7 @@ async function openAccessAdvanced() {
  */
 async function passAccessStep() {
   const onOAuthEntryScreen = Boolean(
-    document.body.textContent?.includes("Paperclip will open")
+    document.body.textContent?.includes("Bostan will open")
       || document.body.textContent?.includes("Your connection is saved."),
   );
   if (onOAuthEntryScreen) {
@@ -318,7 +318,7 @@ function activeConnectorEnrollment() {
   return {
     configured: true,
     status: "active",
-    brokerBaseUrl: "https://my-staging.paperclip.app",
+    brokerBaseUrl: "https://broker.bostan.example",
     instanceId: "inst-test",
     environment: "staging",
     origins: ["https://paperclip.example.test"],
@@ -329,7 +329,7 @@ function unconfiguredConnectorEnrollment() {
   return {
     configured: false,
     status: "not_configured",
-    brokerBaseUrl: "https://my-staging.paperclip.app",
+    brokerBaseUrl: "https://broker.bostan.example",
     instanceId: null,
     environment: "staging",
     origins: [],
@@ -383,11 +383,11 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     startCloudConnectorEnrollmentMock.mockResolvedValue({
       configured: false,
       status: "pending",
-      brokerBaseUrl: "https://my-staging.paperclip.app",
+      brokerBaseUrl: "https://broker.bostan.example",
       instanceId: "inst-test",
       environment: "staging",
       origins: [],
-      verificationUrl: "https://my-staging.paperclip.app/connections/enroll?id=enroll-test",
+      verificationUrl: "https://broker.bostan.example/connections/enroll?id=enroll-test",
     });
     connectAppMock.mockResolvedValue({
       connectionId: "conn-1",
@@ -559,7 +559,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     await vi.waitFor(() => expect(startOAuthMock).toHaveBeenCalledWith(connection.id, { asCurrentUser: true, interactionId: "intent-inline" }));
     expect(popup.location.assign).toHaveBeenCalled();
     popup.closed = true;
-    expect(container.textContent).toContain("Paperclip is waiting for confirmation");
+    expect(container.textContent).toContain("Bostan is waiting for confirmation");
     expect(container.querySelector('a[target="_blank"]')?.getAttribute("href")).toBe("https://mcp.notion.com/authorize?state=resumed");
     expect(navigateTopLevelMock).not.toHaveBeenCalled();
     expect(putConnectionInstallsMock).not.toHaveBeenCalled();
@@ -1388,9 +1388,9 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     expect(container.textContent).toContain("Open Box app settings");
     // The extra work reads as the provider's limitation, not as Box's normal path.
     expect(container.textContent).toContain(
-      "does not let Paperclip register itself automatically",
+      "does not let Bostan register itself automatically",
     );
-    expect(container.textContent).toContain("Paperclip callback URL");
+    expect(container.textContent).toContain("Bostan callback URL");
     expect(container.textContent).toContain(
       "https://paperclip.example.test/api/tools/oauth/callback",
     );
@@ -1599,7 +1599,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
       "/apps/connect?source=gmail&stage=setup",
     );
     expect(navigateTopLevelMock).toHaveBeenCalledWith(
-      "https://my-staging.paperclip.app/connections/enroll?id=enroll-test",
+      "https://broker.bostan.example/connections/enroll?id=enroll-test",
     );
   });
 
@@ -1617,11 +1617,11 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     if (popupBlocked) {
       expect(popup.location.assign).not.toHaveBeenCalled();
     } else {
-      expect(popup.location.assign).toHaveBeenCalledWith("https://my-staging.paperclip.app/connections/enroll?id=enroll-test");
+      expect(popup.location.assign).toHaveBeenCalledWith("https://broker.bostan.example/connections/enroll?id=enroll-test");
     }
     const fallback = container.querySelector<HTMLAnchorElement>('a[target="_blank"]');
     expect(fallback?.textContent).toBe("Open authorization in a new tab");
-    expect(fallback?.href).toBe("https://my-staging.paperclip.app/connections/enroll?id=enroll-test");
+    expect(fallback?.href).toBe("https://broker.bostan.example/connections/enroll?id=enroll-test");
     expect(navigateTopLevelMock).not.toHaveBeenCalled();
     expect(startCloudConnectorEnrollmentMock).toHaveBeenCalledWith("company-1", "Paperclip", "/apps/connect?source=gmail&stage=setup&intent=intent-1&enrollment_host=dialog");
     listGalleryMock.mockResolvedValue({ apps: [{ ...GMAIL, ownershipAvailability: { ...GMAIL.ownershipAvailability, platform_shared: true } }] });
@@ -1631,7 +1631,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     await flushReact();
     if (!popupBlocked) expect(popup.close).toHaveBeenCalled();
     await openAccessAdvanced();
-    expect(container.textContent).toContain("What should Paperclip be able to do?");
+    expect(container.textContent).toContain("What should Bostan be able to do?");
     connectAppMock.mockResolvedValue({ connectionId: "gmail-1", connection: { id: "gmail-1", credentialPolicy: "per_user" }, auth: { kind: "oauth", startUrl: "https://example.test/unbound" } });
     await act(async () => buttonByText("Continue to sign in")?.click());
     await flushReact();
@@ -1685,11 +1685,11 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
       getCloudConnectorEnrollmentMock.mockResolvedValue({
         configured: false,
         status: "pending",
-        brokerBaseUrl: "https://my-staging.paperclip.app",
+        brokerBaseUrl: "https://broker.bostan.example",
         instanceId: "inst-test",
         environment: "staging",
         origins: [],
-        verificationUrl: "https://my-staging.paperclip.app/connections/enroll?id=cached",
+        verificationUrl: "https://broker.bostan.example/connections/enroll?id=cached",
         expiresAt,
       });
 
@@ -1703,10 +1703,10 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
         "company-1", "Paperclip", "/apps/connect?source=github&stage=setup",
       );
       expect(navigateTopLevelMock).toHaveBeenCalledWith(
-        "https://my-staging.paperclip.app/connections/enroll?id=enroll-test",
+        "https://broker.bostan.example/connections/enroll?id=enroll-test",
       );
       expect(navigateTopLevelMock).not.toHaveBeenCalledWith(
-        "https://my-staging.paperclip.app/connections/enroll?id=cached",
+        "https://broker.bostan.example/connections/enroll?id=cached",
       );
     },
   );
@@ -1956,7 +1956,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
       expect(container.textContent).toContain("needs its own OAuth app");
       expect(container.textContent).toContain("Client ID");
       expect(buttonByText("Continue to sign in")?.disabled).toBe(true);
-      const managedAuth = buttonByText("Use Paperclip instead");
+      const managedAuth = buttonByText("Use Bostan instead");
       expect(managedAuth).toBeDefined();
       expect(managedAuth?.getAttribute("aria-expanded")).toBe("true");
       const fieldsRegion = document.getElementById(managedAuth!.getAttribute("aria-controls")!);
@@ -2024,7 +2024,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     await render();
 
     expect(container.textContent).toContain("Google Workspace");
-    expect(container.textContent).not.toContain("What should Paperclip be able to do?");
+    expect(container.textContent).not.toContain("What should Bostan be able to do?");
     await openAccessAdvanced();
     expect(buttonByText("Use your own Google OAuth app")).toBeDefined();
     expect(buttonByText("Continue to sign in")?.disabled).toBe(false);
@@ -2066,7 +2066,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     );
     expect(duplicateHeadings).toHaveLength(1);
     await openAccessAdvanced();
-    expect(container.textContent).toContain("What should Paperclip be able to do?");
+    expect(container.textContent).toContain("What should Bostan be able to do?");
     expect(container.textContent).toContain("Review requirements");
     expect(container.textContent).not.toContain("Connect Google Calendar to read and manage events.");
     expect(container.textContent).not.toContain("All event mutations require approval.");
@@ -2077,7 +2077,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     expect(container.querySelector('input[placeholder="My app"]')).toBeNull();
 
     const capabilityQuestion = Array.from(container.querySelectorAll("label")).find(
-      (label) => label.textContent === "What should Paperclip be able to do?",
+      (label) => label.textContent === "What should Bostan be able to do?",
     );
     expect(capabilityQuestion?.closest(".max-w-xl")?.classList.contains("bg-card")).toBe(false);
   });
@@ -2520,7 +2520,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
 
     expect(container.textContent).toContain("Use your own OAuth app");
     expect(container.querySelector("#curated-oauth-client-id")).toBeTruthy();
-    expect(container.textContent).toContain("Paperclip callback URL");
+    expect(container.textContent).toContain("Bostan callback URL");
   });
 
   it("shows unavailable Vercel configuration only inside the isolated Vercel entry point", async () => {
@@ -3335,7 +3335,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
       expect(listConnectionsMock).toHaveBeenCalledTimes(2);
       expect(listApplicationsMock).toHaveBeenCalledTimes(2);
       expect(container.textContent).not.toContain("Couldn’t load connection setup");
-      expect(container.textContent).toContain("Connect Notion to Paperclip");
+      expect(container.textContent).toContain("Connect Notion to Bostan");
     },
   );
 
@@ -3509,7 +3509,8 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     await passAccessStep();
     await submitCuratedOAuthSetup();
 
-    expect(container.textContent).toContain("Provider unavailable");
+    expect(container.textContent).toContain("Bostan couldn't start secure sign-in. Try again.");
+    expect(container.textContent).not.toContain("Provider unavailable");
     await act(async () => {
       buttonByText("Try again")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -3557,7 +3558,8 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     await passAccessStep();
     await submitCuratedOAuthSetup();
 
-    expect(container.textContent).toContain("Response lost");
+    expect(container.textContent).toContain("Bostan couldn't start secure sign-in. Try again.");
+    expect(container.textContent).not.toContain("Response lost");
     await act(async () => {
       buttonByText("Try again")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -4252,7 +4254,7 @@ describe("AppsConnect — guided generic MCP flow (PAP-17087)", () => {
     await gotoLinkFrame(container, "https://mcp.zapier.com/api/v1/connect?token=t");
 
     // Both routes are present: the branded shortcut and the generic form itself.
-    expect(container.textContent).toContain("Paperclip has a guided setup for Zapier.");
+    expect(container.textContent).toContain("Bostan has a guided setup for Zapier.");
     expect(container.textContent).toContain("Connect your own MCP server");
     expect(buttonByText("Check link")).toBeTruthy();
   });
@@ -4301,7 +4303,7 @@ describe("AppsConnect — guided generic MCP flow (PAP-17087)", () => {
     await flushReact();
     await flushReact();
 
-    expect(container.textContent).toContain("This Paperclip needs a public HTTPS address first");
+    expect(container.textContent).toContain("This Bostan needs a public HTTPS address first");
     expect(container.textContent).not.toContain("PAPERCLIP_PUBLIC_URL");
   });
 
@@ -4319,7 +4321,7 @@ describe("AppsConnect — guided generic MCP flow (PAP-17087)", () => {
     await flushReact();
     await flushReact();
 
-    expect(container.textContent).toContain("Paperclip couldn’t name this connection");
+    expect(container.textContent).toContain("Bostan couldn’t name this connection");
     expect(container.textContent).not.toContain("Choose a different name");
     expect(container.querySelector("#generic-mcp-name")).toBeNull();
   });
@@ -4407,7 +4409,7 @@ describe("AppsConnect — guided generic MCP flow (PAP-17087)", () => {
       suggestedDefaults: {},
       auth: {
         kind: "oauth",
-        startUrl: "https://my.paperclip.app/connections/confirm?session=legacy",
+        startUrl: "https://broker.bostan.example/connections/confirm?session=legacy",
         handoff: { kind: "paperclip_cloud", session },
       },
     });
@@ -4466,9 +4468,10 @@ describe("AppsConnect — guided generic MCP flow (PAP-17087)", () => {
 
       expect(navigateTopLevelMock).not.toHaveBeenCalled();
       expect(container.textContent).toContain("couldn’t connect");
-      // The refusal is explained without echoing the hostile address on screen.
+      // The refusal is explained with an audited, credential-safe generic
+      // message rather than an unsanitized provider-specific exception.
       expect(container.textContent).not.toContain(startUrl);
-      expect(container.textContent).toMatch(/sign-in address/);
+      expect(container.textContent).toContain("Bostan couldn't start secure sign-in. Try again.");
     });
 
     it.each(UNSAFE)("never opens a %s authorization url from start sign-in", async (_label, authorizationUrl) => {
@@ -4575,7 +4578,7 @@ describe("AppsConnect — guided generic MCP flow (PAP-17087)", () => {
     await act(async () => setInputValue(valueInput, "evil.example"));
     await flushReact();
 
-    expect(container.textContent).toContain('Paperclip manages the "Host" header');
+    expect(container.textContent).toContain('Bostan manages the "Host" header');
     expect(buttonByText("Check link")?.disabled).toBe(true);
     expect(connectAppMock).not.toHaveBeenCalled();
   });

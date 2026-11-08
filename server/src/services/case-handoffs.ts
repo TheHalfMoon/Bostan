@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { agents, caseAccessSources, caseEvents, caseHandoffs, caseIssueLinks, cases, chatConversations, companies, heartbeatRuns, issues, projects } from "@paperclipai/db";
-import { handoffCaseSchema, isUuidLike, type DoneCaseHandoffInput, type HandoffCaseInput, type HandoffCaseResult } from "@paperclipai/shared";
+import type { Db } from "@bostan/db";
+import { agents, caseAccessSources, caseEvents, caseHandoffs, caseIssueLinks, cases, chatConversations, companies, heartbeatRuns, issues, projects } from "@bostan/db";
+import { handoffCaseSchema, isUuidLike, type DoneCaseHandoffInput, type HandoffCaseInput, type HandoffCaseResult } from "@bostan/shared";
 import { conflict, forbidden, HttpError, notFound, unprocessable } from "../errors.js";
 import { assertAgentRunWriteAllowed } from "../agent-run-cancellation.js";
 import { withExternalAdmissionGuard, type ExternalAdmissionTransaction } from "../modules/external-agents/index.js";
@@ -15,6 +15,7 @@ import { DELIVERY_QUEUES, notifyDeliveryWork } from "./delivery-work-notificatio
 import { instanceSettingsService } from "./instance-settings.js";
 import { issueService } from "./issues.js";
 import { documentService } from "./documents.js";
+import { assertBostanCurrentVerificationEvidence } from "./bostan-current-verification-evidence.js";
 import { applyCaseWorkflow, captureCaseWorkflow } from "./case-workflows.js";
 import type { CurrentCloudOwnerAuthority } from "./cloud-tenant-authority.js";
 import { resolveActorSourceTrustForIssue } from "./source-trust.js";
@@ -150,6 +151,17 @@ async function resolveHandoffTaskParent(tx: Db, actor: AuthorizationActor, compa
   return null;
 }
 
+/** A Bostan implementation cannot independently sign off on itself.
+ * This protects the pre-dispatch case routing authority (and is repeated
+ * at delayed delivery), without creating a parallel agent supervisor. */
+function requireIndependentVerifier(phase: string, fromAgentId: string | null, toAgentId: string | null) {
+  if (phase === "verification" && fromAgentId && toAgentId === fromAgentId) {
+    throw unprocessable("Verification must be assigned to a different agent from the implementer", {
+      code: "bostan_independent_verifier_required",
+    });
+  }
+}
+
 async function eligible(tx: Db, issue: IssueRow) {
   if (issue.conversationAgentId || (await tx.select({ id: chatConversations.id }).from(chatConversations)
     .where(and(eq(chatConversations.companyId, issue.companyId), eq(chatConversations.issueId, issue.id))).limit(1)).length) {
@@ -245,6 +257,7 @@ export function caseHandoffService(db: Db) {
         issue.assigneeAgentId !== row.fromAgentId || issue.assigneeUserId) throw conflict("Handoff was superseded by a newer task decision");
     await assertCaseTrustedForExecution(tx, caseRow);
     await eligible(tx, issue);
+    requireIndependentVerifier(row.phase, row.fromAgentId, row.toAgentId);
     const sourceAuthorizer = await assertCaseHandoffDispatchAuthority(tx, row, issue, caseRow);
     const assigningActor = originalActor ?? await restoreCaseHandoffActor(tx, row, issue, sourceAuthorizer, cloudAuthority);
     // Acceptance does not reserve permission. Recheck the original principal at
@@ -308,6 +321,7 @@ export function caseHandoffService(db: Db) {
     await assertActorCanReadCase(tx, actor, caseRow);
     await assertCaseTrustedForExecution(tx, caseRow);
     await assertCaseContentsFitTask(tx, caseRow, issue);
+    await assertBostanCurrentVerificationEvidence(tx, caseRow, issue);
     if ((await tx.select({ id: caseHandoffs.id }).from(caseHandoffs).where(and(eq(caseHandoffs.caseId, caseRow.id),
       inArray(caseHandoffs.state, PENDING))).limit(1)).length) throw conflict("A handoff is already pending for this case");
     const who = identity(actor);
@@ -443,6 +457,7 @@ export function caseHandoffService(db: Db) {
         }
         const parent = issue ? null : await resolveHandoffTaskParent(tx, actor, companyId, projectId, input.toAgentId,
           casePrivacyParent ?? sourceIssue, casePrivacyParent?.visibility === "private");
+        if (issue) requireIndependentVerifier(input.phase, issue.assigneeAgentId, input.toAgentId);
         await authorizeTask(tx, actor, companyId, issue, issue?.projectId ?? projectId, input.toAgentId, {
           invalidRecipientAsUnprocessable: true, ...(issue ? {} : { parentIssueId: parent?.id ?? null }),
         });

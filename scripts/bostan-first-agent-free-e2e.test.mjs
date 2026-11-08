@@ -1,0 +1,278 @@
+import assert from "node:assert/strict";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, realpathSync } from "node:fs";
+import path from "node:path";
+import os from "node:os";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import test from "node:test";
+import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel, syntheticFreeAgentAdapterConfig, observeHeartbeatQaStatus, assertHeartbeatQaSucceeded, firstAgentLifecycleReadinessTimeoutMs, safeAgentLifecycleDiagnostic, safeFreeProviderFailureSignal, selectSingleAssignmentRun, safeFirstAgentQaEndpointClass, safeFirstAgentQaHttpError } from "./bostan-first-agent-free-e2e.mjs";
+
+function fixture() {
+  const home = mkdtempSync(path.join(os.tmpdir(), "bostan-free-agent-guard-"));
+  const p = path.join(home, ".bostan", "app");
+  const cfg = path.join(p, "state", "instances", "local");
+  mkdirSync(cfg, { recursive: true });
+  writeFileSync(path.join(cfg, "config.json"), JSON.stringify({
+    bostanManagedLocalRuntime: "bostan-managed-source-runtime-v1",
+    server: { port: 41600, host: "127.0.0.1", bind: "loopback", exposure: "private" },
+    telemetry: { enabled: false },
+  }), { mode: 0o600 });
+  writeFileSync(path.join(p, "run.lock"), "bostan-managed-source-runtime-v1:12345\n", { mode: 0o600 });
+  const opts = { url: "http://127.0.0.1:41600/",
+    home, confirmed: "1", onlineModelApproved: "1" };
+  return { home, opts, clean: () => rmSync(home, { recursive: true, force: true }) };
+}
+test("automatic task assignment selects one exact run instead of launching a duplicate", () => {
+  const agentId = "d5f790a6-8dbc-48ea-bba3-50b320cf6475";
+  const issueId = "6aebaa4c-ceb5-43df-afbd-769cf8511f09";
+  const first = { id: "15e49da0-11bc-442c-a6ba-64d3193ad55e",
+    agentId, invocationSource: "assignment", issueId, status: "running" };
+  const manual = { ...first, id: "8171f7c3-749a-4518-a77c-9d9c45d100eb", invocationSource: "on_demand" };
+  assert.equal(selectSingleAssignmentRun([manual, first], { agentId, issueId }), first);
+  assert.equal(selectSingleAssignmentRun([manual], { agentId, issueId }), null);
+  assert.equal(selectSingleAssignmentRun([{ ...first, issueId: "e00dccd4-a42b-4d18-b9b6-ad5ac508b1dc" }],
+    { agentId, issueId }), null);
+  assert.throws(() => selectSingleAssignmentRun([first, { ...first,
+    id: "3142f2b8-5cf1-4745-84a4-df6256dc25da" }], { agentId, issueId }), /Ambiguous/);
+  assert.throws(() => selectSingleAssignmentRun([{ ...first, id: "malformed" }],
+    { agentId, issueId }), /Ambiguous/);
+  assert.throws(() => selectSingleAssignmentRun([], { agentId: "not-uuid", issueId }), /Invalid/);
+  assert.doesNotMatch(JSON.stringify(selectSingleAssignmentRun([manual, first], {
+    agentId, issueId })), /secret|credential/);
+});
+
+test("scope accepts explicitly opted-in isolated localhost runtime", () => {
+  const f = fixture();
+  try { assert.equal(qualifyDisposableFirstAgentScope(f.opts).home, realpathSync(f.home)); }
+  finally { f.clean(); }
+});
+test("scope rejects missing explicit confirmation or online-provider opt-in", () => {
+  const f = fixture();
+  try {
+    assert.throws(() => qualifyDisposableFirstAgentScope({ ...f.opts, confirmed: "0" }), /Explicit/);
+    assert.throws(() => qualifyDisposableFirstAgentScope({ ...f.opts, onlineModelApproved: undefined }), /Explicit/);
+  } finally { f.clean(); }
+});
+test("scope refuses public endpoints or mismatched private port", () => {
+  const f = fixture();
+  try {
+    for (const url of ["https://127.0.0.1:41600/", "http://example.com:41600/",
+      "http://127.0.0.1:41601/", "http://127.0.0.1:41600/api", "http://user:pass@127.0.0.1:41600/"]) {
+      assert.throws(() => qualifyDisposableFirstAgentScope({ ...f.opts, url }));
+    }
+  } finally { f.clean(); }
+});
+test("scope refuses a non-temp user HOME", () => {
+  const f = fixture();
+  try { assert.throws(() => qualifyDisposableFirstAgentScope({ ...f.opts, home: os.homedir() })); }
+  finally { f.clean(); }
+});
+test("scope refuses non-Bostan or non-private config", () => {
+  const f = fixture();
+  try {
+    const file = path.join(f.home, ".bostan", "app", "state", "instances", "local", "config.json");
+    writeFileSync(file, JSON.stringify({ bostanManagedLocalRuntime: "foreign" }));
+    assert.throws(() => qualifyDisposableFirstAgentScope(f.opts), /isolated/);
+  } finally { f.clean(); }
+});
+test("scope refuses startup without a managed run lock", () => {
+  const f = fixture();
+  try {
+    const file = path.join(f.home, ".bostan", "app", "run.lock");
+    writeFileSync(file, "malformed");
+    assert.throws(() => qualifyDisposableFirstAgentScope(f.opts), /ownership lock/);
+  } finally { f.clean(); }
+});
+
+test("allowlisted QA models only; never attempt a paid or unknown model", () => {
+  assert.equal(qualifyFreeQaModel(undefined), "opencode/deepseek-v4.1-flash-free");
+  assert.equal(qualifyFreeQaModel("opencode/beam-free"), "opencode/beam-free");
+  for (const model of ["openai/gpt-5.2", "opencode/claude-opus-5-5", "unknown/free",
+    "opencode/deepseek-v4.1-flash-free\n--ignore-safety"]) {
+    assert.throws(() => qualifyFreeQaModel(model), /Only explicitly permitted/);
+  }
+});
+
+test("Windows synthetic agent uses exact admitted OpenCode executable, not a PATH shim", () => {
+  const f = fixture();
+  try {
+    const fake = path.join(f.home, "opencode.exe");
+    writeFileSync(fake, "synthetic");
+    const model = "opencode/deepseek-v4.1-flash-free";
+    const windows = syntheticFreeAgentAdapterConfig({
+      model, workspace: f.home, binary: fake, platform: "win32",
+    });
+    assert.equal(windows.command, fake);
+    assert.equal(windows.maxAgentSteps, 12);
+    assert.equal(windows.timeoutSec, 120);
+    assert.throws(() => syntheticFreeAgentAdapterConfig({
+      model, workspace: f.home, platform: "win32",
+    }), /absolute native OpenCode executable/);
+    assert.throws(() => syntheticFreeAgentAdapterConfig({
+      model, workspace: f.home, binary: "opencode.cmd", platform: "win32",
+    }), /absolute native/);
+    const mac = syntheticFreeAgentAdapterConfig({
+      model, workspace: f.home, platform: "darwin",
+    });
+    assert.equal(mac.command, undefined);
+  } finally { f.clean(); }
+});
+
+test("Windows CLI ESM import path fails promptly before network when the native executable is missing", () => {
+  if (process.platform !== "win32") return;
+  const f = fixture();
+  try {
+    const script = fileURLToPath(new URL("./bostan-first-agent-free-e2e.mjs", import.meta.url));
+    const result = spawnSync(process.execPath, [script], {
+      env: {
+        ...process.env,
+        BOSTAN_E2E_URL: f.opts.url,
+        BOSTAN_E2E_DISPOSABLE_HOME: f.home,
+        BOSTAN_E2E_CONFIRM_TEMP_DATA: "1",
+        BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL: "1",
+        BOSTAN_E2E_FREE_MODEL: "opencode/deepseek-v4.1-flash-free",
+        BOSTAN_E2E_OPENCODE_EXE: "",
+      },
+      encoding: "utf8", timeout: 7_000, windowsHide: true,
+    });
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Set BOSTAN_E2E_OPENCODE_EXE/);
+    assert.doesNotMatch(result.stderr, /unsettled top-level await/i);
+  } finally { f.clean(); }
+});
+
+test("terminal interrupted heartbeat fails immediately with safe stage/error evidence", () => {
+  const run = {
+    status: "interrupted", errorCode: "lease_released_before_terminal",
+    executionStage: "preparing", id: "synthetic",
+  };
+  assert.deepEqual(observeHeartbeatQaStatus(run), { done: true, result: run });
+  assert.throws(() => assertHeartbeatQaSucceeded(run),
+    /interrupted.*lease_released_before_terminal.*preparing/);
+});
+test("queued or preparing live heartbeat is never considered finished", () => {
+  for (const status of ["queued", "running", "preparing"]) {
+    assert.deepEqual(observeHeartbeatQaStatus({ status }), { done: false });
+  }
+  for (const status of ["succeeded", "failed", "timed_out", "cancelled", "interrupted"]) {
+    assert.equal(observeHeartbeatQaStatus({ status }).done, true);
+  }
+  assert.doesNotThrow(() => assertHeartbeatQaSucceeded({ status: "succeeded" }));
+});
+test("failed run diagnostics never echo arbitrary raw error content", () => {
+  assert.throws(() => assertHeartbeatQaSucceeded({
+    status: "failed", errorCode: "secret=private-credential\n",
+    executionStage: "preparing",
+  }), e => !e.message.includes("private-credential") && e.message.includes("failed"));
+});
+
+test("Windows agent readiness is bounded but tolerates native cold verification", () => {
+  assert.equal(firstAgentLifecycleReadinessTimeoutMs("win32"), 240_000);
+  assert.equal(firstAgentLifecycleReadinessTimeoutMs("darwin"), 90_000);
+  assert.equal(firstAgentLifecycleReadinessTimeoutMs("linux"), 90_000);
+  assert.equal(firstAgentLifecycleReadinessTimeoutMs("darwin", true), 180_000);
+  assert.equal(firstAgentLifecycleReadinessTimeoutMs("linux", true), 180_000);
+  assert.equal(firstAgentLifecycleReadinessTimeoutMs("win32", true), 240_000);
+});
+
+test("agent readiness diagnostics allow only safe status enums; never echo private config", () => {
+  assert.deepEqual(safeAgentLifecycleDiagnostic({
+    lifecycleState: "provisioning", status: "active", adapterConfig: { password: "private" },
+  }), { lifecycleState: "provisioning", status: "active" });
+  assert.deepEqual(safeAgentLifecycleDiagnostic({
+    lifecycleState: "very-private-token=bad", status: "foo\nsecret=bad",
+  }), { lifecycleState: null, status: null });
+});
+
+test("failed real hello probe remains failed but reports safe precise stage, never raw output", () => {
+  const observed = safeAgentLifecycleDiagnostic({
+    lifecycleState: "verifying", status: "paused",
+    lifecycleError: "Execution configuration check failed. The execution tool launched, but its hello verification request failed. Run the agent test in Configuration for the check codes; no task was executed. secret=private",
+  });
+  assert.deepEqual(observed, {
+    lifecycleState: "verifying", status: "paused",
+    failureCode: "harness_probe_failed",
+  });
+  assert.doesNotMatch(JSON.stringify(observed), /secret|private/);
+});
+
+test("free-provider lifecycle capacity is safely classified without echoing provider data", () => {
+  const observed = safeAgentLifecycleDiagnostic({
+    lifecycleState: "verifying", status: "paused",
+    lifecycleError: "Execution configuration check failed. The selected free provider is rate-limited or at capacity. No paid fallback was used. Retry when free capacity is available. private-sk-or-token",
+  });
+  assert.deepEqual(observed, {
+    lifecycleState: "verifying", status: "paused",
+    failureCode: "harness_free_provider_limited",
+  });
+  assert.doesNotMatch(JSON.stringify(observed), /private|token|sk-or/);
+});
+
+test("agent lifecycle harness-failure classification does not leak provider or credentials", () => {
+  const payload = { lifecycleState: "verifying", status: "paused",
+    lifecycleError: "Execution configuration check failed. Authentication failed. secret=private." };
+  const observed = safeAgentLifecycleDiagnostic(payload);
+  assert.deepEqual(observed, {
+    lifecycleState: "verifying", status: "paused", failureCode: "harness_test_failed",
+  });
+  assert.doesNotMatch(JSON.stringify(observed), /Authentication|private|secret/);
+});
+
+test("source QA reports allowlisted adapter rate-limit and outage signals, without exposing model logs", () => {
+  const cases = [
+    ["HTTP 429 Too Many Requests", "adapter_rate_limit_signaled"],
+    ["Rate limited, retry later", "adapter_rate_limit_signaled"],
+    ["Provider error: 503 Service Unavailable", "adapter_provider_unavailable_signaled"],
+    ["ETIMEDOUT during provider request", "adapter_timeout_signaled"],
+  ];
+  for (const [error, safeSignal] of cases) {
+    const failed = { status: "failed", errorCode: "adapter_failed", error,
+      stderrExcerpt: "Bearer private-test-value", executionStage: "dispatching" };
+    assert.equal(safeFreeProviderFailureSignal(failed), safeSignal);
+    assert.throws(() => assertHeartbeatQaSucceeded(failed), e =>
+      e.message.includes(safeSignal) &&
+      !e.message.includes("private-test-value") &&
+      !e.message.includes("Bearer"));
+  }
+});
+
+test("source QA never diagnoses rate-limit from a successful or unrelated failed run", () => {
+  for (const row of [
+    { status: "succeeded", errorCode: null, error: "HTTP 429" },
+    { status: "failed", errorCode: "harness_test_failed", stderrExcerpt: "HTTP 429" },
+    { status: "running", errorCode: "adapter_failed", error: "HTTP 429" },
+    { status: "failed", errorCode: "adapter_failed", error: "Unrelated private-error" },
+  ]) {
+    assert.equal(safeFreeProviderFailureSignal(row), null);
+  }
+});
+
+
+test("free-agent API diagnostics redact synthetic route IDs, tokens and raw provider failures", () => {
+  const id = "d5f790a6-8dbc-48ea-bba3-50b320cf6475";
+  const samples = [
+    ["health", "health"],
+    ["companies", "companies"],
+    ["companies/" + id + "/agents", "company_agents"],
+    ["companies/" + id + "/issues", "company_issues"],
+    ["companies/" + id + "/heartbeat-runs", "company_heartbeat_runs"],
+    ["agents/" + id, "agent"],
+    ["heartbeat-runs/" + id, "heartbeat_run"],
+    ["issues/" + id, "issue"],
+    ["issues/" + id + "/comments", "issue_comments"],
+    ["issues/" + id + "/comments?token=PRIVATE_SECRET", "unknown"],
+    ["https://attacker.invalid/?token=PRIVATE_SECRET", "unknown"],
+    ["companies/" + "A".repeat(300), "unknown"],
+  ];
+  for (const [route, category] of samples) {
+    assert.equal(safeFirstAgentQaEndpointClass(route), category);
+    for (const status of [401, 429, 500, -4, "200"]) {
+      const message = safeFirstAgentQaHttpError(route, status).message;
+      assert.ok(message.includes(category));
+      assert.doesNotMatch(message,/PRIVATE_SECRET|attacker|d5f790a6|Bearer|token|https?:/);
+      assert.match(message,/^(Bostan private synthetic QA) [a-z_]+ http_rejected status=(unknown|[1-5][0-9]{2})$/);
+    }
+  }
+  assert.match(safeFirstAgentQaHttpError("health",200,true).message,/malformed_json/);
+});

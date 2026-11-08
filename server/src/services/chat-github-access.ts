@@ -6,7 +6,7 @@ import {
   chatIdentityLinks,
   companyMemberships,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 
 type Database = Db | Parameters<Parameters<Db["transaction"]>[0]>[0];
 

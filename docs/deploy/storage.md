@@ -1,39 +1,12 @@
 ---
-title: Storage
-summary: Local disk vs S3-compatible storage
+title: Bostan storage — development contract
+summary: Local assets and remote storage integrations remain unqualified
 ---
 
-Paperclip stores uploaded files (issue attachments, images) using a configurable storage provider.
+**Bostan is not release-qualified.** No shared, production or customer-data storage configuration is approved.
 
-## Local Disk (Default)
+The source contains local-disk and potential object-storage adapters for uploads, workspace files and execution artifacts. A legacy data-root identifier may persist for backward compatibility; do not rename, delete or move any existing data directory until safe migration and rollback tests are available.
 
-Files are stored at:
+Before qualifying an adapter, test path traversal prevention, tenant authorization, secret handling, encrypted storage as applicable, retention, cleanup ownership, backup/restore and crash recovery. Provider-backed object stores also require an explicit permission and billing review.
 
-```
-~/.paperclip/instances/default/data/storage
-```
-
-No configuration required. Suitable for local development and single-machine deployments.
-
-## S3-Compatible Storage
-
-For production or multi-node deployments, use S3-compatible object storage (AWS S3, MinIO, Cloudflare R2, etc.).
-
-Configure via CLI:
-
-```sh
-pnpm paperclipai configure --section storage
-```
-
-## Configuration
-
-| Provider | Best For |
-|----------|----------|
-| `local_disk` | Local development, single-machine deployments |
-| `s3` | Production, multi-node, cloud deployments |
-
-Storage configuration is stored in the instance config file:
-
-```
-~/.paperclip/instances/default/config.json
-```
+This document provides no command that writes data or enables a cloud provider. See [database qualification](/deploy/database) and [deployment overview](/deploy/overview).

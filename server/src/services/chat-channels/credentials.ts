@@ -16,7 +16,7 @@ import { type CredentialMutationLeaseGuard } from "../chat-credential-mutation-l
 
 import { photonSharedScope } from "../photon/cloud.js";
 
-import { photonChannelConfigurationSchema } from "@paperclipai/shared";
+import { photonChannelConfigurationSchema } from "@bostan/shared";
 
 import {
   randomBytes,
@@ -29,17 +29,17 @@ import {
   ne,
 } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   chatEndpoints,
   companySecretBindings,
   toolConnections,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ChatProvider,
   ToolCredentialSecretRef,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import { isUniqueViolation } from "../../db-errors.js";
 

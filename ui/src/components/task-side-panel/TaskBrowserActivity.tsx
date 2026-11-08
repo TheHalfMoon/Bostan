@@ -1,4 +1,4 @@
-import type { TaskBrowser } from "@paperclipai/shared";
+import type { TaskBrowser } from "@bostan/shared";
 import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 

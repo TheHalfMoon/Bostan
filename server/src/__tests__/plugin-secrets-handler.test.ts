@@ -13,7 +13,7 @@ import {
   createDb,
   plugins,
   secretAccessEvents,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "./helpers/embedded-postgres.js";
 import {
   createPluginSecretsHandler,

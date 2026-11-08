@@ -13,7 +13,7 @@ import {
   readChatControlChronology,
 } from "../../chat-control-chronology.js";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   chatActions,
@@ -23,12 +23,12 @@ import {
   chatEndpoints,
   issues,
   toolConnections,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ChatEndpointSetupState,
   SafeChatPublicationPayload,
   ToolCredentialSecretRef,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   conflict,

@@ -15,9 +15,9 @@ import os from "node:os";
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import type { AdapterRuntimeServiceReport } from "@paperclipai/adapter-utils";
-import type { Db } from "@paperclipai/db";
-import { executionWorkspaces, issueComments, issues, projectWorkspaces, workspaceRuntimeServices } from "@paperclipai/db";
+import type { AdapterRuntimeServiceReport } from "@bostan/adapter-utils";
+import type { Db } from "@bostan/db";
+import { executionWorkspaces, issueComments, issues, projectWorkspaces, workspaceRuntimeServices } from "@bostan/db";
 import {
   DEFAULT_TAILSCALE_HTTPS_EXPOSURE,
   deriveViteHmrPort,
@@ -40,7 +40,7 @@ import {
   type WorkspaceOperationPhase,
   type WorkspaceRuntimeDesiredState,
   type WorkspaceRuntimeServiceStateMap,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { and, desc, eq, gte, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { asNumber, asString, parseObject, renderTemplate } from "../adapters/utils.js";
 import { conflict, unprocessable } from "../errors.js";
@@ -138,7 +138,7 @@ export interface ExecutionWorkspaceAdditionalInput {
 }
 
 export interface ExecutionWorkspaceInput {
-  providerBinding?: import("@paperclipai/shared").WorkspaceProviderBinding;
+  providerBinding?: import("@bostan/shared").WorkspaceProviderBinding;
   baseCwd: string;
   source: "project_primary" | "task_session" | "agent_home";
   projectId: string | null;
@@ -288,7 +288,7 @@ const OPEN_EXECUTION_WORKSPACE_LEASE_STATUSES = ["active", "idle", "in_review"] 
 const DEFAULT_EXECUTE_PROCESS_OUTPUT_BYTES = 256 * 1024;
 export const WORKSPACE_RUNTIME_PORT_ALLOCATION_ATTEMPTS = 32;
 const ACTIVE_RUNTIME_PORT_RESERVATION_STATUSES = ["provisioning", "starting", "running"] as const;
-const DEFAULT_TAILSCALE_BROKER_SOCKET = "/run/paperclip-tailscale-broker/broker.sock";
+const DEFAULT_TAILSCALE_BROKER_SOCKET = "/run/bostan-tailscale-broker/broker.sock";
 
 class RuntimeServicePortBindCollision extends Error {
   readonly port: number;
@@ -341,7 +341,9 @@ async function isLoopbackPortAvailable(port: number): Promise<boolean> {
 }
 
 function resolveTailscaleBrokerSocketPath(): string {
-  return process.env.PAPERCLIP_TAILSCALE_BROKER_SOCKET?.trim() || DEFAULT_TAILSCALE_BROKER_SOCKET;
+  return process.env.BOSTAN_TAILSCALE_BROKER_SOCKET?.trim()
+    || process.env.PAPERCLIP_TAILSCALE_BROKER_SOCKET?.trim()
+    || DEFAULT_TAILSCALE_BROKER_SOCKET;
 }
 
 function defaultWorkspaceRuntimeExposureDeps(): WorkspaceRuntimeExposureDeps {

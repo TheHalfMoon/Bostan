@@ -1,12 +1,12 @@
-import { isOpenRouterUrl, openRouterClaudeHeaders } from "@paperclipai/shared/openrouter-attribution";
-import { applyObservabilityEnvironment } from "@paperclipai/adapter-utils/agent-observability";
-import { createProviderStoppedBoundary } from "@paperclipai/adapter-utils/provider-stopped-boundary";
-import { createUsageCheckpointLog } from "@paperclipai/adapter-utils/usage-checkpoint";
+import { isOpenRouterUrl, openRouterClaudeHeaders } from "@bostan/shared/openrouter-attribution";
+import { applyObservabilityEnvironment } from "@bostan/adapter-utils/agent-observability";
+import { createProviderStoppedBoundary } from "@bostan/adapter-utils/provider-stopped-boundary";
+import { createUsageCheckpointLog } from "@bostan/adapter-utils/usage-checkpoint";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { AdapterExecutionContext, AdapterExecutionResult } from "@paperclipai/adapter-utils";
-import type { RunProcessResult } from "@paperclipai/adapter-utils/server-utils";
+import type { AdapterExecutionContext, AdapterExecutionResult } from "@bostan/adapter-utils";
+import type { RunProcessResult } from "@bostan/adapter-utils/server-utils";
 import {
   adapterExecutionTargetIsRemote,
   adapterExecutionTargetRemoteCwd,
@@ -26,7 +26,7 @@ import {
   resolveAdapterExecutionTargetCommandForLogs,
   runAdapterExecutionTargetProcess,
   startAdapterExecutionTargetPaperclipBridge,
-} from "@paperclipai/adapter-utils/execution-target";
+} from "@bostan/adapter-utils/execution-target";
 import {
   asString,
   asNumber,
@@ -55,15 +55,15 @@ import {
   shapePaperclipWorkspaceEnvForExecution,
   DEFAULT_PAPERCLIP_AGENT_PROMPT_TEMPLATE,
   DEFAULT_PAPERCLIP_CONVERSATION_PROMPT_TEMPLATE,
-} from "@paperclipai/adapter-utils/server-utils";
-import { buildSkillLibraryManifestMarkdown } from "@paperclipai/adapter-utils/skill-library-manifest";
+} from "@bostan/adapter-utils/server-utils";
+import { buildSkillLibraryManifestMarkdown } from "@bostan/adapter-utils/skill-library-manifest";
 import {
   parseLocalProcessFilesystemScope,
   parseLocalProcessSandboxExtraPaths,
   parseLocalProcessNetworkAllowlist,
   parseLocalProcessNetworkScope,
   type LocalProcessSandboxOptions,
-} from "@paperclipai/adapter-utils/local-process-sandbox";
+} from "@bostan/adapter-utils/local-process-sandbox";
 import {
   claudeModelUsageTotals,
   claudeModelReceipts,

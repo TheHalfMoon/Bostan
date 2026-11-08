@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createTestHarness } from "@paperclipai/plugin-sdk/testing";
-import type { Agent, Issue, PluginManagedRoutineResolution, Project } from "@paperclipai/plugin-sdk";
+import { createTestHarness } from "@bostan/plugin-sdk/testing";
+import type { Agent, Issue, PluginManagedRoutineResolution, Project } from "@bostan/plugin-sdk";
 import manifest, {
   CURSOR_WINDOW_ROUTINE_KEY,
   INDEX_REFRESH_ROUTINE_KEY,
@@ -771,7 +771,9 @@ describe("LLM Wiki plugin scaffold", () => {
       routePath: "wiki",
     });
     expect(packageJson.dependencies).toBeUndefined();
-    expect(packageJson.devDependencies?.react).toBeUndefined();
+    // Bostan Wiki tests render React directly. Keep it dev-only while the
+    // runtime uses the host React peer and the SDK bundles React as external.
+    expect(packageJson.devDependencies?.react).toBe("^19.2.8");
     expect(packageJson.devDependencies?.["react-dom"]).toBeDefined();
     expect(packageJson.devDependencies?.["@types/react-dom"]).toBeDefined();
     expect(packageJson.peerDependencies?.react).toBe(">=18");

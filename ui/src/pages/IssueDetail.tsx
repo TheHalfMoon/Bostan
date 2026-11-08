@@ -205,6 +205,7 @@ import { workModeMetaFor } from "../lib/work-mode-meta";
 import { IssueContinuationHandoff } from "../components/IssueContinuationHandoff";
 import { IssueAttachmentsSection } from "../components/IssueAttachmentsSection";
 import { IssueDocumentsSection } from "../components/IssueDocumentsSection";
+import { BostanOcrPreview } from "../components/BostanOcrPreview";
 import { IssuePlanDecompositionsSection } from "../components/IssuePlanDecompositionsSection";
 import { IssueOutputSection } from "../components/issue-output/IssueOutputSection";
 import { isImageAttachment, isVideoAttachment } from "../lib/issue-attachments";
@@ -378,7 +379,7 @@ import {
   type IssueTreeControlMode,
   type WorkspaceFileRef,
   workspaceFileRefSchema,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 // Stable empty array for React Query `data` defaults. A literal `= []` default
 // creates a new array reference on every render while `data` is undefined
@@ -452,8 +453,7 @@ function buildPlanDecisionResponseText(
 }
 
 const FEEDBACK_TERMS_URL =
-  import.meta.env.VITE_FEEDBACK_TERMS_URL?.trim() ||
-  "https://paperclip.ing/tos";
+  import.meta.env.VITE_BOSTAN_FEEDBACK_TERMS_URL?.trim() || null;
 const ISSUE_COMMENT_AUTOLOAD_LIMIT = ISSUE_COMMENT_PAGE_SIZE * 3;
 const JUMP_TO_LATEST_MAX_COMMENT_PAGES = 10;
 function treeControlPreviewErrorCopy(error: unknown): string {
@@ -1204,7 +1204,7 @@ type IssueDetailChatTabProps = {
   interruption?: Issue["interruption"];
   retryPreparing?: boolean;
   queryIssueId?: string;
-  browsers?: import("@paperclipai/shared").TaskBrowser[];
+  browsers?: import("@bostan/shared").TaskBrowser[];
   onOpenBrowser?: (browserId: string) => void;
   onOpenSkill?: (skillId: string, name: string) => void;
   issueId: string;
@@ -2448,7 +2448,7 @@ const IssueDetailChatTab = memo(function IssueDetailChatTab({
         if (code === "queued_comment_already_dispatching") {
           pushToast({
             title: "Message is already being sent",
-            body: "The continuation started before the discard was confirmed, so Paperclip could not unsend it.",
+            body: "The continuation started before the discard was confirmed, so Bostan could not unsend it.",
             tone: "error",
             ttlMs: 15_000,
             dedupeKey: `queued-comment-already-dispatching:${issueId}:${commentId}`,
@@ -2660,8 +2660,8 @@ const IssueDetailChatTab = memo(function IssueDetailChatTab({
                   }
                 : undefined
             }
-            stopRunLabel={grokWork ? "Stop Paperclip work" : "Pause work"}
-            stoppingRunLabel={grokWork ? "Stopping Paperclip work…" : "Pausing..."}
+            stopRunLabel={grokWork ? "Stop Bostan work" : "Pause work"}
+            stoppingRunLabel={grokWork ? "Stopping Bostan work…" : "Pausing..."}
             stopRunVariant={grokWork ? "stop" : "pause"}
             runFinalizationActions={runFinalizationActions}
             onAcceptInteraction={onAcceptInteraction}
@@ -2693,7 +2693,7 @@ const IssueDetailChatTab = memo(function IssueDetailChatTab({
               tryAgainNoLiveExecutionPathPending
             }
             footer={grokWork || stopGrokWork.error || classicQueuedDeliveryError ? <>
-              {grokWork && <p className="text-xs text-muted-foreground">Runs in Grok Bot · Usage not reported. Stop Paperclip work revokes this session’s authority; remote execution may continue. Open the Grok Bot desktop app to inspect it.</p>}
+              {grokWork && <p className="text-xs text-muted-foreground">Runs in Grok Bot · Usage not reported. Stop Bostan work revokes this session’s authority; remote execution may continue. Open the Grok Bot desktop app to inspect it.</p>}
               {stopGrokWork.error && <p role="alert" className="text-sm text-destructive">{stopGrokWork.error.message}</p>}
               {classicQueuedDeliveryError && <p role="status" className="text-sm text-destructive">{classicQueuedDeliveryError}</p>}
               {footer}
@@ -7911,6 +7911,13 @@ export function TaskDetailSurface({ conversation, tasksTab }: { tasksTab?: TaskS
               issueIdentifier={issue.identifier}
               agentMap={agentMap}
             />
+          ) : null}
+
+          {/* Optional, local-only image OCR is reachable from the normal
+          chat-style task body even when the Artifacts sidebar is closed or
+          lacks an established document. It never saves a revision by itself. */}
+          {taskChatShellEnabled && import.meta.env.VITE_BOSTAN_LOCAL_OCR_PREVIEW_ENABLE === "1" ? (
+            <BostanOcrPreview key={issue.id} companyId={issue.companyId} issueId={issue.id} />
           ) : null}
 
           {/* Flag ON: attachments/work products/workspace live in the properties

@@ -10,7 +10,7 @@ import type {
   HeartbeatRunEvent,
   ProviderTraceFieldMapping,
   ProviderTraceFrame,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   ArrowRight,
   Braces,

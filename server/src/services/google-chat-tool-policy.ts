@@ -1,5 +1,5 @@
 import { badRequest } from "../errors.js";
-import { googleWorkspaceToolTarget } from "@paperclipai/shared";
+import { googleWorkspaceToolTarget } from "@bostan/shared";
 
 type Connection = { config: Record<string, unknown> };
 

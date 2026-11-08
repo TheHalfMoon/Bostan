@@ -1,0 +1,82 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import test from 'node:test';
+const entry=fileURLToPath(new URL('./bostan-private-windows-live-http.mjs',import.meta.url));
+const source=readFileSync(entry,'utf8');
+test('Windows browser mode requires explicit opt-in and scoped assets before real Postgres starts',()=>{
+  for(const value of [
+    '"--run-compiled-browser"','BOSTAN_WINDOWS_CHROMIUM_ASSET_PREFLIGHT_REFUSED',
+    'BOSTAN_WINDOWS_CHROMIUM_ASSET_PREFLIGHT_PASS',
+    'lstatSync(browserRoot).isSymbolicLink()',
+    'lstatSync(dist).isSymbolicLink()',
+    'PLAYWRIGHT_BROWSERS_PATH','serveUi:browserMode',
+    'BOSTAN_WINDOWS_CHROMIUM_SIGNUP_PASS',
+    'BOSTAN_WINDOWS_CHROMIUM_FIRST_ADMIN_PASS',
+    'browserClaim.claimedUserIdMatchesSession===1',
+    'authenticatedBrowserQualified:browserQualified',
+    'BOSTAN_WINDOWS_LIVE_CHROMIUM_MEMORY_REFUSED',
+    'afterDbMemory.freeGiB<3',
+  ])assert.ok(source.includes(value),value);
+  assert.ok(source.indexOf('BOSTAN_WINDOWS_CHROMIUM_ASSET_PREFLIGHT_PASS')<
+    source.indexOf('startEmbeddedPostgresTestDatabase'), 'Preflight must precede actual PG');
+});
+test('no implicit user-facing mode or publishing, native platform gate remains',()=>{
+  assert.doesNotMatch(source,/pnpm\\s+publish|npm\\s+publish/);
+  if(process.platform!=='win32'){
+    const outcome=spawnSync(process.execPath,[entry,'--run-compiled-browser'],{
+      timeout:5000,encoding:'utf8'});
+    assert.equal(outcome.status,2);
+    assert.match(outcome.stderr,/requires an isolated/);
+  }
+});
+
+test("real Windows Members UX is an explicit stronger opted-in browser proof",()=>{
+  for(const marker of [
+    "--run-compiled-browser-members","membersMode",
+    "BOSTAN_WINDOWS_CHROMIUM_MEMBERS_INVITE_ROLE_SUSPEND_PASS",
+    'withPrivateMemberBrowser','ui.createInvite()','ui.updateMember(',
+    'viewer.status!==403','allowed.status!==201','denied.status!==403',
+    'authenticatedMembersBrowserQualified:membersMode&&browserMembersPassed',
+    '!membersMode||browserMembersPassed',
+  ])assert.ok(source.includes(marker),marker);
+  assert.doesNotMatch(source,/console\.log\((?:inviteePassword|inviteeCookie|invitation\.token)\)/);
+});
+
+
+test("Members runner diagnostics expose only bounded fixed stage and numeric status",()=>{
+  for(const token of ["membersLastHttpStatus","membersLastStage",
+    "BOSTAN_WIN_MEMBERS_LAST_STAGE",
+    "BOSTAN_WIN_MEMBERS_LAST_HTTP_STATUS",
+    "BOSTAN_WIN_MEMBERS_SAFE_ERROR_CLASS",
+    'membersCheckpoint("members_complete")',
+    'if(!allowed.includes(stage))'])
+    assert.ok(source.includes(token),token);
+  assert.doesNotMatch(source,/console\.error\("BOSTAN_WIN_MEMBERS.*"\+error\.message/);
+});
+
+
+test("Members UI diagnostic accepts only allowlisted visible flags and HTTP codes",()=>{
+  for(const token of ["members_ui_not_reached",
+    "BOSTAN_WIN_MEMBERS_SAFE_VISIBLE_FLAGS",
+    "BOSTAN_WIN_MEMBERS_SAFE_SESSION_STATUSES",
+    "allowedFlags.includes(v)",
+    "/^[1-5][0-9]{2}$/.test(v)"])
+    assert.ok(source.includes(token),token);
+  assert.doesNotMatch(source,/console\.error\("BOSTAN_WIN_MEMBERS.*"\+failure\)/);
+});
+
+test('native Windows real shared-DB writes are opt-in, require auth+browser+cleanup',()=>{
+  for(const marker of [
+    '--run-compiled-browser-members-concurrent',
+    'concurrentMode=args[0]===',
+    'qualifyPrivateSharedWindowsPostgres',
+    'sharedPostgresConcurrentPassed',
+    'BOSTAN_WINDOWS_REAL_SHARED_POSTGRES_12_CONCURRENT_WRITES_PASS',
+    '(!concurrentMode||sharedPostgresConcurrentPassed)',
+    'realSharedPostgresConcurrentWritesQualified:concurrentMode&&sharedPostgresConcurrentPassed',
+  ])assert.ok(source.includes(marker),marker);
+  assert.ok(source.indexOf('BOSTAN_WINDOWS_CHROMIUM_ASSET_PREFLIGHT_PASS')<
+    source.indexOf('startEmbeddedPostgresTestDatabase'));
+});

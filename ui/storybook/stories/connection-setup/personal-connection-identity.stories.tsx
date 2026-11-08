@@ -5,7 +5,7 @@ import type {
   ConnectionGrantsResponse,
   ToolConnectionCapabilities,
   ToolConnectionCredentialPolicy,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { IdentitiesSection } from "@/pages/apps/app-detail/IdentitiesSection";
 
 // ---------------------------------------------------------------------------

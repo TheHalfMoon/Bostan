@@ -2,7 +2,7 @@
 import { createRoot, type Root } from "react-dom/client";
 import { flushSync } from "react-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AgentPermissions } from "@paperclipai/shared";
+import type { AgentPermissions } from "@bostan/shared";
 import { TrustPresetSection } from "./TrustPresetSection";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -68,8 +68,8 @@ describe("TrustPresetSection", () => {
     expect(view.text()).toContain("Containment active");
     expect(view.text()).toContain("Boundary type");
     expect(view.text()).toContain("Paperclip App");
-    expect(view.text()).toContain("Get Paperclip EE.");
-    expect(view.text()).not.toContain("Managed by EE/API");
+    expect(view.text()).toContain("managed through the approved API.");
+    expect(view.text()).not.toContain("Managed through API");
   });
 
   it("renders multi-boundary policies as read-only", () => {
@@ -86,7 +86,7 @@ describe("TrustPresetSection", () => {
       },
     });
 
-    expect(view.text()).toContain("Managed by EE/API");
+    expect(view.text()).toContain("Managed through API");
     expect(view.text()).toContain("2 boundaries");
     expect(view.text()).not.toContain("Clear boundary");
   });

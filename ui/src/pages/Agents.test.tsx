@@ -4,13 +4,13 @@ import type { ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { Agent, Environment, EnvironmentCapabilities } from "@paperclipai/shared";
+import type { Agent, Environment, EnvironmentCapabilities } from "@bostan/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "../context/ToastContext";
 import type { BuiltInAgentState } from "../api/builtInAgents";
 import { Agents, filterAgents, filterOrgTree } from "./Agents";
 import { Agents as ProductionAgents } from "./Agents.production";
-import type { AgentOrgChainHealth } from "@paperclipai/shared";
+import type { AgentOrgChainHealth } from "@bostan/shared";
 
 const mockRouterState = vi.hoisted(() => ({
   pathname: "/agents/all",
@@ -609,7 +609,7 @@ describe("Agents", () => {
     await flushReact();
 
     expect(container.textContent).toContain("Dev Laptop");
-    expect(container.textContent).toContain("Paperclip host");
+    expect(container.textContent).toContain("Bostan host");
   });
 
   it("reserves the environment column while environment metadata is loading", async () => {

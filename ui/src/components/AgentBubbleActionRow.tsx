@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type {
   FeedbackDataSharingPreference,
   FeedbackVoteValue,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { cn, formatShortDate } from "../lib/utils";
 import { timeAgo } from "../lib/timeAgo";
 import { useCopyAction, useCopyToast } from "../lib/use-copy-action";
@@ -333,8 +333,9 @@ export function IssueChatFeedbackButtons({
           <DialogHeader>
             <DialogTitle>Save your feedback sharing preference</DialogTitle>
             <DialogDescription>
-              Choose whether voted AI outputs can be shared with Paperclip Labs. This
-              answer becomes the default for future thumbs up and thumbs down votes.
+              Choose whether voted AI outputs can be shared with an operator-configured
+              Bostan feedback backend. Remote export is disabled by default.
+              Your choice applies to future votes.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 text-sm text-muted-foreground">

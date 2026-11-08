@@ -16,7 +16,7 @@ import {
   sql,
 } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   chatConversations,
@@ -25,7 +25,7 @@ import {
   chatEndpoints,
   chatExternalPrincipals,
   companyMemberships,
-} from "@paperclipai/db";
+} from "@bostan/db";
 
 import {
   conflict,

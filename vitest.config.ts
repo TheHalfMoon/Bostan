@@ -8,6 +8,7 @@ export default defineConfig({
     projects: [
       "packages/shared",
       "packages/skills-catalog",
+      "packages/teams-catalog",
       "packages/db",
       "packages/adapter-utils",
       "packages/adapters/claude-local",
@@ -22,7 +23,7 @@ export default defineConfig({
       "packages/adapters/opencode-local",
       "packages/adapters/pi-local",
       "packages/plugins/sdk",
-      "packages/plugins/create-paperclip-plugin",
+      "packages/plugins/create-bostan-plugin",
       "packages/plugins/sandbox-providers/daytona",
       "server",
       "ui",

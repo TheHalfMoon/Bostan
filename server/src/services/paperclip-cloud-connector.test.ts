@@ -7,7 +7,7 @@ import {
   randomBytes,
   type KeyObject,
 } from "node:crypto";
-import { SLACK_MANAGER_SCOPES } from "@paperclipai/shared";
+import { SLACK_MANAGER_SCOPES } from "@bostan/shared";
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 
@@ -77,7 +77,7 @@ describe("Paperclip Cloud connector", () => {
     sealed = seal({ ...credentials, scopes: undefined }, keys.sealPublicKey, "access", keys.config, "workspace.all");
     await expect(connector.refresh({ subject, companyId, profile: "workspace.all", refreshToken: "test-refresh" })).rejects.toBeInstanceOf(PaperclipCloudConnectorError);
   });
-  it("accepts a managed test identity and rejects other environments at its broker", () => {
+  it("rejects inherited managed identities regardless of their broker environment", () => {
     const identity = config().config;
     const env = {
       PAPERCLIP_CLOUD_CONNECTOR_INSTANCE_ID: identity.instanceId,
@@ -86,12 +86,20 @@ describe("Paperclip Cloud connector", () => {
       PAPERCLIP_CLOUD_CONNECTOR_BASE_URL: "https://test.paperclip.app",
       PAPERCLIP_CLOUD_CONNECTOR_ENVIRONMENT: "test",
     };
-    expect(paperclipCloudConnectorConfigFromEnv(env)).toMatchObject({ environment: "test", baseUrl: env.PAPERCLIP_CLOUD_CONNECTOR_BASE_URL });
+    expect(paperclipCloudConnectorConfigFromEnv(env)).toBeNull();
     for (const environment of ["development", "staging", "production"]) {
-      expect(() => paperclipCloudConnectorConfigFromEnv({ ...env, PAPERCLIP_CLOUD_CONNECTOR_ENVIRONMENT: environment })).toThrow(/broker and environment do not match/);
+      expect(paperclipCloudConnectorConfigFromEnv({ ...env,
+        PAPERCLIP_CLOUD_CONNECTOR_ENVIRONMENT: environment,
+        BOSTAN_CLOUD_CONNECTOR_ENABLED: "1",
+        BOSTAN_CLOUD_CONNECTOR_BASE_URL: "https://my.bostan.example",
+      })).toBeNull();
     }
     for (const baseUrl of ["https://my.paperclip.app", "https://my-staging.paperclip.app"]) {
-      expect(() => paperclipCloudConnectorConfigFromEnv({ ...env, PAPERCLIP_CLOUD_CONNECTOR_BASE_URL: baseUrl })).toThrow(/broker and environment do not match/);
+      expect(paperclipCloudConnectorConfigFromEnv({ ...env,
+        PAPERCLIP_CLOUD_CONNECTOR_BASE_URL: baseUrl,
+        BOSTAN_CLOUD_CONNECTOR_ENABLED: "1",
+        BOSTAN_CLOUD_CONNECTOR_BASE_URL: baseUrl,
+      })).toBeNull();
     }
   });
 
@@ -183,7 +191,7 @@ describe("Paperclip Cloud connector", () => {
     }
   });
 
-  it("refreshes capabilities after enrollment and rejects stale cache writes", async () => {
+  it("does not query Cloud capabilities using inherited managed credentials", async () => {
     const keys = config().config;
     const env = {
       PAPERCLIP_CLOUD_CONNECTOR_BASE_URL: keys.baseUrl,
@@ -191,25 +199,15 @@ describe("Paperclip Cloud connector", () => {
       PAPERCLIP_CLOUD_CONNECTOR_ENVIRONMENT: keys.environment,
       PAPERCLIP_CLOUD_CONNECTOR_SIGN_PRIVATE_KEY: keys.signPrivateKey,
       PAPERCLIP_CLOUD_CONNECTOR_SEAL_PRIVATE_KEY: keys.sealPrivateKey,
+      BOSTAN_CLOUD_CONNECTOR_ENABLED: "1",
+      BOSTAN_CLOUD_CONNECTOR_BASE_URL: "https://my.bostan.example",
     };
-    let completeOldRequest!: (response: Response) => void;
-    const request = vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(Response.json({ status: "pending", active: false }))
-      .mockImplementationOnce(() => new Promise<Response>((resolve) => { completeOldRequest = resolve; }))
-      .mockResolvedValue(Response.json({ status: "active", active: true, profiles: ["gmail.read"] }));
+    const request = vi.spyOn(globalThis, "fetch");
     invalidatePaperclipCloudConnectorCapabilities();
     try {
       await expect(paperclipCloudConnectorCapabilitiesFromEnv(env)).resolves.toEqual([]);
       await expect(paperclipCloudConnectorCapabilitiesFromEnv(env)).resolves.toEqual([]);
-      expect(request).toHaveBeenCalledTimes(1);
-      invalidatePaperclipCloudConnectorCapabilities();
-      const oldRequest = paperclipCloudConnectorCapabilitiesFromEnv(env);
-      invalidatePaperclipCloudConnectorCapabilities();
-      await expect(paperclipCloudConnectorCapabilitiesFromEnv(env)).resolves.toEqual(["gmail.read"]);
-      completeOldRequest(Response.json({ status: "pending", active: false }));
-      await expect(oldRequest).resolves.toEqual([]);
-      await expect(paperclipCloudConnectorCapabilitiesFromEnv(env)).resolves.toEqual(["gmail.read"]);
-      expect(request).toHaveBeenCalledTimes(3);
+      expect(request).not.toHaveBeenCalled();
     } finally {
       request.mockRestore();
       invalidatePaperclipCloudConnectorCapabilities();
@@ -221,6 +219,7 @@ describe("Paperclip Cloud connector", () => {
     const scopes = ["chat.spaces.readonly", "chat.messages.readonly", ...(profile === "chat.write" ? ["chat.messages.create"] : [])]
       .map((scope) => `https://www.googleapis.com/auth/${scope}`);
     const request = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      expect(init?.redirect).toBe("error");
       const body = JSON.parse(String(init?.body));
       const claims = JSON.parse(Buffer.from(body.request.split(".")[1], "base64url").toString("utf8"));
       expect(claims.prf).toBe(profile);
@@ -635,34 +634,27 @@ describe("Paperclip Cloud connector", () => {
     expect(request).toHaveBeenCalledOnce();
   });
 
-  it("requires an all-or-nothing environment configuration and loopback for HTTP", () => {
+  it("keeps all inherited incomplete, insecure, or ID connector configurations disabled", () => {
     expect(paperclipCloudConnectorConfigFromEnv({})).toBeNull();
-    expect(() => paperclipCloudConnectorConfigFromEnv({
+    expect(paperclipCloudConnectorConfigFromEnv({
       PAPERCLIP_CLOUD_CONNECTOR_INSTANCE_ID: instanceId,
-    })).toThrowError(/incomplete/);
-    expect(() => paperclipCloudConnectorConfigFromEnv({
+    })).toBeNull();
+    expect(paperclipCloudConnectorConfigFromEnv({
       PAPERCLIP_CLOUD_CONNECTOR_INSTANCE_ID: instanceId,
       PAPERCLIP_CLOUD_CONNECTOR_SIGN_PRIVATE_KEY: "key",
       PAPERCLIP_CLOUD_CONNECTOR_SEAL_PRIVATE_KEY: "key",
       PAPERCLIP_CLOUD_CONNECTOR_ENVIRONMENT: "development",
       PAPERCLIP_CLOUD_CONNECTOR_BASE_URL: "http://my.example.test",
-    })).toThrowError(/HTTPS/);
-    const legacyError = (() => {
-      try {
-        paperclipCloudConnectorConfigFromEnv({
-          PAPERCLIP_ID_CONNECTOR_INSTANCE_ID: instanceId,
-          PAPERCLIP_ID_CONNECTOR_SIGN_PRIVATE_KEY: "key",
-          PAPERCLIP_ID_CONNECTOR_SEAL_PRIVATE_KEY: "key",
-          PAPERCLIP_ID_CONNECTOR_ENVIRONMENT: "development",
-          PAPERCLIP_ID_CONNECTOR_BASE_URL: "https://id.paperclip.app",
-        });
-        return null;
-      } catch (error) {
-        return error;
-      }
-    })();
-    expect(legacyError).toMatchObject({ code: "CONNECTOR_MIGRATION_REQUIRED" });
-    expect(String(legacyError)).toContain("incompatible legacy protocol");
+      BOSTAN_CLOUD_CONNECTOR_ENABLED: "1",
+      BOSTAN_CLOUD_CONNECTOR_BASE_URL: "http://my.example.test",
+    })).toBeNull();
+    expect(paperclipCloudConnectorConfigFromEnv({
+      PAPERCLIP_ID_CONNECTOR_INSTANCE_ID: instanceId,
+      PAPERCLIP_ID_CONNECTOR_SIGN_PRIVATE_KEY: "key",
+      PAPERCLIP_ID_CONNECTOR_SEAL_PRIVATE_KEY: "key",
+      PAPERCLIP_ID_CONNECTOR_ENVIRONMENT: "development",
+      PAPERCLIP_ID_CONNECTOR_BASE_URL: "https://id.paperclip.app",
+    })).toBeNull();
   });
 
   it("keeps gallery capability discovery available during incomplete enrollment", async () => {

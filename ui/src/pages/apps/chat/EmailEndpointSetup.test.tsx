@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/api/client";
-import { EmailEndpointSetup } from "./EmailEndpointSetup";
+import { EmailEndpointSetup, EmailConnectionInboxes, EmailEndpointSettings } from "./EmailEndpointSetup";
 
 const mocks = vi.hoisted(() => ({ companyId: "company" as string | null, listAgents: vi.fn(), connect: vi.fn(), credentials: vi.fn(), control: vi.fn(), inspectNew: vi.fn(), inspect: vi.fn(), checkAddress: vi.fn(), setup: vi.fn(), listInboxes: vi.fn(), listConnections: vi.fn(), getConnection: vi.fn(), putInstalls: vi.fn() }));
 vi.mock("@/lib/router", async () => import("react-router-dom"));
@@ -600,5 +600,60 @@ describe("AgentMail two-step setup", () => {
     expect(container.textContent).toContain("needs a work boundary");
     expect(button("Continue").disabled).toBe(true);
     expect(mocks.setup).not.toHaveBeenCalled();
+  });
+});
+
+describe("email inbox provider diagnostics are display-safe", () => {
+  async function renderSettings(node: React.ReactNode) {
+    client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    await act(async () => root.render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={["/apps"]}>{node}</MemoryRouter>
+      </QueryClientProvider>,
+    ));
+  }
+
+  it("redacts token-bearing inbox health and list failures on connection overview", async () => {
+    const marker = "PRIVATE_AGENTMAIL_API_KEY_DO_NOT_RENDER";
+    mocks.listInboxes.mockResolvedValue([{
+      id: "inbox-1", connectionId: "account", address: "qa@agentmail.to",
+      status: "error", receiveMode: "websocket",
+      lastError: "Authorization: Bearer " + marker,
+    }]);
+    await renderSettings(<EmailConnectionInboxes
+      companyId="company" connectionId="account" canConfigure={false}
+    />);
+    await vi.waitFor(() => expect(container.textContent).toContain("qa@agentmail.to"));
+    expect(container.textContent).toContain("Email inbox needs attention.");
+    expect(container.textContent).not.toContain(marker);
+  });
+
+  it("does not show private provider payloads in inbox settings and rejected control", async () => {
+    const marker = "PRIVATE_AGENTMAIL_WEBHOOK_TOKEN_DO_NOT_RENDER";
+    mocks.listInboxes.mockResolvedValue([{
+      id: "inbox-1", connectionId: "account", address: "qa@agentmail.to",
+      status: "active", receiveMode: "websocket",
+      lastError: "Bearer " + marker,
+    }]);
+    mocks.control.mockRejectedValue(new Error("Authorization: Bearer " + marker));
+    await renderSettings(<EmailEndpointSettings
+      endpointId="inbox-1" companyId="company" assignedAgentName="Ralph"
+    />);
+    await vi.waitFor(() => expect(container.textContent).toContain("qa@agentmail.to"));
+    expect(container.textContent).toContain("Email inbox needs attention.");
+    expect(container.textContent).not.toContain(marker);
+    await act(async () => button("Pause").click());
+    await vi.waitFor(() => expect(container.textContent).toContain("Could not update the email inbox."));
+    expect(container.textContent).not.toContain(marker);
+  });
+
+  it("never renders list rejection errors that contain a private access token", async () => {
+    const marker = "PRIVATE_INBOX_ERROR_TOKEN";
+    mocks.listInboxes.mockRejectedValue(new Error("Bearer " + marker));
+    await renderSettings(<EmailConnectionInboxes
+      companyId="company" connectionId="account" canConfigure={false}
+    />);
+    await vi.waitFor(() => expect(container.textContent).toContain("Could not load the email inboxes."));
+    expect(container.textContent).not.toContain(marker);
   });
 });

@@ -1,6 +1,6 @@
-# `@paperclipai/plugin-createos`
+# `@bostan/plugin-createos`
 
-CreateOS sandbox provider for Paperclip. This package lives alongside Daytona
+CreateOS sandbox provider for Bostan. This package lives alongside Daytona
 and E2B, outside the root pnpm workspace, and uses CreateOS's public HTTP API.
 No CreateOS SDK dependency is required; the `tar` library handles local archives. The package has not been published as
 part of this change; use a local-path install for development. Its release

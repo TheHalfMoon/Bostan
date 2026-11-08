@@ -24,7 +24,7 @@ import {
   toolProfileBindings,
   toolProfiles,
   toolRuntimeSlots,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

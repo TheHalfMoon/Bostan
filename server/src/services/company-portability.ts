@@ -1,5 +1,5 @@
 import { createAgentLifecycle } from "./agent-lifecycle.js";
-import { agentAppearanceSchema, agentHarnessType, agentRunner, type AgentRunnerChoice } from "@paperclipai/shared";
+import { agentAppearanceSchema, agentHarnessType, agentRunner, type AgentRunnerChoice } from "@bostan/shared";
 import { resolveNewAgentRunnerForCompany } from "./agent-runner-selection.js";
 import { createHash, randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
@@ -12,7 +12,7 @@ import {
   issueRelations,
   principalPermissionGrants,
   type Db,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   CompanyPortabilityAgentManifestEntry,
   CompanyPortabilityBlobManifestEntry,
@@ -46,7 +46,7 @@ import type {
   AgentEnvConfig,
   PermissionKey,
   RoutineVariable,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   AGENT_DEFAULT_MAX_CONCURRENT_RUNS,
   ISSUE_PRIORITIES,
@@ -65,13 +65,13 @@ import {
   issueCommentPresentationSchema,
   normalizeAgentUrlKey,
   PERMISSION_KEYS,
-} from "@paperclipai/shared";
-import { sha256HexOfBytes } from "@paperclipai/shared/portability-hash";
+} from "@bostan/shared";
+import { sha256HexOfBytes } from "@bostan/shared/portability-hash";
 import {
   readPaperclipSkillSyncPreference,
   writePaperclipSkillSyncPreference,
-} from "@paperclipai/adapter-utils/server-utils";
-import { requireOpenCodeModelId } from "@paperclipai/adapter-opencode-local/server";
+} from "@bostan/adapter-utils/server-utils";
+import { requireOpenCodeModelId } from "@bostan/adapter-opencode-local/server";
 import { findServerAdapter } from "../adapters/index.js";
 import { formatAttachmentSize, MAX_ATTACHMENT_BYTES } from "../attachment-types.js";
 import { forbidden, notFound, unprocessable } from "../errors.js";
@@ -708,7 +708,7 @@ type ProjectLike = {
   targetDate: string | null;
   color: string | null;
   icon: string | null;
-  appearance?: import("@paperclipai/shared").AgentAppearance | null;
+  appearance?: import("@bostan/shared").AgentAppearance | null;
   status: string;
   env: Record<string, unknown> | null;
   executionWorkspacePolicy: Record<string, unknown> | null;

@@ -2,7 +2,7 @@ import { notifyDeliveryWork, DELIVERY_QUEUES } from "./delivery-work-notificatio
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { and, asc, desc, eq, getTableColumns, gte, isNull, lte, ne, or } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents,
   companies,
@@ -18,11 +18,11 @@ import {
   issueComments,
   issueDocuments,
   issues,
-} from "@paperclipai/db";
-import { readPaperclipSkillSyncPreference } from "@paperclipai/adapter-utils/server-utils";
-import { claudeConfigDir, parseClaudeStreamJson } from "@paperclipai/adapter-claude-local/server";
-import { codexHomeDir, parseCodexJsonl } from "@paperclipai/adapter-codex-local/server";
-import { parseOpenCodeJsonl } from "@paperclipai/adapter-opencode-local/server";
+} from "@bostan/db";
+import { readPaperclipSkillSyncPreference } from "@bostan/adapter-utils/server-utils";
+import { claudeConfigDir, parseClaudeStreamJson } from "@bostan/adapter-claude-local/server";
+import { codexHomeDir, parseCodexJsonl } from "@bostan/adapter-codex-local/server";
+import { parseOpenCodeJsonl } from "@bostan/adapter-opencode-local/server";
 import {
   DEFAULT_FEEDBACK_DATA_SHARING_PREFERENCE,
   DEFAULT_FEEDBACK_DATA_SHARING_TERMS_VERSION,
@@ -36,7 +36,7 @@ import {
   type FeedbackTraceStatus,
   type FeedbackTraceTargetSummary,
   type FeedbackVoteValue,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { resolveHomeAwarePath, resolvePaperclipInstanceRoot } from "../home-paths.js";
 import { notFound, unprocessable } from "../errors.js";
 import { agentInstructionsBundleMode, agentInstructionsService } from "./agent-instructions.js";
@@ -53,7 +53,9 @@ import { getOperatorSettingDefaults } from "./setting-defaults.js";
 const FEEDBACK_SCHEMA_VERSION = "paperclip-feedback-envelope-v2";
 const FEEDBACK_BUNDLE_VERSION = "paperclip-feedback-bundle-v2";
 const FEEDBACK_PAYLOAD_VERSION = "paperclip-feedback-v1";
-const FEEDBACK_DESTINATION = "paperclip_labs_feedback_v1";
+// Separate Bostan records from imported upstream feedback. Old queued votes
+// must not be replayed to any newly configured Bostan backend.
+const FEEDBACK_DESTINATION = "bostan_feedback_v1";
 const FEEDBACK_CONTEXT_WINDOW = 3;
 const MAX_EXCERPT_CHARS = 200;
 const MAX_PRIMARY_CONTENT_CHARS = 8_000;
@@ -1801,7 +1803,8 @@ export function feedbackService(db: Db, options: FeedbackServiceOptions = {}) {
         ? or(eq(feedbackExports.status, "pending"), eq(feedbackExports.status, "failed"))
         : eq(feedbackExports.status, "pending");
       return (await db.select({ id: feedbackExports.id }).from(feedbackExports)
-        .where(pending).limit(1)).length > 0;
+        .where(and(eq(feedbackExports.destination, FEEDBACK_DESTINATION), pending))
+        .limit(1)).length > 0;
     },
 
     flushPendingFeedbackTraces: async (input?: {
@@ -1814,7 +1817,10 @@ export function feedbackService(db: Db, options: FeedbackServiceOptions = {}) {
       const shareClient = options.shareClient;
       input?.signal?.throwIfAborted();
       if (!shareClient) {
-        const filters = [eq(feedbackExports.status, "pending")];
+        const filters = [
+          eq(feedbackExports.destination, FEEDBACK_DESTINATION),
+          eq(feedbackExports.status, "pending"),
+        ];
         if (input?.companyId) {
           filters.push(eq(feedbackExports.companyId, input.companyId));
         }
@@ -1855,6 +1861,7 @@ export function feedbackService(db: Db, options: FeedbackServiceOptions = {}) {
 
       const limit = Math.max(1, Math.min(input?.limit ?? 25, 200));
       const filters = [
+        eq(feedbackExports.destination, FEEDBACK_DESTINATION),
         or(eq(feedbackExports.status, "pending"), eq(feedbackExports.status, "failed")),
       ];
       if (input?.companyId) {

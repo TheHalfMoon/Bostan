@@ -1,4 +1,4 @@
-import { agentHarnessType } from "@paperclipai/shared";
+import { agentHarnessType } from "@bostan/shared";
 import { resolveClaudeEffort, resolveQualifiedAcpxProfile } from "../../vendor/paperclip-runner/index.js";
 import {
   isPaperclipRunnerProvider,
@@ -8,11 +8,11 @@ import {
   resolvePaperclipRunnerCursorMode,
   resolvePaperclipRunnerPiThinkingLevel,
   type PaperclipRunnerProvider,
-} from "@paperclipai/adapter-utils";
+} from "@bostan/adapter-utils";
 import {
   codexLocalReasoningEffortsForModel,
   isCodexLocalKnownModel,
-} from "@paperclipai/adapter-codex-local";
+} from "@bostan/adapter-codex-local";
 import {
   AGENTCORE_QUALIFIED_MODEL,
   CLAUDE_MANAGED_QUALIFIED_MODEL,

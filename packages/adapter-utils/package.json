@@ -1,35 +1,20 @@
 {
-  "name": "@paperclipai/adapter-utils",
+  "name": "@bostan/adapter-utils",
   "version": "0.3.1",
   "license": "MIT",
-  "homepage": "https://github.com/paperclipai/paperclip",
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
   "bugs": {
-    "url": "https://github.com/paperclipai/paperclip/issues"
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/paperclipai/paperclip",
+    "url": "https://github.com/TheHalfMoon/Bostan",
     "directory": "packages/adapter-utils"
   },
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./*": "./src/*.ts"
-  },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js"
-      },
-      "./*": {
-        "types": "./dist/*.d.ts",
-        "import": "./dist/*.js"
-      }
-    },
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts"
+    ".": { "bostan-compiled": "./dist/index.js", "default": "./src/index.ts" },
+    "./*": { "bostan-compiled": "./dist/*.js", "default": "./src/*.ts" }
   },
   "files": [
     "dist"
@@ -40,10 +25,12 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepack": "node ../../scripts/bostan-release-disabled.mjs",
+    "prepublishOnly": "node ../../scripts/bostan-release-disabled.mjs"
   },
   "dependencies": {
-    "@paperclipai/shared": "workspace:*",
+    "@bostan/shared": "workspace:*",
     "acpx": "0.12.0",
     "picocolors": "^1.1.1",
     "smol-toml": "^1.9.1"
@@ -55,5 +42,6 @@
   },
   "engines": {
     "node": ">=24.11.0"
-  }
+  },
+  "private": true
 }

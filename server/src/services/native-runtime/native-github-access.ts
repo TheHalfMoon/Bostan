@@ -6,8 +6,8 @@ import {
   githubOperationLauncherDirectory,
   prepareGitHubOperationLaunchers,
   startAdapterExecutionTargetPaperclipBridge,
-} from "@paperclipai/adapter-utils/execution-target";
-import { githubBrokerEnvironment } from "@paperclipai/adapter-utils/github-launcher";
+} from "@bostan/adapter-utils/execution-target";
+import { githubBrokerEnvironment } from "@bostan/adapter-utils/github-launcher";
 
 type Binding = { companyId: string; agentId: string; issueId: string; runId: string };
 type LauncherInput = Parameters<typeof prepareGitHubOperationLaunchers>[0];

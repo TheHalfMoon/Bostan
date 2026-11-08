@@ -458,16 +458,28 @@ impl VerifiedProcessLaunch {
         &self,
         environment: &std::collections::BTreeMap<String, String>,
     ) -> Result<Child, LocalRunnerError> {
-        let inherited = self.inherited_command()?;
-        Command::new(&inherited.program)
-            .args(&inherited.args)
-            .env_clear()
-            .envs(environment)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
-            .spawn()
-            .map_err(|_| LocalRunnerError::invalid("failed to spawn verified stdio MCP server"))
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        {
+            let inherited = self.inherited_command()?;
+            Command::new(&inherited.program)
+                .args(&inherited.args)
+                .env_clear()
+                .envs(environment)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::inherit())
+                .spawn()
+                .map_err(|_| LocalRunnerError::invalid("failed to spawn verified stdio MCP server"))
+        }
+        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+        {
+            // No immutable process snapshot/inherited fd implementation exists
+            // here. Refuse before ever executing an unverified program path.
+            let _ = (self, environment);
+            Err(LocalRunnerError::invalid(
+                "verified stdio MCP launch is supported only on Linux and macOS",
+            ))
+        }
     }
 
     pub fn with_inherited_runtime_executable(mut self) -> Self {
@@ -1715,5 +1727,34 @@ mod tests {
         drop(inherited);
         assert!(!private_directory.exists());
         fs::remove_dir_all(directory).unwrap();
+    }
+}
+
+#[cfg(all(test, not(any(target_os = "linux", target_os = "macos"))))]
+mod unsupported_verified_stdio_tests {
+    use super::{VerifiedProcessArtifact, VerifiedProcessLaunch};
+    use std::collections::BTreeMap;
+    use std::fs::File;
+    use std::sync::Arc;
+
+    #[test]
+    fn missing_immutable_snapshot_support_refuses_stdio_before_spawn() {
+        // Construct an inert fixture without bypassing production snapshot
+        // admission or launching anything on the host operating system.
+        let path = std::env::current_exe().expect("test executable path");
+        let program = VerifiedProcessArtifact {
+            display_path: path.clone(),
+            file: Arc::new(File::open(&path).expect("open own test executable")),
+        };
+        let launch = VerifiedProcessLaunch::new(program, Vec::new());
+        let error = launch
+            .spawn_stdio(&BTreeMap::new())
+            .expect_err("unsupported OS must never spawn an unverified program");
+        assert!(
+            error
+                .to_string()
+                .contains("supported only on Linux and macOS"),
+            "must reject with the explicit platform boundary"
+        );
     }
 }

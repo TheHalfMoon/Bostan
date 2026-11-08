@@ -6,13 +6,13 @@ import {
   scheduleIssueDetailPaintMeasure,
   recordIssueDetailReadiness,
 } from "@/lib/issue-detail-performance";
-import { hasWorkspaceRestoreFailure } from "@paperclipai/shared";
+import { hasWorkspaceRestoreFailure } from "@bostan/shared";
 import { workspaceRestoreMarkerDetail } from "@/lib/workspace-restore-marker";
 import { credentialAccessNotice } from "@/lib/credential-access-notice";
-import type { ActivityEvent, IssueQueuedCommentQueue, TaskBrowser } from "@paperclipai/shared";
+import type { ActivityEvent, IssueQueuedCommentQueue, TaskBrowser } from "@bostan/shared";
 import { useProjectCreatedItems } from "@/hooks/useProjectCreatedItems";
 import { skillCreatedItems } from "@/components/task-chat/skill-created-items";
-import { requiresExecutionReconciliation } from "@paperclipai/shared";
+import { requiresExecutionReconciliation } from "@bostan/shared";
 import { TaskChatExpansionState } from "@/components/task-chat/expansion-state";
 import { TaskChatScrollReady, useTaskChatScrollNavigation } from "@/components/task-chat/scroll-navigation";
 import {
@@ -97,7 +97,7 @@ import type {
   FeedbackVoteValue,
   IssueDocument,
   IssueThreadInteraction,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   TaskChatThreadView,
   taskChatContentKey,

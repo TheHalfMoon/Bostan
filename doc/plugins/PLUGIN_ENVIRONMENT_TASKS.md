@@ -16,7 +16,7 @@ Implement `onEnvironmentTask` with the SDK types:
 import type {
   PluginEnvironmentTaskParams,
   PluginEnvironmentTaskResult,
-} from "@paperclipai/plugin-sdk";
+} from "@bostan/plugin-sdk";
 
 type TaskHook = (
   params: PluginEnvironmentTaskParams,

@@ -4,6 +4,7 @@ import path from "node:path";
 import postgres from "postgres";
 import { afterEach, describe, expect, it } from "vitest";
 import { inspectMigrations } from "./client.js";
+import { isEmbeddedPostgresTemplateCacheDisabled } from "./embedded-postgres-template-policy.js";
 import {
   __embeddedPostgresStartMaxAttemptsForTests as MAX_ATTEMPTS,
   __embeddedPostgresTemplateRootDirForTests as templateRootDir,
@@ -12,6 +13,7 @@ import {
   __resetEmbeddedPostgresTemplateStateForTests as resetTemplateState,
   __setEmbeddedPostgresCtorProviderForTests,
   __startEmbeddedPostgresWithRetryForTests as startWithRetry,
+  __stopEmbeddedPostgresBoundedForTests as stopBounded,
   computeEmbeddedPostgresTemplateKey,
   EMBEDDED_POSTGRES_TEST_TIMEOUT_MS,
   getEmbeddedPostgresTestSupport,
@@ -96,6 +98,33 @@ describe("startEmbeddedPostgresWithRetry", () => {
     fs.rmSync(started.dataDir, { recursive: true, force: true });
   });
 
+  it("retains a disposable cluster if a failed start cannot be stopped", async () => {
+    const ownedDirs: string[] = [];
+    class UnstoppableFake {
+      constructor(options: FakeOptions) {
+        ownedDirs.push(options.databaseDir);
+      }
+      async initialise(): Promise<void> {}
+      async start(): Promise<void> { throw new Error("synthetic startup failure"); }
+      async stop(): Promise<void> { throw new Error("synthetic unverified shutdown"); }
+    }
+    __setEmbeddedPostgresCtorProviderForTests(async () => UnstoppableFake);
+    try {
+      await expect(startWithRetry("bostan-stop-unverified-")).rejects.toThrow(
+        /unverified shutdown|stop unverified/i,
+      );
+      expect(ownedDirs).toHaveLength(1);
+      expect(fs.existsSync(ownedDirs[0]!)).toBe(true);
+    } finally {
+      // Only the exact scratch clusters produced by this fake are ours to reclaim.
+      for (const dir of ownedDirs) {
+        if (path.basename(dir).startsWith("bostan-stop-unverified-") && fs.existsSync(dir)) {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      }
+    }
+  });
+
   it("throws with the real Postgres output after the attempt bound", async () => {
     const { ctor, constructed } = makeFakeCtor(Number.POSITIVE_INFINITY);
     __setEmbeddedPostgresCtorProviderForTests(async () => ctor);
@@ -121,6 +150,63 @@ describe("startEmbeddedPostgresWithRetry", () => {
     // The thrown message carries the captured Postgres output, not only the
     // generic "embedded Postgres startup failed" text.
     expect((error as Error).message).toContain("Address already in use");
+  });
+});
+
+const posixTimeoutTest = process.platform === "win32" ? it.skip : it;
+
+describe("POSIX embedded PostgreSQL bounded stop", () => {
+  posixTimeoutTest("times out without claiming shutdown or cleaning a still-running cluster", async () => {
+    let finishStop!: () => void;
+    const pendingStop = new Promise<void>((resolve) => { finishStop = resolve; });
+    let cleans = 0;
+    const fake = { initialise: async () => {}, start: async () => {}, stop: () => pendingStop };
+
+    await expect(stopBounded(fake, () => { cleans += 1; }, 10))
+      .rejects.toThrow(/timeout/i);
+    expect(cleans).toBe(0);
+    finishStop();
+    await pendingStop;
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(cleans).toBe(1);
+  });
+
+  posixTimeoutTest("retains a fixture when native stop rejects after the timeout", async () => {
+    let failStop!: (error: Error) => void;
+    const pendingStop = new Promise<void>((_, reject) => { failStop = reject; });
+    let cleans = 0;
+    const fake = { initialise: async () => {}, start: async () => {}, stop: () => pendingStop };
+
+    await expect(stopBounded(fake, () => { cleans += 1; }, 10))
+      .rejects.toThrow(/timeout/i);
+    expect(cleans).toBe(0);
+    failStop(new Error("synthetic native stop failure"));
+    await pendingStop.catch(() => {});
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(cleans).toBe(0);
+  });
+});
+
+// A verified native stop is not proof that owned scratch reclamation worked.
+describe("POSIX stop cleanup ownership admission", () => {
+  posixTimeoutTest("reports a refused owned-scratch reclaim after native stop resolves", async () => {
+    const native = { initialise: async () => {}, start: async () => {}, stop: async () => {} };
+    const refusal = "Unverified PostgreSQL test scratch directory; retaining fixture";
+    let calls = 0;
+    await expect(stopBounded(native, () => {
+      calls += 1;
+      throw new Error(refusal);
+    }, 100)).rejects.toThrow(refusal);
+    expect(calls).toBe(1);
+  });
+
+  posixTimeoutTest("does not attempt scratch reclaim when native stop rejects", async () => {
+    const native = { initialise: async () => {}, start: async () => {},
+      stop: async () => { throw new Error("native shutdown rejected"); } };
+    let calls = 0;
+    await expect(stopBounded(native, () => { calls += 1; }, 100))
+      .rejects.toThrow(/stop unverified; retaining fixture/i);
+    expect(calls).toBe(0);
   });
 });
 
@@ -169,6 +255,7 @@ describe("computeEmbeddedPostgresTemplateKey", () => {
 });
 
 const describeOnPosix = process.platform === "win32" ? describe.skip : describe;
+const itWithTemplate = process.platform === "win32" ? it.skip : it;
 
 describe("isUsableTemplate", () => {
   let root: string;
@@ -208,6 +295,48 @@ describe("isUsableTemplate", () => {
     fs.symlinkSync(template, link, "dir");
     expect(isUsableTemplate(template)).toBe(true);
     expect(isUsableTemplate(link)).toBe(false);
+  });
+
+  it.skipIf(process.platform === "win32")("refuses PG_VERSION symlinks inside an otherwise private cache template", () => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "paperclip-template-usable-"));
+    const dir = path.join(root, "template");
+    writeCluster(dir);
+    const version = path.join(dir, "PG_VERSION");
+    const target = path.join(root, "external-version");
+    fs.renameSync(version, target);
+    fs.symlinkSync(target, version);
+    expect(fs.readFileSync(version, "utf8")).toMatch(/^18/);
+    expect(isUsableTemplate(dir)).toBe(false);
+  });
+
+  it("refuses multiply linked PG_VERSION before admitting a template", () => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "paperclip-template-usable-"));
+    const dir = path.join(root, "template");
+    writeCluster(dir);
+    const external = path.join(root, "shared-version");
+    fs.linkSync(path.join(dir, "PG_VERSION"), external);
+    expect(fs.lstatSync(path.join(dir, "PG_VERSION")).nlink).toBe(2);
+    expect(isUsableTemplate(dir)).toBe(false);
+    expect(fs.readFileSync(external, "utf8")).toMatch(/^18/);
+  });
+
+  it.skipIf(process.platform === "win32")("refuses a dangling postmaster.pid symlink rather than treating it as absent", () => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "paperclip-template-usable-"));
+    const dir = path.join(root, "template");
+    writeCluster(dir);
+    const marker = path.join(dir, "postmaster.pid");
+    fs.symlinkSync(path.join(root, "nonexistent-pid-target"), marker);
+    expect(fs.existsSync(marker)).toBe(false);
+    expect(fs.lstatSync(marker).isSymbolicLink()).toBe(true);
+    expect(isUsableTemplate(dir)).toBe(false);
+  });
+
+  it("refuses a postmaster.pid directory masquerading as a missing stopped-cluster marker", () => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "paperclip-template-usable-"));
+    const dir = path.join(root, "template");
+    writeCluster(dir);
+    fs.mkdirSync(path.join(dir, "postmaster.pid"));
+    expect(isUsableTemplate(dir)).toBe(false);
   });
 
   describeOnPosix("on POSIX", () => {
@@ -266,7 +395,7 @@ describeWithPostgres("startEmbeddedPostgresTestDatabase template path", () => {
     else process.env.PAPERCLIP_TEST_POSTGRES_TEMPLATE = originalTemplateSetting;
   });
 
-  it("publishes a complete template and starts suites from a copy of it", { timeout: EMBEDDED_POSTGRES_TEST_TIMEOUT_MS }, async () => {
+  itWithTemplate("publishes a complete template and starts suites from a copy of it", { timeout: EMBEDDED_POSTGRES_TEST_TIMEOUT_MS }, async () => {
     // This test covers the template path, so it enables the cache even when
     // the suite runs under PAPERCLIP_TEST_POSTGRES_TEMPLATE=0. The first
     // start then builds the template if the support probe did not.
@@ -317,7 +446,7 @@ describeWithPostgres("startEmbeddedPostgresTestDatabase template path", () => {
     }
   });
 
-  it("refreshes the template's timestamp on every reuse so idle time drives pruning", { timeout: EMBEDDED_POSTGRES_TEST_TIMEOUT_MS }, async () => {
+  itWithTemplate("refreshes the template's timestamp on every reuse so idle time drives pruning", { timeout: EMBEDDED_POSTGRES_TEST_TIMEOUT_MS }, async () => {
     delete process.env.PAPERCLIP_TEST_POSTGRES_TEMPLATE;
     // Make sure a template exists before ageing it: the support probe does
     // not publish one under PAPERCLIP_TEST_POSTGRES_TEMPLATE=0, and a name
@@ -343,7 +472,7 @@ describeWithPostgres("startEmbeddedPostgresTestDatabase template path", () => {
     expect(fs.statSync(templateDir).mtimeMs).toBeGreaterThan(Date.now() - 60 * 1000);
   });
 
-  it("rebuilds the template when it was pruned after this process resolved it", { timeout: EMBEDDED_POSTGRES_TEST_TIMEOUT_MS }, async () => {
+  itWithTemplate("rebuilds the template when it was pruned after this process resolved it", { timeout: EMBEDDED_POSTGRES_TEST_TIMEOUT_MS }, async () => {
     delete process.env.PAPERCLIP_TEST_POSTGRES_TEMPLATE;
     const scratch = useScratchTmpdir("paperclip-template-pruned-");
     try {
@@ -446,7 +575,7 @@ describeWithPostgres("startEmbeddedPostgresTestDatabase template path", () => {
   });
 });
 
-describe("support probe when the template cannot be built", () => {
+describeOnPosix("support probe when the template cannot be built", () => {
   afterEach(() => {
     __setEmbeddedPostgresCtorProviderForTests(null);
     resetTemplateState();

@@ -11,17 +11,17 @@ import {
 } from "./bootstrap-npm-package.mjs";
 
 test("parseArgs recognizes the publish flag", () => {
-  assert.deepEqual(parseArgs(["@paperclipai/adapter-kimi-local", "--publish"]), {
+  assert.deepEqual(parseArgs(["@bostan/adapter-kimi-local", "--publish"]), {
     help: false,
-    packageName: "@paperclipai/adapter-kimi-local",
+    packageName: "@bostan/adapter-kimi-local",
     publish: true,
   });
 });
 
 test("parseArgs defaults to a dry run", () => {
-  assert.deepEqual(parseArgs(["@paperclipai/adapter-kimi-local"]), {
+  assert.deepEqual(parseArgs(["@bostan/adapter-kimi-local"]), {
     help: false,
-    packageName: "@paperclipai/adapter-kimi-local",
+    packageName: "@bostan/adapter-kimi-local",
     publish: false,
   });
 });
@@ -35,9 +35,12 @@ test("parseArgs rejects unknown options", () => {
   assert.throws(() => parseArgs(["@paperclipai/a", "--otp", "123456"]), /unknown option/);
 });
 
-test("validatePackageName accepts @paperclipai scoped names", () => {
+test("legacy validation remains donor-scoped and cannot accidentally publish Bostan package names", () => {
+  // Pure compatibility helper; the executable entrypoint is denied in Bostan.
   validatePackageName("@paperclipai/adapter-kimi-local");
   validatePackageName("@paperclipai/plugin-workspace-diff");
+  assert.throws(() => validatePackageName("@bostan/adapter-kimi-local"), /@paperclipai scope/);
+  assert.throws(() => validatePackageName("@bostan/plugin-workspace-diff"), /@paperclipai scope/);
 });
 
 test("validatePackageName rejects names outside the @paperclipai scope", () => {
@@ -47,10 +50,10 @@ test("validatePackageName rejects names outside the @paperclipai scope", () => {
 });
 
 test("buildPlaceholderFiles produces a publishable manifest at the placeholder version", () => {
-  const files = buildPlaceholderFiles("@paperclipai/adapter-kimi-local");
+  const files = buildPlaceholderFiles("@bostan/adapter-kimi-local");
   const manifest = JSON.parse(files["package.json"]);
 
-  assert.equal(manifest.name, "@paperclipai/adapter-kimi-local");
+  assert.equal(manifest.name, "@bostan/adapter-kimi-local");
   assert.equal(manifest.version, PLACEHOLDER_VERSION);
   assert.equal(manifest.publishConfig.access, "public");
   assert.deepEqual(manifest.files, ["index.js"]);
@@ -58,7 +61,7 @@ test("buildPlaceholderFiles produces a publishable manifest at the placeholder v
 });
 
 test("buildPlaceholderFiles entry point throws with a pointer to the repo", () => {
-  const files = buildPlaceholderFiles("@paperclipai/adapter-kimi-local");
+  const files = buildPlaceholderFiles("@bostan/adapter-kimi-local");
 
   assert.match(files["index.js"], /^throw new Error\(/);
   assert.match(files["index.js"], /placeholder/);
@@ -69,7 +72,7 @@ test("buildPlaceholderFiles entry point throws with a pointer to the repo", () =
 });
 
 test("buildPlaceholderFiles README explains the placeholder", () => {
-  const files = buildPlaceholderFiles("@paperclipai/adapter-kimi-local");
+  const files = buildPlaceholderFiles("@bostan/adapter-kimi-local");
   assert.match(files["README.md"], /placeholder publish/);
   assert.match(files["README.md"], /release-bootstrap CI gate/);
 });

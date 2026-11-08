@@ -68,7 +68,7 @@ while it is enabled:
 ```json
 [
   {
-    "packageName": "@paperclipai/hermes-paperclip-adapter",
+    "packageName": "@bostan/adapter-hermes",
     "localPath": "/absolute/path/to/paperclip/packages/adapters/hermes",
     "type": "hermes_local",
     "installedAt": "2026-06-23T00:00:00.000Z"
@@ -146,11 +146,11 @@ with `POST /v1/runs/{run_id}/stop`.
 
 ### Compatibility with the old gateway package
 
-`@paperclipai/adapter-hermes-gateway` remains as a deprecated compatibility shim
+`@bostan/adapter-hermes-gateway` remains as a deprecated compatibility shim
 for one release. It re-exports the gateway entrypoints from
-`@paperclipai/hermes-paperclip-adapter/gateway` and preserves the legacy exports
+`@bostan/adapter-hermes/gateway` and preserves the legacy exports
 for existing plugin installs. New installs and built-in Paperclip registrations
-should use `@paperclipai/hermes-paperclip-adapter`; the adapter type remains
+should use `@bostan/adapter-hermes`; the adapter type remains
 `hermes_gateway`.
 
 ### Runtime API guidance
@@ -343,7 +343,7 @@ old user turns remain in history until Hermes compresses them or the session res
 Run the credential-free capture-process regression tests with:
 
 ```sh
-pnpm --filter @paperclipai/hermes-paperclip-adapter test -- src/server/execute.instructions.test.ts
+pnpm --filter @bostan/adapter-hermes test -- src/server/execute.instructions.test.ts
 ```
 
 These tests verify actual child-process arguments and environment, not provider

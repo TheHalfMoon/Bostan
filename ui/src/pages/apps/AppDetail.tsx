@@ -1,9 +1,9 @@
 import { AiConnectionPoolConnector } from "@/components/ai-connections/AiConnectionPoolConnector";
-import { aiConnectionRouterPluginKey } from "@paperclipai/shared";
+import { aiConnectionRouterPluginKey } from "@bostan/shared";
 import { ConnectionInstructionsSettings } from "@/features/connections/ConnectionInstructions";
 import { HonchoWorkspaceSettings } from "@/features/connections/HonchoWorkspaceSettings";
 import { BrowserUseSettingsPanel } from "./app-detail/BrowserUseSettingsPanel";
-import { isRetiredComposioConnection, RETIRED_COMPOSIO_MESSAGE, isRemoteMcpConnectorId, isRemoteMcpConnectorMethod } from "@paperclipai/shared";
+import { isRetiredComposioConnection, RETIRED_COMPOSIO_MESSAGE, isRemoteMcpConnectorId, isRemoteMcpConnectorMethod } from "@bostan/shared";
 import { RemoteMcpManagement } from "@/features/connections/remote-mcp/RemoteMcpManagement";
 import { remoteMcpProviders } from "@/features/connections/remote-mcp/providers";
 import { ManagedAiConnectionDetails } from "@/components/ai-connections/ManagedAiConnectionDetails";
@@ -17,18 +17,19 @@ import type {
   ToolConnection,
   ToolPolicy,
   ToolProfileWithDetails,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   connectionDisplaySecondaryHint,
   humanizeConnectionDisplayName,
   aiSubscriptionNeedsIsolatedLogin,
   isToolConnectionAttentionHealth as isAttentionHealthStatus,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { Navigate, useParams, useNavigate, useSearchParams } from "@/lib/router";
 import { useCompany } from "@/context/CompanyContext";
 import { useBreadcrumbs } from "@/context/BreadcrumbContext";
 import { useToast } from "@/context/ToastContext";
 import { queryKeys } from "@/lib/queryKeys";
+import { safeCredentialUiError } from "@/lib/credential-ui-error-privacy";
 import { consumeSkillSourceReturn } from "@/lib/skill-source-connect-return";
 import { toolsApi } from "@/api/tools";
 import { agentsApi } from "@/api/agents";
@@ -58,7 +59,7 @@ import { IdentitiesSection } from "./app-detail/IdentitiesSection";
 import { PermissionsPanel } from "./app-detail/PermissionsPanel";
 import { AgentConnectionAccess } from "./app-detail/AgentConnectionAccess";
 import { ConnectedAggregatorApps } from "./app-detail/ConnectedAggregatorApps";
-import { isAppAggregator } from "@paperclipai/shared/aggregator-apps";
+import { isAppAggregator } from "@bostan/shared/aggregator-apps";
 import { actionPermissionMutation } from "./app-detail/action-permissions";
 import { RailwayAccessPanel } from "./app-detail/RailwayAccessPanel";
 import { ReviewPanel } from "./app-detail/ReviewPanel";
@@ -80,7 +81,7 @@ export function AppDetail(props: { renderActions?: (connection: ToolConnection) 
   const { connectionId = "" } = useParams<{ connectionId: string }>();
   const connection = useQuery({ queryKey: queryKeys.tools.connection(connectionId), queryFn: () => toolsApi.getConnection(connectionId), enabled: !!connectionId });
   if (connection.isPending) return <p role="status">Loading connection…</p>;
-  if (connection.error) return <p role="alert">{connection.error.message}</p>;
+  if (connection.error) return <p role="alert">{safeCredentialUiError(connection.error, "appLoad")}</p>;
   const pluginKey = connection.data && aiConnectionRouterPluginKey(connection.data);
   return pluginKey ? <AiConnectionPoolConnector pluginKey={pluginKey} connection={connection.data} /> : <StandardAppDetail {...props} />;
 }
@@ -353,7 +354,7 @@ function StandardAppDetail({ renderActions, renderAgentSettings, renderConnectio
       } catch (error) {
         pushToast({
           title: "Couldn't start sign-in",
-          body: error instanceof Error ? error.message : "Please try again.",
+          body: safeCredentialUiError(error, "appReconnect"),
           tone: "error",
         });
       }
@@ -361,7 +362,7 @@ function StandardAppDetail({ renderActions, renderAgentSettings, renderConnectio
     onError: (error) =>
       pushToast({
         title: "Couldn't start sign-in",
-        body: error instanceof Error ? error.message : "Please try again.",
+        body: safeCredentialUiError(error, "appReconnect"),
         tone: "error",
       }),
   });
@@ -395,7 +396,7 @@ function StandardAppDetail({ renderActions, renderAgentSettings, renderConnectio
       } catch (error) {
         pushToast({
           title: "Couldn't start sign-in",
-          body: error instanceof Error ? error.message : "Please try again.",
+          body: safeCredentialUiError(error, "appReconnect"),
           tone: "error",
         });
       }
@@ -403,7 +404,7 @@ function StandardAppDetail({ renderActions, renderAgentSettings, renderConnectio
     onError: (error) =>
       pushToast({
         title: "Couldn't start sign-in",
-        body: error instanceof Error ? error.message : "Please try again.",
+        body: safeCredentialUiError(error, "appReconnect"),
         tone: "error",
       }),
   });
@@ -471,7 +472,7 @@ function StandardAppDetail({ renderActions, renderAgentSettings, renderConnectio
     },
     onError: (error) => pushToast({
       title: "Couldn't refresh GitHub access",
-      body: error instanceof Error ? error.message : "Please try again.",
+      body: safeCredentialUiError(error, "appReconnect"),
       tone: "error",
     }),
   });
@@ -593,7 +594,7 @@ function StandardAppDetail({ renderActions, renderAgentSettings, renderConnectio
 
       {status.tone === "attention" && connection.requiresReauthorization === false && (
         <div role="status">
-          <p>{connection.healthMessage || "GitHub access could not be checked. Try again."}</p>
+          <p>{safeCredentialUiError(connection.healthMessage, "appHealth")}</p>
           <Button variant="outline" disabled={refreshGitHubAccess.isPending} onClick={() => refreshGitHubAccess.mutate()}>
             Retry access
           </Button>
@@ -684,7 +685,7 @@ function StandardAppDetail({ renderActions, renderAgentSettings, renderConnectio
               {connection.config?.sourceTemplateKey === "composio" ? <p className="text-sm text-muted-foreground">
                 These permissions apply to all apps available through this Composio connection. Manage app accounts and sign-in in Composio.
               </p> : null}
-              {connection.config?.sourceTemplateKey !== "composio" && isRemoteMcpConnectorMethod(connection.config?.sourceTemplateKey, connection.config?.connectionMethodKey) && <p className="text-sm text-muted-foreground">Paperclip controls access to the tools listed here. App and action permissions inside these tools are managed in {baseAppName}.</p>}
+              {connection.config?.sourceTemplateKey !== "composio" && isRemoteMcpConnectorMethod(connection.config?.sourceTemplateKey, connection.config?.connectionMethodKey) && <p className="text-sm text-muted-foreground">Bostan controls access to the tools listed here. App and action permissions inside these tools are managed in {baseAppName}.</p>}
               <PermissionsPanel
                 afterAgentAccess={<>{logoEntry?.agentInstructions && <ConnectionInstructionsSettings key={connection.id} connection={connection} provider={logoEntry.name} template={logoEntry.agentInstructions} canConfigure={grantsQuery.data?.capabilities?.canConfigure ?? false} />}{renderAgentSettings?.(connection)}</>}
                 actions={actionsContent}

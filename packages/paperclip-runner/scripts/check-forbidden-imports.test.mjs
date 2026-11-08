@@ -121,7 +121,7 @@ async function fixtureBoundary(t, { manifest = {}, files = {} } = {}) {
   return checkForbiddenImports({ packageRoot: root, scanRoots: ["src"], cargoRoots: [] });
 }
 
-const kernel = "@paperclipai/paperclip-eval-kernel";
+const kernel = "@bostan/eval-kernel";
 const harness = "src/eval/workflow-harness.ts";
 const reviewedManifest = {
   exports: { "./evals": "./dist/evals.js" },
@@ -132,13 +132,13 @@ test("only exact declared public subpaths are admitted", async (t) => {
   const violations = await fixtureBoundary(t, {
     manifest: reviewedManifest,
     files: { "src/consumer.ts": [
-      'import "@paperclipai/paperclip-runner/evals";',
-      'import "@paperclipai/paperclip-runner/evals/private";',
-      'import "@paperclipai/paperclip-runner/undeclared";',
+      'import "@bostan/runner/evals";',
+      'import "@bostan/runner/evals/private";',
+      'import "@bostan/runner/undeclared";',
     ].join("\n") },
   });
   assert.deepEqual(violations.map(({ specifier }) => specifier), [
-    "@paperclipai/paperclip-runner/evals/private", "@paperclipai/paperclip-runner/undeclared",
+    "@bostan/runner/evals/private", "@bostan/runner/undeclared",
   ]);
 });
 
@@ -159,6 +159,22 @@ test("ADR0001 permits only the private development harness and reviewed package"
   assert.equal((await fixtureBoundary(t, {
     files: { [harness]: `import "${kernel}";` },
   })).length, 1, "the exception requires the reviewed devDependency declaration");
+});
+
+test("unreviewed Bostan packages are rejected in source and dependency manifests", async (t) => {
+  const owned = "@bostan/unreviewed-runtime";
+  const imports = await fixtureBoundary(t, {
+    manifest: reviewedManifest,
+    files: { "src/consumer.ts": `import "${owned}";` },
+  });
+  assert.equal(imports.length, 1);
+  assert.equal(imports[0].specifier, owned);
+  for (const group of ["dependencies", "optionalDependencies", "peerDependencies", "devDependencies"]) {
+    const failures = await fixtureBoundary(t, {
+      manifest: { ...reviewedManifest, [group]: { [owned]: "workspace:*" } },
+    });
+    assert.ok(failures.some((item) => item.specifier === owned), group);
+  }
 });
 
 test("the reviewed kernel is still forbidden in every production dependency group", async (t) => {

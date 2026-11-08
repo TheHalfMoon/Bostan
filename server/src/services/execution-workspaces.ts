@@ -19,7 +19,7 @@ import { executionWorkspaceRepositoryService, canonicalRepositoryRoot } from "./
 import { assertSelectedWorkspaceTrust, type TaskWorkspaceCreationTrustContext } from "./task-repository-acquisition.js";
 import { forbidden } from "../errors.js";
 import { retryIdempotentDatabaseOperation } from "../database-retry.js";
-import { taskWorkspaceSelectionSchema, type TaskWorkspaceSelection, type TaskWorkspaceIntent } from "@paperclipai/shared";
+import { taskWorkspaceSelectionSchema, type TaskWorkspaceSelection, type TaskWorkspaceIntent } from "@bostan/shared";
 import { authorizationService, executionWorkspaceReadSqlCondition, projectReadSqlCondition, issueReadSqlCondition, type AuthorizationActor } from "./authorization.js";
 import type { SQL } from "drizzle-orm";
 import { createWorkspaceGitInspectionCache } from "./workspace-git-inspection-cache.js";
@@ -38,7 +38,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { isDeepStrictEqual, promisify } from "node:util";
 import { and, asc, desc, eq, gt, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   executionWorkspaces,
   agents,
@@ -52,7 +52,7 @@ import {
   projects,
   projectWorkspaces,
   workspaceRuntimeServices,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ExecutionWorkspace,
   ExecutionWorkspaceDeliveryState,
@@ -70,8 +70,8 @@ import type {
   WorkspaceOverviewQuery,
   GitWorktreeBranchAncestryVerdict,
   IssueRecoveryAction,
-} from "@paperclipai/shared";
-import { deriveProjectUrlKey, WORKSPACE_OVERVIEW_LINKED_ISSUE_LIMIT } from "@paperclipai/shared";
+} from "@bostan/shared";
+import { deriveProjectUrlKey, WORKSPACE_OVERVIEW_LINKED_ISSUE_LIMIT } from "@bostan/shared";
 import { conflict, notFound, unprocessable } from "../errors.js";
 import { logger } from "../middleware/logger.js";
 import {

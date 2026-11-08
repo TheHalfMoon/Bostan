@@ -3,7 +3,11 @@ export type EmbeddedPostgresExitListener = (code: number | null, signal: NodeJS.
 export interface SupervisedEmbeddedPostgres {
   start(): Promise<void>;
   stop(): Promise<void>;
-  process?: { once(event: "exit", listener: EmbeddedPostgresExitListener): unknown };
+  process?: {
+    once(event: "exit", listener: EmbeddedPostgresExitListener): unknown;
+    exitCode?: number | null;
+    signalCode?: NodeJS.Signals | null;
+  };
 }
 
 export interface EmbeddedPostgresSupervisor {
@@ -33,6 +37,18 @@ export function createEmbeddedPostgresSupervisor(options: Options): EmbeddedPost
   let activeInstanceExited = false;
   let shuttingDown = false;
   let recoveryPromise: Promise<void> | null = null;
+  let shutdownPromise: Promise<void> | null = null;
+  let unverifiedReplacementStop: Error | null = null;
+
+  // Diagnostics are not native lifecycle authority. A throwing observer must
+  // never authorize a second PostgreSQL start after an unverified stop.
+  const reportRecoveryExhausted = (error: unknown) => {
+    try {
+      options.onRecoveryExhausted?.(error);
+    } catch {
+      // Preserve the actual native stop/recovery result.
+    }
+  };
 
   const recover = async () => {
     let lastError: unknown = new Error("Embedded PostgreSQL exited unexpectedly");
@@ -44,36 +60,114 @@ export function createEmbeddedPostgresSupervisor(options: Options): EmbeddedPost
       if (shuttingDown) return;
       try {
         await options.beforeRestart?.(attempt);
+        // Shutdown may begin while an asynchronous pre-restart hook runs.
+        // Never allocate another native PostgreSQL process after that point.
+        if (shuttingDown) return;
         const replacement = options.createInstance();
-        await replacement.start();
+        try {
+          await replacement.start();
+        } catch (startError) {
+          // A rejected start does not prove that the owned native process
+          // never launched. Verify its stop before starting another cluster.
+          try {
+            await replacement.stop();
+          } catch (stopError) {
+            const unsafe = new Error(
+              "Embedded PostgreSQL recovery replacement stop unverified after failed start",
+              { cause: stopError },
+            );
+            unverifiedReplacementStop = unsafe;
+            reportRecoveryExhausted(unsafe);
+            // Stop retries: another cluster could collide with a still-live
+            // failed replacement. Shutdown and waitForRecovery fail closed.
+            if (shuttingDown) throw unsafe;
+            return;
+          }
+          // Shutdown during the failed start waits for the owned stop above;
+          // the old instance already emitted exit, so there is no live owner
+          // left to stop and no reason to retry.
+          if (shuttingDown) return;
+          throw startError;
+        }
         if (shuttingDown) {
           await replacement.stop();
           return;
         }
+        // A resolved start is not proof that the replacement can be monitored:
+        // the native child may already have exited, or the library may have
+        // failed to expose/register its exit listener. Do not adopt it until
+        // monitoring is established; first stop this owned replacement on
+        // admission failure before any further recovery attempt.
+        try {
+          const child = replacement.process;
+          if (!child || typeof child.once !== "function") {
+            throw new Error("Embedded PostgreSQL recovery replacement has no exit monitor");
+          }
+          if (child.exitCode != null || child.signalCode != null) {
+            throw new Error("Embedded PostgreSQL recovery replacement exited before monitoring");
+          }
+          monitor(replacement);
+          if (child.exitCode != null || child.signalCode != null) {
+            throw new Error("Embedded PostgreSQL recovery replacement exited during monitor admission");
+          }
+        } catch (monitorError) {
+          try {
+            await replacement.stop();
+          } catch (stopError) {
+            const unsafe = new Error(
+              "Embedded PostgreSQL recovery replacement stop unverified after monitor admission failure",
+              { cause: stopError },
+            );
+            unverifiedReplacementStop = unsafe;
+            reportRecoveryExhausted(unsafe);
+            if (shuttingDown) throw unsafe;
+            return;
+          }
+          if (shuttingDown) return;
+          throw monitorError;
+        }
         activeInstance = replacement;
         activeInstanceExited = false;
-        monitor(replacement);
-        options.onRestarted?.(attempt);
+        // A diagnostic observer cannot turn an already-running replacement
+        // into a failed attempt: retrying would create a second live cluster.
+        try {
+          options.onRestarted?.(attempt);
+        } catch {
+          // The native recovery succeeded; observer errors are non-authoritative.
+        }
         return;
       } catch (error) {
+        // A shutdown waiting for recovery must not report successful teardown
+        // after a replacement failed to stop.
+        if (shuttingDown) throw error;
         lastError = error;
-        options.onRestartAttemptFailed?.(error, attempt);
+        try {
+          options.onRestartAttemptFailed?.(error, attempt);
+        } catch {
+          // A diagnostic failure cannot cancel a safe bounded retry.
+        }
       }
     }
-    if (!shuttingDown) options.onRecoveryExhausted?.(lastError);
+    if (!shuttingDown) reportRecoveryExhausted(lastError);
   };
 
   const monitor = (instance: SupervisedEmbeddedPostgres) => {
     const child = instance.process;
     if (!child) {
-      options.onRecoveryExhausted?.(new Error("Embedded PostgreSQL started without a child process to monitor"));
+      reportRecoveryExhausted(new Error("Embedded PostgreSQL started without a child process to monitor"));
       return;
     }
     child.once("exit", (code, signal) => {
       if (activeInstance !== instance) return;
       activeInstanceExited = true;
       if (shuttingDown) return;
-      options.onUnexpectedExit?.(code, signal);
+      // Schedule recovery even when an optional diagnostic observer throws.
+      // EventEmitter would otherwise propagate the exception before recovery.
+      try {
+        options.onUnexpectedExit?.(code, signal);
+      } catch {
+        // Native exit handling must not depend on observer success.
+      }
       recoveryPromise = recover().finally(() => { recoveryPromise = null; });
     });
   };
@@ -81,12 +175,21 @@ export function createEmbeddedPostgresSupervisor(options: Options): EmbeddedPost
   monitor(activeInstance);
   return {
     current: () => activeInstance,
-    waitForRecovery: async () => { await recoveryPromise; },
-    shutdown: async () => {
-      if (shuttingDown) return;
-      shuttingDown = true;
+    waitForRecovery: async () => {
       await recoveryPromise;
-      if (!activeInstanceExited) await activeInstance.stop();
+      if (unverifiedReplacementStop) throw unverifiedReplacementStop;
+    },
+    shutdown: () => {
+      if (shutdownPromise) return shutdownPromise;
+      shuttingDown = true;
+      // Share completion and native stop failures with every shutdown caller.
+      // An early "already shutting down" return is not proof of quiescence.
+      shutdownPromise = (async () => {
+        await recoveryPromise;
+        if (unverifiedReplacementStop) throw unverifiedReplacementStop;
+        if (!activeInstanceExited) await activeInstance.stop();
+      })();
+      return shutdownPromise;
     },
   };
 }

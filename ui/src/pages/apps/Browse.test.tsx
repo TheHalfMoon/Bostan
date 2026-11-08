@@ -5,10 +5,10 @@ import { createRoot } from "react-dom/client";
 import { focusManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Browse } from "./Browse";
-import { aiConnectionRouterAppDefinition, getAppStoreDefinition } from "@paperclipai/shared";
+import { aiConnectionRouterAppDefinition, getAppStoreDefinition } from "@bostan/shared";
 import { queryKeys } from "@/lib/queryKeys";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import type { AggregatorAppCatalogEntry } from "@paperclipai/shared/aggregator-app-catalog";
+import type { AggregatorAppCatalogEntry } from "@bostan/shared/aggregator-app-catalog";
 
 const aggregatorCatalogMock = vi.hoisted(() => [] as AggregatorAppCatalogEntry[]);
 const openNewIssueMock = vi.hoisted(() => vi.fn());
@@ -25,8 +25,8 @@ function genericResponse(value: { apps?: any[]; sync?: Record<string, unknown> }
       appName: snapshot.appName ?? snapshot.toolkit })) };
 }
 vi.mock("@/api/agents", () => ({ agentsApi: { list: (companyId: string) => listAgentsMock(companyId) } }));
-vi.mock("@paperclipai/shared/aggregator-app-catalog", async (importOriginal) => ({
-  ...await importOriginal<typeof import("@paperclipai/shared/aggregator-app-catalog")>(),
+vi.mock("@bostan/shared/aggregator-app-catalog", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@bostan/shared/aggregator-app-catalog")>(),
   AGGREGATOR_APP_CATALOG: aggregatorCatalogMock,
   findComposioCatalogApp: (toolkit: string) => aggregatorCatalogMock.find(app => app.aliases.includes(toolkit) || app.routes.some(route => route.provider === "composio" && route.toolkit === toolkit)),
 }));
@@ -408,16 +408,16 @@ describe("Connectors landing page", () => {
     return document.querySelector<HTMLElement>('[role="menu"]')!;
   }
 
-  it("defaults to Paperclip with five chips, expands search to All, and retains explicit source scope", async () => {
+  it("defaults to Bostan with five chips, expands search to All, and retains explicit source scope", async () => {
     aggregatorCatalogMock.push(indexedApp("Remote App", ["composio"]));
     await renderBrowse(false);
-    expect(container.querySelector('[aria-label="App filters"]')?.textContent).toBe("PaperclipComposioArcadeInstalledAll");
+    expect(container.querySelector('[aria-label="App filters"]')?.textContent).toBe("BostanComposioArcadeInstalledAll");
     expect(container.querySelector('[data-app-slug="remote-app"]')).toBeNull();
     await search("Remote App");
     expect(container.querySelector('[aria-checked="true"]')?.textContent).toBe("All");
     expect(container.querySelector('[data-app-slug="remote-app"]')).toBeTruthy();
     await search("");
-    expect(container.querySelector('[aria-checked="true"]')?.textContent).toBe("Paperclip");
+    expect(container.querySelector('[aria-checked="true"]')?.textContent).toBe("Bostan");
     await clickButton("Arcade", container);
     await search("Remote App");
     expect(container.querySelector('[aria-checked="true"]')?.textContent).toBe("Arcade");
@@ -1292,7 +1292,7 @@ describe("Connectors landing page", () => {
           id: "conn-expired",
           name: "ops@example.com",
           healthStatus: "error",
-          healthMessage: "The saved sign-in expired.",
+          healthMessage: "Bearer PRIVATE_BROWSE_CONNECTION_TOKEN",
         }),
       ],
     });
@@ -1325,7 +1325,8 @@ describe("Connectors landing page", () => {
     expect(notion.textContent).toContain("ops@example.com");
     expect(notion.textContent).not.toContain("Connected by");
     expect(notion.textContent).toContain("Dotta");
-    expect(notion.textContent).toContain("The saved sign-in expired.");
+    expect(notion.textContent).toContain("This app connection needs attention. Check its credentials or reconnect.");
+    expect(notion.textContent).not.toContain("PRIVATE_BROWSE_CONNECTION_TOKEN");
     expect(
       notion.querySelector('button[aria-label="Add account Notion"]'),
     ).toBeTruthy();
@@ -1509,7 +1510,7 @@ describe("Connectors landing page", () => {
     await flushReact();
     expect(chatSetupMock).not.toHaveBeenCalled();
     expect(emailControlMock).not.toHaveBeenCalled();
-    expect(document.body.textContent).toContain("Existing Paperclip tasks and conversation history remain available.");
+    expect(document.body.textContent).toContain("Existing Bostan tasks and conversation history remain available.");
     chatListMock.mockResolvedValue([]);
     await act(() => Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.trim() === "Remove connection")!.click());
     await flushReact();

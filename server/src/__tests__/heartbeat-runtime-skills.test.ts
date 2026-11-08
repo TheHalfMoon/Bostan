@@ -17,9 +17,9 @@ import {
   toolProfileBindings,
   toolProfileEntries,
   toolProfiles,
-} from "@paperclipai/db";
-import type { AdapterRuntimeMcpServer } from "@paperclipai/adapter-utils";
-import type { PaperclipSkillEntry } from "@paperclipai/adapter-utils/server-utils";
+} from "@bostan/db";
+import type { AdapterRuntimeMcpServer } from "@bostan/adapter-utils";
+import type { PaperclipSkillEntry } from "@bostan/adapter-utils/server-utils";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

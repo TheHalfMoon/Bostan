@@ -3,12 +3,13 @@ import { measureRunTransaction } from "./execution-transaction-timing.js";
 import { readNativeMonitorSource } from "./native-runtime/native-monitor-delivery.js";
 import { readNativeContinuationSource } from "./native-runtime/native-continuation-delivery.js";
 import { assertNoCaseHandoffMutation, cancelCaseHandoffsForIssue, completeTerminalCaseHandoffsForIssue } from "./heartbeat/case-handoff-lifecycle.js";
+import { assertBostanIssueCompletionHandoff } from "./bostan-issue-completion-gate.js";
 import { measureRunPhase } from "./execution-preparation-timing.js";
 import { automaticReadRecoveryCleanupCondition, directHumanCommentCondition, humanCreatedIssueCondition, pendingUserRequestCondition, touchedByUserCondition } from "./issue-participation.js";
 import { resolveProjectDefaultWorkspaceId } from "./project-default-workspace.js";
 import { type AuthorizationActor, executionWorkspaceReadSqlCondition, projectReadSqlCondition } from "./authorization.js";
 import { assertExecutionWorkspaceRecordAccess, assertTaskWorkspaceSourceProjectAccess } from "./task-workspace-access.js";
-import { type TaskWorkspaceSelection, type TaskWorkspaceIntent } from "@paperclipai/shared";
+import { type TaskWorkspaceSelection, type TaskWorkspaceIntent } from "@bostan/shared";
 import { executionWorkspaceService } from "./execution-workspaces.js";
 import { notifyChatPublicationWork } from "./chat-work-notifications.js";
 import { notifyTerminalWorkspaceWork } from "./terminal-workspace-work.js";
@@ -24,7 +25,7 @@ import { documentService } from "./documents.js";
 import { parseTaskSearch, taskSearchCtes, taskSearchScore } from "./task-search.js";
 import { createdFromIssueCondition } from "./issue-creation-origin.js";
 import { executionProjectionsForRuns } from "./execution-projection.js";
-import type { ExecutionProjection } from "@paperclipai/shared";
+import type { ExecutionProjection } from "@bostan/shared";
 import { Buffer } from "node:buffer";
 import { isDeepStrictEqual } from "node:util";
 import { createHash, randomUUID } from "node:crypto";
@@ -52,7 +53,7 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   activityLog,
   chatActions,
@@ -99,7 +100,7 @@ import {
   projects,
   toolConnections,
   workspaceOperations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   AcceptedPlanDecomposition,
   IssueComment,
@@ -116,7 +117,7 @@ import type {
   IssueWatchdogSummary,
   LowTrustBoundary,
   SuccessfulRunHandoffState,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   clampIssueRequestDepth,
   extractAgentMentionIds,
@@ -127,7 +128,7 @@ import {
   isAgentCreatedIssue,
   isUuidLike,
   normalizeIssueIdentifier as normalizeIssueReferenceIdentifier,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { conflict, HttpError, notFound, unprocessable } from "../errors.js";
 import { isForeignKeyViolation } from "../db-errors.js";
 import { logger } from "../middleware/logger.js";
@@ -11223,9 +11224,57 @@ export function issueService(db: Db) {
           });
           assertLegacyRunTaskOwnership(actorRun, receiptExisting);
         }
+        if (patch.status === "done" && receiptExisting.status !== "done") {
+          await assertBostanIssueCompletionHandoff(tx, { issue: receiptExisting });
+        }
         if (actorAgentId && patch.status === "done") {
           const [review] = await tx.select({ id: toolActionRequests.id }).from(toolActionRequests).where(and(eq(toolActionRequests.companyId, existing.companyId), eq(toolActionRequests.issueId, id), inArray(toolActionRequests.status, ["pending", "approved", "executing"]))).limit(1);
           if (review) throw conflict("This task is waiting for a connection review. Finish unrelated work, then yield in_review without retrying the governed call.", { code: "tool_review_pending", actionRequestId: review.id });
+          // Bostan B1: a worker cannot self-certify Done while a linked,
+          // company-scoped human approval is unresolved. Read and enforce this
+          // under the existing issue write transaction; a board actor can
+          // still give an explicit, authorized disposition.
+          const [pendingApproval] = await tx.select({ id: approvals.id })
+            .from(issueApprovals)
+            .innerJoin(approvals, and(
+              eq(approvals.id, issueApprovals.approvalId),
+              eq(approvals.companyId, receiptExisting.companyId),
+            ))
+            .where(and(
+              eq(issueApprovals.companyId, receiptExisting.companyId),
+              eq(issueApprovals.issueId, id),
+              inArray(approvals.status, ["pending", "revision_requested"]),
+            )).limit(1);
+          if (pendingApproval) {
+            throw conflict(
+              "This task has a pending approval or requested revision. Yield in_review and wait for an authorized decision instead of marking it done.",
+              { code: "task_approval_pending", approvalId: pendingApproval.id },
+            );
+          }
+          // Bostan B1: ordinary questions, stale confirmations, and drafts do
+          // not block Done. A *pending, same-company* interaction carrying an
+          // actual tool, secret, connection authorization or document verdict
+          // does. Non-AI connection enrollment itself is a governed action.
+          // Per-user AI login is not proof that this agent may access that
+          // account and must retain its distinct runtime/owner policy.
+          // Dismissing a permission request never grants that permission.
+          const [governedInteraction] = await tx.select({ id: issueThreadInteractions.id })
+            .from(issueThreadInteractions)
+            .where(and(
+              eq(issueThreadInteractions.companyId, receiptExisting.companyId),
+              eq(issueThreadInteractions.issueId, id),
+              eq(issueThreadInteractions.status, "pending"),
+              sql`(${issueThreadInteractions.payload} ?| array['toolAction', 'secretProposal', 'connectionAuthorization']
+                or coalesce(${issueThreadInteractions.payload}->'target'->>'type', '') = 'issue_document'
+                or (${issueThreadInteractions.kind} = 'connection_intent'
+                  and coalesce(${issueThreadInteractions.payload}->>'purpose', '') <> 'ai'))`,
+            )).limit(1);
+          if (governedInteraction) {
+            throw conflict(
+              "This task has a pending governed interaction. Await an authorized decision instead of marking it done.",
+              { code: "task_governed_interaction_pending", interactionId: governedInteraction.id },
+            );
+          }
         }
 
         const [previousLabelsByIssueId, previousRelationSummaries] = await Promise.all([

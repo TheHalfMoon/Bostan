@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
-import { decisionEffectTargetIssueIds, type Agent, type AttentionSubject } from "@paperclipai/shared";
+import { decisionEffectTargetIssueIds, type Agent, type AttentionSubject } from "@bostan/shared";
 import { decisionsApi, type DecisionOutcome } from "../api/decisions";
 import { issuesApi } from "../api/issues";
 import { queryKeys } from "../lib/queryKeys";
@@ -57,6 +57,15 @@ export function DecisionResolver({ companyId, decisionId, originIssue, agentMap,
     staleTime: 30_000,
   });
   const decision = detail.data;
+  const isBostanAdvice = decision?.ruleKey === "bostan.decision_recommendation.v1";
+  const adviceFreshness = useQuery({
+    queryKey: ["bostan-advice-freshness", decisionId],
+    queryFn: () => decisionsApi.freshness(decisionId),
+    enabled: isBostanAdvice && decision?.status === "open",
+    staleTime: 5_000,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
+  });
 
   // Shared across every open decision row → a single fetch carries `targetChanged`.
   const openList = useQuery({
@@ -135,6 +144,7 @@ export function DecisionResolver({ companyId, decisionId, originIssue, agentMap,
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.decisions.detail(decisionId) });
+    queryClient.invalidateQueries({ queryKey: ["bostan-advice-freshness", decisionId] });
     queryClient.invalidateQueries({ queryKey: queryKeys.decisions.list(companyId, "open") });
     queryClient.invalidateQueries({ queryKey: queryKeys.decisions.list(companyId, "decided") });
     queryClient.invalidateQueries({ queryKey: queryKeys.attention(companyId) });
@@ -146,8 +156,15 @@ export function DecisionResolver({ companyId, decisionId, originIssue, agentMap,
   };
 
   const decideMutation = useMutation({
-    mutationFn: (input: { optionId: string; inputValues: Record<string, string>; idempotencyKey?: string | null }) =>
-      decisionsApi.decide(decisionId, input),
+    mutationFn: async (input: { optionId: string; inputValues: Record<string, string>; idempotencyKey?: string | null }) => {
+      if (isBostanAdvice && !["defer", "request_evidence"].includes(input.optionId)) {
+        const current = await decisionsApi.freshness(decisionId);
+        if (!current.positiveChoiceAllowed) {
+          throw new Error("Evidence or budget has changed. Request an updated recommendation before approving.");
+        }
+      }
+      return decisionsApi.decide(decisionId, input);
+    },
     retry: 2,
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.decisions.detail(decisionId), data);
@@ -190,6 +207,8 @@ export function DecisionResolver({ companyId, decisionId, originIssue, agentMap,
       decision={decision}
       executions={decision.executions}
       targetChanged={targetChanged}
+      adviceFreshness={isBostanAdvice ? adviceFreshness.data ?? null : null}
+      adviceFreshnessPending={Boolean(isBostanAdvice && (adviceFreshness.isPending || adviceFreshness.isError))}
       resolveIssue={resolveIssue}
       cancelTreePreview={cancelTreePreview}
       originAgentName={agentMap?.get(decision.originAgentId)?.name ?? null}

@@ -27,7 +27,7 @@ import {
   issues,
   labels,
   projects,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

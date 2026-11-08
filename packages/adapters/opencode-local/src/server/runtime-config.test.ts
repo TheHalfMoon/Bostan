@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { OPENROUTER_ATTRIBUTION_HEADERS } from "@paperclipai/adapter-utils/openrouter-attribution";
+import { OPENROUTER_ATTRIBUTION_HEADERS } from "@bostan/adapter-utils/openrouter-attribution";
 import { prepareOpenCodeRuntimeConfig } from "./runtime-config.js";
 
 const cleanupPaths = new Set<string>();
@@ -344,5 +344,36 @@ describe("prepareOpenCodeRuntimeConfig", () => {
     expect(config.permission).toBeUndefined();
     expect(config.provider.openrouter.options.headers["HTTP-Referer"]).toBe("https://paperclip.ing");
     await prepared.cleanup();
+  });
+});
+
+describe("explicit Bostan OpenCode iteration budget", () => {
+  it("caps build steps in generated and inline config without raising existing lower limits", async () => {
+    const source = await makeConfigHome({ agent: { build: { steps: 7, temperature: 0.2 }, review: { steps: 9 } } });
+    const prepared = await prepareOpenCodeRuntimeConfig({
+      env: { XDG_CONFIG_HOME: source, OPENCODE_CONFIG_CONTENT: JSON.stringify({ agent: { build: { steps: 5, description: "From operator" } } }) },
+      config: { model: "opencode/deepseek-v4.1-flash-free", maxAgentSteps: 12 },
+    });
+    cleanupPaths.add(prepared.env.XDG_CONFIG_HOME);
+    const saved = JSON.parse(await fs.readFile(path.join(prepared.env.XDG_CONFIG_HOME, "opencode", "opencode.json"), "utf8"));
+    const inline = JSON.parse(prepared.env.OPENCODE_CONFIG_CONTENT);
+    expect(saved.agent.build).toMatchObject({ steps: 5, temperature: 0.2 });
+    expect(saved.agent.review).toEqual({ steps: 9 });
+    expect(inline.agent.build).toMatchObject({ steps: 5, description: "From operator" });
+    await prepared.cleanup();
+  });
+  it("sets a bound for a new legacy OpenCode build agent without inline overrides", async () => {
+    const source = await makeConfigHome();
+    const prepared = await prepareOpenCodeRuntimeConfig({ env: { XDG_CONFIG_HOME: source }, config: { maxAgentSteps: 8 } });
+    cleanupPaths.add(prepared.env.XDG_CONFIG_HOME);
+    const saved = JSON.parse(await fs.readFile(path.join(prepared.env.XDG_CONFIG_HOME, "opencode", "opencode.json"), "utf8"));
+    expect(saved.agent.build.steps).toBe(8);
+    await prepared.cleanup();
+  });
+  it.each([0, -1, 129, 2.5, "12", null, NaN, Infinity])("rejects invalid maxAgentSteps %s", async value => {
+    await expect(prepareOpenCodeRuntimeConfig({ env: {}, config: { maxAgentSteps: value } })).rejects.toThrow(/integer from 1 to 128/);
+  });
+  it("fails closed for remote targets where the local config is not shipped", async () => {
+    await expect(prepareOpenCodeRuntimeConfig({ env: {}, config: { maxAgentSteps: 5 }, targetIsRemote: true })).rejects.toThrow(/not yet enforced for remote/);
   });
 });

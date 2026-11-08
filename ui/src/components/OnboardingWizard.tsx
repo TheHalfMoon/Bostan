@@ -1,7 +1,7 @@
 import { COPILOT_MODEL_DISCOVERY_QUERY_OPTIONS } from "@/lib/copilot-task-model-catalog";
-import type { AgentRunner, AgentRunnerChoice } from "@paperclipai/shared";
+import type { AgentRunner, AgentRunnerChoice } from "@bostan/shared";
 import { needsClaudeSetupQualification, qualifyClaudeSetup } from "../lib/qualify-claude-setup";
-import { agentHarnessType } from "@paperclipai/shared";
+import { agentHarnessType } from "@bostan/shared";
 import { adaptersApi, type AdapterInfo } from "../api/adapters";
 import { AgentRunnerSelect } from "./AgentRunnerSelect";
 import { healthApi } from "@/api/health";
@@ -10,13 +10,13 @@ import { useLocalAiLogin } from "./ai-connections/useLocalAiLogin";
 import { aiConnectionsApi } from "@/api/ai-connections";
 import { AiConnectionField, aiProviderForAdapter } from "./ai-connections/AiConnectionField";
 import { useConnectionModelsState } from "./ai-connections/useConnectionModels";
-import { PAPERCLIP_RUNNER_ACPX_PROFILES } from "@paperclipai/adapter-utils";
-import { aiConnectionBindingSchema } from "@paperclipai/shared";
-import type { AiConnectionBinding } from "@paperclipai/shared";
+import { PAPERCLIP_RUNNER_ACPX_PROFILES } from "@bostan/adapter-utils";
+import { aiConnectionBindingSchema } from "@bostan/shared";
+import type { AiConnectionBinding } from "@bostan/shared";
 import { storeProviderApiKey } from "../lib/provider-credential";
 import { SavedProviderKeySelect, useSavedProviderKeys } from "./onboarding/SavedProviderKeySelect";
 import { OnboardingGatewaySetup } from "./onboarding/OnboardingGatewaySetup";
-import { randomAgentAppearance, resolveAgentAppearance, agentAppearanceSchema } from "@paperclipai/shared";
+import { randomAgentAppearance, resolveAgentAppearance, agentAppearanceSchema } from "@bostan/shared";
 import { OnboardingCharacter } from "./onboarding/OnboardingCharacter";
 import { useEffect, useState, useMemo, useRef } from "react";
 import type { ComponentType, CSSProperties } from "react";
@@ -29,8 +29,8 @@ import type {
   ClaudeOAuthTokenStatusResponse,
   Environment,
   InstanceSettings,
-} from "@paperclipai/shared";
-import { AGENT_ROLES, AGENT_ROLE_LABELS, ADAPTER_AUTH_MISSING_CHECK_CODE } from "@paperclipai/shared";
+} from "@bostan/shared";
+import { AGENT_ROLES, AGENT_ROLE_LABELS, ADAPTER_AUTH_MISSING_CHECK_CODE } from "@bostan/shared";
 import { AdapterLoginPanel, ModelDropdown } from "./AgentConfigForm";
 import {
   CONNECT_SOURCE_NAMES,
@@ -115,11 +115,13 @@ import {
   selectReusableOnboardingProject,
 } from "../lib/onboarding-launch";
 import { buildNewAgentRuntimeConfig } from "../lib/new-agent-runtime-config";
-import { DEFAULT_CODEX_LOCAL_BYPASS_APPROVALS_AND_SANDBOX } from "@paperclipai/adapter-codex-local";
-import { DEFAULT_CURSOR_LOCAL_MODEL } from "@paperclipai/adapter-cursor-local";
-import { DEFAULT_GEMINI_LOCAL_MODEL } from "@paperclipai/adapter-gemini-local";
-import { DEFAULT_KIMI_LOCAL_MODEL } from "@paperclipai/adapter-kimi-local";
-import { DEFAULT_OPENCODE_LOCAL_MODEL, isValidOpenCodeModelId } from "@paperclipai/adapter-opencode-local";
+import { canDeferModelConnection, isPersistedDeferredAgent, ONBOARDING_STORAGE_KEY } from "../lib/onboarding-defer";
+export { ONBOARDING_STORAGE_KEY } from "../lib/onboarding-defer";
+import { DEFAULT_CODEX_LOCAL_BYPASS_APPROVALS_AND_SANDBOX } from "@bostan/adapter-codex-local";
+import { DEFAULT_CURSOR_LOCAL_MODEL } from "@bostan/adapter-cursor-local";
+import { DEFAULT_GEMINI_LOCAL_MODEL } from "@bostan/adapter-gemini-local";
+import { DEFAULT_KIMI_LOCAL_MODEL } from "@bostan/adapter-kimi-local";
+import { DEFAULT_OPENCODE_LOCAL_MODEL, isValidOpenCodeModelId } from "@bostan/adapter-opencode-local";
 import {
   canGoBackFromOnboardingStep,
   canJumpToOnboardingStep,
@@ -291,8 +293,7 @@ function ModelSourceMark({
 
 // Exported so tests write/read the exact key the component uses, instead of
 // duplicating the literal and silently drifting from it if it's ever renamed.
-export const ONBOARDING_STORAGE_KEY = "paperclip-onboarding-state";
-const DEFAULT_TASK_TITLE = "Paperclip onboarding";
+const DEFAULT_TASK_TITLE = "Bostan onboarding";
 /**
  * The onboarding draft in `localStorage`, via a browser that is allowed to say
  * no.
@@ -1920,6 +1921,43 @@ function OnboardingWizardInner({
     return false;
   }
 
+  // No AI account or payment is required to explore Bostan. However, do not
+  // promote an unfinished setup into a hired agent or schedule a fake task.
+  // Only a server-confirmed, paused setup may leave the wizard.
+  async function handleDeferModelConnection() {
+    const companyId = createdCompanyId;
+    const pendingAgentId = setupAgentId;
+    if (step !== 4 || !canDeferModelConnection({
+      companyId, setupAgentId: pendingAgentId, setupPrepared, createdAgentId,
+      loading, hireInFlight: hiringAgentRef.current !== null,
+    }) || !companyId || !pendingAgentId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await setupSave.current;
+      const agents = await agentsApi.list(companyId);
+      const pending = agents.find((agent) => agent.id === pendingAgentId);
+      if (!isPersistedDeferredAgent(pending, companyId, pendingAgentId)) {
+        throw new Error("Could not verify the agent is safely paused. Retry saving the setup.");
+      }
+      if (!stillTheSameCompany(companyId)) return;
+      const prefix = createdCompanyPrefix;
+      // No hired agent, scheduled heartbeat, goal, task or issue is created.
+      setSelectedCompanyId(companyId, { source: "route_sync" });
+      // Retain the browser's non-secret draft and in-memory setup ID so
+      // the paused agent can resume from the Agents page. Never reset here.
+      closeOnboarding();
+      setRouteDismissed(true);
+      navigate(prefix ? `/${prefix}/agents` : "/agents");
+    } catch (cause) {
+      if (stillTheSameCompany(companyId)) {
+        setError(cause instanceof Error ? cause.message : "Could not save the paused agent setup.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleLaunchToDashboard() {
     if (!createdCompanyId || !createdAgentId) {
       setError(INCOMPLETE_ONBOARDING_STATE_MESSAGE);
@@ -2493,7 +2531,7 @@ function OnboardingWizardInner({
           setError(
             nativeCodexError || (result.status === "fail"
               ? cloudInstance
-                ? "Paperclip couldn't finish connecting this agent. Try connecting again."
+                ? "Bostan could not finish connecting this agent. Try connecting again."
                 : "The environment test failed. Fix the reported checks before you hire this agent."
               : "No working authentication was found. Fix the reported checks before you hire this agent."),
           );
@@ -2931,7 +2969,7 @@ function OnboardingWizardInner({
                       <p className="pt-2 text-base leading-relaxed text-muted-foreground">
                         <motion.span key={step} {...titleSwapMotion} className="inline-block">
                           {step === 4
-                            ? "Paperclip works with your subscription or API keys."
+                            ? "Bostan works with your existing subscription or API keys."
                             : `${agentName.trim() || "Your first agent"} is ready to work!`}
                         </motion.span>
                       </p>
@@ -3485,6 +3523,27 @@ function OnboardingWizardInner({
                   ready, and the pill above has just woken to show it — a
                   checklist restating those in three rows only asked the
                   customer to audit work they watched happen. */}
+
+              {/* Explore the workspace without connecting a paid provider.
+                  Setup remains paused and cannot run tasks or heartbeats. */}
+              {step === 4 && !createdAgentId && (
+                <div className="mt-4 text-center">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={!canDeferModelConnection({
+                      companyId: createdCompanyId, setupAgentId, setupPrepared, createdAgentId,
+                      loading, hireInFlight: hiringAgentRef.current !== null,
+                    })}
+                    onClick={() => void handleDeferModelConnection()}
+                  >
+                    Set up AI later
+                  </Button>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Explore Bostan without a model account. Your agent setup stays paused until you connect it.
+                  </p>
+                </div>
+              )}
 
               {/* Error */}
               {visibleError && (

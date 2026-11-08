@@ -1144,8 +1144,8 @@ Targeted type checks:
 
 ```sh
 pnpm --filter @paperclipai/shared typecheck
-pnpm --filter @paperclipai/server typecheck
-pnpm --filter @paperclipai/ui typecheck
+pnpm --filter @bostan/server typecheck
+pnpm --filter @bostan/ui typecheck
 ```
 
 If UI code changed, also run:

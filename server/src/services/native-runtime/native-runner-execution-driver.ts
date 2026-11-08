@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
-import type { AdapterExecutionTarget } from "@paperclipai/adapter-utils/execution-target";
-import { resolvePaperclipRunnerTransport, type PaperclipRunnerTransport } from "@paperclipai/adapter-utils/runner-connectivity";
+import type { AdapterExecutionTarget } from "@bostan/adapter-utils/execution-target";
+import { resolvePaperclipRunnerTransport, type PaperclipRunnerTransport } from "@bostan/adapter-utils/runner-connectivity";
 import type { RunnerExecutionDriver } from "../../vendor/paperclip-runner/index.js";
 import { registerRunnerPrpAuthority } from "../../realtime/runner-prp-ws.js";
 import { connectRunnerPrpIngress } from "../../realtime/runner-prp-outbound.js";

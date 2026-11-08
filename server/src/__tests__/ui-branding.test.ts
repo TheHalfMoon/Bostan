@@ -50,6 +50,7 @@ describe("ui branding", () => {
     );
     expect(links).toContain("data:image/svg+xml,");
     expect(links).toContain('rel="shortcut icon"');
+    expect(decodeURIComponent(links)).toContain(">B</text>");
   });
 
   it("renders runtime branding metadata for the ui", () => {
@@ -101,6 +102,8 @@ describe("ui branding", () => {
 
     const defaultHtml = applyUiBranding(TEMPLATE, {});
     expect(defaultHtml).toContain('href="/favicon.svg"');
+    expect(defaultHtml).not.toContain('favicon.ico');
+    expect(defaultHtml).not.toContain('favicon-32x32.png');
     expect(defaultHtml).not.toContain('name="paperclip-worktree-name"');
   });
 });

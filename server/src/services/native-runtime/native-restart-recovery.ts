@@ -8,7 +8,7 @@ import {
 } from "../native-local-process-stop.js";
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents,
   environmentLeases,
@@ -16,7 +16,7 @@ import {
   heartbeatRuns,
   issues,
   nativeRunFinalizations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { readProcessStartedAt } from "../hot-restart.js";
 import { getServerInfoSnapshot } from "../../server-info.js";
 import { redactSensitiveText } from "../../redaction.js";

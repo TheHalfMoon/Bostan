@@ -17,7 +17,7 @@ import {
   issues,
   issueWorkProducts,
   principalPermissionGrants,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

@@ -167,6 +167,7 @@ export function nativeInstructionVariant(read = (file: string) => readFileSync(j
 export function nativeInstructionDefinitionDigest() {
   return hash(nativeCompletionDefinitionDigest() + hash(readFileSync(new URL(import.meta.url)))
     + hash(readFileSync(join(root, "tests/runner-e2e/native-completion-git-source.mjs")))
+    + hash(readFileSync(join(root, "packages/paperclip-runner/scripts/native-completion-git-source.mjs")))
     + hash(readFileSync(join(root, "packages/paperclip-runner/src/backends/native-instruction-measurement.test.ts"))));
 }
 
@@ -250,7 +251,7 @@ export function validateNativeInstructionMeasurement(measurement: {
 export function prepareNativeInstructionPreflight(directory: string) {
   const source = sourceReceipt();
   const build = (script: string, file: string) => {
-    const log = execFileSync("pnpm", ["--filter", "@paperclipai/paperclip-runner", script], {
+    const log = execFileSync("pnpm", ["--filter", "@bostan/runner", script], {
       cwd: root, timeout: 10 * 60_000, env: nativeCompletionPreflightEnvironment(process.env), maxBuffer: 8 * 1024 * 1024,
     });
     writeFileSync(join(directory, file), log);

@@ -1,4 +1,4 @@
-import { JsonRpcCallError } from "@paperclipai/plugin-sdk";
+import { JsonRpcCallError } from "@bostan/plugin-sdk";
 import { collectRunFailureDiagnostics } from "../services/run-failure-diagnostics.js";
 import { idleWorkSnapshot } from "../services/task-admission.js";
 import { createHash, randomUUID } from "node:crypto";
@@ -12,7 +12,7 @@ import {
   getSshEnvLabSupport,
   startSshEnvLabFixture,
   stopSshEnvLabFixture,
-} from "@paperclipai/adapter-utils/ssh";
+} from "@bostan/adapter-utils/ssh";
 import {
   activityLog,
   costEvents,
@@ -29,7 +29,7 @@ import {
   issues,
   plugins,
   projects,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,
@@ -54,7 +54,7 @@ import {
   getActiveStepContext,
   runWithRuntimeParent,
   type StartupSpanContext,
-} from "@paperclipai/adapter-utils/acpx-engine/startup-timing";
+} from "@bostan/adapter-utils/acpx-engine/startup-timing";
 import { traceparentFromContextToken } from "../instrumentation.ts";
 import { ROOT_CONTEXT, trace } from "@opentelemetry/api";
 import { buildNativeHarnessBackupManifest } from "../services/native-runtime/native-session-executor.ts";
@@ -255,7 +255,7 @@ describeEmbeddedPostgres("environmentRuntimeService", () => {
     return db.insert(plugins).values({
       id: pluginId,
       pluginKey,
-      packageName: input.packageName ?? "@paperclipai/plugin-fake-sandbox",
+      packageName: input.packageName ?? "@bostan/plugin-fake-sandbox",
       version: "1.0.0",
       apiVersion: 1,
       categories: ["automation"],

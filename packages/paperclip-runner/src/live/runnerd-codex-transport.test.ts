@@ -1875,10 +1875,10 @@ it("derives the ACPX package authority only from the verified dist/cli layout", 
 
 it("uses the public server npm package as the authority for vendored sidecars", () => {
   expect(runnerdLaunchProfileInternals.acpxProviderPackageAuthority(
-    "/clean/node_modules/@paperclipai/server/dist/vendor/paperclip-runner/cli/acpx-runtime-sidecar.cjs",
+    "/clean/node_modules/@bostan/server/dist/vendor/paperclip-runner/cli/acpx-runtime-sidecar.cjs",
   )).toEqual({
-    root: "/clean/node_modules/@paperclipai/server",
-    manifest: "/clean/node_modules/@paperclipai/server/package.json",
+    root: "/clean/node_modules/@bostan/server",
+    manifest: "/clean/node_modules/@bostan/server/package.json",
   });
 });
 
@@ -1889,7 +1889,7 @@ it.each([false, true])("binds a vendored source server to its pnpm dependency ro
   await mkdir(join(server, "node_modules", ...(selfRooted ? [".pnpm"] : [])), { recursive: true });
   await writeFile(join(workspace, "package.json"), JSON.stringify({ name: "paperclip", private: true }));
   await writeFile(join(workspace, "pnpm-workspace.yaml"), "packages:\n  - server\n");
-  await writeFile(join(server, "package.json"), JSON.stringify({ name: "@paperclipai/server" }));
+  await writeFile(join(server, "package.json"), JSON.stringify({ name: "@bostan/server" }));
   try {
     expect(runnerdLaunchProfileInternals.acpxProviderPackageAuthority(
       join(server, "dist/vendor/paperclip-runner/cli/acpx-runtime-sidecar.cjs"),
@@ -1909,10 +1909,10 @@ it.each((["copilot", "pi"] as const).flatMap(agent =>
     const runnerRoot = layout === "source"
       ? join(directory, "packages/paperclip-runner")
       : layout === "scoped-npm"
-        ? join(directory, "node_modules/@paperclipai/paperclip-runner")
+        ? join(directory, "node_modules/@bostan/runner")
         : directory;
     await mkdir(join(runnerRoot, "dist/cli"), { recursive: true });
-    await writeFile(join(runnerRoot, "package.json"), JSON.stringify({ name: "@paperclipai/paperclip-runner" }));
+    await writeFile(join(runnerRoot, "package.json"), JSON.stringify({ name: "@bostan/runner" }));
     try {
       const authority = runnerdLaunchProfileInternals.acpxProviderPackageAuthority(
         join(runnerRoot, "dist/cli/acpx-runtime-sidecar.cjs"), runnerRoot, agent,

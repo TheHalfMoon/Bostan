@@ -96,12 +96,27 @@ describe("cli telemetry", () => {
     expect(fs.existsSync(path.join(root, "home", "instances", "telemetry-test", "telemetry", "state.json"))).toBe(false);
   });
 
+  it("does not create telemetry state even for inherited true without new Bostan consent", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-cli-telemetry-"));
+    const configPath = makeConfigPath(root, true);
+    process.env.PAPERCLIP_HOME = path.join(root, "home");
+    process.env.PAPERCLIP_INSTANCE_ID = "bostan-telemetry";
+    process.env.PAPERCLIP_TELEMETRY_ENDPOINT = "https://old.example.invalid/ingest";
+
+    const { initTelemetryFromConfigFile } = await import("../telemetry.js");
+    expect(initTelemetryFromConfigFile(configPath)).toBeNull();
+    expect(fs.existsSync(path.join(root, "home", "instances", "bostan-telemetry", "telemetry"))).toBe(false);
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
   it("creates telemetry state only after the first event is tracked", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "paperclip-cli-telemetry-"));
     process.env.PAPERCLIP_HOME = path.join(root, "home");
     process.env.PAPERCLIP_INSTANCE_ID = "telemetry-test";
 
     const { initTelemetry, flushTelemetry } = await import("../telemetry.js");
+    process.env.BOSTAN_TELEMETRY_OPT_IN = "1";
+    process.env.BOSTAN_TELEMETRY_ENDPOINT = "http://127.0.0.1:9999/ingest";
     const client = initTelemetry({ enabled: true });
     const statePath = path.join(root, "home", "instances", "telemetry-test", "telemetry", "state.json");
 

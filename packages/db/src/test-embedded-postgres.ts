@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
+import { stopOwnedWindowsEmbeddedPostgres } from "./windows-embedded-postgres-stop.js";
+import { isEmbeddedPostgresTemplateCacheDisabled } from "./embedded-postgres-template-policy.js";
+import { isSelfContainedPostgresTemplateTree } from "./embedded-postgres-template-tree.js";
+import { captureOwnedPostgresScratchReclaimer } from "./embedded-postgres-scratch-ownership.mjs";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -67,7 +72,31 @@ type EmbeddedPostgresCtorProvider = () => Promise<EmbeddedPostgresCtor>;
 async function loadEmbeddedPostgresCtor(): Promise<EmbeddedPostgresCtor> {
   const mod = await import("embedded-postgres");
   await prepareEmbeddedPostgresNativeRuntime();
-  return mod.default as EmbeddedPostgresCtor;
+  const ctor = mod.default as EmbeddedPostgresCtor;
+  if (process.platform !== "win32") return ctor;
+  // Resolve the native binary supplied by embedded-postgres, not system PG.
+  const require = createRequire(import.meta.url);
+  const embeddedRequire = createRequire(require.resolve("embedded-postgres"));
+  const nativeEntry = embeddedRequire.resolve("@embedded-postgres/windows-x64");
+  const native = await import(pathToFileURL(nativeEntry).href) as { postgres: string };
+  const pgCtl = path.join(path.dirname(native.postgres), "pg_ctl.exe");
+  if (!fs.existsSync(pgCtl)) throw Error("Pinned PostgreSQL pg_ctl missing");
+  // The pinned library does not await its Windows process-tree termination.
+  // Override stop ONLY in synthetic test instances to wait for graceful pg_ctl.
+  return class WindowsBostanTestPg extends ctor {
+    private readonly dbDir: string;
+    private stopping: Promise<void> | null = null;
+    constructor(options: ConstructorParameters<EmbeddedPostgresCtor>[0]) {
+      super(options);
+      this.dbDir = options.databaseDir;
+    }
+    override stop(): Promise<void> {
+      if (!this.stopping) {
+        this.stopping = stopOwnedWindowsEmbeddedPostgres(this.dbDir, pgCtl).then(() => {});
+      }
+      return this.stopping;
+    }
+  };
 }
 
 let embeddedPostgresCtorProvider: EmbeddedPostgresCtorProvider = loadEmbeddedPostgresCtor;
@@ -122,7 +151,34 @@ const EMBEDDED_POSTGRES_INITDB_FLAGS = ["--encoding=UTF8", "--locale=C", "--lc-m
 
 async function createEmbeddedPostgresTestInstance(tempDirPrefix: string) {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), tempDirPrefix));
-  return await createEmbeddedPostgresTestInstanceAt(dataDir);
+  const owned = fs.lstatSync(dataDir);
+  registerOwnedPostgresScratch(dataDir);
+  try {
+    return await createEmbeddedPostgresTestInstanceAt(dataDir);
+  } catch (error) {
+    // Port allocation or native constructor loading can fail before an
+    // embedded-postgres instance exists. Reclaim only this newly-created,
+    // still-identical scratch directory; never touch a replaced directory.
+    let current: fs.Stats;
+    try { current = fs.lstatSync(dataDir); } catch {
+      throw new Error("Fresh PostgreSQL scratch identity unavailable; retaining fixture", { cause: error });
+    }
+    if (!current.isDirectory() || current.isSymbolicLink() ||
+        current.dev !== owned.dev || current.ino !== owned.ino ||
+        current.birthtimeMs !== owned.birthtimeMs)
+      throw new Error("Fresh PostgreSQL scratch identity changed; retaining fixture", { cause: error });
+    // Directory identity alone does not grant authority over new contents:
+    // a different writer may have populated this scratch after mkdtemp.
+    // An atomic, nonrecursive rmdir succeeds only while truly empty.
+    // Retain the entire fixture on ENOTEMPTY, replacement or any OS error.
+    try {
+      fs.rmdirSync(dataDir);
+      ownedPostgresScratchReclaimers.delete(dataDir);
+    } catch {
+      throw new Error("Fresh PostgreSQL scratch not empty or unavailable; retaining fixture", { cause: error });
+    }
+    throw error;
+  }
 }
 
 // Wraps an embedded-postgres instance around `dataDir`. The caller decides
@@ -158,57 +214,93 @@ function databaseConnectionStringFor(port: number): string {
   return `postgres://${EMBEDDED_POSTGRES_USER}:${EMBEDDED_POSTGRES_PASSWORD}@127.0.0.1:${port}/paperclip`;
 }
 
-function cleanupEmbeddedPostgresTestDirs(dataDir: string) {
-  fs.rmSync(dataDir, { recursive: true, force: true });
+// Every data directory is independently created by mkdtemp in THIS process.
+// Do not allow a stale path to authorize deletion of a replacement directory.
+const ownedPostgresScratchReclaimers = new Map<string, () => void>();
+function registerOwnedPostgresScratch(dir: string): void {
+  if (ownedPostgresScratchReclaimers.has(dir))
+    throw Error("Duplicate PostgreSQL test scratch directory; retaining fixture");
+  ownedPostgresScratchReclaimers.set(dir, captureOwnedPostgresScratchReclaimer(dir));
+}
+function cleanupEmbeddedPostgresTestDirs(dataDir: string): void {
+  const reclaim = ownedPostgresScratchReclaimers.get(dataDir);
+  if (!reclaim)
+    throw Error("Untracked PostgreSQL test scratch directory; retaining fixture");
+  // Failed ownership verification retains the candidate and the tracking
+  // entry. Remove it only once the captured directory was reclaimed.
+  reclaim();
+  ownedPostgresScratchReclaimers.delete(dataDir);
 }
 
-// Upper bound (ms) on how long we wait for the embedded Postgres cluster to
-// stop gracefully before abandoning the wait and returning from the hook.
-const EMBEDDED_POSTGRES_STOP_TIMEOUT_MS = 5000;
+// Upper bound (ms) on how long we await a graceful POSIX PostgreSQL stop
+// before reporting an unverified shutdown and retaining the active fixture.
+// 5s produced spurious "stop timeout" failures on loaded 2-core CI runners
+// (shutdown checkpoint); 20s stays well inside vitest's 30s hookTimeout.
+const EMBEDDED_POSTGRES_STOP_TIMEOUT_MS = 20_000;
 
 // `embedded-postgres@18.1.0-beta.16` exposes only `stop(): Promise<void>` — no
 // shutdown-mode argument. Internally it SIGINTs the postgres process (already
 // PostgreSQL "fast shutdown") and resolves *only* on the child's `exit` event,
 // with no time bound of its own. Under the loaded serial server shard a slow
 // shutdown checkpoint can push that past vitest's hookTimeout and hang the
-// afterAll hook. So we bound the graceful stop: if it overruns, we stop waiting
-// and return so the hook completes. The SIGINT has already been delivered, so
-// the abandoned process still exits on its own (and again when the runner exits).
-// Errors are swallowed, matching prior behavior.
+// afterAll hook. If stop exceeds the bound we reject rather than falsely
+// reporting quiescence; the stop Promise still owns the deferred cleanup
+// callback and only runs it after native stop actually fulfills.
 //
 // `cleanupFn` (data-dir reclaim) is chained on the raw `stop()` promise, not on
 // the timeout race, so the disposable data dir is removed *only after* `stop()`
-// actually settles — i.e. once the child Postgres process has exited. Removing
+// fulfills — i.e. once the child Postgres process has exited. Removing
 // it on the timeout path would pull the data files out from under a still-running
 // cluster and provoke checkpoint / WAL I/O errors. In the fast path `cleanupFn`
-// has run by the time this resolves; in the timeout path it runs asynchronously
-// once the abandoned process finally exits.
+// has run by the time this resolves; on timeout this function rejects while
+// cleanup may run later only if the original stop fulfills.
 async function stopEmbeddedPostgresBounded(
   instance: EmbeddedPostgresInstance | null,
   cleanupFn?: () => void,
+  timeoutMs: number = EMBEDDED_POSTGRES_STOP_TIMEOUT_MS,
 ): Promise<void> {
   if (!instance) {
     cleanupFn?.();
     return;
   }
+  if (process.platform === "win32") {
+    // Do not claim cleanup or delete data when native Windows stop failed.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        instance.stop(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(Error("Windows Bostan PostgreSQL stop timeout")), 50_000);
+        }),
+      ]);
+      cleanupFn?.();
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+    return;
+  }
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const stopped = instance
-    .stop()
-    .catch(() => {
-      // Swallow shutdown errors — the data dir is reclaimed regardless.
-    })
-    .finally(() => {
-      try {
-        cleanupFn?.();
-      } catch {
-        // Best-effort reclaim; ignore removal errors.
-      }
-    });
+  const stopped = instance.stop().then(
+    () => {
+      // A verified native stop is not proof that scratch reclamation succeeded.
+      // Propagate identity/ownership refusal rather than reporting a clean
+      // teardown while an unverified test fixture remains on disk.
+      cleanupFn?.();
+    },
+    (error: unknown) => {
+      // A rejected stop is not proof that PostgreSQL and its workers exited.
+      // Retain the scratch cluster and fail the test instead of deleting live WAL.
+      throw new Error("Embedded PostgreSQL stop unverified; retaining fixture", { cause: error });
+    },
+  );
   try {
     await Promise.race([
       stopped,
-      new Promise<void>((resolve) => {
-        timer = setTimeout(resolve, EMBEDDED_POSTGRES_STOP_TIMEOUT_MS);
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("POSIX embedded PostgreSQL stop timeout; retaining fixture")),
+          timeoutMs,
+        );
         timer.unref?.();
       }),
     ]);
@@ -295,6 +387,8 @@ async function startEmbeddedPostgresWithRetry(tempDirPrefix: string): Promise<{
 // those checks reject it. Windows has no uid; its temp directory is already
 // per user, so the ownership and mode checks are skipped there.
 //
+// Windows bypasses the template cache until owned worker teardown is verified
+// (issue #234). It never touches existing cache entries in this mode.
 // Set PAPERCLIP_TEST_POSTGRES_TEMPLATE=0 to bypass the cache and run the fresh
 // path for every suite. Any failure on the template path (root checks, build,
 // copy, start, or publish) falls back to the fresh path, so a broken cache can
@@ -314,7 +408,13 @@ const TEMPLATE_BUILD_STOP_TIMEOUT_MS = 30_000;
 export type EmbeddedPostgresStartMode = "template" | "fresh";
 
 function isTemplateCacheDisabled(): boolean {
-  return process.env.PAPERCLIP_TEST_POSTGRES_TEMPLATE === "0";
+  // #234: Windows shutdown has not proved that all owned io_worker children exit.
+  // Do not publish, reuse or prune cached clusters until that proof exists.
+  // Existing cache directories are preserved without modification.
+  return isEmbeddedPostgresTemplateCacheDisabled(
+    process.platform,
+    process.env.PAPERCLIP_TEST_POSTGRES_TEMPLATE,
+  );
 }
 
 function migrationsDirectory(): string {
@@ -431,7 +531,25 @@ function prepareTemplateRootDir(): string | null {
 // template is never copied from a directory this user does not own.
 function isUsableTemplate(dir: string): boolean {
   if (describePrivateDirectoryProblem(dir) !== null) return false;
-  return fs.existsSync(path.join(dir, "PG_VERSION")) && !fs.existsSync(path.join(dir, "postmaster.pid"));
+  // existsSync follows symlinks: a linked PG_VERSION could copy external
+  // files, while a dangling postmaster.pid symlink looks like an absent PID
+  // marker. Neither proves a self-contained, stopped native cluster.
+  try {
+    const version = fs.lstatSync(path.join(dir, "PG_VERSION"));
+    if (!version.isFile() || version.isSymbolicLink() || version.nlink !== 1 ||
+        version.size < 1 || version.size > 32) return false;
+    try {
+      // Any object at this path, even a dangling symlink, is not proof that
+      // the postmaster exited. Never reuse or prune the uncertain template.
+      fs.lstatSync(path.join(dir, "postmaster.pid"));
+      return false;
+    } catch (error) {
+      return (error as NodeJS.ErrnoException).code === "ENOENT"
+        && isSelfContainedPostgresTemplateTree(dir);
+    }
+  } catch {
+    return false;
+  }
 }
 
 // Records a use of the template so `pruneStaleTemplates` measures idle time,
@@ -453,13 +571,32 @@ function warnTemplateOnce(topic: string, message: string): void {
   console.warn(`[embedded-postgres] ${message}`);
 }
 
-// Best-effort removal of templates for other keys that have not been used for
-// a week, plus abandoned build directories. Every reuse refreshes a template's
-// timestamp, so a template that any process resolved in the last week stays.
-// A suite never depends on the template after its copy is made, so pruning
-// can only affect a process that resolved the path and has not copied yet;
-// that process then rebuilds the template instead of failing. Never throws.
+// A private cache root is not evidence that every child belongs to Bostan.
+// Older versions could recursively delete arbitrary stale directories under
+// that root. Only templates stamped by a successful Bostan build may be
+// reclaimed; unmarked, malformed, live, linked, or foreign entries are retained.
+const TEMPLATE_OWNER_MARKER = ".bostan-template-owner";
+const templateOwnerMarkerContents = (key: string) => `bostan-test-template-v1:${key}\n`;
+
+function isOwnedStoppedTemplate(dir: string, key: string): boolean {
+  if (!/^[a-f0-9]{24}$/.test(key) || !isUsableTemplate(dir)) return false;
+  try {
+    const marker = path.join(dir, TEMPLATE_OWNER_MARKER);
+    const info = fs.lstatSync(marker);
+    if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1 ||
+        info.size > 80 ||
+        (process.getuid?.() !== undefined && (info.mode & 0o022) !== 0)) return false;
+    return fs.readFileSync(marker, "utf8") === templateOwnerMarkerContents(key);
+  } catch {
+    return false;
+  }
+}
+
+// Only marker-authenticated stopped templates may be reused or pruned.\n// Pre-marker cache entries are preserved but cannot prove native provenance.\n// Best-effort pruning of explicitly owned, stopped Bostan template clusters.
+// Never reclaim pre-marker templates, unknown directories or live clusters.
+// A separate process may race this sweep; retain on any failed revalidation.
 function pruneStaleTemplates(rootDir: string, keepDir: string): void {
+  if (describePrivateDirectoryProblem(rootDir) !== null) return;
   let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(rootDir, { withFileTypes: true });
@@ -471,10 +608,17 @@ function pruneStaleTemplates(rootDir: string, keepDir: string): void {
     const entryPath = path.join(rootDir, entry.name);
     if (entryPath === keepDir || !entry.isDirectory()) continue;
     try {
-      const age = now - fs.statSync(entryPath).mtimeMs;
-      if (age > TEMPLATE_PRUNE_AGE_MS) fs.rmSync(entryPath, { recursive: true, force: true });
+      const info = fs.lstatSync(entryPath);
+      if (!info.isDirectory() || info.isSymbolicLink() ||
+          now - info.mtimeMs <= TEMPLATE_PRUNE_AGE_MS ||
+          !isOwnedStoppedTemplate(entryPath, entry.name)) continue;
+      const current = fs.lstatSync(entryPath);
+      if (current.dev !== info.dev || current.ino !== info.ino ||
+          current.birthtimeMs !== info.birthtimeMs ||
+          !isOwnedStoppedTemplate(entryPath, entry.name)) continue;
+      fs.rmSync(entryPath, { recursive: true, force: true });
     } catch {
-      // Another process may be using or removing it; leave it alone.
+      // Ownership or identity became uncertain; retain the entry.
     }
   }
 }
@@ -511,14 +655,26 @@ async function buildEmbeddedPostgresTemplate(templateDir: string): Promise<boole
     await applyPendingMigrations(databaseConnectionStringFor(port));
     const stopped = await stopForTemplatePublish(instance);
     if (!stopped || !isUsableTemplate(dataDir)) return false;
+    // Stamp only a newly built, verified-stopped native cluster. Preexisting
+    // or foreign cache entries never gain deletion authority retroactively.
+    const templateKey = path.basename(templateDir);
+    if (!/^[a-f0-9]{24}$/.test(templateKey)) return false;
+    fs.writeFileSync(
+      path.join(dataDir, TEMPLATE_OWNER_MARKER),
+      templateOwnerMarkerContents(templateKey),
+      { flag: "wx", mode: 0o600 },
+    );
     try {
       fs.renameSync(dataDir, templateDir);
       published = true;
+      // This exact directory became the preserved published template; it
+      // must never be reclaimed using its former disposable dataDir path.
+      ownedPostgresScratchReclaimers.delete(dataDir);
     } catch (error) {
       // Another process published the same key first. Use theirs.
       const code = (error as NodeJS.ErrnoException).code;
       if (code === "EEXIST" || code === "ENOTEMPTY" || code === "EPERM") {
-        return isUsableTemplate(templateDir);
+        return isOwnedStoppedTemplate(templateDir, templateKey);
       }
       throw error;
     }
@@ -530,6 +686,9 @@ async function buildEmbeddedPostgresTemplate(templateDir: string): Promise<boole
     }
   }
 }
+
+// Test-only seam for synthetic, exclusively owned scratch fixtures.
+export const __pruneStaleTemplatesForTests = pruneStaleTemplates;
 
 let templateDirPromise: Promise<string | null> | null = null;
 
@@ -546,13 +705,13 @@ async function getEmbeddedPostgresTemplateDir(): Promise<string | null> {
       const rootDir = prepareTemplateRootDir();
       if (rootDir === null) return null;
       const templateDir = path.join(rootDir, computeEmbeddedPostgresTemplateKey());
-      if (isUsableTemplate(templateDir)) {
+      if (isOwnedStoppedTemplate(templateDir, path.basename(templateDir))) {
         touchTemplate(templateDir);
         return templateDir;
       }
       try {
         const built = await buildEmbeddedPostgresTemplate(templateDir);
-        return built && isUsableTemplate(templateDir) ? templateDir : null;
+        return built && isOwnedStoppedTemplate(templateDir, path.basename(templateDir)) ? templateDir : null;
       } catch (error) {
         warnTemplateOnce(
           "build",
@@ -583,14 +742,21 @@ async function startEmbeddedPostgresFromTemplateWithRetry(
   let lastError = new Error("embedded Postgres startup from template failed");
 
   for (let attempt = 1; attempt <= EMBEDDED_POSTGRES_START_MAX_ATTEMPTS; attempt += 1) {
-    if (!isUsableTemplate(templateDir)) {
+    if (!isOwnedStoppedTemplate(templateDir, path.basename(templateDir))) {
       throw new Error(`embedded Postgres template ${templateDir} is no longer usable`);
     }
     const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), tempDirPrefix));
+    registerOwnedPostgresScratch(rootDir);
     const dataDir = path.join(rootDir, "data");
     let created: Awaited<ReturnType<typeof createEmbeddedPostgresTestInstanceAt>> | null = null;
     try {
       fs.cpSync(templateDir, dataDir, { recursive: true });
+      // Re-inspect the *copy* before handing it to native PostgreSQL. A
+      // source tree can be replaced during fs.cpSync despite its preflight.
+      // Linked, foreign or unknown objects must never reach instance.start().
+      if (!isSelfContainedPostgresTemplateTree(dataDir)) {
+        throw new Error("Embedded PostgreSQL template copy is not self-contained");
+      }
       // Postgres refuses a data directory that is group or world accessible.
       fs.chmodSync(dataDir, 0o700);
       created = await createEmbeddedPostgresTestInstanceAt(dataDir);
@@ -619,6 +785,7 @@ let lastStartMode: EmbeddedPostgresStartMode | null = null;
 // or `getEmbeddedPostgresTestSupport`. A test drives the bounded retry directly
 // so it does not need a real Postgres connection.
 export const __startEmbeddedPostgresWithRetryForTests = startEmbeddedPostgresWithRetry;
+export const __stopEmbeddedPostgresBoundedForTests = stopEmbeddedPostgresBounded;
 export const __embeddedPostgresStartMaxAttemptsForTests = EMBEDDED_POSTGRES_START_MAX_ATTEMPTS;
 export const __embeddedPostgresTemplateRootDirForTests = templateRootDir;
 export const __isUsableEmbeddedPostgresTemplateForTests = isUsableTemplate;

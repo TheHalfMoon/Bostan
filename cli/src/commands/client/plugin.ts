@@ -5,7 +5,7 @@ import {
   scaffoldPluginProject,
   shellQuote,
   type ScaffoldPluginOptions,
-} from "../../../../packages/plugins/create-paperclip-plugin/src/index.js";
+} from "../../../../packages/plugins/create-bostan-plugin/src/index.js";
 import pc from "picocolors";
 import {
   addCommonClientOptions,
@@ -39,7 +39,7 @@ interface TargetHealth {
   deploymentExposure?: string;
 }
 
-/** Result of probing the Paperclip instance the CLI is about to talk to. */
+/** Result of probing the Bostan instance the CLI is about to talk to. */
 interface TargetDiagnostics {
   apiBase: string;
   reachable: boolean;
@@ -98,7 +98,7 @@ interface PluginCompanyOptions extends PluginJsonOptions {
 function requireCompanyId(ctx: { companyId?: string }): string {
   if (!ctx.companyId) {
     throw new Error(
-      "Company ID is required. Pass --company-id, set PAPERCLIP_COMPANY_ID, or set context profile companyId via `paperclipai context set`.",
+      "Company ID is required. Pass --company-id, set PAPERCLIP_COMPANY_ID, or set context profile companyId via `bostan context set`.",
     );
   }
   return ctx.companyId;
@@ -177,7 +177,7 @@ export function buildPluginInstallRequest(
 export function renderLocalPluginInstallHint(packagePath: string): string {
   return [
     pc.dim("Local plugin installs run trusted local code from your machine."),
-    pc.dim(`Keep ${pc.cyan("pnpm dev")} running in ${packagePath}; Paperclip watches rebuilt dist output and reloads the plugin worker.`),
+    pc.dim(`Keep ${pc.cyan("pnpm dev")} running in ${packagePath}; Bostan watches rebuilt dist output and reloads the plugin worker.`),
   ].join("\n");
 }
 
@@ -213,7 +213,7 @@ export async function probeTargetDiagnostics(
  * unit-tested without a live server.
  */
 export function formatTargetDiagnostics(diag: TargetDiagnostics): string {
-  const lines = [pc.dim(`Target Paperclip: ${pc.cyan(diag.apiBase)}`)];
+  const lines = [pc.dim(`Target Bostan: ${pc.cyan(diag.apiBase)}`)];
 
   if (!diag.reachable) {
     lines.push(pc.yellow(`  health: unreachable${diag.error ? ` (${diag.error.split("\n")[0]})` : ""}`));
@@ -292,7 +292,7 @@ export function buildPluginInitNextCommands(outputDir: string): string[] {
     `cd ${quotedOutputDir}`,
     "pnpm install",
     "pnpm dev",
-    `paperclipai plugin install ${quotedOutputDir}`,
+    `bostan plugin install ${quotedOutputDir}`,
   ];
 }
 
@@ -327,7 +327,7 @@ export function registerPluginCommands(program: Command): void {
   addCommonClientOptions(
     plugin
       .command("init <packageName>")
-      .description("Scaffold a local Paperclip plugin project")
+      .description("Scaffold a local Bostan plugin project")
       .option("--output <dir>", "Directory to create the plugin folder in")
       .addOption(
         new Option("--template <template>", "Starter template")
@@ -341,7 +341,7 @@ export function registerPluginCommands(program: Command): void {
       .option("--display-name <name>", "Manifest display name")
       .option("--description <description>", "Manifest description")
       .option("--author <author>", "Manifest author")
-      .option("--sdk-path <path>", "Local @paperclipai/plugin-sdk package path")
+      .option("--sdk-path <path>", "Local @bostan/plugin-sdk package path")
       .action((packageName: string, opts: PluginInitOptions) => {
         try {
           const result = runPluginInitCommand(packageName, opts);
@@ -401,15 +401,15 @@ export function registerPluginCommands(program: Command): void {
       .description(
         "Install a plugin from a local path or npm package.\n" +
           "  Examples:\n" +
-          "    paperclipai plugin install ./my-plugin              # local path\n" +
-          "    paperclipai plugin install @acme/plugin-linear      # npm package\n" +
-          "    paperclipai plugin install @acme/plugin-linear@1.2  # pinned version",
+          "    bostan plugin install ./my-plugin              # local path\n" +
+          "    bostan plugin install @acme/plugin-linear      # npm package\n" +
+          "    bostan plugin install @acme/plugin-linear@1.2  # pinned version",
       )
       .option("-l, --local", "Treat <package> as a local filesystem path", false)
       .option("--version <version>", "Specific npm version to install (npm packages only)")
       .option(
         "--no-verify-target",
-        "Skip the pre-install probe that reports which Paperclip instance the plugin installs into",
+        "Skip the pre-install probe that reports which Bostan instance the plugin installs into",
       )
       .action(async (packageArg: string, opts: PluginInstallOptions) => {
         try {
@@ -480,7 +480,7 @@ export function registerPluginCommands(program: Command): void {
     plugin
       .command("target")
       .description(
-        "Show which Paperclip instance plugin commands will talk to.\n" +
+        "Show which Bostan instance plugin commands will talk to.\n" +
           "  Reports the resolved API URL plus the server status/version/mode from\n" +
           "  GET /api/health so you can confirm you are installing into the branch\n" +
           "  runtime and not a stale control-plane host.",
@@ -667,7 +667,7 @@ export function registerPluginCommands(program: Command): void {
             console.log(
               `${pc.bold(ex.displayName)}  ${pc.dim(ex.pluginKey)}\n` +
                 `  ${ex.description}\n` +
-                `  ${pc.cyan(`paperclipai plugin install ${ex.localPath}`)}`,
+                `  ${pc.cyan(`bostan plugin install ${ex.localPath}`)}`,
             );
           }
         } catch (err) {

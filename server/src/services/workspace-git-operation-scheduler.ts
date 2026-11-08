@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
-import { setExpensiveWorkspaceGitExecutor } from "@paperclipai/adapter-utils/git-workspace-sync";
-import { runWorkspaceGitProcess } from "@paperclipai/adapter-utils/workspace-git-stream";
+import { setExpensiveWorkspaceGitExecutor } from "@bostan/adapter-utils/git-workspace-sync";
+import { runWorkspaceGitProcess } from "@bostan/adapter-utils/workspace-git-stream";
 import { HttpError } from "../errors.js";
 import { logger } from "../middleware/logger.js";
 

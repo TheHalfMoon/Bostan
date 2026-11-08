@@ -8,17 +8,17 @@ import {
   inArray,
 } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   chatConversations,
   chatEndpointResources,
   chatEndpoints,
   toolConnections,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ChatEndpointSetupState,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   type DiscordGatewayCallbackEvent,

@@ -1,60 +1,39 @@
 {
-  "name": "@paperclipai/adapter-codex-local",
+  "name": "@bostan/adapter-codex-local",
   "version": "0.3.1",
   "license": "MIT",
-  "homepage": "https://github.com/paperclipai/paperclip",
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
   "bugs": {
-    "url": "https://github.com/paperclipai/paperclip/issues"
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/paperclipai/paperclip",
+    "url": "https://github.com/TheHalfMoon/Bostan",
     "directory": "packages/adapters/codex-local"
   },
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./server": "./src/server/index.ts",
-    "./ui": "./src/ui/index.ts",
-    "./cli": "./src/cli/index.ts"
-  },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js"
-      },
-      "./server": {
-        "types": "./dist/server/index.d.ts",
-        "import": "./dist/server/index.js"
-      },
-      "./ui": {
-        "types": "./dist/ui/index.d.ts",
-        "import": "./dist/ui/index.js"
-      },
-      "./cli": {
-        "types": "./dist/cli/index.d.ts",
-        "import": "./dist/cli/index.js"
-      }
-    },
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts"
+    ".": { "bostan-compiled": "./dist/index.js", "default": "./src/index.ts" },
+    "./server": { "bostan-compiled": "./dist/server/index.js", "default": "./src/server/index.ts" },
+    "./ui": { "bostan-compiled": "./dist/ui/index.js", "default": "./src/ui/index.ts" },
+    "./cli": { "bostan-compiled": "./dist/cli/index.js", "default": "./src/cli/index.ts" }
   },
   "files": [
     "dist",
     "skills"
   ],
   "scripts": {
-    "build": "tsc && cp src/server/codex-auth-merge-decision.cjs src/server/codex-auth-merge-extract.sh dist/server/",
+    "build": "tsc && node scripts/copy-build-assets.mjs",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
-    "probe:quota": "pnpm exec tsx src/cli/quota-probe.ts --json"
+    "probe:quota": "pnpm exec tsx src/cli/quota-probe.ts --json",
+    "prepack": "node ../../../scripts/bostan-release-disabled.mjs",
+    "prepublishOnly": "node ../../../scripts/bostan-release-disabled.mjs"
   },
   "dependencies": {
     "@agentclientprotocol/codex-acp": "^1.6.2",
-    "@paperclipai/adapter-utils": "workspace:*",
-    "@paperclipai/shared": "workspace:*",
+    "@bostan/adapter-utils": "workspace:*",
+    "@bostan/shared": "workspace:*",
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
@@ -63,5 +42,7 @@
   },
   "engines": {
     "node": ">=24.11.0"
-  }
+  },
+  "private": true,
+  "keywords": []
 }

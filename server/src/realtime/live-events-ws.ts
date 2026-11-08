@@ -4,9 +4,9 @@ import type { IncomingMessage, Server as HttpServer } from "node:http";
 import { createRequire } from "node:module";
 import type { Duplex } from "node:stream";
 import { and, eq, isNull } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { agentApiKeys, companyMemberships, instanceUserRoles, heartbeatRuns, issues, projects } from "@paperclipai/db";
-import type { DeploymentMode, LiveEvent } from "@paperclipai/shared";
+import type { Db } from "@bostan/db";
+import { agentApiKeys, companyMemberships, instanceUserRoles, heartbeatRuns, issues, projects } from "@bostan/db";
+import type { DeploymentMode, LiveEvent } from "@bostan/shared";
 import type { BetterAuthSessionResult } from "../auth/better-auth.js";
 import { logger } from "../middleware/logger.js";
 import { activityToastIdentity } from "./activity-toast-identity.js";
@@ -417,7 +417,16 @@ export function setupLiveEventsWebSocketServer(
       return;
     }
 
-    const url = new URL(req.url, "http://localhost");
+    let url: URL;
+    try {
+      url = new URL(req.url, "http://localhost");
+    } catch {
+      // An invalid network-path reference must not throw from an upgrade
+      // listener and terminate the shared HTTP server process.
+      (req as IncomingMessageWithContext).paperclipWebSocketHandled = true;
+      rejectUpgrade(socket, "400 Bad Request", "invalid upgrade target");
+      return;
+    }
     const companyId = parseCompanyId(url.pathname);
     if (!companyId) {
       closeUpgradeSocket(socket);

@@ -5,7 +5,7 @@ import { fenceActiveCompanyAgentStopsInTransaction } from "./agent-lifecycle.js"
 import { publishAccountingActivities } from "./accounting-transaction.js";
 import { budgetServiceInTransaction, type BudgetServiceHooks } from "./budgets.js";
 import { and, count, eq, gte, inArray, isNull, lt, notInArray, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   companies,
   companyLogos,
@@ -15,7 +15,7 @@ import {
   issues,
   heartbeatRuns,
   costEvents,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { notFound, unprocessable } from "../errors.js";
 import { isCloudManagedInstance } from "./cloud-instance.js";
 import { notifyCloudOfPrimaryCompanyLifecycleChange } from "./cloud-lifecycle-sync.js";

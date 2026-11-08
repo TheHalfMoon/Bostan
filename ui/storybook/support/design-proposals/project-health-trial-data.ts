@@ -1,4 +1,4 @@
-import type { Issue, Project } from "@paperclipai/shared";
+import type { Issue, Project } from "@bostan/shared";
 import {
   createIssue,
   storybookAuthSession,

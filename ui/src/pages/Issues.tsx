@@ -20,7 +20,7 @@ import { IssuesList } from "../components/IssuesList";
 import { TaskViewsMenu } from "../components/TaskViewsMenu";
 import { Button } from "@/components/ui/button";
 import { CircleDot, Plus } from "lucide-react";
-import type { Issue } from "@paperclipai/shared";
+import type { Issue } from "@bostan/shared";
 import { useStreamlinedUiEnabled } from "../hooks/useStreamlinedUiEnabled";
 import { useCombinedInboxTasksEnabled } from "../hooks/useCombinedInboxTasksEnabled";
 import { useDialogActions } from "../context/DialogContext";

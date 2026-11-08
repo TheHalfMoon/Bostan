@@ -90,6 +90,149 @@ describe("boardMutationGuard", () => {
     expect([200, 204]).toContain(res.status);
   });
 
+  it("rejects an untrusted Origin even with a trusted Referer", async () => {
+    const app = createApp("board");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Origin", "https://attacker.example.invalid")
+      .set("Referer", "http://localhost:3100/issues/abc")
+      .send({ ok: true });
+    expect(res.status).toBe(403);
+  });
+
+  it.each(["null", "not a valid origin"])(
+    "rejects invalid or opaque Origin %s despite a trusted Referer",
+    async (origin) => {
+      const app = createApp("board");
+      const res = await request(app)
+        .post("/mutate")
+        .set("Origin", origin)
+        .set("Referer", "http://localhost:3100/issues/abc")
+        .send({ ok: true });
+      expect(res.status).toBe(403);
+    },
+  );
+
+  it("prefers valid Origin over an unrelated Referer", async () => {
+    const app = createApp("board");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Origin", "http://localhost:3100")
+      .set("Referer", "https://attacker.example.invalid/trap")
+      .send({ ok: true });
+    expect([200, 204]).toContain(res.status);
+  });
+
+  it.each([
+    "http://localhost:3100/private",
+    "http://localhost:3100/?next=/private",
+    "http://localhost:3100#private",
+    "http://user@localhost:3100",
+    "http://localhost:3100/",
+    "ftp://localhost:3100",
+    "http://localhost:80@localhost:3100",
+  ])("rejects noncanonical Origin %s even when Referer is trusted", async (badOrigin) => {
+    const app = createApp("board");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Origin", badOrigin)
+      .set("Referer", "http://localhost:3100/legitimate")
+      .send({ ok: true });
+    expect(res.status).toBe(403);
+  });
+
+  it("accepts a canonical mixed-case HTTPS Origin with a trusted Host", async () => {
+    // b2d88f90 requires the request scheme to match, so arrive over HTTPS
+    // through the trusted loopback proxy like the neighbouring cases.
+    const app = createApp("board");
+    app.set("trust proxy", "loopback");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Host", "private.example.invalid:42000")
+      .set("X-Forwarded-Proto", "https")
+      .set("Origin", "HTTPS://PRIVATE.EXAMPLE.INVALID:42000")
+      .set("Referer", "https://attacker.example.invalid/bait")
+      .send({ ok: true });
+    expect([200, 204]).toContain(res.status);
+  });
+
+  it("rejects the built-in localhost dev Origin for a remote Bostan Host", async () => {
+    const app = createApp("board");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Host", "private.example.invalid:42000")
+      .set("Origin", "http://localhost:3100")
+      .send({ ok: true });
+    expect(res.status).toBe(403);
+  });
+
+  it("keeps the localhost dev Origin available for a loopback Bostan Host", async () => {
+    const app = createApp("board");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Host", "127.0.0.1:42000")
+      .set("Origin", "http://localhost:3100")
+      .send({ ok: true });
+    expect(res.status).toBe(204);
+  });
+
+  it("rejects a localhost-like remote Host for dev Origin exemption", async () => {
+    const app = createApp("board");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Host", "localhost.attacker.example.invalid:42000")
+      .set("Origin", "http://localhost:3100")
+      .send({ ok: true });
+    expect(res.status).toBe(403);
+  });
+
+  it("uses the trusted forwarded Host, not local reverse-proxy Host, for dev origins", async () => {
+    const app = createApp("board");
+    app.set("trust proxy", "loopback");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Host", "127.0.0.1:42000")
+      .set("X-Forwarded-Host", "private.example.invalid:42000")
+      .set("X-Forwarded-Proto", "https")
+      .set("Origin", "http://localhost:3100")
+      .send({ ok: true });
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects HTTPS Origin on a direct HTTP request to the identical host", async () => {
+    const app = createApp("board");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Host", "private.example.invalid:42000")
+      .set("Origin", "https://private.example.invalid:42000")
+      .send({ ok: true });
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects HTTP Origin on a trusted-proxy HTTPS request to the identical host", async () => {
+    const app = createApp("board");
+    app.set("trust proxy", "loopback");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Host", "private.example.invalid:42000")
+      .set("X-Forwarded-Proto", "https")
+      .set("Origin", "http://private.example.invalid:42000")
+      .send({ ok: true });
+    expect(res.status).toBe(403);
+  });
+
+  it("allows HTTPS Origin on a trusted-proxy HTTPS request to the identical host", async () => {
+    const app = createApp("board");
+    app.set("trust proxy", "loopback");
+    const res = await request(app)
+      .post("/mutate")
+      .set("Host", "private.example.invalid:42000")
+      .set("X-Forwarded-Proto", "https")
+      .set("Origin", "https://private.example.invalid:42000")
+      .send({ ok: true });
+    expect(res.status).toBe(204);
+  });
+
   it("allows HTTPS branch-runtime mutations when forwarded MagicDNS host and non-standard port match", async () => {
     const app = createApp("board");
     app.set("trust proxy", "loopback");

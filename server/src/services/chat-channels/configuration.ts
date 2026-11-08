@@ -7,7 +7,7 @@ import { createGitHubAppSetup } from "./github/app-setup.js";
 
 import type { VerifiedProviderIdentity } from "./runtime-types.js";
 
-import { isProvisionedSlackSetup } from "@paperclipai/shared";
+import { isProvisionedSlackSetup } from "@bostan/shared";
 
 import { slackCallbackMatchesPublicUrl } from "./slack/callback-verification.js";
 
@@ -38,7 +38,7 @@ import {
   sql,
 } from "drizzle-orm";
 
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 
 import {
   chatConversations,
@@ -46,13 +46,13 @@ import {
   chatEndpoints,
   toolApplications,
   toolConnections,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   ChatEndpoint,
   ChatEndpointSetupState,
   ChatProvider,
   ConfigureChatEndpointInput,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 import {
   MAX_ATTACHMENT_BYTES,

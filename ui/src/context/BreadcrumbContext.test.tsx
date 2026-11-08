@@ -47,13 +47,13 @@ describe("BreadcrumbContext", () => {
     expect(renderCounts).toHaveLength(1);
 
     act(() => {
-      updateBreadcrumbs?.([{ label: "Issues", href: "/issues" }, { label: "PAP-1488" }]);
+      updateBreadcrumbs?.([{ label: "Issues", href: "/issues" }, { label: "BOS-1488" }]);
     });
 
     expect(renderCounts).toHaveLength(2);
 
     act(() => {
-      updateBreadcrumbs?.([{ label: "Issues", href: "/issues" }, { label: "PAP-1488" }]);
+      updateBreadcrumbs?.([{ label: "Issues", href: "/issues" }, { label: "BOS-1488" }]);
     });
 
     expect(renderCounts).toHaveLength(2);
@@ -83,40 +83,56 @@ describe("BreadcrumbContext", () => {
     expect(renderCounts).toHaveLength(1);
 
     act(() => {
-      updateBreadcrumbs?.([{ label: "First task prompt", identifier: "PAP-1204" }]);
+      updateBreadcrumbs?.([{ label: "First task prompt", identifier: "BOS-1204" }]);
     });
 
     expect(renderCounts).toHaveLength(2);
 
     // Same everything but a new identifier must produce a fresh render.
     act(() => {
-      updateBreadcrumbs?.([{ label: "First task prompt", identifier: "PAP-1205" }]);
+      updateBreadcrumbs?.([{ label: "First task prompt", identifier: "BOS-1205" }]);
     });
 
     expect(renderCounts).toHaveLength(3);
 
     // Identical identifier is a no-op.
     act(() => {
-      updateBreadcrumbs?.([{ label: "First task prompt", identifier: "PAP-1205" }]);
+      updateBreadcrumbs?.([{ label: "First task prompt", identifier: "BOS-1205" }]);
     });
 
     expect(renderCounts).toHaveLength(3);
   });
 
-  it("builds page titles with the selected company name before Paperclip", () => {
+  it("builds page titles with the selected company name before Bostan", () => {
     expect(buildDocumentTitle([{ label: "Inbox" }], "Anachronist Wiki")).toBe(
-      "Inbox • Anachronist Wiki • Paperclip",
+      "Inbox • Anachronist Wiki • Bostan",
     );
     expect(
       buildDocumentTitle(
-        [{ label: "Issues", href: "/issues" }, { label: "PAP-3515" }],
+        [{ label: "Issues", href: "/issues" }, { label: "BOS-3515" }],
         "Anachronist Wiki",
       ),
-    ).toBe("PAP-3515 • Issues • Anachronist Wiki • Paperclip");
+    ).toBe("BOS-3515 • Issues • Anachronist Wiki • Bostan");
   });
 
   it("omits blank company names from page titles", () => {
-    expect(buildDocumentTitle([{ label: "Inbox" }], "  ")).toBe("Inbox • Paperclip");
-    expect(buildDocumentTitle([], null)).toBe("Paperclip");
+    expect(buildDocumentTitle([{ label: "Inbox" }], "  ")).toBe("Inbox • Bostan");
+    expect(buildDocumentTitle([], null)).toBe("Bostan");
+  });
+
+  it("defaults to Bostan on a fresh onboarding page", () => {
+    expect(buildDocumentTitle([])).toBe("Bostan");
+  });
+
+  it("keeps Bostan as the suffix across workspace navigation", () => {
+    expect(buildDocumentTitle(
+      [{ label: "Projects" }, { label: "Issue" }], "  Bostan QA Lab  ",
+    )).toBe("Issue • Projects • Bostan QA Lab • Bostan");
+  });
+
+  it("does not inherit the previous product name as an application suffix", () => {
+    const title = buildDocumentTitle([{ label: "Settings" }]);
+    expect(title).toBe("Settings • Bostan");
+    expect(title).not.toMatch(/Paperclip/);
   });
 });

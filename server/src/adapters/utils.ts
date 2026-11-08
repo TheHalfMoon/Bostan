@@ -3,8 +3,8 @@
 // imports (process/, http/, heartbeat.ts) don't need rewriting.
 import type { ChildProcess } from "node:child_process";
 import { logger } from "../middleware/logger.js";
-import * as serverUtils from "@paperclipai/adapter-utils/server-utils";
-export type { RunProcessResult } from "@paperclipai/adapter-utils/server-utils";
+import * as serverUtils from "@bostan/adapter-utils/server-utils";
+export type { RunProcessResult } from "@bostan/adapter-utils/server-utils";
 
 type BuildInvocationEnvForLogsOptions = {
   runtimeEnv?: NodeJS.ProcessEnv | Record<string, string>;
@@ -75,7 +75,7 @@ export function buildInvocationEnvForLogs(
 }
 
 // Re-export runChildProcess with the server's pino logger wired in.
-import type { RunProcessResult } from "@paperclipai/adapter-utils/server-utils";
+import type { RunProcessResult } from "@bostan/adapter-utils/server-utils";
 const _runChildProcess = serverUtils.runChildProcess;
 
 export async function runChildProcess(
@@ -93,6 +93,9 @@ export async function runChildProcess(
 ): Promise<RunProcessResult> {
   return _runChildProcess(runId, command, args, {
     ...opts,
-    onLogError: (err, id, msg) => logger.warn({ err, runId: id }, msg),
+    // Adapter callbacks can throw arbitrary provider/user text containing
+    // credentials or private paths. Preserve the run correlation only.
+    onLogError: (_err, id, _msg) =>
+      logger.warn({ runId: id }, "process adapter child callback failed"),
   });
 }

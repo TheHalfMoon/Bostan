@@ -69,7 +69,7 @@ const SYSTEM_READ_PATHS = [
 const PROXY_ENV_KEYS = ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"] as const;
 const SANDBOX_PROXY_PORT = 31_337;
 const UNIX_SOCKET_PATH_MAX_BYTES = 107;
-const NETWORK_PROXY_TEMP_PREFIX = "paperclip-network-sandbox-";
+const NETWORK_PROXY_TEMP_PREFIX = "bostan-network-sandbox-";
 
 function normalizeAbsolutePath(candidate: string, label: string): string {
   const trimmed = candidate.trim();
@@ -81,6 +81,15 @@ function normalizeAbsolutePath(candidate: string, label: string): string {
 
 async function pathExists(candidate: string): Promise<boolean> {
   return fs.lstat(candidate).then(() => true).catch(() => false);
+}
+
+function isPathWithinRoot(root: string, candidate: string): boolean {
+  const relative = path.relative(root, candidate);
+  return relative === "" || (
+    relative !== ".." &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative)
+  );
 }
 
 function parentDirectories(candidate: string): string[] {
@@ -125,11 +134,36 @@ function parseNetworkAllowlistEntry(entry: string, index: number): NetworkAllowl
   let port: string | null;
   try {
     const parsed = new URL(trimmed.includes("://") ? trimmed : `https://${trimmed}`);
-    if (parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash) {
+    if ((parsed.protocol !== "http:" && parsed.protocol !== "https:")
+      || parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash) {
       throw new Error("path");
     }
     hostname = parsed.hostname.toLowerCase();
-    port = parsed.port || null;
+    // URL.port omits a scheme's default port (e.g. HTTPS :443, HTTP :80).
+    // A missing port means ANY port to the proxy, so inspect the authority's
+    // original bytes rather than widening an explicitly pinned port.
+    const rawAuthority = trimmed.includes("://")
+      ? trimmed.slice(trimmed.indexOf("://") + 3)
+      : trimmed;
+    // WHATWG URL normalizes dot-segments and backslashes, strips ASCII
+    // tabs/newlines, and can erase empty query/hash delimiters. Reject these
+    // raw bytes before they can hide a default port and grant any port.
+    if (/[\\?#\x00-\x20\x7f]/.test(rawAuthority)
+      || (rawAuthority.includes("/") && !/^[^/]+\/$/.test(rawAuthority))) {
+      throw new Error("noncanonical origin suffix");
+    }
+    const authority = rawAuthority.endsWith("/") ? rawAuthority.slice(0, -1) : rawAuthority;
+    if (authority.endsWith(":")) throw new Error("missing explicit port");
+    const explicitPort = /:(\d+)$/.exec(authority)?.[1];
+    if (explicitPort !== undefined) {
+      const numericPort = Number(explicitPort);
+      if (!Number.isInteger(numericPort) || numericPort < 1 || numericPort > 65535) {
+        throw new Error("port");
+      }
+      port = String(numericPort);
+    } else {
+      port = parsed.port || null;
+    }
   } catch {
     throw new Error(`networkAllowlist[${index}] must be a hostname, hostname:port, or origin URL.`);
   }
@@ -160,16 +194,33 @@ export function parseLocalProcessFilesystemScope(value: unknown): "workspace" | 
   throw new Error('filesystemScope must be "workspace".');
 }
 
+// CONNECT is untrusted proxy input. net.connect rejects ports outside the
+// valid TCP range synchronously; an exception inside the HTTP "connect"
+// callback can otherwise crash the entire process. Reject noncanonical
+// numbers (including 0 and leading zeros) before any network effect.
+export function isValidLocalProcessProxyConnectPort(value: string): boolean {
+  return /^[1-9][0-9]{0,4}$/.test(value) && Number(value) <= 65535;
+}
+
+function normalizeProxyNetworkHostname(hostname: string): string {
+  const lower = hostname.toLowerCase();
+  // WHATWG URL.hostname preserves brackets around IPv6 literals, while
+  // CONNECT authority parsing removes them. Compare both sides identically.
+  return lower.startsWith("[") && lower.endsWith("]") ? lower.slice(1, -1) : lower;
+}
+
 function isNetworkTargetAllowed(hostname: string, port: string, rules: NetworkAllowlistRule[]): boolean {
-  const normalizedHostname = hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  return rules.some((rule) => rule.hostname === normalizedHostname && (rule.port === null || rule.port === port));
+  const normalizedHostname = normalizeProxyNetworkHostname(hostname);
+  return rules.some((rule) =>
+    normalizeProxyNetworkHostname(rule.hostname) === normalizedHostname
+    && (rule.port === null || rule.port === port));
 }
 
 function assertUnixSocketPathLength(socketPath: string): void {
   const pathBytes = Buffer.byteLength(socketPath);
   if (pathBytes > UNIX_SOCKET_PATH_MAX_BYTES) {
     throw new Error(
-      `Paperclip sandbox proxy socket path is ${pathBytes} bytes, exceeding the Linux limit of ${UNIX_SOCKET_PATH_MAX_BYTES}: ${socketPath}`,
+      `Bostan sandbox proxy socket path is ${pathBytes} bytes, exceeding the Linux limit of ${UNIX_SOCKET_PATH_MAX_BYTES}: ${socketPath}`,
     );
   }
 }
@@ -191,7 +242,7 @@ async function createNetworkProxyTempDir(): Promise<string> {
       lastError = error;
     }
   }
-  throw new Error("Unable to create a Linux-safe Paperclip sandbox proxy socket directory.", { cause: lastError });
+  throw new Error("Unable to create a Linux-safe Bostan sandbox proxy socket directory.", { cause: lastError });
 }
 
 function parseTrustedNetworkUrl(value: string): NetworkAllowlistRule | null {
@@ -227,6 +278,41 @@ function connectProxyError(code: string, message: string): string {
   ].join("\r\n");
 }
 
+// RFC 9110: these fields describe a single transport hop. Connection may
+// nominate *additional* hop-local headers, including secrets provisioned by
+// a client or origin. Never copy any of them into the next HTTP hop.
+const HOP_BY_HOP_HEADER_NAMES = [
+  "connection",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "proxy-connection",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+] as const;
+
+export function filterLocalProcessProxyHopByHopHeaders(
+  incoming: http.IncomingHttpHeaders,
+): http.OutgoingHttpHeaders {
+  const forwarded: http.OutgoingHttpHeaders = { ...incoming };
+  for (const name of HOP_BY_HOP_HEADER_NAMES) delete forwarded[name];
+  for (const name of (incoming.connection ?? "").split(",")) {
+    const normalized = name.trim().toLowerCase();
+    if (normalized) delete forwarded[normalized];
+  }
+  return forwarded;
+}
+
+/** Keep origin authorization, never forward proxy credentials or hop fields. */
+export function buildLocalProcessProxyOriginHeaders(
+  incoming: http.IncomingHttpHeaders,
+  targetHost: string,
+): http.OutgoingHttpHeaders {
+  return { ...filterLocalProcessProxyHopByHopHeaders(incoming), host: targetHost };
+}
+
 async function startNetworkAllowlistProxy(
   allowlist: string[],
   trustedUrls: string[],
@@ -247,36 +333,55 @@ async function startNetworkAllowlistProxy(
     try {
       target = new URL(request.url ?? "");
     } catch {
-      writeProxyError(response, 400, "invalid_request_url", "Paperclip sandbox proxy requires an absolute request URL.");
+      writeProxyError(response, 400, "invalid_request_url", "Bostan sandbox proxy requires an absolute request URL.");
       return;
     }
     const port = target.port || (target.protocol === "https:" ? "443" : "80");
     if (target.protocol !== "http:") {
-      writeProxyError(response, 400, "https_requires_connect", "HTTPS targets must use CONNECT through the Paperclip sandbox proxy.");
+      writeProxyError(response, 400, "https_requires_connect", "HTTPS targets must use CONNECT through the Bostan sandbox proxy.");
       return;
     }
     if (!isNetworkTargetAllowed(target.hostname, port, rules)) {
-      writeProxyError(response, 403, "network_target_denied", "Network target denied by Paperclip sandbox policy.");
+      writeProxyError(response, 403, "network_target_denied", "Network target denied by Bostan sandbox policy.");
       return;
     }
     const upstream = http.request(target, {
       method: request.method,
-      headers: { ...request.headers, host: target.host },
+      headers: buildLocalProcessProxyOriginHeaders(request.headers, target.host),
     }, (upstreamResponse) => {
-      response.writeHead(upstreamResponse.statusCode ?? 502, upstreamResponse.headers);
+      response.writeHead(upstreamResponse.statusCode ?? 502, filterLocalProcessProxyHopByHopHeaders(upstreamResponse.headers));
+      // Once origin headers arrive, errors are emitted by IncomingMessage,
+      // not necessarily by the ClientRequest. A truncated HTTP response
+      // otherwise leaves the downstream client waiting for its remaining bytes.
+      upstreamResponse.on("error", () => response.destroy());
       upstreamResponse.pipe(response);
     });
     upstream.on("error", (error) => response.destroy(error));
+    // The agent can disconnect while an allowlisted HTTP origin remains idle.
+    // Abort the origin request rather than retaining a dangling TCP connection
+    // indefinitely after the downstream response is no longer deliverable.
+    response.once("close", () => {
+      if (!response.writableEnded) upstream.destroy();
+    });
+    // A client can also disconnect halfway through uploading the request body.
+    // 'close' after a fully received body is normal; never cancel for that.
+    request.once("close", () => {
+      if (!request.complete) upstream.destroy();
+    });
     request.pipe(upstream);
   });
   server.on("connect", (request, clientSocket, head) => {
     const separator = request.url?.lastIndexOf(":") ?? -1;
     const hostname = separator > 0 ? request.url!.slice(0, separator).replace(/^\[|\]$/g, "") : "";
     const port = separator > 0 ? request.url!.slice(separator + 1) : "443";
-    if (!hostname || !/^\d+$/.test(port) || !isNetworkTargetAllowed(hostname, port, rules)) {
+    if (!hostname || !isValidLocalProcessProxyConnectPort(port) || !isNetworkTargetAllowed(hostname, port, rules)) {
+      // A denied CONNECT is still an accepted socket. Peers that disconnect
+      // while the 403 is being written can emit ECONNRESET; without a client
+      // error listener this otherwise terminates the long-lived proxy.
+      clientSocket.on("error", () => clientSocket.destroy());
       clientSocket.end(connectProxyError(
         "network_target_denied",
-        "Network target denied by Paperclip sandbox policy.",
+        "Network target denied by Bostan sandbox policy.",
       ));
       return;
     }
@@ -287,6 +392,10 @@ async function startNetworkAllowlistProxy(
       clientSocket.pipe(upstream);
     });
     upstream.on("error", () => clientSocket.destroy());
+    // A tunneled client can send a TCP RST, e.g. after cancelling a request.
+    // Without an 'error' listener ECONNRESET is an uncaught EventEmitter
+    // exception and terminates the entire long-lived sandbox proxy.
+    clientSocket.on("error", () => upstream.destroy());
     clientSocket.on("close", () => upstream.destroy());
   });
   const sockets = new Set<net.Socket>();
@@ -309,30 +418,48 @@ async function startNetworkAllowlistProxy(
   };
 }
 
-async function createNetworkProxyBridge(): Promise<string> {
+// The source is executed within the Linux sandbox; an optional listen port
+// allows local regression tests to avoid competing for the production port.
+export async function createNetworkProxyBridge(listenPort = SANDBOX_PROXY_PORT): Promise<string> {
   const source = `
 const net = require("node:net");
 const { spawn } = require("node:child_process");
 const socketPath = process.argv[2];
 const executable = process.argv[3];
 const args = process.argv.slice(4);
+const sockets = new Set();
 const server = net.createServer((client) => {
   const upstream = net.connect(socketPath);
+  sockets.add(client);
+  sockets.add(upstream);
+  client.once("close", () => { sockets.delete(client); upstream.destroy(); });
+  upstream.once("close", () => { sockets.delete(upstream); client.destroy(); });
   client.pipe(upstream);
   upstream.pipe(client);
   const close = () => { client.destroy(); upstream.destroy(); };
   client.on("error", close);
   upstream.on("error", close);
 });
-server.listen(${SANDBOX_PROXY_PORT}, "127.0.0.1", () => {
+server.listen(${listenPort}, "127.0.0.1", () => {
   const child = spawn(executable, args, { stdio: "inherit", env: process.env });
   const forward = (signal) => { if (!child.killed) child.kill(signal); };
-  process.on("SIGTERM", () => forward("SIGTERM"));
-  process.on("SIGINT", () => forward("SIGINT"));
-  child.on("exit", (code, signal) => server.close(() => {
-    if (signal) process.kill(process.pid, signal);
-    else process.exit(code == null ? 1 : code);
-  }));
+  const forwardTerm = () => forward("SIGTERM");
+  const forwardInt = () => forward("SIGINT");
+  process.on("SIGTERM", forwardTerm);
+  process.on("SIGINT", forwardInt);
+  // Failed execs emit 'error' and may never emit 'exit'. 'close' always
+  // follows either path; ensure no unhandled process error or bridge hang.
+  child.on("error", (error) => { process.stderr.write("Bostan sandbox bridge spawn failed: " + error.message + "\\n"); });
+  child.once("close", (code, signal) => {
+    for (const socket of sockets) socket.destroy();
+    server.close(() => {
+      if (signal) {
+        process.off("SIGTERM", forwardTerm);
+        process.off("SIGINT", forwardInt);
+        process.kill(process.pid, signal);
+      } else process.exit(code == null || code < 0 ? 1 : code);
+    });
+  });
 });
 `;
   return source.trimStart();
@@ -353,27 +480,47 @@ export async function buildLocalProcessSandboxSpawnTarget(input: {
 
   const workspaceDir = normalizeAbsolutePath(input.options.workspaceDir, "Sandbox workspaceDir");
   const cwd = normalizeAbsolutePath(input.cwd, "Sandbox cwd");
+  let physicalWorkspace: string | null = null;
+  // Snapshot approved physical mount sources during policy validation.
+  // A mutable symlink spelling must never become a later bwrap host source.
+  const validatedWritableExtraSources = new Map<string, string>();
   if (filesystemScope === "workspace") {
-    const relativeCwd = path.relative(workspaceDir, cwd);
-    if (relativeCwd.startsWith("..") || path.isAbsolute(relativeCwd)) {
+    // Lexical path checks alone are insufficient: a symlink placed *inside*
+    // the workspace may resolve to files the sandbox was never authorized to
+    // mount. Resolve existing paths before issuing any bwrap --bind arguments.
+    physicalWorkspace = await fs.realpath(workspaceDir);
+    const physicalCwd = await fs.realpath(cwd);
+    if (!isPathWithinRoot(workspaceDir, cwd) || !isPathWithinRoot(physicalWorkspace, physicalCwd)) {
       throw new Error(`Sandbox cwd "${cwd}" must be inside workspaceDir "${workspaceDir}".`);
     }
     const outboundRestorePaths = (input.options.outboundRestorePaths ?? []).map((candidate, index) =>
       normalizeAbsolutePath(candidate, `Sandbox outboundRestorePaths[${index}]`));
+    const physicalRestorePaths = await Promise.all(outboundRestorePaths.map(async (candidate) =>
+      await fs.realpath(candidate).catch(() => null)));
     for (const [index, extraPath] of (input.options.extraPaths ?? []).entries()) {
       if (extraPath.access !== "rw") continue;
       const normalizedExtraPath = normalizeAbsolutePath(extraPath.path, `Sandbox extraPaths[${index}].path`);
-      const relativeToWorkspace = path.relative(workspaceDir, normalizedExtraPath);
-      const synchronized = !relativeToWorkspace.startsWith("..") && !path.isAbsolute(relativeToWorkspace);
-      const restored = outboundRestorePaths.some((restorePath) => {
-        const relative = path.relative(restorePath, normalizedExtraPath);
-        return !relative.startsWith("..") && !path.isAbsolute(relative);
-      });
-      if (!synchronized && !restored) {
+      const synchronized = isPathWithinRoot(workspaceDir, normalizedExtraPath);
+      const restored = outboundRestorePaths.some((restorePath) => isPathWithinRoot(restorePath, normalizedExtraPath));
+      // Preserve the existing behavior for unavailable optional paths: the
+      // mount() helper skips them. A dangling symlink still exists by lstat
+      // and must fail closed when realpath cannot resolve it.
+      let physicallyAllowed = true;
+      let physicalSource: string | null = null;
+      if (await pathExists(normalizedExtraPath)) {
+        const resolvedSource = await fs.realpath(normalizedExtraPath);
+        physicalSource = resolvedSource;
+        physicallyAllowed = isPathWithinRoot(physicalWorkspace, resolvedSource) ||
+          physicalRestorePaths.some((restorePath) => restorePath !== null && isPathWithinRoot(restorePath, resolvedSource));
+      }
+      if ((!synchronized && !restored) || !physicallyAllowed) {
         throw new Error(
           `Writable sandbox path "${normalizedExtraPath}" is outside synchronized workspace "${workspaceDir}" and has no outbound restore mapping.`,
         );
       }
+      // Retain only a source already admitted above. A formerly absent
+      // optional path appearing later in setup must not be mounted unchecked.
+      if (physicalSource !== null) validatedWritableExtraSources.set(normalizedExtraPath, physicalSource);
     }
   }
 
@@ -394,11 +541,11 @@ export async function buildLocalProcessSandboxSpawnTarget(input: {
     );
     const created = new Set<string>(["/", "/proc", "/dev", "/tmp"]);
     const mounted = new Set<string>();
-    const mount = async (source: string, access: LocalProcessSandboxAccess) => {
+    const mount = async (source: string, access: LocalProcessSandboxAccess, validatedSource?: string) => {
       const normalized = normalizeAbsolutePath(source, "Sandbox path");
       if (mounted.has(normalized) || !(await pathExists(normalized))) return;
       addParentDirectories(args, created, normalized);
-      args.push(access === "rw" ? "--bind" : "--ro-bind", normalized, normalized);
+      args.push(access === "rw" ? "--bind" : "--ro-bind", validatedSource ?? normalized, normalized);
       mounted.add(normalized);
       created.add(normalized);
     };
@@ -407,23 +554,52 @@ export async function buildLocalProcessSandboxSpawnTarget(input: {
     if (networkScope === "allowlist") {
       for (const nodePath of await executableReadPaths(process.execPath)) await mount(nodePath, "ro");
     }
-    for (const managedPath of input.options.managedPaths ?? []) await mount(managedPath.path, managedPath.access);
-    for (const extraPath of input.options.extraPaths ?? []) await mount(extraPath.path, extraPath.access);
-    await mount(workspaceDir, "rw");
+    for (const [index, managedPath] of (input.options.managedPaths ?? []).entries()) {
+      const normalized = normalizeAbsolutePath(managedPath.path, `Sandbox managedPaths[${index}].path`);
+      // Managed read-write and read-only paths can intentionally be outside
+      // the workspace. Pin their approved physical SOURCE before constructing
+      // bwrap argv; a mutable symlink must never redirect that host mount.
+      if (!(await pathExists(normalized))) continue;
+      const physicalSource = await fs.realpath(normalized);
+      await mount(normalized, managedPath.access, physicalSource);
+    }
+    for (const extraPath of input.options.extraPaths ?? []) {
+      if (extraPath.access === "rw") {
+        const normalized = normalizeAbsolutePath(extraPath.path, "Sandbox writable extra path");
+        const admittedSource = validatedWritableExtraSources.get(normalized);
+        if (!admittedSource) continue; // An optional path absent during validation.
+        await mount(extraPath.path, extraPath.access, admittedSource);
+      } else {
+        // Read-only extras may intentionally be outside the workspace, but
+        // their host SOURCE must not remain a mutable symlink after approval.
+        // Preserve optional missing-path behavior; fail closed on dangling links.
+        const normalized = normalizeAbsolutePath(extraPath.path, "Sandbox read-only extra path");
+        if (!(await pathExists(normalized))) continue;
+        const physicalSource = await fs.realpath(normalized);
+        await mount(extraPath.path, extraPath.access, physicalSource);
+      }
+    }
+    // The workspace itself may be a symlink; use the exact realpath already
+    // admitted above, not a mutable host link that could be retargeted before
+    // the bwrap command executes. Keep the in-sandbox destination unchanged.
+    await mount(workspaceDir, "rw", physicalWorkspace ?? undefined);
     for (const [index, alias] of (input.options.pathAliases ?? []).entries()) {
       const aliasPath = normalizeAbsolutePath(alias.path, `Sandbox pathAliases[${index}].path`);
       const aliasTarget = normalizeAbsolutePath(alias.target, `Sandbox pathAliases[${index}].target`);
-      const relativeTarget = path.relative(workspaceDir, aliasTarget);
-      if (relativeTarget.startsWith("..") || path.isAbsolute(relativeTarget)) {
+      if (!(await pathExists(aliasTarget))) {
+        throw new Error(`Sandbox path alias target "${aliasTarget}" does not exist.`);
+      }
+      const physicalAliasTarget = await fs.realpath(aliasTarget);
+      if (!physicalWorkspace || !isPathWithinRoot(workspaceDir, aliasTarget) ||
+          !isPathWithinRoot(physicalWorkspace, physicalAliasTarget)) {
         throw new Error(
           `Sandbox path alias "${aliasPath}" must target the synchronized workspace "${workspaceDir}".`,
         );
       }
-      if (!(await pathExists(aliasTarget))) {
-        throw new Error(`Sandbox path alias target "${aliasTarget}" does not exist.`);
-      }
       addParentDirectories(args, created, aliasPath);
-      args.push("--bind", aliasTarget, aliasPath);
+      // Use the physical target actually checked above, not a symlink that
+      // may be redirected between validation and the bwrap process spawn.
+      args.push("--bind", physicalAliasTarget, aliasPath);
       created.add(aliasPath);
     }
 

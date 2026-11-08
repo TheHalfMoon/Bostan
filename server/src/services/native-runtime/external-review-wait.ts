@@ -1,5 +1,5 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { chatConversations, chatEndpoints, heartbeatRuns, issues, statusDecisions, type Db } from "@paperclipai/db";
+import { chatConversations, chatEndpoints, heartbeatRuns, issues, statusDecisions, type Db } from "@bostan/db";
 import { authorizeChatConversationForBoundRun } from "./chat-attachment-reuse.js";
 
 export async function listExternalReviewWaits(db: Db, companyId: string, issueIds: string[]) {

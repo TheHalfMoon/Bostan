@@ -714,7 +714,7 @@ also creates agents.
 
 ### Catalog (app-shipped skills)
 
-The Paperclip app ships a curated catalog under `@paperclipai/skills-catalog`.
+The Paperclip app ships a curated catalog under `@bostan/skills-catalog`.
 Browse and inspect commands never mutate company state; `install` adds a catalog
 skill to the company library.
 
@@ -818,7 +818,7 @@ still enforced by the server in both cases.
 ## Teams Commands
 
 `paperclipai teams` works with the app-shipped team catalog in
-`@paperclipai/teams-catalog`. Browse, search, inspect, and file reads do not
+`@bostan/teams-catalog`. Browse, search, inspect, and file reads do not
 change company state. `preview` runs the company import planner, and `install`
 imports the catalog team into an existing company.
 

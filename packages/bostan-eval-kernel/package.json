@@ -1,0 +1,41 @@
+{
+  "name": "@bostan/eval-kernel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Private Bostan provider-neutral evaluation matrix kernel",
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm run build && node ../../scripts/ci-profile/node-test.mjs test/*.test.mjs",
+    "prepack": "node ../../scripts/bostan-release-disabled.mjs",
+    "prepublishOnly": "node ../../scripts/bostan-release-disabled.mjs"
+  },
+  "engines": {
+    "node": ">=24.11.0"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^7.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheHalfMoon/Bostan",
+    "directory": "packages/bostan-eval-kernel"
+  },
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
+  "bugs": {
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
+  }
+}

@@ -215,6 +215,7 @@ export {
   resolveTaskSessionConfigFreshness,
 } from "./heartbeat/workspaces.js";
 import { boundHeartbeatRunEventPayloadForStorage } from "./heartbeat/run-log.js";
+import { buildPreDispatchLeaseReleaseReceipt, type PreDispatchCheckpoint } from "./heartbeat/setup-phase-receipt.js";
 export {
   boundHeartbeatRunEventPayloadForStorage,
   compactRunLogChunk,
@@ -249,7 +250,7 @@ import {
   prepareConversationTurn,
   settleConversationTurn,
 } from "./agent-conversations.js";
-import { withAdapterExecutionPhase } from "@paperclipai/adapter-utils/execution-phase";
+import { withAdapterExecutionPhase } from "@bostan/adapter-utils/execution-phase";
 import {
   recordNativeLocalProcessStop,
 } from "./native-local-process-stop.js";
@@ -264,7 +265,7 @@ import {
   prepareManagedAiRuntime,
   assertManagedAiProjectAuth,
 } from "./ai-connection-runtime.js";
-import { aiConnectionBindingSchema, aiRuntimeConnectionBindingSchema, type AiConnectionRouterSelection } from "@paperclipai/shared";
+import { aiConnectionBindingSchema, aiRuntimeConnectionBindingSchema, type AiConnectionRouterSelection } from "@bostan/shared";
 import { aiConnectionRouterService, AiConnectionPoolExhausted, applyAiConnectionRouterTaskSettings } from "./ai-connection-router.js";
 import {
   getExecutionBlocker,
@@ -284,7 +285,7 @@ import { executionFailureRetryCount } from "./execution-recovery-attempt.js";
 import { buildHeartbeatRunStatusLiveEventPayload } from "./heartbeat-run-status-payload.js";
 export { buildHeartbeatRunStatusLiveEventPayload } from "./heartbeat-run-status-payload.js";
 import { StaleExecutionContinuationError } from "./execution-continuation.js";
-import { renderPaperclipWakePrompt } from "@paperclipai/adapter-utils/server-utils";
+import { renderPaperclipWakePrompt } from "@bostan/adapter-utils/server-utils";
 
 import {
   initializeRunIdentity,
@@ -297,7 +298,7 @@ import {
   cleanupGitHubOperationLaunchers,
   prepareGitHubExecutionEnvironment,
   startAdapterExecutionTargetPaperclipBridge,
-} from "@paperclipai/adapter-utils/execution-target";
+} from "@bostan/adapter-utils/execution-target";
 import { agentInstructionWorkingCopyService } from "./agent-instruction-working-copies.js";
 
 import fs from "node:fs/promises";
@@ -314,12 +315,12 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   CHAT_PROVIDERS,
   ISSUE_DISPOSITION_REPAIR_RETRY_REASON,
   isEnvironmentDriverSupportedForAdapter,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   agents,
   agentWakeupRequests,
@@ -331,7 +332,7 @@ import {
   nativeRunFinalizations,
   projects,
   projectWorkspaces,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { conflict, HttpError, notFound } from "../errors.js";
 
 import { logger } from "../middleware/logger.js";
@@ -1769,6 +1770,11 @@ export function heartbeatService(
       return;
     }
 
+    // Safe, fixed milestones only. A still-live "preparing" run with a
+    // lease-release fallback needs an explainable boundary that cannot print
+    // credentials, issue prompts, or arbitrary local filesystem paths.
+    let preDispatchCheckpoint: PreDispatchCheckpoint = "claimed";
+    let preDispatchError: unknown = null;
     let legacyAdapterEntered = false;
     let legacyLocalAdapterEntered = false;
     let persistUsageCaptureFailure: (() => Promise<void>) | undefined;
@@ -1949,6 +1955,7 @@ export function heartbeatService(
 
       // The claimed adapter identity is immutable recovery evidence. Do not
       // execute a newly selected adapter under a previous adapter's claim.
+      preDispatchCheckpoint = "agent_loaded";
       const selectedAdapter = claimedAdapterType(run);
       if (selectedAdapter && selectedAdapter !== agent.adapterType) {
         throw new Error("Agent adapter changed during startup; start a new turn with the updated agent.");
@@ -1980,6 +1987,7 @@ export function heartbeatService(
         return;
       }
       const runtime = await ensureRuntimeState(agent);
+      preDispatchCheckpoint = "runtime_prepared";
       const context = parseObject(run.contextSnapshot);
       const authorizeFailedChatRetryExecution = () =>
         db.transaction((tx) =>
@@ -3065,6 +3073,7 @@ export function heartbeatService(
         evaluateSessionCompaction,
       });
 
+      preDispatchCheckpoint = "session_prepared";
       const runOutput = createHeartbeatRunOutput(db, {
         run, runId, issueId, runLogStore, identityRedactor, secretKeys,
         appendRunEvent, getCurrentUserRedactionOptions,
@@ -3615,6 +3624,9 @@ export function heartbeatService(
         });
       }
     } catch (outerErr) {
+      if (!legacyAdapterEntered && !nativeDispatchStarted) {
+        preDispatchError = outerErr;
+      }
       if (
         nativeOwnershipHeld ||
         outerErr instanceof NativeRunnerOwnershipUnverifiedError
@@ -3693,6 +3705,25 @@ export function heartbeatService(
               "provider trace finalization failed during heartbeat teardown",
             );
           }
+        }
+        // The ordinary setup-failure reporter may itself throw or be unable
+        // to write before teardown. Leave a minimal safe checkpoint even if
+        // only the fallback lease-release terminalization can finish the run.
+        if (
+          latestRun && latestRun.runtimeMode === "legacy" &&
+          latestRun.executionStage === "preparing" &&
+          (latestRun.status === "running" || latestRun.status === "queued") &&
+          !legacyAdapterEntered && !nativeDispatchStarted
+        ) {
+          await appendRunEvent(latestRun, {
+            eventType: "lifecycle",
+            stream: "system",
+            level: "warn",
+            message: "pre-dispatch preparation ended before terminal run state",
+            payload: buildPreDispatchLeaseReleaseReceipt(
+              preDispatchCheckpoint, preDispatchError,
+            ),
+          }).catch(() => undefined);
         }
         // Close the invariant "environment lease released implies the run is
         // terminal". When the teardown reaches this point with the run still

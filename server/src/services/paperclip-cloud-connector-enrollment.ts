@@ -12,6 +12,7 @@ import path from "node:path";
 
 import { resolvePaperclipInstanceRoot } from "../home-paths.js";
 import { runtimePublicOrigin } from "./cloud-runtime-identity.js";
+import { bostanCloudBrokerOrigin, requireBostanCloudBrokerOrigin } from "./bostan-cloud-broker-policy.js";
 
 const IDENTITY_VERSION = 1;
 const ENROLLMENT_FILE = "paperclip-cloud-connector.json";
@@ -73,6 +74,17 @@ export function loadPaperclipCloudConnectorIdentity(): PaperclipCloudConnectorId
 export function paperclipCloudConnectorEnrollmentStatus(
   env: NodeJS.ProcessEnv = process.env,
 ): PaperclipCloudConnectorEnrollmentStatus {
+  const approvedBroker = bostanCloudBrokerOrigin(env);
+  if (!approvedBroker) return {
+    configured: false, status: "not_configured", brokerBaseUrl: "",
+    instanceId: null, environment: "development", origins: [],
+  };
+  // Managed key material inherited from another service is never an active
+  // Bostan enrollment and must not be displayed as a usable connection.
+  if (hasManagedConnectorIdentityOverride(env)) return {
+    configured: false, status: "not_configured", brokerBaseUrl: approvedBroker,
+    instanceId: null, environment: "development", origins: [],
+  };
   const identity = loadPaperclipCloudConnectorIdentity();
   const managedInstanceId = env.PAPERCLIP_CLOUD_CONNECTOR_INSTANCE_ID?.trim();
   const managedSignPrivateKey = env.PAPERCLIP_CLOUD_CONNECTOR_SIGN_PRIVATE_KEY?.trim();
@@ -152,6 +164,7 @@ async function startPaperclipCloudConnectorEnrollmentUnlocked(input: {
   request?: typeof fetch;
 }): Promise<PaperclipCloudConnectorEnrollmentStatus> {
   const env = input.env ?? process.env;
+  requireBostanCloudBrokerOrigin(env);
   const request = input.request ?? fetch;
   if (hasManagedConnectorIdentityOverride(env)) {
     throw new Error("Paperclip Cloud self-host enrollment is unavailable with managed identity configuration");
@@ -186,6 +199,7 @@ async function startPaperclipCloudConnectorEnrollmentUnlocked(input: {
   const returnUri = `${origin}/api/tools/oauth/cloud-connector/enrollment-callback`;
   const response = await request(`${identity.brokerBaseUrl}/v1/connector/enrollments`, {
     method: "POST",
+    redirect: "error",
     headers: { "content-type": "application/json", accept: "application/json" },
     body: JSON.stringify({
       instanceId: identity.instanceId,
@@ -193,7 +207,7 @@ async function startPaperclipCloudConnectorEnrollmentUnlocked(input: {
       origin,
       returnUri,
       returnState,
-      label: input.label?.trim() || process.env.PAPERCLIP_INSTANCE_ID?.trim() || "Self-hosted Paperclip",
+      label: input.label?.trim() || process.env.PAPERCLIP_INSTANCE_ID?.trim() || "Self-hosted Bostan",
       signPublicKey: identity.signPublicKey,
       sealPublicKey: identity.sealPublicKey,
     }),
@@ -250,6 +264,7 @@ async function completePaperclipCloudConnectorEnrollmentUnlocked(input: {
   env?: NodeJS.ProcessEnv;
   request?: typeof fetch;
 }): Promise<PaperclipCloudConnectorEnrollmentStatus> {
+  requireBostanCloudBrokerOrigin(input.env ?? process.env);
   const identity = loadPaperclipCloudConnectorIdentity();
   const pending = identity?.pending;
   if (hasManagedConnectorIdentityOverride(input.env ?? process.env)
@@ -275,6 +290,7 @@ async function completePaperclipCloudConnectorEnrollmentUnlocked(input: {
   }, privateKey(identity.signPrivateKey));
   const response = await (input.request ?? fetch)(audience, {
     method: "POST",
+    redirect: "error",
     headers: { "content-type": "application/json", accept: "application/json" },
     body: JSON.stringify({ request: requestToken, enrollmentId: input.enrollmentId, approvalCode: input.approvalCode }),
     signal: AbortSignal.timeout(15_000),
@@ -343,7 +359,7 @@ function parseIdentity(value: unknown): PaperclipCloudConnectorIdentity {
 function connectorEnvironment(
   env: NodeJS.ProcessEnv,
   fallback?: LocalConnectorEnvironment,
-  brokerBaseUrl = "https://my.paperclip.app",
+  brokerBaseUrl = "https://bostan.invalid",
 ): LocalConnectorEnvironment {
   const host = new URL(brokerBaseUrl).hostname.toLowerCase();
   const inferred = host === "my.paperclip.app"
@@ -367,13 +383,12 @@ function connectorTarget(
   env: NodeJS.ProcessEnv,
   identity?: PaperclipCloudConnectorIdentity | null,
 ): Pick<PaperclipCloudConnectorIdentity, "brokerBaseUrl" | "environment"> {
-  const brokerOverride = env.PAPERCLIP_CLOUD_CONNECTOR_BASE_URL?.trim() || undefined;
-  const brokerBaseUrl = normalizeBrokerOrigin(
-    brokerOverride ?? identity?.brokerBaseUrl ?? "https://my.paperclip.app",
-  );
+  const brokerBaseUrl = normalizeBrokerOrigin(requireBostanCloudBrokerOrigin(env));
+  // Legacy override may be present on the machine but cannot steer Bostan.
+  // The explicit Bostan URL is the only authorized destination.
   return {
     brokerBaseUrl,
-    environment: connectorEnvironment(env, brokerOverride ? undefined : identity?.environment, brokerBaseUrl),
+    environment: connectorEnvironment(env, identity?.brokerBaseUrl === brokerBaseUrl ? identity.environment : undefined, brokerBaseUrl),
   };
 }
 

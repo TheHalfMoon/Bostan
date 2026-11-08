@@ -1,10 +1,10 @@
-import { createProviderStoppedBoundary } from "@paperclipai/adapter-utils/provider-stopped-boundary";
-import { createUsageCheckpointLog } from "@paperclipai/adapter-utils/usage-checkpoint";
+import { createProviderStoppedBoundary } from "@bostan/adapter-utils/provider-stopped-boundary";
+import { createUsageCheckpointLog } from "@bostan/adapter-utils/usage-checkpoint";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { inferOpenAiCompatibleBiller, type AdapterExecutionContext, type AdapterExecutionResult } from "@paperclipai/adapter-utils";
+import { inferOpenAiCompatibleBiller, type AdapterExecutionContext, type AdapterExecutionResult } from "@bostan/adapter-utils";
 import {
   adapterExecutionTargetIsRemote,
   adapterExecutionTargetRemoteCwd,
@@ -26,7 +26,7 @@ import {
   runAdapterExecutionTargetProcess,
   runAdapterExecutionTargetShellCommand,
   startAdapterExecutionTargetPaperclipBridge,
-} from "@paperclipai/adapter-utils/execution-target";
+} from "@bostan/adapter-utils/execution-target";
 import {
   asString,
   asNumber,
@@ -52,7 +52,7 @@ import {
   readPaperclipRuntimeSkillEntries,
   readPaperclipIssueWorkModeFromContext,
   resolveLegacyPaperclipDesiredSkillNames,
-} from "@paperclipai/adapter-utils/server-utils";
+} from "@bostan/adapter-utils/server-utils";
 import { isOpenCodeUnknownSessionError, parseOpenCodeJsonl, createOpenCodeJsonlParser } from "./parse.js";
 import {
   ensureOpenCodeModelConfiguredAndAvailable,
@@ -60,8 +60,9 @@ import {
   parseOpenCodeModelsOutput,
   requireOpenCodeModelId,
 } from "./models.js";
-import { removeMaintainerOnlySkillSymlinks } from "@paperclipai/adapter-utils/server-utils";
-import { apiKeyBillingType } from "@paperclipai/adapter-utils/api-billing-type";
+import { removeMaintainerOnlySkillSymlinks } from "@bostan/adapter-utils/server-utils";
+import { bostanStandaloneArgs } from "./local-standalone.js";
+import { apiKeyBillingType } from "@bostan/adapter-utils/api-billing-type";
 import { prepareOpenCodeRuntimeConfig, prepareManagedOpenCodeRemoteHomes } from "./runtime-config.js";
 import { SANDBOX_INSTALL_COMMAND } from "../index.js";
 import { resolveOpenCodeSkillsHome } from "./skills.js";
@@ -622,13 +623,10 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       if (resumeSessionId) args.push("--session", resumeSessionId);
       if (model) args.push("--model", model);
       if (variant) args.push("--variant", variant);
-      // OpenCode prefers the inherited PWD over process.cwd(). Use the realized
-      // workspace unless the operator already selected a directory explicitly.
-      const optionTerminator = extraArgs.indexOf("--");
-      const extraOptionArgs = optionTerminator === -1 ? extraArgs : extraArgs.slice(0, optionTerminator);
-      if (!extraOptionArgs.some((arg) => arg === "--dir" || arg.startsWith("--dir="))) {
-        args.push("--dir", effectiveExecutionCwd);
-      }
+      // Recent OpenCode versions no longer support --dir. The execution
+      // target already receives a cwd, including for remote workspaces.
+      // Never inject --dir: doing so makes a verified agent fail at dispatch.
+      args.push(...bostanStandaloneArgs(extraArgs, executionTargetIsRemote));
       if (extraArgs.length > 0) args.push(...extraArgs);
       return args;
     };

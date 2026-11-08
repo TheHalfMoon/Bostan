@@ -8,7 +8,7 @@ import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { eq, sql } from "drizzle-orm";
-import { companies, projects, projectWorkspaces, issues, executionWorkspaces, agents, heartbeatRuns, issueRecoveryActions, nativeRunFinalizations, workspaceRuntimeServices, executionWorkspaceRestorePoints, createDb } from "@paperclipai/db";
+import { companies, projects, projectWorkspaces, issues, executionWorkspaces, agents, heartbeatRuns, issueRecoveryActions, nativeRunFinalizations, workspaceRuntimeServices, executionWorkspaceRestorePoints, createDb } from "@bostan/db";
 import { markGitRestorePointExpired } from "../services/git-restore-point-storage.js";
 import { GIT_RESTORE_POINT_EXPIRED_WARNING } from "../services/execution-workspaces.js";
 import { getStorageService } from "../storage/index.js";
@@ -827,7 +827,7 @@ describeEmbeddedPostgres("reconstructable Git expiration", () => {
     await fs.writeFile(path.join(f.cwd, ".git"), `gitdir: ${path.join(f.cwd, "missing-admin")}\n`);
     const result = await f.expire();
     expect(result).toMatchObject({ expired: false, skipReason: "inspection_failed",
-      failure: { name: "Error", code: expect.any(String), at: expect.stringMatching(/^at /), stderr: expect.stringContaining("not a git repository") } });
+      failure: { name: "Error", code: expect.any(String), at: expect.stringMatching(/^at /), stderr: expect.stringMatching(/not a git repository|does not point to a valid repository/) } });
     expect(await exists(f.cwd)).toBe(true);
   });
 

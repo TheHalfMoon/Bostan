@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import postgres from "postgres";
 import { describe, expect, it } from "vitest";
-import { getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "./test-embedded-postgres.js";
+import { EMBEDDED_POSTGRES_TEST_TIMEOUT_MS, getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "./test-embedded-postgres.js";
 
 const support = await getEmbeddedPostgresTestSupport();
 const migration = readFileSync(new URL("./migrations/0248_small_manta.sql", import.meta.url), "utf8");
@@ -42,5 +42,5 @@ const migration = readFileSync(new URL("./migrations/0248_small_manta.sql", impo
       await sql.end();
       await database.cleanup();
     }
-  }, 30_000);
+  }, EMBEDDED_POSTGRES_TEST_TIMEOUT_MS);
 });

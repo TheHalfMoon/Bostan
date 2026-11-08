@@ -7,8 +7,8 @@ import {
   connectionGrants,
   companySecrets,
   toolConnectionInstalls,
-} from "@paperclipai/db";
-import type { EmailConnectionInput, EmailCredentialOption } from "@paperclipai/shared";
+} from "@bostan/db";
+import type { EmailConnectionInput, EmailCredentialOption } from "@bostan/shared";
 import { badRequest, forbidden, HttpError, notFound } from "../errors.js";
 import { secretService } from "./secrets.js";
 import { lockToolConnectionRuntimeInputs, toolAccessService } from "./tool-access.js";

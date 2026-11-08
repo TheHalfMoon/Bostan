@@ -1,5 +1,5 @@
 import { executeEnvironmentTask, pluginEnvironmentSupportsTasks, settleDispatchedEnvironmentTask } from "./environment-task-runtime.js";
-import type { PluginEnvironmentTaskOperation } from "@paperclipai/plugin-sdk";
+import type { PluginEnvironmentTaskOperation } from "@bostan/plugin-sdk";
 import { allowLegacyShutdownWorkspaceCleanup, legacyShutdownWorkspaceResourceProtected } from "./legacy-shutdown-workspace-settlement.js";
 import { nativeWorkspaceExportPendingForLease } from "./native-runtime/native-workspace-finalization-state.js";
 import { beginIdleTrackedWork } from "./task-admission.js";
@@ -7,15 +7,15 @@ import { historicalProviderCredentials } from "./historical-provider-credentials
 import { ownedWorkspaceRecoveryLease, type WorkspaceRecoverySourceIdentity } from "./workspace-recovery-source.js";
 import type { NativeWorkspaceFinalizationOwnership } from "./native-runtime/native-workspace-finalization-ownership.js";
 import { hasStopOnlyCleanup, prepareSandboxStopAndRetain, readStopOnlyCleanup, settleStopOnlyCleanup, stopOnlyCleanupKey } from "./sandbox-stop-and-retain.js";
-import { JsonRpcCallError, readEnvironmentAcquisitionDiagnostic, readEnvironmentCreationCleanupError } from "@paperclipai/plugin-sdk";
+import { JsonRpcCallError, readEnvironmentAcquisitionDiagnostic, readEnvironmentCreationCleanupError } from "@bostan/plugin-sdk";
 import { preserveEnvironmentSyncOutErrorDiagnostic } from "./environment-sync-out-error.js";
 import { captureEnvironmentAcquisitionDiagnostic } from "./environment-acquisition-diagnostics.js";
 import { remoteTerminationReceipt } from "./remote-execution-termination.js";
 import { hasNativeWorkspaceExportResume, releaseCompletedNativeWorkspaceExportRetention } from "./native-runtime/native-workspace-export-resume.js";
 import { createHash, randomUUID } from "node:crypto";
 import { and, eq, inArray, ne, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { companySecrets, companySecretVersions, environmentLeases, heartbeatRuns } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { companySecrets, companySecretVersions, environmentLeases, heartbeatRuns } from "@bostan/db";
 import type {
   Environment,
   EnvironmentLease,
@@ -26,13 +26,13 @@ import type {
   PluginEnvironmentConfig,
   SandboxEnvironmentConfig,
   SandboxProviderCapabilities,
-} from "@paperclipai/shared";
-import { resolveDeclaredSandboxCapabilities } from "@paperclipai/shared";
-import type { EffectiveExecutionCapabilities } from "@paperclipai/adapter-utils/execution-target";
-import type { RunnerIngressEndpoint } from "@paperclipai/adapter-utils/runner-connectivity";
+} from "@bostan/shared";
+import { resolveDeclaredSandboxCapabilities } from "@bostan/shared";
+import type { EffectiveExecutionCapabilities } from "@bostan/adapter-utils/execution-target";
+import type { RunnerIngressEndpoint } from "@bostan/adapter-utils/runner-connectivity";
 import type {
   CommandManagedDuplexChannel,
-} from "@paperclipai/adapter-utils/command-managed-runtime";
+} from "@bostan/adapter-utils/command-managed-runtime";
 import type {
   PluginEnvironmentAcquireLeaseParams,
   PluginEnvironmentExecuteResult,
@@ -41,13 +41,13 @@ import type {
   PluginEnvironmentRealizeWorkspaceResult,
   PluginEnvironmentSyncResult,
   PluginSyncOperation,
-} from "@paperclipai/plugin-sdk";
-import { ensureSshWorkspaceReady } from "@paperclipai/adapter-utils/ssh";
+} from "@bostan/plugin-sdk";
+import { ensureSshWorkspaceReady } from "@bostan/adapter-utils/ssh";
 import {
   getActiveStepContext,
   runWithRuntimeParent,
   type StartupSpanContext,
-} from "@paperclipai/adapter-utils/acpx-engine/startup-timing";
+} from "@bostan/adapter-utils/acpx-engine/startup-timing";
 import { environmentService } from "./environments.js";
 import { instanceSettingsService } from "./instance-settings.js";
 import { hasSandboxSnapshotQualification, qualifiedSandboxSnapshotId, type SandboxTemplateIdentity } from "./sandbox-snapshot-qualification.js";

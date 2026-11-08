@@ -7,13 +7,13 @@ import type {
   Issue,
   IssueDocument,
   IssueWorkProduct,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   MARKDOWN_REVIEW_DOCUMENT_MAX_BYTES,
   artifactReviewDocumentKey,
   getMarkdownWorkProductAttachmentMetadata,
   isArtifactReviewDocumentKey,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { Download, ExternalLink, FileText } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { issuesApi } from "@/api/issues";
@@ -46,6 +46,7 @@ import { useLocation } from "@/lib/router";
 import { useArtifactsV1Enabled } from "@/hooks/useArtifactsV1Enabled";
 import { ArtifactFileRow, ArtifactRow, ROW_ACTION_CLASS, fileRowSourceFromAttachment, fileRowSourceFromWorkProduct, subjectFromAttachment, subjectFromIssueDocument, subjectFromWorkProduct, workProductStateBadge, type ArtifactSubject } from "@/components/artifacts/v1";
 import { artifactUrl } from "@/lib/artifact-card-data";
+import { BostanOcrPreview } from "@/components/BostanOcrPreview";
 
 interface IssuePropertiesArtifactsTabProps {
   issue: Issue;
@@ -558,9 +559,17 @@ export function IssuePropertiesArtifactsTab({
     </p>
   ) : null;
 
-  const withUploads = (content: ReactNode, empty = false) => uploadState ? (
-    <ArtifactUploadContent empty={empty} entries={uploadState.entries} onRetry={uploadState.retry} onDismiss={uploadState.dismiss}>{content}</ArtifactUploadContent>
-  ) : content;
+  const withUploads = (content: ReactNode, empty = false) => {
+    const result = import.meta.env.VITE_BOSTAN_LOCAL_OCR_PREVIEW_ENABLE === "1" ? (
+      <div className="space-y-3">
+        <BostanOcrPreview key={issue.id} companyId={issue.companyId} issueId={issue.id} />
+        {content}
+      </div>
+    ) : content;
+    return uploadState ? (
+      <ArtifactUploadContent empty={empty} entries={uploadState.entries} onRetry={uploadState.retry} onDismiss={uploadState.dismiss}>{result}</ArtifactUploadContent>
+    ) : result;
+  };
 
   if (
     workProductRows.length === 0 &&

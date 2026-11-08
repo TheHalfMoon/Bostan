@@ -16,7 +16,7 @@ import {
   type DeploymentMode,
   type SecretProvider,
   type StorageProvider,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   backupInvalidConfig,
   configExists,
@@ -586,7 +586,7 @@ export async function onboard(opts: OnboardOptions): Promise<void> {
       const s = p.spinner();
       s.start("Testing database connection...");
       try {
-        const { createDb } = await import("@paperclipai/db");
+        const { createDb } = await import("@bostan/db");
         const db = createDb(database.connectionString);
         await db.execute("SELECT 1");
         s.stop("Database connection successful");
@@ -709,8 +709,9 @@ export async function onboard(opts: OnboardOptions): Promise<void> {
     logging,
     server,
     auth,
+    // No network telemetry on first run. Explicit opt-in is a separate action.
     telemetry: {
-      enabled: true,
+      enabled: false,
     },
     storage,
     secrets,

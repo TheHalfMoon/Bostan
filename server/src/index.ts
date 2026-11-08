@@ -57,7 +57,7 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { pathToFileURL } from "node:url";
 import type { Request as ExpressRequest, RequestHandler } from "express";
-import { warnIfUnsupportedNodeVersion } from "@paperclipai/shared/node-version";
+import { warnIfUnsupportedNodeVersion } from "@bostan/shared/node-version";
 import { and, eq } from "drizzle-orm";
 import {
   createDb,
@@ -76,9 +76,9 @@ import {
   companyMemberships,
   instanceUserRoles,
   closeLivenessDb,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import detectPort from "detect-port";
-import { createApp } from "./app.js";
+import { createApp, shouldEnablePrivateHostnameGuard } from "./app.js";
 import { loadConfig } from "./config.js";
 import { logger } from "./middleware/logger.js";
 import { setStartupRecoveryPhase } from "./startup-recovery-state.js";
@@ -139,7 +139,7 @@ import {
   parseAdapterRegistryEnv,
   reconcileAdapterAvailability,
 } from "./services/adapter-registry-bootstrap.js";
-import { createFeedbackTraceShareClientFromConfig } from "./services/feedback-share-client.js";
+import { configuredBostanFeedbackEndpoint, createFeedbackTraceShareClientFromConfig } from "./services/feedback-share-client.js";
 import { buildRuntimeApiCandidateUrls, choosePrimaryRuntimeApiUrl } from "./runtime-api.js";
 import { isLoopbackHost, rewriteLoopbackUrlPort } from "./url-utils.js";
 import { createPluginWorkerManager } from "./services/plugin-worker-manager.js";
@@ -942,6 +942,8 @@ async function startServerWithDatabaseTeardown(
     serverPort: listenPort,
     storageService,
     feedbackExportService: feedback,
+    // The same verified destination admission protects vote consent and uploads.
+    feedbackExportAllowed: configuredBostanFeedbackEndpoint(config) !== null,
     databaseBackupService: {
       runManualBackup: async () => {
         const result = await runServerDatabaseBackup("manual");
@@ -992,6 +994,14 @@ async function startServerWithDatabaseTeardown(
   // Upgrade admission runs before every WebSocket listener, outside Express.
   const server = createPaperclipHttpServer(app as unknown as RequestListener, {
     apiUrl: configuredApiUrl,
+    privateHostAdmission: {
+      enabled: shouldEnablePrivateHostnameGuard({
+        deploymentMode: config.deploymentMode,
+        deploymentExposure: config.deploymentExposure,
+      }),
+      allowedHostnames: config.allowedHostnames,
+      bindHost: config.host,
+    },
     httpOptions: cloudWarmStandbyServerOptions(() => isWarmStandby() || isIdleTaskDrainActive()),
   });
   // Outlive reverse-proxy idle timeouts to avoid intermittent resets.
@@ -2025,7 +2035,7 @@ async function startServerWithDatabaseTeardown(
   setStartupRecoveryPhase("ready");
   logger.info(`Server startup recovery complete on ${config.host}:${listenPort}`);
   void systemdNotify(["--ready", `--status=Listening on ${config.host}:${listenPort}`]).then((notified) => {
-    if (notified) logger.info("Notified systemd that Paperclip is ready");
+    if (notified) logger.info("Notified systemd that Bostan is ready");
   });
   if (process.env.PAPERCLIP_OPEN_ON_LISTEN === "true") {
     const openHost = config.host === "0.0.0.0" || config.host === "::" ? "127.0.0.1" : config.host;
@@ -2249,7 +2259,7 @@ function isMainModule(metaUrl: string): boolean {
 
 if (isMainModule(import.meta.url)) {
   void startServer().catch(async (err) => {
-    logger.error({ err }, "Paperclip server failed to start");
+    logger.error({ err }, "Bostan server failed to start");
     // Supervised-transient refusals in managed-cloud deployments are an
     // expected provisioning phase (see startup-refusals.ts) — they log
     // and exit nonzero but do not page Sentry.

@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { writePaperclipSkillSyncPreference } from "@paperclipai/adapter-utils/server-utils";
+import { writePaperclipSkillSyncPreference } from "@bostan/adapter-utils/server-utils";
 import {
   agents,
   companies,
@@ -22,14 +22,14 @@ import {
   issueComments,
   issueDocuments,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { feedbackService } from "../services/feedback.ts";
 import {
-  getEmbeddedPostgresTestSupport,
-  startEmbeddedPostgresTestDatabase,
-} from "./helpers/embedded-postgres.ts";
+  getBostanFeedbackPostgresTestSupport,
+  startBostanFeedbackPostgresTestDatabase,
+} from "./helpers/bostan-postgres-test-backend.ts";
 
-const embeddedPostgresSupport = await getEmbeddedPostgresTestSupport();
+const embeddedPostgresSupport = await getBostanFeedbackPostgresTestSupport();
 const describeEmbeddedPostgres = embeddedPostgresSupport.supported ? describe : describe.skip;
 
 if (!embeddedPostgresSupport.supported) {
@@ -49,7 +49,7 @@ describeEmbeddedPostgres("feedbackService.saveIssueVote", () => {
   let tempDirs: string[] = [];
 
   beforeAll(async () => {
-    const started = await startEmbeddedPostgresTestDatabase("paperclip-feedback-service-");
+    const started = await startBostanFeedbackPostgresTestDatabase("paperclip-feedback-service-");
     db = createDb(started.connectionString);
     svc = feedbackService(db);
     tempDb = started;
@@ -1050,9 +1050,33 @@ describeEmbeddedPostgres("feedbackService.saveIssueVote", () => {
       issueIdentifier: traces[0]?.issueIdentifier,
       captureStatus: expect.stringMatching(/^(full|partial|unavailable)$/),
       envelope: {
-        destination: "paperclip_labs_feedback_v1",
+        destination: "bostan_feedback_v1",
         exportId: traces[0]?.exportId,
       },
+    });
+  });
+
+  it("quarantines inherited pending telemetry records from all Bostan upload sweeps", async () => {
+    const { issueId, commentId } = await seedIssueWithAgentComment();
+    const uploadTraceBundle = vi.fn().mockResolvedValue({ objectKey: "bostan-test" });
+    const flushingSvc = feedbackService(db, { shareClient: { uploadTraceBundle } });
+    const saved = await flushingSvc.saveIssueVote({
+      issueId, targetType: "issue_comment", targetId: commentId,
+      vote: "up", authorUserId: "user-1", allowSharing: true,
+    });
+    await db.update(feedbackExports)
+      .set({ destination: "paperclip_labs_feedback_v1" })
+      .where(eq(feedbackExports.id, saved.traceId!));
+
+    expect(await flushingSvc.hasPendingFeedbackTraces()).toBe(false);
+    expect(await flushingSvc.flushPendingFeedbackTraces()).toMatchObject({
+      attempted: 0, sent: 0, failed: 0,
+    });
+    expect(uploadTraceBundle).not.toHaveBeenCalled();
+    const rows = await db.select().from(feedbackExports);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      id: saved.traceId, destination: "paperclip_labs_feedback_v1", status: "pending",
     });
   });
 

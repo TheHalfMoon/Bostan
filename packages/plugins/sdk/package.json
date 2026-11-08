@@ -1,15 +1,15 @@
 {
-  "name": "@paperclipai/plugin-sdk",
+  "name": "@bostan/plugin-sdk",
   "version": "1.0.0",
-  "description": "Stable public API for Paperclip plugins — worker-side context and UI bridge hooks",
+  "description": "Private Bostan plugin SDK for worker, UI bridge and extension development",
   "license": "MIT",
-  "homepage": "https://github.com/paperclipai/paperclip",
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
   "bugs": {
-    "url": "https://github.com/paperclipai/paperclip/issues"
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/paperclipai/paperclip",
+    "url": "https://github.com/TheHalfMoon/Bostan",
     "directory": "packages/plugins/sdk"
   },
   "type": "module",
@@ -52,63 +52,22 @@
     }
   },
   "bin": {
-    "paperclip-plugin-dev-server": "./dist/dev-cli.js"
-  },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js"
-      },
-      "./protocol": {
-        "types": "./dist/protocol.d.ts",
-        "import": "./dist/protocol.js"
-      },
-      "./types": {
-        "types": "./dist/types.d.ts",
-        "import": "./dist/types.js"
-      },
-      "./ui": {
-        "types": "./dist/ui/index.d.ts",
-        "import": "./dist/ui/index.js"
-      },
-      "./ui/hooks": {
-        "types": "./dist/ui/hooks.d.ts",
-        "import": "./dist/ui/hooks.js"
-      },
-      "./ui/types": {
-        "types": "./dist/ui/types.d.ts",
-        "import": "./dist/ui/types.js"
-      },
-      "./testing": {
-        "types": "./dist/testing.d.ts",
-        "import": "./dist/testing.js"
-      },
-      "./bundlers": {
-        "types": "./dist/bundlers.d.ts",
-        "import": "./dist/bundlers.js"
-      },
-      "./dev-server": {
-        "types": "./dist/dev-server.d.ts",
-        "import": "./dist/dev-server.js"
-      }
-    },
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts"
+    "bostan-plugin-dev-server": "./dist/dev-cli.js"
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "pnpm --filter @paperclipai/shared build && tsc",
+    "build": "pnpm --filter @bostan/shared build && tsc",
     "clean": "rm -rf dist",
     "ensure-build-deps": "node ../../../scripts/ensure-plugin-build-deps.mjs",
-    "typecheck": "pnpm --filter @paperclipai/shared build && tsc --noEmit",
-    "dev:server": "tsx src/dev-cli.ts"
+    "typecheck": "pnpm --filter @bostan/shared build && tsc --noEmit",
+    "dev:server": "tsx src/dev-cli.ts",
+    "prepack": "node ../../../scripts/bostan-release-disabled.mjs",
+    "prepublishOnly": "node ../../../scripts/bostan-release-disabled.mjs"
   },
   "dependencies": {
-    "@paperclipai/shared": "workspace:*",
+    "@bostan/shared": "workspace:*",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -126,5 +85,6 @@
   },
   "engines": {
     "node": ">=24.11.0"
-  }
+  },
+  "private": true
 }

@@ -1,4 +1,4 @@
-import type { Environment, SandboxEnvironmentConfig } from "@paperclipai/shared";
+import type { Environment, SandboxEnvironmentConfig } from "@bostan/shared";
 import { fingerprintEnvironmentSandboxProviderConfig, SANDBOX_PLATFORM_PROBE_METADATA_KEY } from "./environment-custom-image-runtime.js";
 
 export type SandboxTemplateIdentity = { id: string; capturedAt: string | null; templateKind: string; bindingField: string } | null;

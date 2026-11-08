@@ -6,7 +6,7 @@ import express from "express";
 import request from "supertest";
 import { and, eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { renderPaperclipWakePrompt } from "@paperclipai/adapter-utils/server-utils";
+import { renderPaperclipWakePrompt } from "@bostan/adapter-utils/server-utils";
 import {
   costEvents,
   agents,
@@ -30,7 +30,7 @@ import {
   issueThreadInteractions,
   workspaceOperations,
   issues,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,
@@ -723,8 +723,10 @@ describeEmbeddedPostgres("issue recovery actions", () => {
         bindIssueId: observed!.id,
         expectedIssueStatusVersion: observed!.statusVersion,
         toAgentId,
-        phase: "verification",
-        instructions: "Verify the saved work after the source execution settles.",
+        // 9db6e7c1 forbids verification by the implementer, so the paused
+        // coder (pending_dispatch) continues implementation instead.
+        phase: state === "awaiting_release" ? "verification" : "implementation",
+        instructions: "Continue the saved work after the source execution settles.",
         workflow_document_text: "Implementation → verification → done.",
       });
     expect(receipt.state).toBe(state);

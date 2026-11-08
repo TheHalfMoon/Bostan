@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { AdapterEnvironmentTestResult } from "@paperclipai/adapter-utils";
-import { ADAPTER_AUTH_MISSING_CHECK_CODE } from "@paperclipai/shared";
+import type { AdapterEnvironmentTestResult } from "@bostan/adapter-utils";
+import { ADAPTER_AUTH_MISSING_CHECK_CODE } from "@bostan/shared";
 import { assertHarnessTestPassed } from "../services/agent-harness-verification.js";
 
 describe("saved harness verification", () => {
@@ -16,6 +16,10 @@ describe("saved harness verification", () => {
     ["opencode_hello_probe_timed_out", "harness_probe_timed_out"],
     ["opencode_hello_probe_unexpected_output", "harness_probe_unexpected_output"],
     ["private provider error", "harness_test_failed"],
+    ["opencode_free_usage_limit_reached", "harness_free_provider_limited"],
+    ["opencode_free_provider_capacity_unavailable", "harness_free_provider_limited"],
+    ["opencode_hello_probe_failed", "harness_probe_failed"],
+    ["opencode_hello_probe_transport_unavailable", "harness_probe_transport_unavailable"],
   ])("classifies %s without keeping provider output", (checkCode, code) => {
     try {
       assertHarnessTestPassed(result("fail", [checkCode]));

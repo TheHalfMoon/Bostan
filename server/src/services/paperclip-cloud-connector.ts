@@ -1,4 +1,4 @@
-import { SLACK_MANAGER_SCOPES, ASANA_CONNECTOR_SCOPES, isAsanaConnectorProfileId, type AsanaConnectorProfileId } from "@paperclipai/shared";
+import { SLACK_MANAGER_SCOPES, ASANA_CONNECTOR_SCOPES, isAsanaConnectorProfileId, type AsanaConnectorProfileId } from "@bostan/shared";
 import {
   createDecipheriv,
   createHash,
@@ -20,11 +20,12 @@ import {
   isGoogleWorkspaceScopeGrant,
   type GitHubConnectorProfileId,
   type GoogleWorkspaceConnectorProfileId,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   loadPaperclipCloudConnectorIdentity,
   paperclipCloudConnectorEnrollmentStatus,
 } from "./paperclip-cloud-connector-enrollment.js";
+import { bostanCloudBrokerOrigin } from "./bostan-cloud-broker-policy.js";
 
 export const GMAIL_MCP_URL = "https://gmailmcp.googleapis.com/mcp/v1";
 export const GMAIL_CONNECTOR_SCOPES = [
@@ -198,6 +199,14 @@ export class PaperclipCloudConnectorError extends Error {
 export function paperclipCloudConnectorConfigFromEnv(
   env: NodeJS.ProcessEnv = process.env,
 ): PaperclipCloudConnectorConfig | null {
+  const approvedBroker = bostanCloudBrokerOrigin(env);
+  if (!approvedBroker) return null;
+  // Do not adopt inherited upstream managed identities, even when a fresh
+  // Bostan broker URL is supplied. Those key pairs belong to another trust
+  // domain and require a separately qualified Bostan-specific migration.
+  if ([env.PAPERCLIP_CLOUD_CONNECTOR_INSTANCE_ID,
+    env.PAPERCLIP_CLOUD_CONNECTOR_SIGN_PRIVATE_KEY,
+    env.PAPERCLIP_CLOUD_CONNECTOR_SEAL_PRIVATE_KEY].some(value => Boolean(value?.trim()))) return null;
   const localIdentity = loadPaperclipCloudConnectorIdentity();
   const legacyConfigured = [
     env.PAPERCLIP_ID_CONNECTOR_INSTANCE_ID,
@@ -226,9 +235,10 @@ export function paperclipCloudConnectorConfigFromEnv(
   const signPrivateKey = hasManagedIdentityOverride ? managedSignPrivateKey : localIdentity!.signPrivateKey;
   const sealPrivateKey = hasManagedIdentityOverride ? managedSealPrivateKey : localIdentity!.sealPrivateKey;
   const environment = hasManagedIdentityOverride ? managedEnvironment : localIdentity!.environment;
-  const baseUrl = env.PAPERCLIP_CLOUD_CONNECTOR_BASE_URL?.trim()
-    || (hasActiveLocalIdentity ? localIdentity!.brokerBaseUrl : undefined)
-    || "https://my.paperclip.app";
+  // Never reuse an inherited account broker or silently redirect a saved
+  // upstream connector identity to the new operator-managed service.
+  if (hasActiveLocalIdentity && localIdentity!.brokerBaseUrl !== approvedBroker) return null;
+  const baseUrl = approvedBroker;
   const values = [instanceId, signPrivateKey, sealPrivateKey, environment];
   if (values.some((value) => !value)) {
     throw new PaperclipCloudConnectorError("Paperclip Cloud connector configuration is incomplete", "CONNECTOR_CONFIG_INCOMPLETE");
@@ -313,6 +323,7 @@ export function createPaperclipCloudConnector(input: {
     try {
       response = await request(endpoint, {
         method: "POST",
+        redirect: "error",
         headers: { "content-type": "application/json", accept: "application/json" },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(15_000),
@@ -379,7 +390,7 @@ export function createPaperclipCloudConnector(input: {
       return response.active === true && response.githubApps?.version === 2;
     },
     async githubApp(values: { subject: string; companyId: string; binding: Record<string, unknown> }) {
-      return await call("github-app", values, { field: "binding", value: JSON.stringify(values.binding) }) as unknown as import("@paperclipai/shared").GitHubAppCloudState;
+      return await call("github-app", values, { field: "binding", value: JSON.stringify(values.binding) }) as unknown as import("@bostan/shared").GitHubAppCloudState;
     },
     async claimGitHubApp(values: { subject: string; companyId: string; claimId: string; redemptionId: string }) {
       const response = await call("claim", { ...values, profile: "github.bot" });

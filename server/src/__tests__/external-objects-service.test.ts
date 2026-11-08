@@ -10,7 +10,7 @@ import {
   issueComments,
   issues,
   plugins,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,
@@ -21,8 +21,8 @@ import {
   externalObjectService,
   type ExternalObjectResolver,
 } from "../services/external-objects.js";
-import { canonicalizeExternalObjectUrl } from "@paperclipai/shared/external-objects-server";
-import type { PaperclipPluginManifestV1 } from "@paperclipai/shared";
+import { canonicalizeExternalObjectUrl } from "@bostan/shared/external-objects-server";
+import type { PaperclipPluginManifestV1 } from "@bostan/shared";
 import type { PluginWorkerManager } from "../services/plugin-worker-manager.js";
 import { createGitHubExternalObjectProvider } from "../services/github-external-object-provider.js";
 
@@ -296,7 +296,10 @@ describe("GitHub external object provider", () => {
 
   it("uses a configured token without storing it in the resolved snapshot", async () => {
     const fetch = vi.fn(async (_url: string, init?: RequestInit) => {
-      expect(init?.headers).toEqual(expect.objectContaining({ authorization: "Bearer ghp_secret" }));
+      expect(init?.headers).toEqual(expect.objectContaining({
+        authorization: "Bearer ghp_secret",
+        "user-agent": "Bostan/ExternalObjectResolver",
+      }));
       return response({ state: "open", draft: false, merged: false, title: "Private PR" });
     });
     const provider = createGitHubExternalObjectProvider({} as any, {

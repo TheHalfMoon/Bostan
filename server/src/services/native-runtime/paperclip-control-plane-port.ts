@@ -1,13 +1,13 @@
 import { createAgentIdentityRedactor } from "../agent-identity-redaction.js";
 import { and, asc, eq, gt, or } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   heartbeatRunEvents,
   heartbeatRuns,
   issues,
   nativeRunFinalizations,
   nativeRunResults,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   CompleteControlPlaneRunInput,
   ControlPlanePort,

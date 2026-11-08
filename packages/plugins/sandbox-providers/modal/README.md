@@ -1,6 +1,6 @@
-# `@paperclipai/plugin-modal`
+# `@bostan/plugin-modal`
 
-First-party Modal sandbox provider plugin for Paperclip.
+First-party Modal sandbox provider plugin for Bostan.
 
 Like the other sandbox-provider packages in this repo, it lives inside the Paperclip monorepo but is intentionally excluded from the root `pnpm` workspace and shaped to publish and install like a standalone npm package. That lets operators install it from the Plugins page by package name without introducing root lockfile churn for Modal's SDK dependencies.
 
@@ -9,7 +9,7 @@ Like the other sandbox-provider packages in this repo, it lives inside the Paper
 From a Paperclip instance, install:
 
 ```text
-@paperclipai/plugin-modal
+@bostan/plugin-modal
 ```
 
 The host plugin installer runs `npm install` into the managed plugin directory, so the `modal` SDK dependency is pulled in during installation.
@@ -55,12 +55,12 @@ pnpm test
 pnpm typecheck
 ```
 
-These commands assume the repo root has already been installed once so the local `@paperclipai/plugin-sdk` workspace package is available to the compiler during development.
+These commands assume the repo root has already been installed once so the local `@bostan/plugin-sdk` workspace package is available to the compiler during development.
 
 ## Operator verification
 
 1. Provision Modal credentials in your Modal account (`modal token new`) or use a service account.
-2. Install the plugin from the Paperclip Plugins page.
+2. Install the plugin from the Bostan Plugins page.
 3. In `Instance Settings -> Environments`, add a new Modal sandbox environment with at least `appName`, `image`, `tokenId`, and `tokenSecret`.
 4. Run the environment **Probe** action. A success result confirms auth, app creation, image pull, and `exec` round-trip.
 5. Run at least one Paperclip task with a remote-managed adapter (for example `claude_local`) bound to that environment. The adapter should provision the sandbox, run commands in it, and clean it up.

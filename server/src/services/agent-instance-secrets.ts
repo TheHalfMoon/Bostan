@@ -1,9 +1,9 @@
 import { and, eq } from "drizzle-orm";
-import { agents, type Db } from "@paperclipai/db";
-import type { AgentLifecycleRequest } from "@paperclipai/shared";
+import { agents, type Db } from "@bostan/db";
+import type { AgentLifecycleRequest } from "@bostan/shared";
 import { secretService } from "./secrets.js";
 import { persistActivity } from "./activity-log.js";
-import { withAccountHomeSecretMutationLock } from "@paperclipai/adapter-codex-local/server";
+import { withAccountHomeSecretMutationLock } from "@bostan/adapter-codex-local/server";
 
 type Scope = { companyId: string; agentId: string; pluginId: string };
 

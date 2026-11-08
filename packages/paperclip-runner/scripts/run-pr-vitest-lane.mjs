@@ -24,7 +24,7 @@
 import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { invocationEnv } from "../../../scripts/ci-profile/record.mjs";
+import { invocationEnv } from "./ci-profile-record.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const workspaceRoot = resolve(packageRoot, "../..");

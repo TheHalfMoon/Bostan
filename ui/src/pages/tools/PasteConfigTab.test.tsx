@@ -5,7 +5,7 @@ import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ConnectToolAppResult, McpJsonImportPreview } from "@paperclipai/shared";
+import type { ConnectToolAppResult, McpJsonImportPreview } from "@bostan/shared";
 import { PasteConfigTab } from "./PasteConfigTab";
 
 const toolsApiMock = vi.hoisted(() => ({
@@ -256,6 +256,23 @@ describe("PasteConfigTab — activation handoff (PAP-11092)", () => {
     await flushReact();
   }
 
+  it("hides imported MCP configuration passwords from rejected preview errors", async () => {
+    toolsApiMock.importMcpJson.mockRejectedValue(
+      new Error("Imported Authorization: Bearer PRIVATE_MCP_IMPORT_SECRET_DO_NOT_RENDER"),
+    );
+    await render();
+    const textarea = container.querySelector("textarea")!;
+    await act(async () => setTextareaValue(textarea, NOTION_CONFIG));
+    await flushReact();
+    await act(async () => {
+      buttonStartingWith("Check config")!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await flushReact();
+    expect(toolsApiMock.importMcpJson).toHaveBeenCalled();
+    expect(container.textContent).toContain("Could not check the imported configuration.");
+    expect(container.textContent).not.toContain("PRIVATE_MCP_IMPORT_SECRET_DO_NOT_RENDER");
+  });
+
   it("renders a Continue button for a remote draft that navigates to the prefilled connect wizard", async () => {
     await pasteAndCheck(
       {
@@ -442,6 +459,24 @@ describe("PasteConfigTab — activation handoff (PAP-11092)", () => {
       );
     });
     expect(navigateTopLevelMock).not.toHaveBeenCalledWith(expect.stringContaining("/connections/confirm"));
+  });
+
+  it("does not echo OAuth authorization codes or redirect state from rejected provider requests", async () => {
+    await pasteAndCheck(NOTION_PREVIEW, NOTION_CONFIG);
+    toolsApiMock.connectApp.mockResolvedValue(oauthConnectResult());
+    toolsApiMock.startOAuth.mockRejectedValue(
+      new Error("OAuth failed state=PRIVATE_OAUTH_STATE_DO_NOT_SHOW authorization_code=PRIVATE_CODE"),
+    );
+    await act(async () => {
+      buttonStartingWith("Check actions")!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await flushReact();
+    await flushReact();
+
+    expect(toolsApiMock.startOAuth).toHaveBeenCalledWith("conn-1");
+    expect(container.textContent).toContain("Bostan couldn’t start secure sign-in. Try again.");
+    expect(container.textContent).not.toContain("PRIVATE_OAUTH_STATE_DO_NOT_SHOW");
+    expect(container.textContent).not.toContain("PRIVATE_CODE");
   });
 
   it("rejects an unsafe start URL and retries OAuth on the same connection", async () => {

@@ -1,4 +1,4 @@
-import { AGGREGATOR_NAMES, aggregatorManagementUrl, isAppAggregator, type AggregatorAppSnapshot, type AggregatorAppsResponse } from "@paperclipai/shared/aggregator-apps";
+import { AGGREGATOR_NAMES, aggregatorManagementUrl, isAppAggregator, type AggregatorAppSnapshot, type AggregatorAppsResponse } from "@bostan/shared/aggregator-apps";
 import type { CatalogSource } from "./CatalogSourceFilters";
 import { ConnectorsToolbar } from "./ConnectorsToolbar";
 import { ExecutorManagementSetup } from "./ExecutorManagementSetup";
@@ -10,7 +10,7 @@ import {
   getConnectableAppDefinition,
   isRetiredComposioConnection,
   RETIRED_COMPOSIO_MESSAGE,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { AssistantConnectionCard, useAssistantConnections } from "./AssistantConnection";
 import { ManagedAiConnectionRow } from "@/components/ai-connections/ManagedAiConnectionDetails";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -29,7 +29,7 @@ import {
   ServerCog,
   Trash2,
 } from "lucide-react";
-import type { ComposioAppSnapshot, ToolApplication, ToolConnection } from "@paperclipai/shared";
+import type { ComposioAppSnapshot, ToolApplication, ToolConnection } from "@bostan/shared";
 import {
   getAppDefinitionForUrl,
   getAppDefinitionForApplicationKey,
@@ -40,7 +40,7 @@ import {
   GOOGLE_WORKSPACE_CONNECTOR_PROFILES,
   CONNECTABLE_APP_DEFINITIONS,
   normalizeConnectionQuery,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { useNavigate } from "@/lib/router";
 import { useChatConnectorsEnabled, chatProviderVisible } from "@/hooks/useChatConnectorsEnabled";
 import { useMemoryConnectorsEnabled } from "@/hooks/useMemoryConnectorsEnabled";
@@ -50,6 +50,7 @@ import { useCompany } from "@/context/CompanyContext";
 import { useBreadcrumbs } from "@/context/BreadcrumbContext";
 import { useToast } from "@/context/ToastContext";
 import { queryKeys } from "@/lib/queryKeys";
+import { safeCredentialUiError } from "@/lib/credential-ui-error-privacy";
 import { aiConnectionPoolsApi } from "@/api/ai-connection-pools";
 import { toolsApi } from "@/api/tools";
 import { emailApi } from "@/api/email";
@@ -82,7 +83,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { AGGREGATOR_APP_CATALOG, aggregatorAppIdentity, findComposioCatalogApp, type AggregatorAppCatalogEntry } from "@paperclipai/shared/aggregator-app-catalog";
+import { AGGREGATOR_APP_CATALOG, aggregatorAppIdentity, findComposioCatalogApp, type AggregatorAppCatalogEntry } from "@bostan/shared/aggregator-app-catalog";
 import { AggregatorConnectDialog, aggregatorAppConnectHref } from "./AggregatorConnectDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { buildCompanyUserProfileMap } from "@/lib/company-members";
@@ -226,12 +227,7 @@ function connectionState(connection: ToolConnection): ConnectionState {
     return {
       kind: "attention",
       label: "Needs attention",
-      message:
-        connection.healthMessage ??
-        connection.lastError ??
-        (connection.authKind === "oauth"
-          ? "Sign in again to restore access."
-          : "Replace the credential to restore access."),
+      message: safeCredentialUiError(connection.healthMessage ?? connection.lastError, "appHealth"),
     };
   }
   return { kind: "connected", label: "Connected", message: null };
@@ -492,7 +488,7 @@ export function Browse({ renderAccountDetails = (connection) => connection.conne
         title: "Connection removed",
         body:
           target.pool ? "The connections in the pool are kept." : target.kind === "chat"
-            ? `${target.providerName} is disconnected. Existing Paperclip tasks remain available.`
+            ? `${target.providerName} is disconnected. Existing Bostan tasks remain available.`
             : target.remainingConnectionCount > 0
             ? `${target.providerName} still has ${target.remainingConnectionCount} active ${target.remainingConnectionCount === 1 ? "connection" : "connections"} available to agents.`
             : `${target.providerName} is no longer available to agents through this connection. Its saved credentials were deleted.`,
@@ -1011,9 +1007,9 @@ export function Browse({ renderAccountDetails = (connection) => connection.conne
             </AlertDialogTitle>
             <AlertDialogDescription>
               {connectionToRemove?.pool ? "The connections in this pool are kept." : connectionToRemove && Object.values(AGGREGATOR_NAMES).includes(connectionToRemove.providerName as "Composio")
-                ? `This removes the saved ${connectionToRemove.providerName} connection from Paperclip and agents lose access through it. Your apps and accounts remain connected in ${connectionToRemove.providerName}.`
+                ? `This removes the saved ${connectionToRemove.providerName} connection from Bostan and agents lose access through it. Your apps and accounts remain connected in ${connectionToRemove.providerName}.`
                 : connectionToRemove?.kind === "chat"
-                ? `This connection will stop receiving new work from ${connectionToRemove.providerName}. Existing Paperclip tasks and conversation history remain available. This does not delete the app, bot, or account in ${connectionToRemove.providerName}.`
+                ? `This connection will stop receiving new work from ${connectionToRemove.providerName}. Existing Bostan tasks and conversation history remain available. This does not delete the app, bot, or account in ${connectionToRemove.providerName}.`
                 : connectionToRemove &&
                     connectionToRemove.remainingConnectionCount > 0
                   ? `This connection's saved credentials are deleted and agents lose access through it immediately. They can still use ${connectionToRemove.providerName} through ${connectionToRemove.remainingConnectionCount} other active ${connectionToRemove.remainingConnectionCount === 1 ? "connection" : "connections"}.`

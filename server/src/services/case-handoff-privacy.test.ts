@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { activityLog, agents, caseAccessSources, caseEvents, caseHandoffs, caseIssueLinks, cases, companies, createDb, issueAccessGrants, issueComments, issues } from "@paperclipai/db";
+import { activityLog, agents, caseAccessSources, caseEvents, caseHandoffs, caseIssueLinks, cases, companies, createDb, issueAccessGrants, issueComments, issues } from "@bostan/db";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { startEmbeddedPostgresTestDatabase } from "../__tests__/helpers/embedded-postgres.js";
 import { authorizationService, type AuthorizationActor } from "./authorization.js";
@@ -30,17 +30,19 @@ describe("case handoff retained private task ancestry", () => {
   });
 
   async function fixture() {
-    const companyId = randomUUID(), ownerId = randomUUID(), readerId = randomUUID();
+    const companyId = randomUUID(), ownerId = randomUUID(), readerId = randomUUID(), implementerId = randomUUID();
     const rootId = randomUUID(), sourceId = randomUUID(), targetId = randomUUID(), caseId = randomUUID();
     await db.insert(companies).values({ id: companyId, name: "Private factory", issuePrefix: `P${companyId.slice(0, 6)}` });
     await db.insert(agents).values([
       { id: ownerId, companyId, name: "Private source owner", role: "ceo", status: "active", adapterType: "process" },
       { id: readerId, companyId, name: "Target-only reader", role: "engineer", status: "active", adapterType: "process", reportsTo: ownerId },
+      // 9db6e7c1: verification must go to an agent other than the implementer.
+      { id: implementerId, companyId, name: "Target implementer", role: "engineer", status: "active", adapterType: "process", reportsTo: ownerId },
     ]);
     await db.insert(issues).values({ id: rootId, companyId, title: "Private root", visibility: "private" });
     await db.insert(issues).values([
       { id: sourceId, companyId, title: "Private source B", status: "todo", visibility: "private", privacyParentIssueId: rootId, privacyRootIssueId: rootId, assigneeAgentId: ownerId },
-      { id: targetId, companyId, title: "Private sibling A", status: "todo", visibility: "private", privacyParentIssueId: rootId, privacyRootIssueId: rootId, assigneeAgentId: ownerId },
+      { id: targetId, companyId, title: "Private sibling A", status: "todo", visibility: "private", privacyParentIssueId: rootId, privacyRootIssueId: rootId, assigneeAgentId: implementerId },
     ]);
     await db.insert(issueAccessGrants).values({ issueId: targetId, subjectType: "agent", subjectId: readerId, source: "explicit" });
     await db.insert(cases).values({ id: caseId, companyId, caseNumber: 1, identifier: `P${companyId.slice(0, 6)}-C1`, caseType: "research", title: "Private B findings", fields: { finding: "Confidential receipt" } });

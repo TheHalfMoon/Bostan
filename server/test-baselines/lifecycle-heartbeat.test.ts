@@ -14,7 +14,7 @@ import {
   statusDecisions,
   issueComments,
   issueThreadInteractions,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   startEmbeddedPostgresTestDatabase,
   getEmbeddedPostgresTestSupport,
@@ -24,7 +24,7 @@ import type {
   NativeExecutionInput,
   NativeSessionBackend,
   NativeSession,
-} from "@paperclipai/paperclip-runner";
+} from "@bostan/runner";
 import {
   CONTROL_PLANE_CONFORMANCE_RESULT,
   CONTROL_PLANE_CONFORMANCE_TERMINAL,

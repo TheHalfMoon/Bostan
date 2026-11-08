@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, eq, inArray, isNull, lte, not, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { companies, documents, externalObjectMentions, externalObjects, issueComments, issueDocuments, issues, plugins } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { companies, documents, externalObjectMentions, externalObjects, issueComments, issueDocuments, issues, plugins } from "@bostan/db";
 import {
   formatExternalObjectMentionSourceLabel,
   type ExternalObjectCanonicalUrl,
@@ -11,9 +11,9 @@ import {
   type ExternalObjectStatusCategory,
   type ExternalObjectStatusTone,
   type PaperclipPluginManifestV1,
-} from "@paperclipai/shared";
-import { extractExternalObjectCanonicalUrls } from "@paperclipai/shared/external-objects-server";
-import type { PluginExternalObjectRecordSnapshot, PluginExternalObjectResolveResult } from "@paperclipai/plugin-sdk";
+} from "@bostan/shared";
+import { extractExternalObjectCanonicalUrls } from "@bostan/shared/external-objects-server";
+import type { PluginExternalObjectRecordSnapshot, PluginExternalObjectResolveResult } from "@bostan/plugin-sdk";
 import { notFound } from "../errors.js";
 import { logger } from "../middleware/logger.js";
 import { logActivity, type LogActivityInput } from "./activity-log.js";

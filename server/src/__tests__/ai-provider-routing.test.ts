@@ -5,7 +5,7 @@ import {
   aiRoutingModel,
   createAiConnectionSchema,
   isAiConnectionCompatible,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { managedProviderRouting } from "../services/ai-provider-routing.js";
 
 describe("provider routing", () => {

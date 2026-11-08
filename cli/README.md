@@ -1,442 +1,227 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/paperclipai/paperclip/master/doc/assets/banner.jpg" alt="Paperclip is the app people use to manage AI agents for work." width="720" />
-</p>
+# Bostan CLI
 
-<p align="center">
-  <a href="#quickstart"><strong>Quickstart</strong></a> &middot;
-  <a href="https://docs.paperclip.ing"><strong>Docs</strong></a> &middot;
-  <a href="https://github.com/paperclipai/paperclip"><strong>GitHub</strong></a> &middot;
-  <a href="https://discord.gg/paperclipai"><strong>Discord</strong></a> &middot;
-  <a href="https://x.com/papercliping"><strong>Twitter</strong></a> &middot;
-  <a href="https://paperclip.ing"><strong>Website</strong></a>
-</p>
+**Development preview only — not a complete Bostan installation or release.**
 
-<p align="center">
-  <a href="https://github.com/paperclipai/paperclip/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License" /></a>
-  <a href="https://github.com/paperclipai/paperclip/stargazers"><img src="https://img.shields.io/github/stars/paperclipai/paperclip?style=flat" alt="Stars" /></a>
-  <a href="https://discord.gg/paperclipai"><img src="https://img.shields.io/discord/000000000?label=discord" alt="Discord" /></a>
-</p>
-
-<br/>
-
-<div align="center">
-  <video src="https://github.com/user-attachments/assets/773bdfb2-6d1e-4e30-8c5f-3487d5b70c8f" width="600" controls></video>
-</div>
-
-<br/>
-
-# Paperclip is the app people use to manage AI agents for work.
-
-Open-source orchestration for teams of AI agents.
-
-**If OpenClaw is an _employee_, Paperclip is the _company_.**
-
-Paperclip is a Node.js server and React UI that orchestrates a team of AI agents to run a business. Bring your own agents, assign goals, and track work and costs from one dashboard.
-
-It looks like a task manager. Under the hood: org charts, budgets, governance, goal alignment, and agent coordination.
-
-**Manage business goals, not pull requests.**
-
-|        | Step            | Example                                                            |
-| ------ | --------------- | ------------------------------------------------------------------ |
-| **01** | Define the goal | _"Build the #1 AI note-taking app to $1M MRR."_                    |
-| **02** | Hire the team   | CEO, CTO, engineers, designers, marketers — any bot, any provider. |
-| **03** | Approve and run | Review strategy. Set budgets. Hit go. Monitor from the dashboard.  |
-
-<br/>
-
-<div align="center">
-<table>
-  <tr>
-    <td align="center"><strong>Works<br/>with</strong></td>
-    <td align="center"><img src="https://raw.githubusercontent.com/paperclipai/paperclip/master/doc/assets/logos/openclaw.svg" width="32" alt="OpenClaw" /><br/><sub>OpenClaw</sub></td>
-    <td align="center"><img src="https://raw.githubusercontent.com/paperclipai/paperclip/master/doc/assets/logos/claude.svg" width="32" alt="Claude" /><br/><sub>Claude Code</sub></td>
-    <td align="center"><img src="https://raw.githubusercontent.com/paperclipai/paperclip/master/doc/assets/logos/codex.svg" width="32" alt="Codex" /><br/><sub>Codex</sub></td>
-    <td align="center"><img src="https://raw.githubusercontent.com/paperclipai/paperclip/master/doc/assets/logos/cursor.svg" width="32" alt="Cursor" /><br/><sub>Cursor</sub></td>
-    <td align="center"><img src="https://raw.githubusercontent.com/paperclipai/paperclip/master/doc/assets/logos/bash.svg" width="32" alt="Bash" /><br/><sub>Bash</sub></td>
-    <td align="center"><img src="https://raw.githubusercontent.com/paperclipai/paperclip/master/doc/assets/logos/http.svg" width="32" alt="HTTP" /><br/><sub>HTTP</sub></td>
-  </tr>
-</table>
-
-<em>If it can receive a heartbeat, it's hired.</em>
-
-</div>
-
-<br/>
-
-## Paperclip is right for you if
-
-- ✅ You want to build **autonomous AI companies**
-- ✅ You **coordinate many different agents** (OpenClaw, Codex, Claude, Cursor) toward a common goal
-- ✅ You have **20 simultaneous Claude Code terminals** open and lose track of what everyone is doing
-- ✅ You want agents running **autonomously 24/7**, but still want to audit work and chime in when needed
-- ✅ You want to **monitor costs** and enforce budgets
-- ✅ You want a process for managing agents that **feels like using a task manager**
-- ✅ You want to manage your autonomous businesses **from your phone**
-
-<br/>
-
-## Features
-
-<table>
-<tr>
-<td align="center" width="33%">
-<h3>🔌 Bring Your Own Agent</h3>
-Any agent, any runtime, one org chart. If it can receive a heartbeat, it's hired.
-</td>
-<td align="center" width="33%">
-<h3>🎯 Goal Alignment</h3>
-Every task traces back to the company mission. Agents know <em>what</em> to do and <em>why</em>.
-</td>
-<td align="center" width="33%">
-<h3>💓 Heartbeats</h3>
-Agents wake on a schedule, check work, and act. Delegation flows up and down the org chart.
-</td>
-</tr>
-<tr>
-<td align="center">
-<h3>💰 Cost Control</h3>
-Monthly budgets per agent. When they hit the limit, they stop. No runaway costs.
-</td>
-<td align="center">
-<h3>🏢 Multi-Company</h3>
-One deployment, many companies. Complete data isolation. One control plane for your portfolio.
-</td>
-<td align="center">
-<h3>🎫 Ticket System</h3>
-Every conversation traced. Every decision explained. Full tool-call tracing and immutable audit log.
-</td>
-</tr>
-<tr>
-<td align="center">
-<h3>🛡️ Governance</h3>
-Approve hires, override strategy, pause or terminate any agent — at any time.
-</td>
-<td align="center">
-<h3>📊 Org Chart</h3>
-Hierarchies, roles, reporting lines. Your agents have a boss, a title, and a job description.
-</td>
-<td align="center">
-<h3>📱 Mobile Ready</h3>
-Monitor and manage your autonomous businesses from anywhere.
-</td>
-</tr>
-</table>
-
-<br/>
-
-## Problems Paperclip solves
-
-| Without Paperclip                                                                                                                     | With Paperclip                                                                                                                         |
-| ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| ❌ You have 20 Claude Code tabs open and can't track which one does what. On reboot you lose everything.                              | ✅ Tasks are ticket-based, conversations are threaded, sessions persist across reboots.                                                |
-| ❌ You manually gather context from several places to remind your bot what you're actually doing.                                     | ✅ Context flows from the task up through the project and company goals — your agent always knows what to do and why.                  |
-| ❌ Folders of agent configs are disorganized and you're re-inventing task management, communication, and coordination between agents. | ✅ Paperclip gives you org charts, ticketing, delegation, and governance out of the box — so you run a company, not a pile of scripts. |
-| ❌ Runaway loops waste hundreds of dollars of tokens and max your quota before you even know what happened.                           | ✅ Cost tracking surfaces token budgets and throttles agents when they're out. Management prioritizes with budgets.                    |
-| ❌ You have recurring jobs (customer support, social, reports) and have to remember to manually kick them off.                        | ✅ Heartbeats handle regular work on a schedule. Management supervises.                                                                |
-| ❌ You have an idea, you have to find your repo, fire up Claude Code, keep a tab open, and babysit it.                                | ✅ Add a task in Paperclip. Your coding agent works on it until it's done. Management reviews their work.                              |
-
-<br/>
-
-## Why Paperclip is special
-
-Paperclip handles the hard orchestration details correctly.
-
-|                                   |                                                                                                               |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| **Atomic execution.**             | Task checkout and budget enforcement are atomic, so no double-work and no runaway spend.                      |
-| **Persistent agent state.**       | Agents resume the same task context across heartbeats instead of restarting from scratch.                     |
-| **Runtime skill injection.**      | Agents can learn Paperclip workflows and project context at runtime, without retraining.                      |
-| **Governance with rollback.**     | Approval gates are enforced, config changes are revisioned, and bad changes can be rolled back safely.        |
-| **Goal-aware execution.**         | Tasks carry full goal ancestry so agents consistently see the "why," not just a title.                        |
-| **Portable company templates.**   | Export/import orgs, agents, and skills with secret scrubbing and collision handling.                          |
-| **True multi-company isolation.** | Every entity is company-scoped, so one deployment can run many companies with separate data and audit trails. |
-
-<br/>
-
-## What's Under the Hood
-
-Paperclip is a full control plane, not a wrapper. Before you build any of this yourself, know that it already exists:
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                       PAPERCLIP SERVER                       │
-│                                                              │
-│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐  │
-│  │Identity & │  │  Work &   │  │ Heartbeat │  │Governance │  │
-│  │  Access   │  │   Tasks   │  │ Execution │  │& Approvals│  │
-│  └───────────┘  └───────────┘  └───────────┘  └───────────┘  │
-│                                                              │
-│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐  │
-│  │ Org Chart │  │Workspaces │  │  Plugins  │  │  Budget   │  │
-│  │ & Agents  │  │ & Runtime │  │           │  │ & Costs   │  │
-│  └───────────┘  └───────────┘  └───────────┘  └───────────┘  │
-│                                                              │
-│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐  │
-│  │ Routines  │  │ Secrets & │  │ Activity  │  │  Company  │  │
-│  │& Schedules│  │  Storage  │  │ & Events  │  │Portability│  │
-│  └───────────┘  └───────────┘  └───────────┘  └───────────┘  │
-└──────────────────────────────────────────────────────────────┘
-         ▲              ▲              ▲              ▲
-   ┌─────┴─────┐  ┌─────┴─────┐  ┌─────┴─────┐  ┌─────┴─────┐
-   │  Claude   │  │   Codex   │  │   CLI     │  │ HTTP/web  │
-   │   Code    │  │           │  │  agents   │  │   bots    │
-   └───────────┘  └───────────┘  └───────────┘  └───────────┘
-```
-
-### The Systems
-
-<table>
-<tr>
-<td width="50%">
-
-**Identity & Access** — Two deployment modes (trusted local or authenticated), board users, agent API keys, short-lived run JWTs, company memberships, invite flows, and OpenClaw onboarding. Every mutating request is traced to an actor.
-
-</td>
-<td width="50%">
-
-**Org Chart & Agents** — Agents have roles, titles, reporting lines, permissions, and budgets. Adapter examples match the diagram: Claude Code, Codex, CLI agents such as Cursor/Gemini/bash, HTTP/webhook bots such as OpenClaw, and external adapter plugins. If it can receive a heartbeat, it's hired.
-
-</td>
-</tr>
-<tr>
-<td>
-
-**Work & Task System** — Issues carry company/project/goal/parent links, atomic checkout with execution locks, first-class blocker dependencies, comments, documents, attachments, work products, labels, and inbox state. No double-work, no lost context.
-
-</td>
-<td>
-
-**Heartbeat Execution** — DB-backed wakeup queue with coalescing, budget checks, workspace resolution, secret injection, skill loading, and adapter invocation. Runs produce structured logs, cost events, session state, and audit trails. Recovery handles orphaned runs automatically.
-
-</td>
-</tr>
-<tr>
-<td>
-
-**Workspaces & Runtime** — Project workspaces, isolated execution workspaces (git worktrees, operator branches), and runtime services (dev servers, preview URLs). Agents work in the right directory with the right context every time.
-
-</td>
-<td>
-
-**Governance & Approvals** — Board approval workflows, execution policies with review/approval stages, decision tracking, budget hard-stops, agent pause/resume/terminate, and full audit logging. Nothing ships without your sign-off.
-
-</td>
-</tr>
-<tr>
-<td>
-
-**Budget & Cost Control** — Token and cost tracking by company, agent, project, goal, issue, provider, and model. Scoped budget policies with warning thresholds and hard stops. Overspend pauses agents and cancels queued work automatically.
-
-</td>
-<td>
-
-**Routines & Schedules** — Recurring tasks with cron, webhook, and API triggers. Concurrency and catch-up policies. Each routine execution creates a tracked issue and wakes the assigned agent — no manual kick-offs needed.
-
-</td>
-</tr>
-<tr>
-<td>
-
-**Plugins** — Instance-wide plugin system with out-of-process workers, capability-gated host services, job scheduling, tool exposure, and UI contributions. Extend Paperclip without forking it.
-
-</td>
-<td>
-
-**Secrets & Storage** — Instance and company secrets, encrypted local storage, provider-backed object storage, attachments, and work products. Sensitive values stay out of prompts unless a scoped run explicitly needs them.
-
-</td>
-</tr>
-<tr>
-<td>
-
-**Activity & Events** — Mutating actions, heartbeat state changes, cost events, approvals, comments, and work products are recorded as durable activity so operators can audit what happened and why.
-
-</td>
-<td>
-
-**Company Portability** — Export and import entire organizations — agents, skills, projects, routines, and issues — with secret scrubbing and collision handling. One deployment, many companies, complete data isolation.
-
-</td>
-</tr>
-</table>
-
-<br/>
-
-## What Paperclip is not
-
-|                              |                                                                                                                      |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| **Not a chatbot.**           | Agents have jobs, not chat windows.                                                                                  |
-| **Not an agent framework.**  | We don't tell you how to build agents. We tell you how to run a company made of them.                                |
-| **Not a workflow builder.**  | No drag-and-drop pipelines. Paperclip models companies — with org charts, goals, budgets, and governance.            |
-| **Not a prompt manager.**    | Agents bring their own prompts, models, and runtimes. Paperclip manages the organization they work in.               |
-| **Not a single-agent tool.** | This is for teams. If you have one agent, you probably don't need Paperclip. If you have twenty — you definitely do. |
-| **Not a code review tool.**  | Paperclip orchestrates work, not pull requests. Bring your own review process.                                       |
-
-<br/>
-
-## Quickstart
-
-Open source. Self-hosted. No Paperclip account required.
+This CLI supports limited offline functionality:
 
 ```bash
-npx paperclipai onboard --yes
+bostan --help
+bostan --version
+bostan status
+bostan install --local
 ```
 
-That quickstart path now defaults to trusted local loopback mode for the fastest first run. To start in authenticated/private mode instead, choose a bind preset explicitly:
+`status` is read-only and reports whether a verified Bostan CLI preview is installed. `install --local` installs **only the Bostan preview CLI** from the current source/package: an isolated payload under `~/.bostan/cli` and a new command at `~/.local/bin/bostan`. It refuses existing commands, unexpected file types, symlinks and changed managed files. It never downloads binaries or accesses the former product's state. The caller must invoke it explicitly.
+
+This does **not** install or start the Bostan server, database, AI agents or system services. Update, uninstall, onboard, run, remote installation and all release commands remain disabled pending safety qualification.
+
+**Native Windows remains development QA only, not a consumer installer.** Windows
+`install --local` is permitted solely in the explicit, disposable test harness
+(`BOSTAN_WINDOWS_TEMP_QA=1`, a normalized synthetic `bostan-native-install-test-*`
+home inside the operating system TEMP directory). The installer writes
+`.local/bin/bostan.cmd`, ships a source-independent NTFS ACL verifier, and
+protects both `.bostan` and `.local` with restricted DACLs. Every managed
+`status` re-verifies the protections; unsafe permissions fail closed.
+Normal Windows user HOME and all other destinations are still rejected.
+macOS/Linux use `~/.local/bin/bostan` as above; **no Windows end-user installation
+or native full-app distribution is qualified**.
+
+Project: https://github.com/TheHalfMoon/Bostan
+
+License: MIT; see LICENSE and original attribution/provenance documentation in the repository.
+
+
+## Local Bostan application (source checkout only)
+
+The complete application has a separate foreground development launcher.
+After installing workspace dependencies and building the UI, with system
+PostgreSQL installed locally, run:
 
 ```bash
-npx paperclipai onboard --yes --bind lan
-# or:
-npx paperclipai onboard --yes --bind tailnet
+bostan app doctor
+bostan app run --local --port 3100
 ```
 
-If you already have Paperclip configured, rerunning `onboard` keeps the existing config in place. Use `paperclipai configure` to edit settings.
+The launcher creates isolated `~/.bostan/app` data and credentials, starts a
+private PostgreSQL service and the existing Bostan application server,
+checks `/api/health`, and stops both on Ctrl+C. No global Postgres service,
+background daemon, cloud server, or automatic updater is created.
 
-Or manually:
+This is **source-only, development-qualified**, and must not be exposed on a
+public network or used for high-value production data. The source server
+is still undergoing migration of internal dependencies. The preview binary
+from `install --local` deliberately cannot start the full application.
+
+## Recover a stopped local runtime after a crash
+
+The local PostgreSQL database may outlive its UI/server process. **Do not delete**
+`~/.bostan/app/run.lock` by hand. From the prepared **source checkout** use:
 
 ```bash
-git clone https://github.com/paperclipai/paperclip.git
-cd paperclip
-pnpm install
-pnpm dev
+bostan app recover --local
 ```
 
-This starts the API server at `http://localhost:3100`. An embedded PostgreSQL database is created automatically — no setup required.
+Bostan clears the Bostan-owned runtime lock **only** if the prior owner PID
+is gone and its local PostgreSQL cluster is confirmed stopped. It refuses to
+remove the lock while PostgreSQL runs, if its status cannot be checked, or
+when the lock or managed paths look unsafe. Database files are preserved.
+This is manual recovery, not an automatic data repair, restore or migration.
 
-> **Requirements:** Node.js 24.11+, pnpm 9.15+
+Never point the recovery command at another user's HOME. The separately
+installed CLI-only preview cannot invoke app commands.
 
-<br/>
+## Local PostgreSQL cold snapshots (source checkout only)
 
-## FAQ
-
-**What does a typical setup look like?**
-Locally, a single Node.js process manages an embedded Postgres and local file storage. For production, point it at your own Postgres and deploy however you like. Configure projects, agents, and goals — the agents take care of the rest.
-
-If you're a solo entrepreneur you can use Tailscale to access Paperclip on the go. Then later you can deploy to e.g. Vercel when you need it.
-
-**Can I run multiple companies?**
-Yes. A single deployment can run an unlimited number of companies with complete data isolation.
-
-**How is Paperclip different from agents like OpenClaw or Claude Code?**
-Paperclip _uses_ those agents. It orchestrates them into a company — with org charts, budgets, goals, governance, and accountability.
-
-**Why should I use Paperclip instead of just pointing my OpenClaw to Asana or Trello?**
-Agent orchestration has subtleties in how you coordinate who has work checked out, how to maintain sessions, monitoring costs, establishing governance - Paperclip does this for you.
-
-(Bring-your-own-ticket-system is on the Roadmap)
-
-**Do agents run continuously?**
-By default, agents run on scheduled heartbeats and event-based triggers (task assignment, @-mentions). You can also hook in continuous agents like OpenClaw. You bring your agent and Paperclip coordinates.
-
-<br/>
-
-## Importing & Exporting Companies
-
-Export a company to a portable package and import it into any other instance — local or cloud — from a local path or GitHub:
+These commands are for private, stopped Bostan localhost applications. They
+require a prepared source checkout and a working pg_ctl binary.
 
 ```bash
-paperclipai company export <company-id> --out ./my-export
-paperclipai company import ./my-export --dry-run
-paperclipai company import org/repo --target new
+# Stop Bostan first (Ctrl+C); confirm PostgreSQL is stopped.
+bostan app backup --local
+
+# Verify the generated backup (read-only).
+bostan app verify --local /absolute/path/to/backup-folder
+
+# Restore only into a HOME path that does not already exist.
+bostan app restore --local /absolute/path/to/backup-folder --into-new-home /absolute/path/to/new-home
 ```
 
-The board UI has matching Export and Import pages in company settings: the Export page shows a fidelity panel listing what the bundle will not carry, and the Import page starts imported agents and routines paused by default, with a post-import activation step. See the [Importing & Exporting guide](https://github.com/paperclipai/paperclip/blob/master/docs/guides/board-operator/importing-and-exporting.md) for details.
+The snapshot copies Bostan-managed local app state, private PostgreSQL data
+and secrets under ~/.bostan/backups with per-file SHA-256 checks. It refuses
+live or uncertain PostgreSQL, a held runtime lock, symlinks and unsafe files.
+Restoration never overwrites an existing HOME. It also rewrites Bostan launcher-owned
+absolute storage, logging, backup and secret-key paths to point into the new
+HOME, while leaving arbitrary user-defined paths unchanged. Verify the
+resulting app in a separate test HOME before relying on it for recovery.
 
-## Development
+**Privacy warning:** Cold backups contain credentials and potentially
+sensitive company content. Files are private on disk but are NOT encrypted;
+manifest digests detect accidental corruption, not malicious replacement of
+the whole manifest. Keep them offline and private. No cross-OS or Postgres
+major-version portability guarantee exists. Full-app restore/relaunch passed a focused macOS + PostgreSQL 17 disposable
+smoke test, but broader disaster recovery is not qualified. Do not run backup concurrently with
+other Bostan operations.
+
+
+## Free-provider first-agent development smoke (not offline)
+
+A focused macOS source-runtime test verified that OpenCode could prepare a
+legacy `opencode_local` agent with `opencode/beam-free` and no stored API key.
+Bostan source runtime starts OpenCode in standalone mode to avoid colliding
+with an unrelated existing OpenCode background server. This is **only**
+a local CLI-process isolation guarantee; the model still uses an external
+online provider. Nothing is uploaded to a public project or deployment.
+
+A synthetic `beam-free` agent completed its task but later exceeded
+its heartbeat deadline; in contrast, `deepseek-v4.1-flash-free` agents
+completed two separate synthetic tasks and finished both heartbeat runs
+cleanly. Never treat issue `done` alone as proof of a successful run.
+See `docs/bostan/B0_FIRST_AGENT_RUNTIME_RECEIPT.md` for the precise
+results, limitations and open release gate. No paid model/provider should
+be selected by an automated test or release process.
+
+
+A repeatable first-agent smoke test lives at
+`scripts/bostan-first-agent-free-e2e.mjs`. It never runs by default; a
+developer must explicitly select a Bostan localhost server running with
+an isolated temporary HOME and opt in to free **online** model use:
 
 ```bash
-pnpm dev              # Full dev (API + UI, watch mode)
-pnpm dev:once         # Full dev without file watching
-pnpm dev:server       # Server only
-pnpm build            # Build all
-pnpm typecheck        # Type checking
-pnpm test             # Cheap default test run (Vitest only)
-pnpm test:watch       # Vitest watch mode
-pnpm test:e2e         # Playwright browser suite
-pnpm db:generate      # Generate DB migration
-pnpm db:migrate       # Apply migrations
+BOSTAN_E2E_URL=http://127.0.0.1:41517/ \
+BOSTAN_E2E_DISPOSABLE_HOME=/tmp/<your-disposable-Bostan-home> \
+BOSTAN_E2E_CONFIRM_TEMP_DATA=1 \
+BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL=1 \
+node scripts/bostan-first-agent-free-e2e.mjs
 ```
 
-`pnpm test` does not run Playwright. Browser suites stay separate and are typically run only when working on those flows or in CI.
+It requires the managed config and active run lock in the temp profile,
+checks that the source runtime is private and healthy, and creates only
+synthetic organizations/tasks. It fails if the heartbeat ends `timed_out`
+or otherwise fails even if the task happens to be `done`. Never point
+it at a real profile or rely on free-provider availability for CI.
 
-See [doc/DEVELOPING.md](https://github.com/paperclipai/paperclip/blob/master/doc/DEVELOPING.md) for the full development guide.
+### Optional OpenCode step budget (legacy adapter)
 
-<br/>
+When creating an `opencode_local` agent with `runner: "legacy"`, you can
+include `maxAgentSteps: 12` in its `adapterConfig` to cap OpenCode's
+primary build agent to at most 12 agentic iterations. The valid integer
+range is 1–128. This is optional: it does not alter any other agent or
+promise a token/cost ceiling. A pre-existing tighter OpenCode step limit
+stays in effect. The feature deliberately refuses remote execution where
+its generated local configuration would not enforce the limit.
 
-## Roadmap
+The disposable opt-in end-to-end runner uses that limit for its online
+free-model tests. Its default is `opencode/deepseek-v4.1-flash-free`; set
+`BOSTAN_E2E_FREE_MODEL=opencode/beam-free` to exercise the second allowed
+model. Paid and unknown model names are rejected by the harness.
+See `docs/bostan/B0_AGENT_STEP_BUDGET_RECEIPT.md`.
 
-- ✅ Plugin system (e.g. add a knowledge base, custom tracing, queues, etc)
-- ✅ Get OpenClaw / claw-style agent employees
-- ✅ companies.sh - import and export entire organizations
-- ✅ Easy AGENTS.md configurations
-- ✅ Skills Manager
-- ✅ Scheduled Routines
-- ✅ Better Budgeting
-- ✅ Agent Reviews and Approvals
-- ✅ Multiple Human Users
-- ⚪ Cloud / Sandbox agents (e.g. Cursor / e2b / Novita agents)
-- ⚪ Artifacts & Work Products
-- ⚪ Memory / Knowledge
-- ⚪ Enforced Outcomes
-- ⚪ MAXIMIZER MODE
-- ⚪ Deep Planning
-- ⚪ Work Queues
-- ⚪ Self-Organization
-- ⚪ Automatic Organizational Learning
-- ⚪ CEO Chat
-- ⚪ Cloud deployments
-- ⚪ Desktop App
+## Windows TEMP-only ACL hardening (B0-17)
 
-This is the short roadmap preview. See the full roadmap in [ROADMAP.md](https://github.com/paperclipai/paperclip/blob/master/ROADMAP.md).
+A Windows source runtime remains **developer QA only**: it requires an
+explicit `BOSTAN_WINDOWS_TEMP_QA=1` opt-in, an existing isolated HOME under
+the current user's TEMP directory, working native PostgreSQL, Node, and a
+prepared source checkout. It is not a supported consumer installation.
 
-<br/>
+Before writing credentials, the first launch creates `HOME/.bostan` with an
+NTFS **protected access DACL** for only the current account, SYSTEM and
+Administrators. Restart verifies the existing DACL and fails if permissions
+have become broader. An unsafe or non-temporary HOME is refused. Do not
+use `icacls /inheritance:r` as a substitute for this check: it can leave
+broad explicit ACEs intact. See
+`docs/bostan/B0_WINDOWS_PRIVATE_ACL_RECEIPT.md`.
 
-## Community & Plugins
+The app's general Windows packaging, normal graphical stop controls,
+native default agent E2E, full data privacy and security review, and signed
+installers are not yet release-qualified.
 
-Find Plugins and more at [awesome-paperclip](https://github.com/gsxdsm/awesome-paperclip)
 
-## Telemetry
+## Windows developer-only orderly local stop (B0-18)
 
-Paperclip collects anonymous usage telemetry to help us understand how the product is used and improve it. No personal information, issue content, prompts, file paths, or secrets are ever collected. Private repository references are hashed with a per-install salt before being sent.
+From a full Bostan source checkout, `bostan app stop --local` now requests
+shutdown of the same private Windows TEMP QA runtime as
+`bostan app run --local`. Both command windows must use the identical
+explicit temporary `HOME`, set `BOSTAN_WINDOWS_TEMP_QA=1`, and have native
+PostgreSQL tools on PATH. The existing NTFS access DACL is verified before
+the source CLI reads the private local stop token. This uses an authenticated
+loopback request and parent-to-child Node IPC instead of an arbitrary
+process kill. The stop command checks that PostgreSQL has stopped before
+reporting success.
 
-Telemetry is **enabled by default** and can be disabled with any of the following:
+This is **not a supported Windows installer or service feature**. The
+installed CLI-only preview continues to refuse this source command.
+Full native Windows Bostan-server-plus-PostgreSQL shutdown and active agent
+draining are still open qualification gates. See
+`docs/bostan/B0_WINDOWS_ORDERLY_STOP_RECEIPT.md`.
 
-| Method               | How                                                     |
-| -------------------- | ------------------------------------------------------- |
-| Environment variable | `PAPERCLIP_TELEMETRY_DISABLED=1`                        |
-| Standard convention  | `DO_NOT_TRACK=1`                                        |
-| CI environments      | Automatically disabled when `CI=true`                   |
-| Config file          | Set `telemetry.enabled: false` in your Paperclip config |
+### Windows synthetic full-app stop verification (B0-19)
 
-## Contributing
+A disposable Windows source-runtime integration test successfully started
+the real Bostan HTTP server and PostgreSQL 17.11, created/read a synthetic
+organization, requested shutdown through the separate authenticated
+`bostan app stop --local` CLI, verified HTTP was closed and PostgreSQL
+stopped, then restarted the database independently to confirm the exact
+organization row persisted. Full evidence and explicit limitations:
+`docs/bostan/B0_WINDOWS_REAL_GRACEFUL_STOP_RECEIPT.md`.
 
-We welcome contributions. See the [contributing guide](https://github.com/paperclipai/paperclip/blob/master/CONTRIBUTING.md) for details.
+The Windows TEMP-QA cold start may still be slow and resource intensive.
+Do not use this development proof as permission to run in a normal Windows
+profile, claim a consumer installer exists, or publish the application.
 
-<br/>
+### Windows free OpenCode model admission before synthetic agent E2E (B0-20)
 
-## Community
+Headless OpenCode may hang before producing any model response when launched
+with open stdin or from an enormous untracked Git working tree. Windows
+synthetic first-agent E2E now first runs a **separate bounded admission** in
+a fresh, empty TEMP workspace with stdin already closed. The check requires
+a real JSON text response from an explicitly allowlisted free online model.
 
-- [Discord](https://discord.gg/paperclipai) — Join the community
-- [Twitter / X](https://x.com/papercliping) — Follow updates and announcements
-- [GitHub Issues](https://github.com/paperclipai/paperclip/issues) — bugs and feature requests
-- [GitHub Discussions](https://github.com/paperclipai/paperclip/discussions) — ideas and RFC
+Set `BOSTAN_E2E_OPENCODE_EXE` to the **absolute native OpenCode executable
+path**, plus `BOSTAN_E2E_DISPOSABLE_HOME`,
+`BOSTAN_E2E_CONFIRM_TEMP_DATA=1`, and
+`BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL=1`. The standalone preflight is
+`node scripts/bostan-opencode-free-admission.mjs`. It does not inherit
+your actual OpenCode profile or cloud keys and refuses paid or unknown models.
+The full app and agent E2E still require separate qualification.
 
-<br/>
-
-## License
-
-MIT &copy; 2026 [Paperclip Labs, Inc](https://paperclip.ing)
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/image?repos=paperclipai/paperclip&type=date&legend=top-left)](https://www.star-history.com/?repos=paperclipai%2Fpaperclip&type=date&legend=top-left)
-
-<br/>
-
----
-
-<p align="center">
-  <sub>Open source under MIT. Built for people who want to get work done, not babysit agents.</sub>
-</p>
+See `docs/bostan/B0_WINDOWS_FREE_MODEL_ADMISSION_RECEIPT.md`.

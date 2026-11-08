@@ -1,11 +1,15 @@
-import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { RUNNER_VENDOR_BUILD_COMMAND } from "../../scripts/prepare-runner-vendor.mjs";
+import { copyServerBuildAssets } from "../../scripts/copy-build-assets.mjs";
 
+const copierSource = readFileSync(
+  fileURLToPath(new URL("../../scripts/copy-build-assets.mjs", import.meta.url)),
+  "utf8",
+);
 const packageJsonPath = fileURLToPath(
   new URL("../../package.json", import.meta.url),
 );
@@ -20,14 +24,12 @@ const workspaceDiffReprojectionPath = fileURLToPath(
 );
 
 describe("server package build script", () => {
-  it("builds the compiled package entry during prepack", () => {
+  it("refuses to pack while the Bostan release lockdown is in force", () => {
     const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
       scripts?: Record<string, string>;
     };
 
-    expect(packageJson.scripts?.prepack).toBe(
-      "pnpm run prepare:ui-dist && pnpm run build",
-    );
+    expect(packageJson.scripts?.prepack).toBe("node ../scripts/bostan-release-disabled.mjs");
   });
 
   it("copies static runtime asset directories into dist", () => {
@@ -35,14 +37,11 @@ describe("server package build script", () => {
       scripts?: Record<string, string>;
     };
     const buildScript = packageJson.scripts?.build ?? "";
-
-    expect(buildScript).toContain(
-      "mkdir -p dist/onboarding-assets dist/built-ins",
-    );
-    expect(buildScript).toContain(
-      "cp -R src/onboarding-assets/. dist/onboarding-assets/",
-    );
-    expect(buildScript).toContain("cp -R src/built-ins/. dist/built-ins/");
+    // The portable copier (scripts/copy-build-assets.mjs, with its own
+    // node:test suite) replaced the Unix-only mkdir/cp chain.
+    expect(buildScript.split(" && ")).toContain("node scripts/copy-build-assets.mjs");
+    expect(copierSource).toContain('["server/src/onboarding-assets","server/dist/onboarding-assets"]');
+    expect(copierSource).toContain('["server/src/built-ins","server/dist/built-ins"]');
   });
 
   it("vendors the private runner runtime without a production workspace dependency", () => {
@@ -53,9 +52,9 @@ describe("server package build script", () => {
     };
 
     expect(
-      packageJson.dependencies?.["@paperclipai/paperclip-runner"],
+      packageJson.dependencies?.["@bostan/runner"],
     ).toBeUndefined();
-    expect(packageJson.devDependencies?.["@paperclipai/paperclip-runner"]).toBe(
+    expect(packageJson.devDependencies?.["@bostan/runner"]).toBe(
       "workspace:*",
     );
     // prepare-runner-vendor.mjs reuses a Runner build whose recorded inputs
@@ -66,12 +65,10 @@ describe("server package build script", () => {
       "node scripts/prepare-runner-vendor.mjs",
     );
     expect(RUNNER_VENDOR_BUILD_COMMAND).toBe(
-      "pnpm --filter @paperclipai/paperclip-runner build",
+      "pnpm --filter @bostan/runner build",
     );
     expect(packageJson.scripts?.build.startsWith("pnpm run prepare:runner-vendor && ")).toBe(true);
-    expect(packageJson.scripts?.build).toContain(
-      "cp -Rf ../packages/paperclip-runner/dist/. dist/vendor/paperclip-runner/",
-    );
+    expect(copierSource).toContain('["packages/paperclip-runner/dist","server/dist/vendor/paperclip-runner"]');
   });
 
   it("brackets the Runner's build with its input recording", () => {
@@ -92,21 +89,22 @@ describe("server package build script", () => {
   });
 
   it("replaces an existing read-only image manifest with the build's copy step", () => {
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
-    const step = packageJson.scripts.build.split(" && ").find((command: string) =>
-      command.includes("../packages/paperclip-runner/dist/."));
-    expect(step).toBeDefined();
-    const [command, ...args] = step.split(" ");
     const root = mkdtempSync(path.join(tmpdir(), "runner-vendor-copy-"));
     try {
+      const write = (relative: string, content: string, mode?: number) => {
+        mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
+        writeFileSync(path.join(root, relative), content, mode === undefined ? undefined : { mode });
+      };
+      write("server/package.json", JSON.stringify({ name: "@bostan/server" }));
+      for (const dir of ["server/src/onboarding-assets", "server/src/built-ins", "server/src/services/scripts"]) write(`${dir}/.keep`, "");
+      for (const name of ["install-copilot-assets.mjs", "materialize-copilot-binary.mjs", "copilot-inner-distribution.mjs"]) {
+        write(`packages/paperclip-runner/scripts/${name}`, "");
+      }
       const relative = "remote-provider-packs/linux-x64/provider-pack.json";
-      const source = path.join(root, "packages/paperclip-runner/dist", relative);
       const destination = path.join(root, "server/dist/vendor/paperclip-runner", relative);
-      mkdirSync(path.dirname(source), { recursive: true });
-      mkdirSync(path.dirname(destination), { recursive: true });
-      writeFileSync(source, "qualified image identity", { mode: 0o444 });
-      writeFileSync(destination, "previous image identity", { mode: 0o444 });
-      execFileSync(command, args, { cwd: path.join(root, "server") });
+      write(`packages/paperclip-runner/dist/${relative}`, "qualified image identity", 0o444);
+      write(`server/dist/vendor/paperclip-runner/${relative}`, "previous image identity", 0o444);
+      copyServerBuildAssets(root);
       expect(readFileSync(destination, "utf8")).toBe("qualified image identity");
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -176,7 +174,7 @@ describe("server package build script", () => {
       '"../../../../packages/paperclip-runner/src/index.ts"',
     );
     expect(shim).not.toContain(
-      'export * from "@paperclipai/paperclip-runner"',
+      'export * from "@bostan/runner"',
     );
   });
 
@@ -188,7 +186,7 @@ describe("server package build script", () => {
       const consumer = readFileSync(consumerPath, "utf8");
 
       expect(consumer).toContain('vendor/paperclip-runner/index.js"');
-      expect(consumer).not.toContain('from "@paperclipai/paperclip-runner"');
+      expect(consumer).not.toContain('from "@bostan/runner"');
     }
   });
 });

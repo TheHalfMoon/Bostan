@@ -15,8 +15,8 @@ import type {
   IssueTreeControlPreview,
   IssueTreeHold,
   IssueWorkProduct,
-} from "@paperclipai/shared";
-import { ONBOARDING_FIRST_TASK_ORIGIN_KIND } from "@paperclipai/shared";
+} from "@bostan/shared";
+import { ONBOARDING_FIRST_TASK_ORIGIN_KIND } from "@bostan/shared";
 import type {
   AnchorHTMLAttributes,
   ButtonHTMLAttributes,
@@ -4762,7 +4762,7 @@ describe("IssueDetail", () => {
       { id: "run-queued-2", agentId: "agent-2", status: "queued", runtimeMode: "native", issueId: "issue-1", adapterType: "paperclip_runner" },
     ]);
     await act(async () => { renderIssueView(); });
-    await waitForAssertion(() => expect(mockIssueChatThreadRender.mock.calls.at(-1)?.[0]).toMatchObject({ stopRunLabel: "Stop Paperclip work" }));
+    await waitForAssertion(() => expect(mockIssueChatThreadRender.mock.calls.at(-1)?.[0]).toMatchObject({ stopRunLabel: "Stop Bostan work" }));
     await act(async () => { await mockIssueChatThreadRender.mock.calls.at(-1)![0].onStopRun("run-queued-2"); });
     expect(mockGrokBotApi.stop).toHaveBeenCalledExactlyOnceWith("company-1", "agent-2", "run-queued-2");
     expect(mockHeartbeatsApi.cancel).not.toHaveBeenCalled();

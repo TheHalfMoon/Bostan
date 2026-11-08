@@ -9,7 +9,7 @@ import {
   plugins,
   projects,
   projectWorkspaces,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type { WorkspaceWorkers } from "../../services/plugin-workspaces.js";
 
 export async function createPluginWorkspaceFixture(

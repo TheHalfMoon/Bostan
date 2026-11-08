@@ -9,8 +9,8 @@ import { activeIssueInteractionCondition } from "../issue-question-context.js";
 import { isConversation } from "../agent-conversations.js";
 import { hasPendingNativeChildCompletion, type NativeChildCompletionRecipient } from "./native-child-completion-delivery.js";
 import { and, asc, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import type { CreateIssueThreadInteraction } from "@paperclipai/shared";
+import type { Db } from "@bostan/db";
+import type { CreateIssueThreadInteraction } from "@bostan/shared";
 import {
   agentWakeupRequests,
   agents,
@@ -27,7 +27,7 @@ import {
   statusDecisions,
   workAssessments,
   workspaceOperations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   NATIVE_STATUS_ARBITER_POLICY_VERSION,
   type NativeStatusDecision,
@@ -2014,6 +2014,23 @@ export async function commitNativeStatusDecision(input: {
         throw new NativeStatusRaceError();
       }
       await supersedeExternalReviewRequestsInTransaction(tx as unknown as Db, binding, candidates, publications);
+    }
+
+    // The arbiter can evaluate governance before a new consent request or
+    // approval link is committed. Recheck here after we hold the issue row
+    // lock and after validating any legitimately superseded reviews, but
+    // *before* effects or Done status are projected. Both approval linking
+    // and interaction creation take the same issue lock.
+    if (input.decision.statusAction === "done") {
+      const gate = await pendingNativeGovernance({
+        db: tx as unknown as Db,
+        companyId: input.companyId,
+        issueId: input.issueId,
+        runId: input.runId,
+        executionState: record(issue.executionState),
+        ignoredInteractionIds: input.supersededExternalReviewRequests?.interactionIds ?? [],
+      });
+      if (gate) throw new NativeStatusRaceError();
     }
 
     const materialized: NativeMaterializedStatusEffect[] = [];

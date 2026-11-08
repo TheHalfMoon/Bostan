@@ -9,7 +9,7 @@ import {
   type GitHubReviewEventContext,
   type GitHubAutomaticEventContext,
   type GitHubReviewPolicy,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 
 export function effectiveGitHubReviewPolicy(
   configuration: GitHubChatConfiguration,

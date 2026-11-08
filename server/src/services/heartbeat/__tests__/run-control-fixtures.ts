@@ -1,5 +1,5 @@
-import type { Db } from "@paperclipai/db";
-import { agents, companies, createDb, EMBEDDED_POSTGRES_TEST_TIMEOUT_MS, heartbeatRuns } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { agents, companies, createDb, EMBEDDED_POSTGRES_TEST_TIMEOUT_MS, heartbeatRuns } from "@bostan/db";
 import { sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, beforeEach, vi, type Mock } from "vitest";
 import { getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "../../../__tests__/helpers/embedded-postgres.js";

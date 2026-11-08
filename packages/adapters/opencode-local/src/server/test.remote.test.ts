@@ -2,7 +2,7 @@ import { mkdtemp, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AdapterExecutionTarget } from "@paperclipai/adapter-utils/execution-target";
+import type { AdapterExecutionTarget } from "@bostan/adapter-utils/execution-target";
 
 const {
   ensureAdapterExecutionTargetDirectory,
@@ -55,9 +55,9 @@ const {
   };
 });
 
-vi.mock("@paperclipai/adapter-utils/execution-target", async () => {
-  const actual = await vi.importActual<typeof import("@paperclipai/adapter-utils/execution-target")>(
-    "@paperclipai/adapter-utils/execution-target",
+vi.mock("@bostan/adapter-utils/execution-target", async () => {
+  const actual = await vi.importActual<typeof import("@bostan/adapter-utils/execution-target")>(
+    "@bostan/adapter-utils/execution-target",
   );
   return {
     ...actual,
@@ -119,6 +119,38 @@ describe("opencode remote environment diagnostics", () => {
     },
   );
 
+  it("fails closed with a public typed code when the free model limit is reached", async () => {
+    runAdapterExecutionTargetProcess.mockResolvedValueOnce({
+      exitCode: 1, signal: null, timedOut: false, stdout: "",
+      stderr: "Free usage limit reached. Connect a provider or subscribe to OpenCode Go to keep going, or switch models.",
+    } as Awaited<ReturnType<typeof runAdapterExecutionTargetProcess>>);
+    const result = await testEnvironment({
+      companyId: "synthetic", adapterType: "paperclip_runner",
+      config: { model: "opencode/deepseek-v4.1-flash-free", env: { XDG_CONFIG_HOME: configHome } },
+    });
+    expect(result.status).toBe("fail");
+    const quota = result.checks.find(check => check.code === "opencode_free_usage_limit_reached");
+    expect(quota).toMatchObject({ level: "error" });
+    expect(quota?.message).not.toContain("subscribe");
+    expect(quota?.message).not.toContain("Connect a provider");
+    expect(result.checks).not.toContainEqual(expect.objectContaining({ code: "opencode_hello_probe_failed" }));
+  });
+
+  it("distinguishes free provider usage exhaustion from missing authentication", async () => {
+    vi.stubEnv("BOSTAN_OPENCODE_STANDALONE", "1");
+    runAdapterExecutionTargetProcess.mockResolvedValueOnce({
+      exitCode: 1, signal: null, timedOut: false, stdout: "",
+      stderr: "Free tier quota exhausted.",
+    } as Awaited<ReturnType<typeof runAdapterExecutionTargetProcess>>);
+    const result = await testEnvironment({
+      companyId: "synthetic", adapterType: "opencode_local",
+      config: { model: "opencode/deepseek-v4.1-flash-free", env: { XDG_CONFIG_HOME: configHome } },
+    });
+    expect(result.status).toBe("fail");
+    expect(result.checks.map(check => check.code)).toContain("opencode_free_usage_limit_reached");
+    expect(discoverOpenCodeModels).not.toHaveBeenCalled();
+  });
+
   it("rejects a malformed native model before starting the probe", async () => {
     const result = await testEnvironment({ companyId: "company-1", adapterType: "paperclip_runner",
       config: { model: "missing-provider", env: { XDG_CONFIG_HOME: configHome } } });
@@ -133,6 +165,37 @@ describe("opencode remote environment diagnostics", () => {
     const call = runAdapterExecutionTargetProcess.mock.calls[0] as unknown as [unknown, unknown, unknown, unknown, { cwd: string }];
     expect(call[4].cwd).toBe(configHome);
     expect((await stat(configHome)).isDirectory()).toBe(true);
+  });
+
+  it("uses real hello validation for Bostan isolated allowlisted free QA", async () => {
+    vi.stubEnv("BOSTAN_OPENCODE_STANDALONE", "1");
+    const result = await testEnvironment({ companyId: "synthetic", adapterType: "opencode_local",
+      config: { model: "opencode/deepseek-v4.1-flash-free", env: { XDG_CONFIG_HOME: configHome } } });
+    expect(result.status).toBe("pass");
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      code: "opencode_model_validation_via_probe", level: "info",
+    }));
+    expect(discoverOpenCodeModels).not.toHaveBeenCalled();
+    expect(ensureOpenCodeModelConfiguredAndAvailable).not.toHaveBeenCalled();
+    expect(runAdapterExecutionTargetProcess).toHaveBeenCalledOnce();
+    const call = runAdapterExecutionTargetProcess.mock.calls[0] as unknown as [unknown, unknown, unknown, string[]];
+    expect(call[3]).toContain("--standalone");
+    const invocation = runAdapterExecutionTargetProcess.mock.calls[0] as unknown as [
+      unknown, unknown, unknown, string[], { stdin: string }
+    ];
+    expect(invocation[4].stdin).toBe("Respond with hello.");
+  });
+
+  it("does not skip catalog validation for non-allowlisted models in source QA", async () => {
+    vi.stubEnv("BOSTAN_OPENCODE_STANDALONE", "1");
+    vi.mocked(discoverOpenCodeModels).mockResolvedValueOnce([{ id: "provider/paid", label: "paid" }]);
+    vi.mocked(ensureOpenCodeModelConfiguredAndAvailable).mockResolvedValueOnce([
+      { id: "provider/paid", label: "paid" },
+    ]);
+    await testEnvironment({ companyId: "synthetic", adapterType: "opencode_local",
+      config: { model: "provider/paid", env: { XDG_CONFIG_HOME: configHome } } });
+    expect(discoverOpenCodeModels).toHaveBeenCalledOnce();
+    expect(ensureOpenCodeModelConfiguredAndAvailable).toHaveBeenCalledOnce();
   });
 
   it("keeps catalog validation for the legacy local adapter", async () => {

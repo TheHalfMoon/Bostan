@@ -54,7 +54,7 @@ import type {
   IssueWorkMode,
   IssueWorkProduct,
   IssueAssigneeAdapterOverrides,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import type { ActiveRunForIssue, LiveRunForIssue } from "../api/heartbeats";
 import { findUIAdapter } from "../adapters/registry";
 import { useLiveRunTranscripts } from "./transcript/useLiveRunTranscripts";
@@ -205,7 +205,7 @@ import type {
   IssueCommentMetadata,
   IssueCommentPresentation,
   SourceTrustMetadata,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   describeToolInput,
   displayToolName,
@@ -215,7 +215,7 @@ import {
   summarizeToolInput,
   summarizeToolResult,
 } from "../lib/transcriptPresentation";
-import { buildAgentMentionHref } from "@paperclipai/shared";
+import { buildAgentMentionHref } from "@bostan/shared";
 import { useComposerStop } from "@/hooks/useComposerStop";
 import { cn, formatDateTime, formatShortDate } from "../lib/utils";
 import { liveBlueBadge } from "../lib/status-colors";
@@ -543,10 +543,10 @@ interface IssueChatComposerProps {
 
 interface IssueChatThreadProps {
   executionBlocked?: boolean;
-  interruption?: import("@paperclipai/shared").TaskInterruptionPresentation | null;
+  interruption?: import("@bostan/shared").TaskInterruptionPresentation | null;
   retryPreparing?: boolean;
   /** Browser sessions are placed chronologically by the default task thread. */
-  browsers?: import("@paperclipai/shared").TaskBrowser[];
+  browsers?: import("@bostan/shared").TaskBrowser[];
   onOpenBrowser?: (browserId: string) => void;
   hasOlderComments?: boolean;
   comments: IssueChatComment[];
@@ -2911,9 +2911,9 @@ function IssueChatFeedbackButtons({
           <DialogHeader>
             <DialogTitle>Save your feedback sharing preference</DialogTitle>
             <DialogDescription>
-              Choose whether voted AI outputs can be shared with Paperclip Labs.
-              This answer becomes the default for future thumbs up and thumbs
-              down votes.
+              Choose whether voted AI outputs can be shared with an
+              operator-configured Bostan feedback backend. Remote export is
+              disabled by default. Your choice applies to future votes.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 text-sm text-muted-foreground">
@@ -3533,14 +3533,14 @@ function SystemNoticeCommentContent({
       ? (agentMap?.get(runAgentId)?.name ?? null)
       : null;
     if (authorType === "system") {
-      const label = runAgentName ?? "Paperclip";
+      const label = runAgentName ?? "Bostan";
       if (runAgentId && runId)
         return { label, href: `/agents/${runAgentId}/runs/${runId}` };
       return { label };
     }
     if (runAgentId && runId) {
       return {
-        label: authorName ?? runAgentName ?? "Paperclip",
+        label: authorName ?? runAgentName ?? "Bostan",
         href: `/agents/${runAgentId}/runs/${runId}`,
       };
     }

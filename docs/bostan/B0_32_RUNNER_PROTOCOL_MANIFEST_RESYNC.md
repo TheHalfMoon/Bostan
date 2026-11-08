@@ -1,0 +1,9 @@
+# B0-32 — Requalify generated Runner protocol manifest after identity transition
+
+2026-10-27. Private draft atop B0-31; not merged/deployed/published. No paid inference or live model calls.
+
+An attempted full Bostan server build failed at the early Runner prerequisite: the checked-in versioned PRP protocol manifest no longer matched its source files following the preceding extensive product identity changes. Corrected the **generated manifest only** with the project's exact official `pnpm --filter @bostan/runner generate:protocol-manifest` command. The subsequent official `check:protocol-manifest` passed. The change is a source digest resynchronization, not a manually edited protocol schema version, field shape or runtime behavior.
+
+The subsequent broader Runner static check unexpectedly cascaded into `test:typescript:prep` and a full Rust native Cargo dependency compilation; this was deliberately terminated to protect the user's Mac storage (the scratch build had consumed about 1.2 GiB in `runner/target`, which was safely deleted). It **did not pass** and should not be recorded as release evidence. Direct full-server TypeScript verification was also terminated rather than imposing continued resource pressure. Thus **full server production build remains unqualified and blocked**, pending controlled clean-room build resources and native Rust qualification. No workaround to bypass the protocol or Rust checks was introduced.
+
+Evidence: `generate:protocol-manifest` success, `check:protocol-manifest` success, `git diff --check` success. Prior B0-31: Runner TypeScript build and exact JS entrypoints PASS, security/native-provenance tests 57/57 PASS, sharding tests 32/32 PASS, package identity tests 7/7 PASS. No production deployment, database migration, installed desktop or independent live-agent Case. **Release NO-GO.**

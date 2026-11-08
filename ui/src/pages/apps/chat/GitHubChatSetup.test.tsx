@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GitHubChatSetup, gitHubAppManifestAction } from "./GitHubChatSetup";
-import { defaultGitHubReviewPolicy } from "@paperclipai/shared";
+import { defaultGitHubReviewPolicy } from "@bostan/shared";
 import { ChatEndpointDetail } from "./ChatEndpointDetail";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { agentsApi } from "@/api/agents";
@@ -303,7 +303,9 @@ describe("GitHub App wizard", () => {
     await render("resume=draft-1&reconnect=1");
     await act(async () => [...container.querySelectorAll("button")].find(button => button.getAttribute("aria-label") === "Reconnect saved App")!.click());
     expect(container.querySelector("output")?.textContent).toContain("/BOT/apps/chat/connect");
-    expect(container.textContent).toContain("Delivery verification is unavailable");
+    // credential-ui-error-privacy: show fixed guidance, never the raw error.
+    expect(container.textContent).toContain("Could not verify this GitHub App");
+    expect(container.textContent).not.toContain("Delivery verification is unavailable");
     expect([...container.querySelectorAll("button")].find(button => button.getAttribute("aria-label") === "Reconnect saved App")?.disabled).toBe(false);
   });
   it.each(["paste", "upload"])("preserves a multiline PEM from %s when replacing credentials", async (source) => {

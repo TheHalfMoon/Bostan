@@ -1,4 +1,4 @@
-import type { DecisionInput, DecisionOption } from "@paperclipai/shared";
+import type { DecisionInput, DecisionOption } from "@bostan/shared";
 import { api } from "./client";
 
 /**
@@ -6,7 +6,7 @@ import { api } from "./client";
  * and resolved by the board. Open decisions surface in the attention feed as a
  * `decision` source; decided/expired history is fetched directly here. Response
  * DTOs mirror the P3 service (`server/src/services/decisions.ts`) and are kept
- * UI-local rather than in `@paperclipai/shared` on purpose — only the option /
+ * UI-local rather than in `@bostan/shared` on purpose — only the option /
  * input / effect specs are shared (they round-trip on create).
  */
 
@@ -85,6 +85,15 @@ export interface DecisionListFilter {
   limit?: number;
 }
 
+export interface BostanAdviceFreshness {
+  decisionId: string;
+  status: DecisionStatus;
+  current: boolean;
+  positiveChoiceAllowed: boolean;
+  safeAvailableOptions: string[];
+  authoritativeExecutionAllowed: false;
+}
+
 export interface DecideInput {
   optionId: string;
   inputValues?: Record<string, string>;
@@ -106,6 +115,7 @@ export const decisionsApi = {
   list: (companyId: string, filter: DecisionListFilter = {}) =>
     api.get<DecisionListItem[]>(`/companies/${companyId}/decisions${listQuery(filter)}`),
   get: (id: string) => api.get<DecisionOutcome>(`/decisions/${id}`),
+  freshness: (id: string) => api.get<BostanAdviceFreshness>(`/decisions/${id}/bostan-freshness`),
   decide: (id: string, input: DecideInput) =>
     api.post<DecisionOutcome>(`/decisions/${id}/decide`, input),
   dismiss: (id: string, reason?: string | null) =>

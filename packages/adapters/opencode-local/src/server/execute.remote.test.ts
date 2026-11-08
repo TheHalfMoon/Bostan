@@ -63,9 +63,9 @@ const {
   })),
 }));
 
-vi.mock("@paperclipai/adapter-utils/server-utils", async () => {
-  const actual = await vi.importActual<typeof import("@paperclipai/adapter-utils/server-utils")>(
-    "@paperclipai/adapter-utils/server-utils",
+vi.mock("@bostan/adapter-utils/server-utils", async () => {
+  const actual = await vi.importActual<typeof import("@bostan/adapter-utils/server-utils")>(
+    "@bostan/adapter-utils/server-utils",
   );
   return {
     ...actual,
@@ -75,9 +75,9 @@ vi.mock("@paperclipai/adapter-utils/server-utils", async () => {
   };
 });
 
-vi.mock("@paperclipai/adapter-utils/ssh", async () => {
-  const actual = await vi.importActual<typeof import("@paperclipai/adapter-utils/ssh")>(
-    "@paperclipai/adapter-utils/ssh",
+vi.mock("@bostan/adapter-utils/ssh", async () => {
+  const actual = await vi.importActual<typeof import("@bostan/adapter-utils/ssh")>(
+    "@bostan/adapter-utils/ssh",
   );
   return {
     ...actual,
@@ -88,9 +88,9 @@ vi.mock("@paperclipai/adapter-utils/ssh", async () => {
   };
 });
 
-vi.mock("@paperclipai/adapter-utils/execution-target", async () => {
-  const actual = await vi.importActual<typeof import("@paperclipai/adapter-utils/execution-target")>(
-    "@paperclipai/adapter-utils/execution-target",
+vi.mock("@bostan/adapter-utils/execution-target", async () => {
+  const actual = await vi.importActual<typeof import("@bostan/adapter-utils/execution-target")>(
+    "@bostan/adapter-utils/execution-target",
   );
   return {
     ...actual,
@@ -268,7 +268,10 @@ describe("opencode remote execution", () => {
       `${managedRemoteWorkspace}/.paperclip-runtime/opencode/xdgConfig`,
     );
     expect(modelProbeCall?.[3].remoteExecution?.remoteCwd).toBe("/remote/workspace");
-    expect(runCall?.[2].slice(-4)).toEqual(["--dir", managedRemoteWorkspace, "--", "--dir"]);
+    // New OpenCode CLI versions reject --dir. The remote target already owns
+    // its cwd; preserve the operator's literal argument after '--' only.
+    expect(runCall?.[2].slice(-2)).toEqual(["--", "--dir"]);
+    expect(runCall?.[2].slice(0, -2)).not.toContain("--dir");
     const call = runCall as
       | [string, string, string[], { env: Record<string, string>; remoteExecution?: { remoteCwd: string } | null }]
       | undefined;

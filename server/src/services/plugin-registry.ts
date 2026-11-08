@@ -1,5 +1,5 @@
 import { asc, eq, isNull, ne, sql, and } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   plugins,
   pluginConfig,
@@ -8,7 +8,7 @@ import {
   pluginJobs,
   pluginJobRuns,
   pluginWebhookDeliveries,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   PaperclipPluginManifestV1,
   PluginStatus,
@@ -26,7 +26,7 @@ import type {
   PluginJobRunStatus,
   PluginJobRunTrigger,
   PluginWebhookDeliveryStatus,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { conflict, notFound } from "../errors.js";
 import { DELIVERY_QUEUES, notifyDeliveryWork } from "./delivery-work-notifications.js";
 

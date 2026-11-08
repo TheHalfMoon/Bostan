@@ -50,8 +50,8 @@ import type {
   SecretStatus,
   UserSecretCoverageSummary,
   UserSecretDefinition,
-} from "@paperclipai/shared";
-import { hidesCompanySection } from "@paperclipai/shared";
+} from "@bostan/shared";
+import { hidesCompanySection } from "@bostan/shared";
 import { useCompany } from "../context/CompanyContext";
 import { useHiddenSettings } from "../hooks/useHiddenSettings";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
@@ -182,18 +182,18 @@ type ProviderVaultForm = {
   secretPathPrefix: string;
 };
 
+// Used ONLY to classify known provider error kinds; never print these values.
 type SafeProviderErrorDetails = {
   code?: string;
   provider?: string;
   operation?: string;
-  providerConfigId?: string;
-  providerVaultContext?: string;
   region?: string;
-  credentialPath?: string;
-  requiredCapability?: string;
-  actionableMessage?: string;
-  safeAlternative?: string;
 };
+
+// Provider errors may contain signed URLs, secret values or authorization payloads.
+// Never display exception.message in secret-operation toasts.
+const SAFE_SECRET_OPERATION_ERROR =
+  "The secret operation could not be completed. Retry or contact the instance operator.";
 
 const EMPTY_SECRETS: CompanySecret[] = [];
 const EMPTY_USER_SECRET_DEFINITIONS: UserSecretDefinition[] = [];
@@ -261,10 +261,20 @@ function isAwsDiscoveryAccessDenied(error: unknown): boolean {
   return apiErrorCode(error) === "access_denied";
 }
 
-function readableErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) return error.message || `Request failed: ${error.status}`;
-  if (error instanceof Error) return error.message;
-  return "Unexpected error";
+function readableErrorMessage(_error: unknown): string {
+  // Provider diagnostics may contain request URLs, OAuth state, account identifiers
+  // and credential fragments. The UI must not trust even labelled "safe" error text.
+  return "Secret request failed. Retry or contact the instance operator.";
+}
+
+function safeAwsRegion(value: unknown): string | undefined {
+  return typeof value === "string" && /^[a-z]{2}(?:-gov)?-[a-z]+-[0-9]$/.test(value)
+    ? value
+    : undefined;
+}
+
+function safeVaultIdentifier(value: string | null): string | undefined {
+  return value && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$/.test(value) ? value : undefined;
 }
 
 function providerVaultFormFromConfig(config: CompanySecretProviderConfig): ProviderVaultForm {
@@ -345,16 +355,16 @@ function normalizeUserSecretKeyForPreview(input: string) {
 
 
 function modeLabel(managedMode: SecretManagedMode) {
-  return managedMode === "paperclip_managed" ? "Paperclip-managed" : "Linked external";
+  return managedMode === "paperclip_managed" ? "Bostan-managed" : "Linked external";
 }
 
 function modeDescription(managedMode: SecretManagedMode, canWriteExternalValue = false) {
   if (managedMode === "paperclip_managed") {
-    return "Paperclip owns create and rotation writes for this provider secret.";
+    return "Bostan owns create and rotation writes for this provider secret.";
   }
   return canWriteExternalValue
-    ? "Paperclip resolves this provider reference and can write new values to it via Update value."
-    : "Paperclip resolves this provider reference but does not rotate the provider value.";
+    ? "Bostan resolves this provider reference and can write new values to it via Update value."
+    : "Bostan resolves this provider reference but does not rotate the provider value.";
 }
 
 function statusLabel(status: SecretStatus) {
@@ -473,7 +483,7 @@ export function getCreateProviderBlockReason(
 ) {
   if (!provider) return "Select a provider.";
   if (mode === "managed" && provider.supportsManagedValues === false) {
-    return `${provider.label} does not support Paperclip-managed secret values.`;
+    return `${provider.label} does not support Bostan-managed secret values.`;
   }
   if (mode === "external" && provider.supportsExternalReferences === false) {
     return `${provider.label} does not support linked external references.`;
@@ -1174,8 +1184,8 @@ export function Secrets() {
       setRotateError(null);
       invalidateAll([updated.id]);
     },
-    onError: (error) => {
-      setRotateError(error instanceof Error ? error.message : "Rotate failed");
+    onError: () => {
+      setRotateError("Could not rotate the secret. Retry or contact the instance operator.");
     },
   });
 
@@ -1196,10 +1206,10 @@ export function Secrets() {
       pushToast({ title: `Secret ${updated.status}`, body: updated.name, tone: "info" });
       invalidateAll([updated.id]);
     },
-    onError: (error) => {
+    onError: () => {
       pushToast({
         title: "Status update failed",
-        body: error instanceof Error ? error.message : "Try again",
+        body: SAFE_SECRET_OPERATION_ERROR,
         tone: "error",
       });
     },
@@ -1212,10 +1222,10 @@ export function Secrets() {
       pushToast({ title: `User-provided secret ${updated.status}`, body: updated.name, tone: "info" });
       invalidateAll([updated.id]);
     },
-    onError: (error) => {
+    onError: () => {
       pushToast({
         title: "Status update failed",
-        body: error instanceof Error ? error.message : "Try again",
+        body: SAFE_SECRET_OPERATION_ERROR,
         tone: "error",
       });
     },
@@ -1229,10 +1239,10 @@ export function Secrets() {
       if (selectedSecretId === id) setDetailSelection(null);
       invalidateAll([id]);
     },
-    onError: (error) => {
+    onError: () => {
       pushToast({
         title: "Delete failed",
-        body: error instanceof Error ? error.message : "Try again",
+        body: SAFE_SECRET_OPERATION_ERROR,
         tone: "error",
       });
     },
@@ -1247,10 +1257,10 @@ export function Secrets() {
       if (selectedDefinitionId === definition.id) setDetailSelection(null);
       invalidateAll([definition.id]);
     },
-    onError: (error) => {
+    onError: () => {
       pushToast({
         title: "Delete failed",
-        body: error instanceof Error ? error.message : "Try again",
+        body: SAFE_SECRET_OPERATION_ERROR,
         tone: "error",
       });
     },
@@ -1280,8 +1290,8 @@ export function Secrets() {
       setVaultError(null);
       invalidateAll();
     },
-    onError: (error) => {
-      setVaultError(error instanceof ApiError ? error.message : (error as Error).message);
+    onError: () => {
+      setVaultError("Could not save the provider vault. Retry or contact the instance operator.");
     },
   });
 
@@ -1309,10 +1319,10 @@ export function Secrets() {
       pushToast({ title: "Provider vault disabled", body: updated.displayName, tone: "info" });
       invalidateAll();
     },
-    onError: (error) => {
+    onError: () => {
       pushToast({
         title: "Disable failed",
-        body: error instanceof Error ? error.message : "Try again",
+        body: SAFE_SECRET_OPERATION_ERROR,
         tone: "error",
       });
     },
@@ -1323,16 +1333,16 @@ export function Secrets() {
     onSuccess: (removed) => {
       pushToast({
         title: "Provider vault removed",
-        body: `${removed.displayName} was removed from Paperclip only.`,
+        body: `${removed.displayName} was removed from Bostan only.`,
         tone: "info",
       });
       setRemoveVaultConfirm(null);
       invalidateAll();
     },
-    onError: (error) => {
+    onError: () => {
       pushToast({
         title: "Remove failed",
-        body: error instanceof Error ? error.message : "Try again",
+        body: SAFE_SECRET_OPERATION_ERROR,
         tone: "error",
       });
     },
@@ -1344,10 +1354,10 @@ export function Secrets() {
       pushToast({ title: "Default vault set", body: updated.displayName, tone: "success" });
       invalidateAll();
     },
-    onError: (error) => {
+    onError: () => {
       pushToast({
         title: "Default update failed",
-        body: error instanceof Error ? error.message : "Try again",
+        body: SAFE_SECRET_OPERATION_ERROR,
         tone: "error",
       });
     },
@@ -1359,10 +1369,10 @@ export function Secrets() {
       pushToast({ title: "Health checked", body: health.message, tone: health.status === "error" ? "error" : "info" });
       invalidateAll();
     },
-    onError: (error) => {
+    onError: () => {
       pushToast({
         title: "Health check failed",
-        body: error instanceof Error ? error.message : "Try again",
+        body: SAFE_SECRET_OPERATION_ERROR,
         tone: "error",
       });
     },
@@ -1493,10 +1503,10 @@ export function Secrets() {
   function copyDetailLink() {
     void copyTextToClipboard(window.location.href)
       .then(() => pushToast({ title: "Link copied", body: "Deep link to this secret", tone: "success" }))
-      .catch((error) =>
+      .catch(() =>
         pushToast({
           title: "Copy failed",
-          body: error instanceof Error ? error.message : "Unable to copy link",
+          body: "Unable to copy the link. Check clipboard permissions and retry.",
           tone: "error",
         }),
       );
@@ -1505,10 +1515,10 @@ export function Secrets() {
   function copySecretKey(key: string) {
     void copyTextToClipboard(key)
       .then(() => pushToast({ title: "Secret key copied", body: key, tone: "success" }))
-      .catch((error) =>
+      .catch(() =>
         pushToast({
           title: "Copy failed",
-          body: error instanceof Error ? error.message : "Unable to copy secret key",
+          body: "Unable to copy the key. Check clipboard permissions and retry.",
           tone: "error",
         }),
       );
@@ -1956,7 +1966,7 @@ export function Secrets() {
             {secretsQuery.isError || userDefinitionsQuery.isError ? (
               <div className="text-sm text-destructive flex items-center gap-2 py-4">
                 <AlertCircle className="h-4 w-4" /> Failed to load secrets:{" "}
-                {((secretsQuery.error ?? userDefinitionsQuery.error) as Error).message}
+                {"Retry or contact the instance operator."}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -2717,7 +2727,7 @@ export function Secrets() {
                   className="font-mono text-xs"
                 />
                 <p className="text-(length:--text-micro) text-muted-foreground mt-1">
-                  Existing provider secrets are resolve-only in Paperclip. Rotate the value in the provider,
+                  Existing provider secrets are resolve-only in Bostan. Rotate the value in the provider,
                   then update this reference only if the path, ARN, or version changes.
                 </p>
               </div>
@@ -2883,8 +2893,8 @@ export function Secrets() {
                 </div>
                 {createMode === "managed" ? (
                   <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2 text-(length:--text-micro) text-emerald-700 dark:text-emerald-300">
-                    Paperclip-managed secrets are created in the selected provider and future rotations
-                    write a new provider version through Paperclip.
+                    Bostan-managed secrets are created in the selected provider and future rotations
+                    write a new provider version through Bostan.
                     {awsManagedPathPreview ? (
                       <div className="mt-1">
                         AWS managed path:{" "}
@@ -3077,8 +3087,8 @@ export function Secrets() {
               {selectedSecret?.managedMode !== "external_reference"
                 ? "Creates a new provider-backed version. Consumers pinned to latest pick up the new value on the next run."
                 : rotateMode === "reference"
-                  ? "Creates a new Paperclip metadata version that points at an existing provider secret. Paperclip does not write a new provider value."
-                  : "Writes a new version of the referenced provider secret. The new value becomes current for every consumer of that secret, in and outside Paperclip."}
+                  ? "Creates a new Bostan metadata version that points at an existing provider secret. Bostan does not write a new provider value."
+                  : "Writes a new version of the referenced provider secret. The new value becomes current for every consumer of that secret, in and outside Bostan."}
             </DialogDescription>
           </DialogHeader>
           {selectedSecret && secretSupportsExternalValueWrite(selectedSecret) ? (
@@ -3128,7 +3138,7 @@ export function Secrets() {
                 className="font-mono text-xs"
               />
               <p className="mt-1 text-(length:--text-micro) text-muted-foreground">
-                Rotate the actual value in the provider before changing this Paperclip reference.
+                Rotate the actual value in the provider before changing this Bostan reference.
               </p>
             </div>
           ) : (
@@ -3241,7 +3251,7 @@ export function Secrets() {
           <DialogHeader>
             <DialogTitle>Remove provider vault</DialogTitle>
             <DialogDescription>
-              Removes <strong>{removeVaultConfirm?.displayName}</strong> from Paperclip only.{" "}
+              Removes <strong>{removeVaultConfirm?.displayName}</strong> from Bostan only.{" "}
               {removeVaultConfirm?.provider === "aws_secrets_manager"
                 ? "This does not delete the remote AWS Secrets Manager vault, secrets, or any AWS data."
                 : "This does not delete any remote provider data."}{" "}
@@ -3256,7 +3266,7 @@ export function Secrets() {
               disabled={removeVaultMutation.isPending}
             >
               {removeVaultMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
-              Remove from Paperclip
+              Remove from Bostan
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3278,7 +3288,7 @@ function SecretsHowToUse() {
           <span className="font-medium text-foreground">Secret</span>, and select the stored secret version.
         </p>
         <p>
-          Paperclip resolves the value server-side when the run starts and injects it as that env var. Project env
+          Bostan resolves the value server-side when the run starts and injects it as that env var. Project env
           applies to every task in the project and overrides agent env on matching keys.
         </p>
       </div>
@@ -3558,7 +3568,7 @@ export function ProviderVaultsTab({
   if (error) {
     return (
       <div className="py-4 text-sm text-destructive flex items-center gap-2">
-        <AlertCircle className="h-4 w-4" /> Failed to load provider vaults: {(error as Error).message}
+        <AlertCircle className="h-4 w-4" /> Failed to load provider vaults. Retry or contact the instance operator.
         <Button variant="ghost" size="sm" onClick={onRetry}>
           Retry
         </Button>
@@ -3788,8 +3798,8 @@ function ProviderVaultFields({
       <div className="grid gap-3 sm:grid-cols-2">
         <TextField label="AWS region" value={form.region} onChange={(value) => setField("region", value)} placeholder="us-east-1" required />
         <TextField label="Namespace" value={form.namespace} onChange={(value) => setField("namespace", value)} placeholder="production" />
-        <TextField label="Secret name prefix" value={form.secretNamePrefix} onChange={(value) => setField("secretNamePrefix", value)} placeholder="paperclip" />
-        <TextField label="KMS key id" value={form.kmsKeyId} onChange={(value) => setField("kmsKeyId", value)} placeholder="alias/paperclip-secrets" />
+        <TextField label="Secret name prefix" value={form.secretNamePrefix} onChange={(value) => setField("secretNamePrefix", value)} placeholder="bostan" />
+        <TextField label="KMS key id" value={form.kmsKeyId} onChange={(value) => setField("kmsKeyId", value)} placeholder="alias/bostan-secrets" />
         <TextField label="Owner tag" value={form.ownerTag} onChange={(value) => setField("ownerTag", value)} placeholder="platform" />
         <TextField label="Environment tag" value={form.environmentTag} onChange={(value) => setField("environmentTag", value)} placeholder="prod" />
       </div>
@@ -3799,10 +3809,10 @@ function ProviderVaultFields({
   if (form.provider === "gcp_secret_manager") {
     return (
       <div className="grid gap-3 sm:grid-cols-2">
-        <TextField label="Project id" value={form.projectId} onChange={(value) => setField("projectId", value)} placeholder="paperclip-prod" />
+        <TextField label="Project id" value={form.projectId} onChange={(value) => setField("projectId", value)} placeholder="bostan-prod" />
         <TextField label="Location" value={form.location} onChange={(value) => setField("location", value)} placeholder="global" />
         <TextField label="Namespace" value={form.namespace} onChange={(value) => setField("namespace", value)} placeholder="production" />
-        <TextField label="Secret name prefix" value={form.secretNamePrefix} onChange={(value) => setField("secretNamePrefix", value)} placeholder="paperclip" />
+        <TextField label="Secret name prefix" value={form.secretNamePrefix} onChange={(value) => setField("secretNamePrefix", value)} placeholder="bostan" />
       </div>
     );
   }
@@ -3812,7 +3822,7 @@ function ProviderVaultFields({
       <TextField label="Address" value={form.address} onChange={(value) => setField("address", value)} placeholder="https://vault.example.com" />
       <TextField label="Namespace" value={form.namespace} onChange={(value) => setField("namespace", value)} placeholder="admin" />
       <TextField label="Mount path" value={form.mountPath} onChange={(value) => setField("mountPath", value)} placeholder="secret" />
-      <TextField label="Secret path prefix" value={form.secretPathPrefix} onChange={(value) => setField("secretPathPrefix", value)} placeholder="paperclip/prod" />
+      <TextField label="Secret path prefix" value={form.secretPathPrefix} onChange={(value) => setField("secretPathPrefix", value)} placeholder="bostan/prod" />
     </div>
   );
 }
@@ -3939,19 +3949,19 @@ function AwsProviderVaultDiscoveryError({
 }) {
   const details = apiErrorDetails(error);
   const isAccessDenied = isAwsDiscoveryAccessDenied(error);
-  const region = (details?.region ?? form.region.trim()) || "unspecified";
+  // Every copied diagnostic comes from a fixed local value or a validated form field.
+  // API details may identify the machine-readable error kind but are never echoed.
+  const region = safeAwsRegion(form.region.trim()) ?? "unspecified";
   const message = readableErrorMessage(error);
   const safeDetails = {
     message,
     status: error instanceof ApiError ? error.status : undefined,
-    provider: details?.provider ?? form.provider,
-    operation: details?.operation ?? "secret_provider_config.discovery.preview",
-    providerVaultContext: details?.providerVaultContext ?? "draft_config",
+    provider: "aws_secrets_manager",
+    operation: "secret_provider_config.discovery.preview",
+    providerVaultContext: "draft_config",
     region,
-    code: details?.code,
-    requiredCapability: details?.requiredCapability,
-    credentialPath: details?.credentialPath,
-    safeAlternative: details?.safeAlternative,
+    code: isAccessDenied ? "access_denied" : "request_failed",
+    requiredCapability: isAccessDenied ? "secretsmanager:ListSecrets" : undefined,
   };
   const detailsText = JSON.stringify(safeDetails, null, 2);
 
@@ -3970,15 +3980,13 @@ function AwsProviderVaultDiscoveryError({
             </p>
             <p className="mt-1 leading-relaxed text-destructive/85">
               {isAccessDenied
-                ? details?.actionableMessage ??
-                  "Discovery needs secretsmanager:ListSecrets in the selected region for the Paperclip server runtime/provider credential path."
+                ? "Discovery needs secretsmanager:ListSecrets in the selected region for the Bostan server runtime/provider credential path."
                 : message}
             </p>
           </div>
           {isAccessDenied ? (
             <p className="leading-relaxed text-destructive/85">
-              {details?.safeAlternative ??
-                "If you already know the exact AWS Secrets Manager ARN, paste/link that ARN instead of using discovery. Exact-resource DescribeSecret and runtime read permissions are still required."}
+              {"If you already know the exact AWS Secrets Manager ARN, paste/link that ARN instead of using discovery. Exact-resource DescribeSecret and runtime read permissions are still required."}
             </p>
           ) : null}
           <dl className="grid gap-1 text-destructive/80 sm:grid-cols-2">
@@ -3988,15 +3996,15 @@ function AwsProviderVaultDiscoveryError({
             </div>
             <div>
               <dt className="font-medium">Operation</dt>
-              <dd>{details?.operation ?? "secret_provider_config.discovery.preview"}</dd>
+              <dd>secret_provider_config.discovery.preview</dd>
             </div>
             <div>
               <dt className="font-medium">Provider</dt>
-              <dd>{details?.provider ?? "aws_secrets_manager"}</dd>
+              <dd>aws_secrets_manager</dd>
             </div>
             <div>
               <dt className="font-medium">Vault context</dt>
-              <dd>{details?.providerVaultContext ?? "draft_config"}</dd>
+              <dd>draft_config</dd>
             </div>
           </dl>
           <div className="rounded-md border border-destructive/20 bg-background/70 p-2 text-foreground">
@@ -4031,14 +4039,12 @@ function SecretCreateError({
   const safeDetails = {
     message,
     status: error instanceof ApiError ? error.status : undefined,
-    provider: details?.provider ?? provider,
-    operation: details?.operation ?? "secret.create",
-    providerConfigId: details?.providerConfigId ?? providerConfigId ?? "deployment-default",
-    region: details?.region,
-    code: details?.code,
-    requiredCapability: details?.requiredCapability,
-    credentialPath: details?.credentialPath,
-    safeAlternative: details?.safeAlternative,
+    provider: isAwsCreateError ? "aws_secrets_manager" : provider,
+    operation: "secret.create",
+    providerConfigId: safeVaultIdentifier(providerConfigId) ?? "deployment-default",
+    region: safeAwsRegion(details?.region),
+    code: isAccessDenied ? "access_denied" : "request_failed",
+    requiredCapability: isAccessDenied ? "secretsmanager:CreateSecret" : undefined,
   };
   const detailsText = JSON.stringify(safeDetails, null, 2);
 
@@ -4064,32 +4070,35 @@ function SecretCreateError({
               {isAccessDenied ? "AWS secret creation needs CreateSecret permission" : "AWS secret creation failed"}
             </p>
             <p className="mt-1 leading-relaxed text-destructive/85">
-              {details?.actionableMessage ?? message}
+              {isAccessDenied ? "AWS secret creation needs secretsmanager:CreateSecret in the selected region for this provider vault." : message}
             </p>
           </div>
-          {details?.safeAlternative ? (
-            <p className="leading-relaxed text-destructive/85">{details.safeAlternative}</p>
+          {isAccessDenied ? (
+            <p className="leading-relaxed text-destructive/85">
+              If the secret is already managed externally, link it as an external reference instead.
+              Exact-resource DescribeSecret and runtime read permissions are still required.
+            </p>
           ) : null}
           <dl className="grid gap-1 text-destructive/80 sm:grid-cols-2">
-            {details?.requiredCapability ? (
+            {isAccessDenied ? (
               <div>
                 <dt className="font-medium">Required IAM capability</dt>
-                <dd className="font-mono">{details.requiredCapability}</dd>
+                <dd className="font-mono">secretsmanager:CreateSecret</dd>
               </div>
             ) : null}
-            {details?.region ? (
+            {safeAwsRegion(details?.region) ? (
               <div>
                 <dt className="font-medium">Region</dt>
-                <dd>{details.region}</dd>
+                <dd>{safeAwsRegion(details?.region)}</dd>
               </div>
             ) : null}
             <div>
               <dt className="font-medium">Provider vault</dt>
-              <dd className="break-all">{details?.providerConfigId ?? providerConfigId ?? "Deployment default"}</dd>
+              <dd className="break-all">{safeVaultIdentifier(providerConfigId) ?? "Deployment default"}</dd>
             </div>
             <div>
               <dt className="font-medium">Operation</dt>
-              <dd>{details?.operation ?? "secret.create"}</dd>
+              <dd>secret.create</dd>
             </div>
           </dl>
           <div className="rounded-md border border-destructive/20 bg-background/70 p-2 text-foreground">
@@ -4679,7 +4688,7 @@ function SecretDetailsTab({
               providers.find((provider) => provider.id === secret.provider)?.supportsExternalValueWrites,
           ),
         )}{" "}
-        Paperclip never re-displays stored values.
+        Bostan never re-displays stored values.
       </div>
     </dl>
   );

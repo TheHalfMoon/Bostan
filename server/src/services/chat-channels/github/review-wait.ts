@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { and, eq, or } from "drizzle-orm";
-import { chatActions, chatGitHubReviews, type Db } from "@paperclipai/db";
+import { chatActions, chatGitHubReviews, type Db } from "@bostan/db";
 
 export async function hasPublishedGitHubReview(db: Db, binding: {
   companyId: string;

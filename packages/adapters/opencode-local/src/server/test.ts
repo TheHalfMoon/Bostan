@@ -5,8 +5,8 @@ import type {
   AdapterEnvironmentCheck,
   AdapterEnvironmentTestContext,
   AdapterEnvironmentTestResult,
-} from "@paperclipai/adapter-utils";
-import type { AdapterExecutionTarget } from "@paperclipai/adapter-utils/execution-target";
+} from "@bostan/adapter-utils";
+import type { AdapterExecutionTarget } from "@bostan/adapter-utils/execution-target";
 import {
   asBoolean,
   asNumber,
@@ -14,7 +14,7 @@ import {
   asStringArray,
   parseObject,
   ensurePathInEnv,
-} from "@paperclipai/adapter-utils/server-utils";
+} from "@bostan/adapter-utils/server-utils";
 import {
   ensureAdapterExecutionTargetCommandResolvable,
   maybeRunSandboxInstallCommand,
@@ -24,8 +24,9 @@ import {
   resolveAdapterExecutionTargetCwd,
   prepareAdapterExecutionTargetRuntime,
   overrideAdapterExecutionTargetRemoteCwd,
-} from "@paperclipai/adapter-utils/execution-target";
+} from "@bostan/adapter-utils/execution-target";
 import { discoverOpenCodeModels, ensureOpenCodeModelConfiguredAndAvailable, requireOpenCodeModelId } from "./models.js";
+import { bostanStandaloneArgs } from "./local-standalone.js";
 import { parseOpenCodeJsonl } from "./parse.js";
 import { SANDBOX_INSTALL_COMMAND } from "../index.js";
 import { prepareOpenCodeRuntimeConfig, prepareManagedOpenCodeRemoteHomes } from "./runtime-config.js";
@@ -63,7 +64,37 @@ function normalizeEnv(input: unknown): Record<string, string> {
 }
 
 const OPENCODE_AUTH_REQUIRED_RE =
-  /(?:auth(?:entication)?\s+required|api\s*key|invalid\s*api\s*key|not\s+logged\s+in|opencode\s+auth\s+login|free\s+usage\s+exceeded)/i;
+  /(?:auth(?:entication)?\s+required|api\s*key|invalid\s*api\s*key|not\s+logged\s+in|opencode\s+auth\s+login)/i;
+
+// Do not conflate a free provider's usage ceiling with invalid credentials,
+// missing models, or a broken CLI. This is a provider-account capacity gate,
+// not an opportunity to activate a paid provider or retry indefinitely.
+export const OPENCODE_FREE_USAGE_LIMIT_RE =
+  /(?:free\s+usage\s+(?:limit\s+)?(?:reached|exceeded)|free\s+(?:tier\s+)?quota\s+(?:reached|exceeded|exhausted))/i;
+
+/**
+ * Do not confuse a generic failed OpenCode command with provider capacity.
+ * This only applies to a specifically pinned zero-price OpenRouter :free ID,
+ * AND an explicit error/rate signal in a failed test probe. The result is a
+ * fixed check code; the raw provider response is never forwarded to a public
+ * agent lifecycle error.
+ */
+export function safeOpenRouterFreeCapacitySignal(model: string, evidence: string): boolean {
+  if (!/^openrouter\/[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*:free$/.test(model) ||
+      typeof evidence !== "string" || evidence.length > 128_000) return false;
+  return /(?:\b(?:HTTP\s*)?429\b|\bTooManyRequests\b|\bRateLimitError\b|\brate.?limit(?:ed|ing)?\b|\bquota\b.{0,48}\b(?:exceeded|exhausted|reached)\b|\bprovider\b.{0,48}\b(?:capacity|overloaded)\b|\b(?:resource|capacity)\s+exhausted\b)/i
+    .test(evidence);
+}
+
+/**
+ * Classify transport error events from a FAILED, pinned free OpenRouter
+ * hello probe, never ordinary model response text or raw credentials.
+ */
+export function safeOpenRouterFreeTransportSignal(model: string, errorEvidence: string): boolean {
+  if (!/^openrouter\/[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*:free$/.test(model) ||
+      typeof errorEvidence !== "string" || errorEvidence.length > 128_000) return false;
+  return /\b(?:ECONNREFUSED|ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|ENETUNREACH|EHOSTUNREACH)\b|\b(?:fetch failed|network error|connection reset|connection timed out|unable to connect|failed to connect)\b/i.test(errorEvidence);
+}
 
 export async function testEnvironment(
   ctx: AdapterEnvironmentTestContext,
@@ -235,7 +266,17 @@ export async function testEnvironment(
     // The native runner already selects a concrete model. Its real hello probe
     // verifies model access and credentials; a full catalog scan adds another
     // cold CLI launch (and discovery retries) without verifying that request.
-    const nativeModelProbe = ctx.adapterType === "paperclip_runner" && Boolean(configuredModel);
+    const sourceQaFreeModelProbe = ctx.adapterType === "opencode_local" &&
+      !targetIsRemote && process.env.BOSTAN_OPENCODE_STANDALONE === "1" &&
+      (configuredModel === "opencode/deepseek-v4.1-flash-free" ||
+        configuredModel === "opencode/beam-free" ||
+        configuredModel === "openrouter/cohere/north-mini-code:free" ||
+        configuredModel === "openrouter/recursive/flint-v1.0:free");
+    // Source-only free QA uses a real hello invocation to validate access.
+    // Metadata catalog discovery can hang on a background OpenCode daemon
+    // even when the free model itself runs. General adapters are unchanged.
+    const nativeModelProbe = (ctx.adapterType === "paperclip_runner" ||
+      sourceQaFreeModelProbe) && Boolean(configuredModel);
 
     // Model discovery and validation use local child processes against
     // OpenCode's `models` subcommand and JSON config; these are not yet
@@ -249,7 +290,7 @@ export async function testEnvironment(
         checks.push({
           code: "opencode_model_validation_via_probe",
           level: "info",
-          message: "The configured native-runner model will be validated by the hello probe.",
+          message: "The configured model will be validated by the real hello probe.",
         });
       } catch (error) {
         checks.push({ code: "opencode_model_invalid", level: "error",
@@ -368,8 +409,8 @@ export async function testEnvironment(
       const args = ["run", "--format", "json"];
       args.push("--model", probeModel);
       if (variant) args.push("--variant", variant);
+      args.push(...bostanStandaloneArgs(extraArgs, targetIsRemote));
       if (extraArgs.length > 0) args.push(...extraArgs);
-
       // Sandbox bridges still add cold-start and transport overhead, but the
       // standard-2 Cloudflare tier now probes quickly enough that 90s keeps
       // useful headroom without letting slow hangs linger.
@@ -420,6 +461,29 @@ export async function testEnvironment(
               : {
                   hint: "Run `opencode run --format json` manually and prompt `Respond with hello` to inspect output.",
                 }),
+          });
+        } else if (OPENCODE_FREE_USAGE_LIMIT_RE.test(authEvidence)) {
+          checks.push({
+            code: "opencode_free_usage_limit_reached",
+            level: "error",
+            message: "The selected free OpenCode provider has reached its current usage allowance.",
+            hint: "No paid provider was used. Resume when free usage is available, or select an already approved free model.",
+          });
+        } else if (safeOpenRouterFreeCapacitySignal(probeModel, authEvidence)) {
+          checks.push({
+            code: "opencode_free_provider_capacity_unavailable",
+            level: "error",
+            message: "The zero-priced OpenRouter model reported a capacity or rate limit.",
+            hint: "No paid fallback is allowed. Retry only after free capacity returns.",
+          });
+        } else if (safeOpenRouterFreeTransportSignal(
+          probeModel, [parsed.errorMessage ?? "", probe.stderr].join("\n"),
+        )) {
+          checks.push({
+            code: "opencode_hello_probe_transport_unavailable",
+            level: "error",
+            message: "The pinned free model hello probe reported a connection/transport error.",
+            hint: "Verify local connectivity and free provider availability; no paid fallback.",
           });
         } else if (/ProviderModelNotFoundError/i.test(authEvidence)) {
           checks.push({

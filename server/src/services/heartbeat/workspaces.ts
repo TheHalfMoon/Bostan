@@ -10,12 +10,12 @@ import { materializeManagedProjectWorkspace, ensureManagedRepositoriesIgnored } 
 export { materializeManagedProjectWorkspace } from "../managed-repository-checkout.js";
 import { sql } from "drizzle-orm";
 import { materializeIsolatedTaskDirectory } from "../isolated-task-directory.js";
-import { readConnectionFailure, type GitConnectionFailure } from "@paperclipai/adapter-utils/connection-failure";
+import { readConnectionFailure, type GitConnectionFailure } from "@bostan/adapter-utils/connection-failure";
 import { managedAiSessionFingerprintConfig } from "../ai-connection-runtime.js";
 import {
   PROJECT_REPOSITORIES_DIR,
   readGitWorkspaceSnapshot,
-} from "@paperclipai/adapter-utils/git-workspace-sync";
+} from "@bostan/adapter-utils/git-workspace-sync";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { localRepositoryPath } from "../local-repository-path.js";
@@ -30,18 +30,18 @@ import {
   asc,
   eq,
 } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   type ExecutionWorkspace,
   type ExecutionWorkspaceConfig,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   agents,
   heartbeatRuns,
   issues,
   projects,
   projectWorkspaces,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { logger } from "../../middleware/logger.js";
 import {
   createGitRemoteAuthProvider,

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -36,7 +36,10 @@ const ecsTaskDefinition = JSON.parse(read("docker", "ecs-task-definition.json"))
 };
 const reapingProbe = read("scripts", "assert-orphan-reaping.sh");
 const buildTest = read("scripts", "docker-build-test.sh");
-const dockerWorkflow = read(".github", "workflows", "docker.yml");
+// Publishing workflows were removed by the B1-237 quarantine (#494). Checks
+// on them are skipped while absent and resume automatically if restored.
+const dockerWorkflowPath = path.join(repoRoot, ".github", "workflows", "docker.yml");
+const dockerWorkflow = existsSync(dockerWorkflowPath) ? readFileSync(dockerWorkflowPath, "utf8") : null;
 
 /** Every `ENTRYPOINT [...]` line in a Dockerfile, in order. */
 function entrypoints(source: string): string[] {
@@ -128,7 +131,7 @@ describe("deployment manifest parity", () => {
 describe("orphan-reaping probe", () => {
   it.each([
     ["the docker build test", buildTest],
-    ["the Docker publish workflow", dockerWorkflow],
+    ...(dockerWorkflow === null ? [] : [["the Docker publish workflow", dockerWorkflow]]),
   ])("is exercised against a real image by %s", (_name, source) => {
     // A probe nothing runs proves nothing. The static assertions above only
     // check configuration; this is what keeps the behavioural check wired up.

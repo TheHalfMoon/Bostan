@@ -1,5 +1,5 @@
-import { ADAPTER_AUTH_MISSING_CHECK_CODE } from "@paperclipai/shared";
-import type { AdapterAuthSignal } from "@paperclipai/shared";
+import { ADAPTER_AUTH_MISSING_CHECK_CODE } from "@bostan/shared";
+import type { AdapterAuthSignal } from "@bostan/shared";
 
 /**
  * The environment and auth state the connect step reads, as something a story

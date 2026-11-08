@@ -100,7 +100,7 @@ describe("runner E2E Daytona image contract", () => {
     expect(dockerfile).toContain("--bin paperclip-runnerd");
     expect(dockerfile).toContain("build-provider-pack.mjs /provider-pack");
     expect(normalizedDockerfile).not.toContain(
-      "COPY packages/paperclip-eval-kernel ./packages/paperclip-eval-kernel",
+      "COPY packages/bostan-eval-kernel ./packages/bostan-eval-kernel",
     );
     expect(normalizedDockerfile).not.toContain(
       "COPY packages/paperclip-runner ./packages/paperclip-runner",
@@ -228,7 +228,7 @@ describe("runner E2E Daytona image contract", () => {
       workflow.indexOf(`--format '{{json .Image}}'`),
     );
     const providerInstall = dockerfile.indexOf(
-      "pnpm install --frozen-lockfile --filter '@paperclipai/paperclip-runner...'",
+      "pnpm install --frozen-lockfile --filter '@bostan/runner...'",
     );
     const runnerSourceCopy = dockerfile.indexOf(
       "COPY packages ./packages",
@@ -254,7 +254,7 @@ describe("runner E2E Daytona image contract", () => {
       "docker/daytona-runner/Dockerfile",
       "pnpm-lock.yaml",
       "patches",
-      "packages/paperclip-eval-kernel/src",
+      "packages/bostan-eval-kernel/src",
       "packages/paperclip-runner/package.json",
       "packages/paperclip-runner/scripts/candidate-provider-pack.mjs",
       "packages/paperclip-runner/scripts/build-copilot-distribution.mjs",
@@ -286,7 +286,7 @@ describe("runner E2E Daytona image contract", () => {
       expect(DAYTONA_IMAGE_INPUT_PATHS).toContain(requiredPath);
     }
     expect(DAYTONA_IMAGE_INPUT_PATHS).not.toContain(
-      "packages/paperclip-eval-kernel",
+      "packages/bostan-eval-kernel",
     );
     expect(DAYTONA_IMAGE_INPUT_PATHS).not.toContain(
       "packages/paperclip-runner",
@@ -344,7 +344,7 @@ describe("runner E2E Daytona image contract", () => {
       );
       await writeFile(
         path.join(root, "packages/paperclip-runner/package.json"),
-        '{"name":"@paperclipai/paperclip-runner"}\n',
+        '{"name":"@bostan/runner"}\n',
       );
       await writeFile(
         path.join(root, "packages/paperclip-runner/src/runner.ts"),

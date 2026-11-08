@@ -1,5 +1,5 @@
 import { and, eq, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import { withHumanDirectedWork } from "./human-directed-work.js";
 import { hasOwnerChatInstructionAuthority } from "./owner-chat-instruction-authority.js";
 import { canonicalExecutionUuid } from "./execution-identity.js";
@@ -22,7 +22,7 @@ import {
   projectAccessMembers,
   projects,
   userInboxAgentPolicies,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import type {
   AgentApiKeyScope,
   InboxAgentPolicyMode,
@@ -30,7 +30,7 @@ import type {
   PrincipalType,
   SkillTestAgentKeyScope,
   TaskBridgeAgentKeyScope,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   LOW_TRUST_REVIEW_PRESET,
   extractAgentMentionIds,
@@ -38,7 +38,7 @@ import {
   lowTrustBoundarySchema,
   lowTrustReviewPresetPolicySchema,
   type LowTrustBoundary,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   LOW_TRUST_ISSUE_ANCESTRY_MAX_DEPTH,
   isIssueWithinLowTrustBoundary,

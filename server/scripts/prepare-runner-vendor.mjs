@@ -33,7 +33,7 @@ import {
 } from "../../packages/paperclip-runner/scripts/build-inputs.mjs";
 
 /** The command the server build has always run here; the rebuild path is unchanged. */
-export const RUNNER_VENDOR_BUILD_COMMAND = "pnpm --filter @paperclipai/paperclip-runner build";
+export const RUNNER_VENDOR_BUILD_COMMAND = "pnpm --filter @bostan/runner build";
 export const FORCE_REBUILD_VARIABLE = "PAPERCLIP_RUNNER_VENDOR_REBUILD";
 export const TIMING_SCHEMA = "paperclip.runner-vendor.timing.v1";
 

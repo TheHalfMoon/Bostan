@@ -1,4 +1,4 @@
-import type { HeartbeatRunEvent } from "@paperclipai/shared";
+import type { HeartbeatRunEvent } from "@bostan/shared";
 import { describe, expect, it } from "vitest";
 
 import {

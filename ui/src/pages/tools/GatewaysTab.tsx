@@ -6,7 +6,7 @@ import type {
   ToolMcpGatewayTokenCreated,
   ToolMcpGatewayWithTokens,
   ToolProfileWithDetails,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { Check, ChevronDown, Copy, KeyRound, Link as LinkIcon, Plus, RotateCcw, X } from "lucide-react";
 import { agentsApi } from "@/api/agents";
 import { projectsApi } from "@/api/projects";
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/context/ToastContext";
 import { queryKeys } from "@/lib/queryKeys";
 import { copyTextToClipboard } from "@/lib/clipboard";
+import { safeCredentialUiError } from "@/lib/credential-ui-error-privacy";
 import { ErrorState, LoadingState, RelativeTime, ToolsPageHeader } from "./shared";
 
 type CreateGatewayDraft = {
@@ -175,7 +176,7 @@ export function GatewaysTab({ companyId }: { companyId: string }) {
       await invalidateGateways();
     },
     onError: (error) => {
-      pushToast({ title: "Gateway was not created", body: error instanceof Error ? error.message : String(error), tone: "error" });
+      pushToast({ title: "Gateway was not created", body: safeCredentialUiError(error, "gatewayCreate"), tone: "error" });
     },
   });
 
@@ -198,7 +199,7 @@ export function GatewaysTab({ companyId }: { companyId: string }) {
       await invalidateGateways();
     },
     onError: (error) => {
-      pushToast({ title: "Token was not issued", body: error instanceof Error ? error.message : String(error), tone: "error" });
+      pushToast({ title: "Token was not issued", body: safeCredentialUiError(error, "gatewayTokenCreate"), tone: "error" });
     },
   });
 
@@ -210,7 +211,7 @@ export function GatewaysTab({ companyId }: { companyId: string }) {
       await invalidateGateways();
     },
     onError: (error) => {
-      pushToast({ title: "Token was not revoked", body: error instanceof Error ? error.message : String(error), tone: "error" });
+      pushToast({ title: "Token was not revoked", body: safeCredentialUiError(error, "gatewayTokenRevoke"), tone: "error" });
     },
   });
 
@@ -219,7 +220,7 @@ export function GatewaysTab({ companyId }: { companyId: string }) {
       await copyTextToClipboard(value);
       pushToast({ title: "Copied to clipboard", body: label, tone: "success" });
     } catch (error) {
-      pushToast({ title: "Copy failed", body: error instanceof Error ? error.message : "Clipboard access is unavailable.", tone: "error" });
+      pushToast({ title: "Copy failed", body: safeCredentialUiError(error, "clipboard"), tone: "error" });
     }
   }
 
@@ -253,7 +254,7 @@ export function GatewaysTab({ companyId }: { companyId: string }) {
   }
 
   if (gatewaysQuery.isLoading) return <LoadingState label="Loading gateways..." />;
-  if (gatewaysQuery.isError) return <ErrorState error={gatewaysQuery.error} />;
+  if (gatewaysQuery.isError) return <ErrorState error={new Error(safeCredentialUiError(gatewaysQuery.error, "gatewayLoad"))} />;
 
   const gateways = gatewaysQuery.data?.gateways ?? [];
   const profileLoading = profilesQuery.isLoading;

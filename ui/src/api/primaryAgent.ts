@@ -1,4 +1,4 @@
-import type { PrimaryAgentPreference, UpdatePrimaryAgent } from "@paperclipai/shared";
+import type { PrimaryAgentPreference, UpdatePrimaryAgent } from "@bostan/shared";
 import { api } from "./client";
 
 export const primaryAgentApi = {

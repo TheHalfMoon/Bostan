@@ -1,8 +1,8 @@
-import { isOpenRouterUrl, openRouterAttributionHeaders } from "@paperclipai/adapter-utils/openrouter-attribution";
+import { isOpenRouterUrl, openRouterAttributionHeaders } from "@bostan/adapter-utils/openrouter-attribution";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { asBoolean } from "@paperclipai/adapter-utils/server-utils";
+import { asBoolean } from "@bostan/adapter-utils/server-utils";
 
 type PreparedOpenCodeRuntimeConfig = {
   env: Record<string, string>;
@@ -109,6 +109,14 @@ export async function prepareOpenCodeRuntimeConfig(input: {
   targetIsRemote?: boolean;
 }): Promise<PreparedOpenCodeRuntimeConfig> {
   const skipPermissions = asBoolean(input.config.dangerouslySkipPermissions, true);
+  const requestedSteps = input.config.maxAgentSteps;
+  if (requestedSteps !== undefined && (!Number.isSafeInteger(requestedSteps)
+    || (requestedSteps as number) < 1 || (requestedSteps as number) > 128)) {
+    throw new Error("OpenCode maxAgentSteps must be an integer from 1 to 128.");
+  }
+  if (requestedSteps !== undefined && input.targetIsRemote) {
+    throw new Error("OpenCode maxAgentSteps is not yet enforced for remote execution targets.");
+  }
 
   // For remote execution targets the host XDG_CONFIG_HOME path is meaningless
   // (and actively harmful — it leaks a macOS-only path into the remote Linux
@@ -209,6 +217,26 @@ export async function prepareOpenCodeRuntimeConfig(input: {
     } catch {
       // OpenCode must still report invalid operator configuration.
     }
+  }
+  // Apply an explicitly requested maximum to the active build agent. Keep any
+  // lower preexisting limit, including inline operator overrides; never silently
+  // weaken a tighter limit. OpenCode uses "steps" (the old maxSteps is obsolete).
+  // Mirror the enforced limit into OPENCODE_CONFIG_CONTENT when present because
+  // an inline override can otherwise shadow the generated configuration file.
+  if (requestedSteps !== undefined) {
+    const existingBuild = isPlainObject((nextConfig.agent as Record<string, unknown> | undefined)?.build)
+      ? (nextConfig.agent as Record<string, unknown>).build as Record<string, unknown> : {};
+    const inlineBuild = isPlainObject((inlineConfig?.agent as Record<string, unknown> | undefined)?.build)
+      ? (inlineConfig?.agent as Record<string, unknown>).build as Record<string, unknown> : {};
+    const steps = Math.min(requestedSteps as number, ...[existingBuild.steps, inlineBuild.steps]
+      .filter((value): value is number => Number.isSafeInteger(value) && Number(value) >= 1));
+    nextConfig.agent = { ...(isPlainObject(nextConfig.agent) ? nextConfig.agent : {}),
+      build: { ...existingBuild, steps } };
+    if (inlineConfig) {
+      inlineConfig.agent = { ...(isPlainObject(inlineConfig.agent) ? inlineConfig.agent : {}),
+        build: { ...inlineBuild, steps } };
+    }
+    notes.push(`Bound OpenCode build agent to ${steps} tool/reasoning iterations.`);
   }
   nextProvider = attributeOpenCodeProviders(mergeConfigObjects(nextProvider,
     isPlainObject(inlineConfig?.provider) ? inlineConfig.provider : {}));

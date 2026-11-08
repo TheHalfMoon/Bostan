@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CONNECTION_INTENT_AGENT_GUIDANCE } from "@paperclipai/shared";
+import { CONNECTION_INTENT_AGENT_GUIDANCE } from "@bostan/shared";
 import { execute } from "./execute.js";
 
 const guardedFetchMock = vi.hoisted(() => vi.fn());
@@ -117,5 +117,287 @@ describe("http adapter execute", () => {
     expect(result.timedOut).toBe(true);
     expect(result.errorCode).toBe("timeout");
     expect(result.errorMessage).toContain("timed out after 1ms");
+  });
+});
+
+  it("does not reveal credential-bearing endpoint in successful run summary", async () => {
+    const secretUrl = "https://user:PRIVATE_PASSWORD@example.test/hook/PRIVATE_PATH?token=PRIVATE_QUERY#PRIVATE_FRAGMENT";
+    guardedFetchMock.mockResolvedValue(new Response(null,{status:204}));
+    const result = await execute({
+      runId:"run-safe",agent:{id:"agent-safe",companyId:"company-safe",
+        name:"Agent",adapterType:"http",adapterConfig:{}},
+      runtime:{sessionId:null,sessionParams:null,sessionDisplayId:null,taskKey:null},
+      config:{url:secretUrl,method:"POST"},context:{},onLog:async()=>{},
+    });
+    expect(guardedFetchMock).toHaveBeenCalledWith(secretUrl,expect.any(Object));
+    expect(result.exitCode).toBe(0);
+    expect(JSON.stringify(result)).not.toMatch(/PRIVATE_PASSWORD|PRIVATE_PATH|PRIVATE_QUERY|PRIVATE_FRAGMENT|example\.test/);
+  });
+
+  it("does not expose URL or untrusted method on aborted HTTP runs", async () => {
+    const secretUrl = "https://example.test/PRIVATE_PATH?access_token=PRIVATE_QUERY";
+    guardedFetchMock.mockImplementation((_url:string,init?:RequestInit)=>
+      new Promise((_resolve,reject)=>init?.signal?.addEventListener("abort",()=>
+        reject(new DOMException("Aborted", "AbortError")))));
+    const result = await execute({
+      runId:"run-safe",agent:{id:"agent-safe",companyId:"company-safe",
+        name:"Agent",adapterType:"http",adapterConfig:{}},
+      runtime:{sessionId:null,sessionParams:null,sessionDisplayId:null,taskKey:null},
+      config:{url:secretUrl,method:"POST\nBearer PRIVATE_HEADER",timeoutMs:1},
+      context:{},onLog:async()=>{},
+    });
+    expect(result.timedOut).toBe(true);
+    expect(JSON.stringify(result)).not.toMatch(/PRIVATE_PATH|PRIVATE_QUERY|PRIVATE_HEADER|example\.test/);
+  });
+
+  it("redacts untrusted fetch errors and preserves only allowlisted rejection classes",async()=>{
+    const url="https://host.example/PRIVATE_PATH?token=PRIVATE_QUERY";
+    guardedFetchMock.mockRejectedValueOnce(Object.assign(
+      new Error("Bearer PRIVATE_SECRET in /PRIVATE_PATH"),{
+        code:"remote_http_private_endpoint",
+      }));
+    const ctx={
+      runId:"run-safe",agent:{id:"agent-safe",companyId:"company-safe",
+        name:"Agent",adapterType:"http" as const,adapterConfig:{}},
+      runtime:{sessionId:null,sessionParams:null,sessionDisplayId:null,taskKey:null},
+      config:{url},context:{},onLog:async()=>{},
+    };
+    await expect(execute(ctx)).rejects.toThrow("HTTP adapter request failed (remote_http_private_endpoint)");
+    guardedFetchMock.mockRejectedValueOnce(Object.assign(
+      new Error("PRIVATE_SECRET leaked from remote server"),{code:"PRIVATE_SECRET_CODE"}));
+    await expect(execute(ctx)).rejects.toThrow("HTTP adapter request failed (unclassified)");
+  });
+
+  it("reports rejected status without disclosing URL or response",async()=>{
+    const url="https://host.example/PRIVATE_PATH?token=PRIVATE_QUERY";
+    guardedFetchMock.mockResolvedValueOnce(new Response("PRIVATE_RESPONSE",{status:429}));
+    await expect(execute({
+      runId:"run-safe",agent:{id:"agent-safe",companyId:"company-safe",
+        name:"Agent",adapterType:"http",adapterConfig:{}},
+      runtime:{sessionId:null,sessionParams:null,sessionDisplayId:null,taskKey:null},
+      config:{url},context:{},onLog:async()=>{},
+    })).rejects.toThrow("HTTP adapter request rejected with status 429");
+  });
+
+describe("HTTP adapter streaming response resource ownership", () => {
+  const run = () => execute({
+    runId: "synthetic-http-run",
+    agent: {
+      id: "synthetic-http-agent", companyId: "synthetic-company",
+      name: "Synthetic HTTP", adapterType: "http" as const, adapterConfig: {},
+    },
+    runtime: { sessionId: null, sessionParams: null, sessionDisplayId: null, taskKey: null },
+    config: { url: "https://public.example/PRIVATE_PATH?token=PRIVATE_QUERY" },
+    context: {}, onLog: async () => {},
+  });
+
+  it("cancels unread successful response body without buffering an infinite stream", async () => {
+    let cancelled = 0;
+    let pulled = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull() { pulled += 1; /* no chunks, remains open until cancelled */ },
+      cancel() { cancelled += 1; },
+    });
+    guardedFetchMock.mockResolvedValueOnce(new Response(body, { status: 200 }));
+    const result = await run();
+    expect(result.exitCode).toBe(0);
+    expect(cancelled).toBe(1);
+    expect(pulled).toBeLessThanOrEqual(1);
+    expect(JSON.stringify(result)).not.toMatch(/PRIVATE_PATH|PRIVATE_QUERY/);
+  });
+
+  it("cancels unread rejected status body before propagating safe numeric status", async () => {
+    let cancelled = 0;
+    const body = new ReadableStream<Uint8Array>({
+      cancel() { cancelled++; },
+    });
+    guardedFetchMock.mockResolvedValueOnce(new Response(body, { status: 429 }));
+    await expect(run()).rejects.toThrow("HTTP adapter request rejected with status 429");
+    expect(cancelled).toBe(1);
+  });
+
+  it("never waits for an untrusted response cancellation that stays pending", async () => {
+    let cancelled = 0;
+    const body = new ReadableStream<Uint8Array>({
+      cancel() {
+        cancelled++;
+        return new Promise<void>(() => { /* remote stream never settles */ });
+      },
+    });
+    guardedFetchMock.mockResolvedValueOnce(new Response(body, { status: 200 }));
+    const winner = await Promise.race([
+      run().then(result => result.exitCode),
+      new Promise<string>(resolve => setTimeout(() => resolve("blocked_on_cancel"), 300)),
+    ]);
+    expect(winner).toBe(0);
+    expect(cancelled).toBe(1);
+  });
+
+  it("does not turn a valid response into failure if its unusable body rejects cancellation", async () => {
+    let cancelled = 0;
+    const body = new ReadableStream<Uint8Array>({
+      cancel() { cancelled++; return Promise.reject(new Error("PRIVATE_CANCEL_DIAGNOSTIC")); },
+    });
+    guardedFetchMock.mockResolvedValueOnce(new Response(body, { status: 200 }));
+    const result = await run();
+    expect(result.exitCode).toBe(0);
+    expect(cancelled).toBe(1);
+  });
+});
+
+describe("HTTP adapter heartbeat-run cancellation", () => {
+  function run(signal: AbortSignal, onDispatch = vi.fn(), timeoutMs = 0) {
+    return execute({
+      runId: "synthetic-cancel-run",
+      agent: { id: "synthetic-cancel-agent", companyId: "synthetic-company",
+        name: "Synthetic", adapterType: "http", adapterConfig: {} },
+      runtime: { sessionId: null, sessionParams: null,
+        sessionDisplayId: null, taskKey: null },
+      config: {
+        url: "https://public.example/PRIVATE_PATH?token=PRIVATE_QUERY",
+        timeoutMs,
+      },
+      context: {}, onLog: async () => {}, signal, onDispatch,
+    });
+  }
+
+  it("rejects already-aborted runs before marking provider dispatch or making a request", async () => {
+    const controller = new AbortController();
+    controller.abort(new Error("PRIVATE_ABORT_REASON"));
+    guardedFetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const onDispatch = vi.fn();
+    const result = await run(controller.signal, onDispatch);
+    expect(result).toMatchObject({
+      timedOut: false, errorCode: "cancelled", exitCode: 1,
+      executionRecovery: { kind: "bootstrap", providerWorkStarted: false },
+    });
+    expect(onDispatch).not.toHaveBeenCalled();
+    expect(guardedFetchMock).not.toHaveBeenCalled();
+    expect(JSON.stringify(result)).not.toMatch(/PRIVATE_ABORT_REASON|PRIVATE_PATH|PRIVATE_QUERY/);
+  });
+
+  it("forwards in-flight run cancellation even without configured timeout", async () => {
+    const controller = new AbortController();
+    let sawSignal = false;
+    guardedFetchMock.mockImplementation(async (_url: string, init?: RequestInit) => {
+      sawSignal = init?.signal instanceof AbortSignal;
+      return await new Promise<Response>(resolve => {
+        if (init?.signal?.aborted) return resolve(new Response(null, { status: 204 }));
+        init?.signal?.addEventListener("abort",
+          () => resolve(new Response(null, { status: 204 })), { once: true });
+        setTimeout(() => resolve(new Response(null, { status: 204 })), 40);
+      });
+    });
+    const onDispatch = vi.fn();
+    const pending = run(controller.signal, onDispatch);
+    controller.abort(new Error("PRIVATE_INFLIGHT_ABORT_REASON"));
+    const result = await pending;
+    expect(sawSignal).toBe(true);
+    expect(result).toMatchObject({
+      timedOut: false, errorCode: "cancelled", exitCode: 1,
+    });
+    expect(onDispatch).toHaveBeenCalledOnce();
+    expect(JSON.stringify(result)).not.toContain("PRIVATE_INFLIGHT_ABORT_REASON");
+  });
+
+  it("does not relabel an earlier run cancellation as timeout after deadline", async () => {
+    const caller = new AbortController();
+    guardedFetchMock.mockImplementation((_url: string, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => {
+          // A slow transport reports its AbortError after the timer has
+          // elapsed; the first cancellation must retain its own verdict.
+          setTimeout(() => reject(new DOMException("PRIVATE_ABORT_REASON", "AbortError")), 25);
+        }, { once: true });
+      }));
+    const pending = run(caller.signal, vi.fn(), 10);
+    caller.abort();
+    const result = await pending;
+    expect(result).toMatchObject({
+      timedOut: false, errorCode: "cancelled", exitCode: 1,
+    });
+    expect(JSON.stringify(result)).not.toContain("PRIVATE_ABORT_REASON");
+  });
+
+  it("does not send HTTP when dispatch hook synchronously cancels its owner", async () => {
+    const owner = new AbortController();
+    const onDispatch = vi.fn(() =>
+      owner.abort(new Error("PRIVATE_DISPATCH_ABORT_TOKEN")));
+    guardedFetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const result = await run(owner.signal, onDispatch);
+    expect(onDispatch).toHaveBeenCalledOnce();
+    expect(guardedFetchMock).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      exitCode: 1, signal: null, timedOut: false, errorCode: "cancelled",
+    });
+    expect(result.executionRecovery).toBeUndefined();
+    expect(JSON.stringify(result)).not.toContain("PRIVATE_DISPATCH_ABORT_TOKEN");
+  });
+
+  it("reports a request timeout as timeout, not a run cancellation", async () => {
+    const caller = new AbortController();
+    guardedFetchMock.mockImplementation((_url: string, init?: RequestInit) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () =>
+          reject(new DOMException("Request aborted", "AbortError")), { once: true });
+      }));
+    const result = await run(caller.signal, vi.fn(), 2);
+    expect(result).toMatchObject({ timedOut: true, errorCode: "timeout" });
+    expect(caller.signal.aborted).toBe(false);
+  });
+});
+
+describe("HTTP adapter late-settling transport after deadline", () => {
+  function run(signal?: AbortSignal, timeoutMs = 2) {
+    return execute({
+      runId: "synthetic-deadline-race-run",
+      agent: { id: "synthetic-deadline-agent", companyId: "synthetic-company",
+        name: "Synthetic", adapterType: "http", adapterConfig: {} },
+      runtime: { sessionId: null, sessionParams: null,
+        sessionDisplayId: null, taskKey: null },
+      config: { url: "https://example.test/PRIVATE_PATH?token=PRIVATE_QUERY", timeoutMs },
+      context: {}, onLog: async () => {}, signal, onDispatch: vi.fn(),
+    });
+  }
+
+  for (const status of [204, 429]) {
+    it(`never accepts late HTTP ${status} when request deadline fired first`, async () => {
+      guardedFetchMock.mockImplementation((_url: string, init?: RequestInit) =>
+        new Promise<Response>(resolve => {
+          init?.signal?.addEventListener("abort", () =>
+            setTimeout(() => resolve(new Response(null, { status })), 5), { once: true });
+        }));
+      const result = await run();
+      expect(result).toMatchObject({ timedOut: true, errorCode: "timeout", exitCode: null });
+      expect(JSON.stringify(result)).not.toMatch(/PRIVATE_PATH|PRIVATE_QUERY/);
+    });
+  }
+
+  it("preserves deadline timeout when an abort yields a non-AbortError", async () => {
+    guardedFetchMock.mockImplementation((_url: string, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () =>
+          reject(new Error("PRIVATE_PROVIDER_ERROR_TOKEN")), { once: true });
+      }));
+    const result = await run();
+    expect(result).toMatchObject({ timedOut: true, errorCode: "timeout", exitCode: null });
+    expect(JSON.stringify(result)).not.toContain("PRIVATE_PROVIDER_ERROR_TOKEN");
+  });
+
+  it("later owner cancellation cannot rewrite a deadline that already fired", async () => {
+    const owner = new AbortController();
+    guardedFetchMock.mockImplementation((_url: string, init?: RequestInit) =>
+      new Promise<Response>(resolve => {
+        init?.signal?.addEventListener("abort", () => {
+          // This listener runs synchronously when the adapter deadline
+          // fires, so ownership cancellation is provably second.
+          setTimeout(() => owner.abort(new Error("PRIVATE_LATE_OWNER_REASON")), 0);
+          setTimeout(() => resolve(new Response(null, { status: 204 })), 12);
+        }, { once: true });
+      }));
+    const result = await run(owner.signal);
+    expect(owner.signal.aborted).toBe(true);
+    expect(result).toMatchObject({ timedOut: true, errorCode: "timeout", exitCode: null });
+    expect(JSON.stringify(result)).not.toContain("PRIVATE_LATE_OWNER_REASON");
   });
 });

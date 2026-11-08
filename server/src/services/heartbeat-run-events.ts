@@ -1,6 +1,6 @@
 import { and, asc, eq, getTableColumns, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { heartbeatRunEvents, heartbeatRuns } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { heartbeatRunEvents, heartbeatRuns } from "@bostan/db";
 import { nativeSha256 } from "./native-runtime/canonical.js";
 
 export interface AppendHeartbeatRunEventInput {

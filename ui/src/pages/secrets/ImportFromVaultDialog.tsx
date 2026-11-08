@@ -22,8 +22,9 @@ import type {
   RemoteSecretImportPreviewResult,
   RemoteSecretImportResult,
   RemoteSecretImportRowResult,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { ApiError } from "../../api/client";
+import { safeSecretUiError, safeVaultImportRowReason } from "./secret-error-messages";
 import {
   secretsApi,
   type RemoteImportInput,
@@ -201,11 +202,7 @@ function formatRelativeShort(value: string | null | undefined): string {
 }
 
 function readableErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    return error.message || `Request failed: ${error.status}`;
-  }
-  if (error instanceof Error) return error.message;
-  return "Unexpected error";
+  return safeSecretUiError(error);
 }
 
 function apiErrorCode(error: ApiError): string | null {
@@ -225,19 +222,13 @@ function isPermissionError(error: unknown): boolean {
   if (!(error instanceof ApiError)) return false;
   if (apiErrorCode(error) === "access_denied") return true;
   if (error.status === 401 || error.status === 403) return true;
-  const message = error.message.toLowerCase();
-  return (
-    message.includes("accessdenied") ||
-    message.includes("access denied") ||
-    message.includes("not authorized")
-  );
+  return false;
 }
 
 function isThrottlingError(error: unknown): boolean {
   if (!(error instanceof ApiError)) return false;
   if (apiErrorCode(error) === "throttled") return true;
-  const message = error.message.toLowerCase();
-  return message.includes("throttl") || message.includes("toomanyrequests");
+  return error.status === 429;
 }
 
 function buildDraft(candidate: RemoteSecretImportCandidate): DraftSelection {
@@ -284,10 +275,10 @@ function validateDraftRow(
 
   for (const existingSecret of existing) {
     if (existingSecret.name.trim().toLowerCase() === lowerName) {
-      return "A Paperclip secret already uses this name.";
+      return "A Bostan secret already uses this name.";
     }
     if (existingSecret.key.trim().toLowerCase() === lowerKey) {
-      return "A Paperclip secret already uses this key.";
+      return "A Bostan secret already uses this key.";
     }
   }
 
@@ -658,7 +649,7 @@ export function ImportFromVaultDialog({
               Import from AWS Secrets Manager
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Bring AWS-managed secrets into Paperclip as external references.
+              Bring AWS-managed secrets into Bostan as external references.
             </DialogDescription>
             <Stepper step={step} />
           </div>
@@ -1245,7 +1236,7 @@ function ReviewStep({ drafts, reviewErrors, updateDraft, removeDraft, importing 
                   </div>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     <label className="flex flex-col gap-1 text-xs">
-                      <span className="text-muted-foreground">Paperclip name</span>
+                      <span className="text-muted-foreground">Bostan name</span>
                       <Input
                         value={draft.name}
                         onChange={(e) =>
@@ -1394,6 +1385,7 @@ function ResultGroup({
         {rows.map((row) => {
           const draft = draftLookup.get(row.externalRef);
           const remoteName = draft?.candidate.remoteName ?? row.name;
+          const safeReason = safeVaultImportRowReason(row.status, row.reason);
           return (
             <li
               key={row.externalRef}
@@ -1414,7 +1406,7 @@ function ResultGroup({
                 {row.status === "imported" && row.secretId && (
                   <span className="text-muted-foreground">{remoteName}</span>
                 )}
-                {row.reason && (
+                {safeReason && (
                   <span
                     className={cn(
                       "max-w-(--sz-24rem) truncate",
@@ -1422,9 +1414,9 @@ function ResultGroup({
                         ? "text-destructive"
                         : "text-muted-foreground",
                     )}
-                    title={row.reason}
+                    title={safeReason}
                   >
-                    {row.reason}
+                    {safeReason}
                   </span>
                 )}
               </span>

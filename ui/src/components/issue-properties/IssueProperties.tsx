@@ -5,7 +5,7 @@ import { getIssuePullRequests, pullRequestHref, pullRequestIdentity } from "../.
 import { useWorkspaceIsolationControls } from "@/hooks/useWorkspaceIsolationControls";
 import { AgentIdentity } from "@/components/AgentIdentity";
 import { AgentAvatar } from "@/components/AgentAvatar";
-import { normalizeLegacyRunnerProvider } from "@paperclipai/adapter-utils";
+import { normalizeLegacyRunnerProvider } from "@bostan/adapter-utils";
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { createPortal } from "react-dom";
 import { PROPERTIES_PANE_HEADER_SLOT_ID } from "../PropertiesPanel";
@@ -18,7 +18,7 @@ import {
   type ExecutionWorkspace,
   type Issue,
   type IssueLabel,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { accessApi } from "../../api/access";
 import { agentsApi } from "../../api/agents";
@@ -323,7 +323,8 @@ export function IssueProperties({
   // products, documents (redundant with the Plan tab, intentionally), and
   // attachments from agents and people.
   const hasArtifactsTab =
-    (paneTabWorkProducts?.length ?? 0) > 0
+    import.meta.env.VITE_BOSTAN_LOCAL_OCR_PREVIEW_ENABLE === "1"
+    || (paneTabWorkProducts?.length ?? 0) > 0
     || paneTabStandaloneDocuments.length > 0
     || selectArtifactAttachments(paneTabAttachments, paneTabWorkProducts).length > 0;
   const [paneTab, setPaneTab] = useState<IssuePaneTab>("properties");

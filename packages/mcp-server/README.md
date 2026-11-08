@@ -1,32 +1,29 @@
-# Paperclip MCP Server
+# Bostan MCP Server
 
-Model Context Protocol server for Paperclip.
+Model Context Protocol server for Bostan.
 
-This package is a thin MCP wrapper over the existing Paperclip REST API. It does
+This package is a thin MCP wrapper over the existing Bostan REST API. It does
 not talk to the database directly and it does not reimplement business logic.
 
 ## Authentication
 
 The server reads its configuration from environment variables:
 
-- `PAPERCLIP_API_URL` - Paperclip base URL, for example `http://localhost:3100`
+- `PAPERCLIP_API_URL` - Bostan base URL, for example `http://localhost:3100`
 - `PAPERCLIP_API_KEY` - bearer token used for `/api` requests
 - `PAPERCLIP_COMPANY_ID` - optional default company for company-scoped tools
 - `PAPERCLIP_AGENT_ID` - optional default agent for checkout helpers
 - `PAPERCLIP_RUN_ID` - optional run id forwarded on mutating requests
 
-Inside an active heartbeat, Paperclip also injects `PAPERCLIP_RUNTIME_TOOLS_*` variables. They enable the run-scoped `connections_search` and `connection_request` tools and expire with the run.
+Inside an active heartbeat, Bostan still injects the compatible `PAPERCLIP_RUNTIME_TOOLS_*` variables. They enable the run-scoped `connections_search` and `connection_request` tools and expire with the run.
 
 ## Usage
 
-```sh
-npx -y @paperclipai/mcp-server
-```
-
-Or locally in this repo:
+This Bostan workspace package is private and has no published npm binary.
+Build and start its stdio entrypoint from the repository root:
 
 ```sh
-pnpm --filter @paperclipai/mcp-server build
+pnpm --filter @bostan/mcp-server build
 node packages/mcp-server/dist/stdio.js
 ```
 

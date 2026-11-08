@@ -11,7 +11,7 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { eq } from "drizzle-orm";
-import { agents, heartbeatRuns, issues } from "@paperclipai/db";
+import { agents, heartbeatRuns, issues } from "@bostan/db";
 import { startRunnerApiTestServer } from "./runner-api-server.js";
 import { createAssignedMcpTools } from "../../services/native-runtime/assigned-mcp-tools.js";
 import { PaperclipRunnerToolAuthority } from "../../services/native-runtime/paperclip-runner-tool-authority.js";

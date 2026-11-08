@@ -1,20 +1,20 @@
-import { environmentTaskOperationSchema } from "@paperclipai/plugin-sdk";
-import type { Db } from "@paperclipai/db";
-import type { Environment, EnvironmentLease } from "@paperclipai/shared";
-import { adapterSupportsRemoteManagedEnvironments } from "@paperclipai/shared";
+import { environmentTaskOperationSchema } from "@bostan/plugin-sdk";
+import type { Db } from "@bostan/db";
+import type { Environment, EnvironmentLease } from "@bostan/shared";
+import { adapterSupportsRemoteManagedEnvironments } from "@bostan/shared";
 import {
   adapterExecutionTargetToRemoteSpec,
   type AdapterExecutionTarget,
   type SandboxLeaseAcquisition,
-} from "@paperclipai/adapter-utils/execution-target";
-import type { DuplexObservabilityRecorder } from "@paperclipai/adapter-utils/duplex-observability";
+} from "@bostan/adapter-utils/execution-target";
+import type { DuplexObservabilityRecorder } from "@bostan/adapter-utils/duplex-observability";
 import {
   clampSpanLabel,
   getActiveStepContext,
   normalizeProviderFamily,
   SANDBOX_STARTUP_OUTCOME,
   SANDBOX_STARTUP_SPAN_ATTRS,
-} from "@paperclipai/adapter-utils/acpx-engine/startup-timing";
+} from "@bostan/adapter-utils/acpx-engine/startup-timing";
 import { parseObject } from "../adapters/utils.js";
 import { getStartupTracer } from "../instrumentation.js";
 import { resolveEnvironmentDriverConfigForRuntime } from "./environment-config.js";

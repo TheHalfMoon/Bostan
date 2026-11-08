@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { chatSlackRegistrations } from "@paperclipai/db";
-import { resolveAgentAppearance, buildSlackAppManifest, slackAppConfigurationSchema, type SlackRegistrationInput, type SlackAvatarState } from "@paperclipai/shared";
+import { chatSlackRegistrations } from "@bostan/db";
+import { resolveAgentAppearance, buildSlackAppManifest, slackAppConfigurationSchema, type SlackRegistrationInput, type SlackAvatarState } from "@bostan/shared";
 import { conflict } from "../../../../errors.js";
 import { logger } from "../../../../middleware/logger.js";
 import type { CredentialMutationLeaseGuard } from "../../../chat-credential-mutation-lease.js";

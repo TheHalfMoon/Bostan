@@ -17,6 +17,30 @@ function parseOrigin(value: string | undefined) {
 }
 
 /**
+ * Browsers serialize Origin as a bare HTTP(S) scheme + authority.
+ * URL() is intentionally permissive: it accepts URLs with paths, query strings,
+ * fragments, username/password, and normalizes unusual spellings. None of
+ * those are valid serialized browser Origin headers.
+ *
+ * Referer and PAPERCLIP_PUBLIC_URL are full URLs and continue to use parseOrigin.
+ */
+function parseBrowserOriginHeader(value: string | undefined): string | null {
+  if (!value || /[\r\n]/.test(value)) return null;
+  const candidate = value.trim();
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    if (url.username || url.password) return null;
+    // Canonical Origin has no slash, path, query, fragment, credentials,
+    // explicit default port or normalized alternate authority syntax.
+    if (candidate.toLowerCase() !== url.origin.toLowerCase()) return null;
+    return url.origin.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Resolve the host used for same-origin checks without letting a direct client
  * promote its own X-Forwarded-Host value into the trusted-origin set. Express
  * compiles the operator's TRUST_PROXY setting into `trust proxy fn`; only a
@@ -40,12 +64,35 @@ function requestHost(req: Request): string | undefined {
   return host;
 }
 
+function isLoopbackRequestHost(host: string | undefined): boolean {
+  if (!host) return false;
+  try {
+    // Parse the authority, not a substring such as "localhost.evil.test".
+    const hostname = new URL(`http://${host}`).hostname.toLowerCase();
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
 function trustedOriginsForRequest(req: Request) {
-  const origins = new Set(DEFAULT_DEV_ORIGINS.map((value) => value.toLowerCase()));
   const host = requestHost(req);
-  if (host) {
-    origins.add(`http://${host}`.toLowerCase());
-    origins.add(`https://${host}`.toLowerCase());
+  // The convenience Vite development origins are trusted only for a local
+  // Bostan server. They must not silently authorize browser-session mutations
+  // on remote deployments merely because a user runs a local development UI.
+  // Operators can still explicitly configure PAPERCLIP_PUBLIC_URL below.
+  const origins = new Set(
+    isLoopbackRequestHost(host)
+      ? DEFAULT_DEV_ORIGINS.map((value) => value.toLowerCase())
+      : [],
+  );
+  // Host alone is not a same-origin identity. An HTTPS request must not
+  // automatically trust an HTTP Origin for the same host (or vice versa).
+  // Express derives req.protocol from the actual socket, or from a forwarded
+  // protocol ONLY when the immediate proxy is trusted by its configuration.
+  const protocol = req.protocol;
+  if (host && (protocol === "http" || protocol === "https")) {
+    origins.add(`${protocol}://${host}`.toLowerCase());
   }
   // Behind some reverse proxies the Host / X-Forwarded-Host header may
   // not match the public URL (for example when TLS terminates at the
@@ -64,8 +111,14 @@ function trustedOriginsForRequest(req: Request) {
  */
 export function trustedBoardMutationOrigin(req: Request): string | null {
   const allowedOrigins = trustedOriginsForRequest(req);
-  const origin = parseOrigin(req.header("origin"));
-  if (origin && allowedOrigins.has(origin)) return origin;
+  const originHeader = req.header("origin");
+  if (originHeader !== undefined) {
+    // A browser supplies Origin for mutating requests. A hostile, opaque or
+    // malformed Origin must never be overruled by a seemingly trusted Referer.
+    // Referer is a fallback ONLY for clients that omit Origin entirely.
+    const origin = parseBrowserOriginHeader(originHeader);
+    return origin && allowedOrigins.has(origin) ? origin : null;
+  }
 
   const refererOrigin = parseOrigin(req.header("referer"));
   if (refererOrigin && allowedOrigins.has(refererOrigin)) return refererOrigin;

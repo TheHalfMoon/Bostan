@@ -52,7 +52,7 @@ import {
   toolStdioCommandTemplates,
   userSecretDefinitions,
   userSecretDeclarations,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   APP_DEFINITIONS,
@@ -65,7 +65,7 @@ import {
   getAvailableConnectionMethod,
   getConnectableAppDefinition,
   type GoogleWorkspaceConnectorProfileId,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,
@@ -96,6 +96,7 @@ import * as sentry from "../sentry.js";
 import { HttpError } from "../errors.js";
 import type { VercelConnectClient } from "../services/vercel-connect.js";
 import { invalidatePaperclipCloudConnectorCapabilities, type PaperclipCloudConnector } from "../services/paperclip-cloud-connector.js";
+import { paperclipCloudConnectorIdentityPath } from "../services/paperclip-cloud-connector-enrollment.js";
 
 const externalDatabaseUrl = process.env.PAPERCLIP_TOOL_ACCESS_TEST_DATABASE_URL?.trim();
 const embeddedPostgresSupport = await getEmbeddedPostgresTestSupport();
@@ -7623,36 +7624,64 @@ describeEmbeddedPostgres("tool access service", () => {
       expect(JSON.stringify(getConnectableAppDefinition(slug))).toBe(definitionBefore);
   });
 
-  it.each(GOOGLE_WORKSPACE_CONNECTOR_PROFILE_IDS)("connects advertised Workspace %s with a Cloud-delivered environment identity", async (profile) => {
+  // Bostan never adopts a Cloud-delivered (env) connector identity or the donor
+  // broker. Managed Workspace methods are reachable only through an explicitly
+  // opted-in private Bostan broker plus a locally enrolled, active identity
+  // bound to that exact broker origin.
+  it.each(GOOGLE_WORKSPACE_CONNECTOR_PROFILE_IDS)("connects advertised Workspace %s through an enrolled private Bostan broker", async (profile) => {
     const slug = GOOGLE_WORKSPACE_CONNECTOR_PROFILES[profile].appSlug;
     const methodKey = getConnectableAppDefinition(slug)!.methods.find((method) => method.connectorProfile === profile)!.key;
     const company = await createCompany(db);
     const userId = `cloud-workspace-${randomUUID()}`;
     await grantBoardUser(db, company.id, userId, [], "owner");
+    const broker = "https://broker.bostan.example";
+    const tenant = "https://tenant.bostan.example";
+    const instanceId = "inst_bostan-workspace-regression";
     const signing = generateKeyPairSync("ed25519");
     const sealing = generateKeyPairSync("x25519");
-    vi.stubEnv("PAPERCLIP_AUTH_PUBLIC_BASE_URL", "https://tenant.paperclip.app");
-    vi.stubEnv("PAPERCLIP_CLOUD_CONNECTOR_BASE_URL", "https://my.paperclip.app");
+    const rawPrivateKey = (key: typeof signing.privateKey) => (key.export({ format: "jwk" }) as { d: string }).d;
+    const rawPublicKey = (key: typeof signing.publicKey) => (key.export({ format: "jwk" }) as { x: string }).x;
+    vi.stubEnv("PAPERCLIP_AUTH_PUBLIC_BASE_URL", tenant);
+    vi.stubEnv("BOSTAN_CLOUD_CONNECTOR_ENABLED", "1");
+    vi.stubEnv("BOSTAN_CLOUD_CONNECTOR_BASE_URL", broker);
     vi.stubEnv("PAPERCLIP_CLOUD_CONNECTOR_ENVIRONMENT", "production");
-    vi.stubEnv("PAPERCLIP_CLOUD_CONNECTOR_INSTANCE_ID", "inst-cloud-workspace-regression");
-    vi.stubEnv("PAPERCLIP_CLOUD_CONNECTOR_SIGN_PRIVATE_KEY", signing.privateKey.export({ type: "pkcs8", format: "pem" }).toString());
-    vi.stubEnv("PAPERCLIP_CLOUD_CONNECTOR_SEAL_PRIVATE_KEY", sealing.privateKey.export({ type: "pkcs8", format: "pem" }).toString());
+    // Inherited managed identities are refused outright; make sure none leak in.
+    vi.stubEnv("PAPERCLIP_CLOUD_CONNECTOR_INSTANCE_ID", "");
+    vi.stubEnv("PAPERCLIP_CLOUD_CONNECTOR_SIGN_PRIVATE_KEY", "");
+    vi.stubEnv("PAPERCLIP_CLOUD_CONNECTOR_SEAL_PRIVATE_KEY", "");
+    // Same on-disk shape the enrollment flow persists after a completed claim.
+    const identityPath = paperclipCloudConnectorIdentityPath();
+    await fs.mkdir(join(identityPath, ".."), { recursive: true, mode: 0o700 });
+    await fs.writeFile(identityPath, `${JSON.stringify({
+      version: 1,
+      instanceId,
+      environment: "production",
+      brokerBaseUrl: broker,
+      signPrivateKey: rawPrivateKey(signing.privateKey),
+      signPublicKey: rawPublicKey(signing.publicKey),
+      sealPrivateKey: rawPrivateKey(sealing.privateKey),
+      sealPublicKey: rawPublicKey(sealing.publicKey),
+      status: "active",
+      origins: [tenant],
+      enrolledAt: new Date().toISOString(),
+    }, null, 2)}
+`, { encoding: "utf8", mode: 0o600 });
     invalidatePaperclipCloudConnectorCapabilities();
     const cloudRequest = vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
       const signed = JSON.parse(String(init?.body)).request as string;
       const claims = JSON.parse(Buffer.from(signed.split(".")[1]!, "base64url").toString());
-      expect(claims).toMatchObject({ iss: "inst-cloud-workspace-regression", env: "production" });
-      if (String(url) === "https://my.paperclip.app/v1/connector/instance-status") {
+      expect(claims).toMatchObject({ iss: instanceId, env: "production" });
+      if (String(url) === `${broker}/v1/connector/instance-status`) {
         expect(claims.op).toBe("status");
         return Response.json({ active: true, status: "active", profiles: [profile] });
       }
-      expect(String(url)).toBe("https://my.paperclip.app/v1/connector/sessions");
+      expect(String(url)).toBe(`${broker}/v1/connector/sessions`);
       expect(claims).toMatchObject({
         op: "session", prf: profile, cid: company.id, sub: userId,
-        ruri: "https://tenant.paperclip.app/api/tools/oauth/cloud-connector/callback",
+        ruri: `${tenant}/api/tools/oauth/cloud-connector/callback`,
       });
       return Response.json({
-        confirmationUrl: "https://my.paperclip.app/connections/confirm?id=test-workspace-session",
+        confirmationUrl: `${broker}/connections/confirm?id=test-workspace-session`,
         expiresAt: new Date(Date.now() + 600_000).toISOString(),
       });
     });
@@ -7667,11 +7696,12 @@ describeEmbeddedPostgres("tool access service", () => {
         galleryKey: slug, connectionMethodKey: methodKey, grantKind: "user", name: `Cloud ${slug}`,
       });
       expect(result.status, JSON.stringify(result.body)).toBe(201);
-      expect(result.body.auth.startUrl).toBe("https://my.paperclip.app/connections/confirm?id=test-workspace-session");
+      expect(result.body.auth.startUrl).toBe(`${broker}/connections/confirm?id=test-workspace-session`);
       expect(result.body.connection).toMatchObject({ credentialPolicy: "per_user", ownership: "platform_shared" });
       expect(cloudRequest).toHaveBeenCalled();
     } finally {
       invalidatePaperclipCloudConnectorCapabilities();
+      await fs.rm(identityPath, { force: true });
     }
   });
 
@@ -12417,7 +12447,12 @@ describeEmbeddedPostgres("tool access service", () => {
       "slack-client-secret",
     );
     const company = await createCompany(db);
-    const app = createRouteApp(
+    // The CSRF guard only trusts a same-scheme Origin. supertest speaks plain
+    // HTTP, so model the real deployment: TLS terminates at a loopback proxy
+    // (e.g. `tailscale serve`) that the operator trusts via TRUST_PROXY.
+    const app = express();
+    app.set("trust proxy", "loopback");
+    app.use(createRouteApp(
       db,
       boardSessionActor(company.id, "owner"),
       undefined,
@@ -12425,11 +12460,12 @@ describeEmbeddedPostgres("tool access service", () => {
         deploymentMode: "authenticated",
         deploymentExposure: "private",
       },
-    );
+    ));
 
     const connectRes = await request(app)
       .post(`/api/companies/${company.id}/tools/apps/connect`)
       .set("Host", "paperclip.tail123.ts.net")
+      .set("X-Forwarded-Proto", "https")
       .set("Origin", "https://paperclip.tail123.ts.net")
       .send({ galleryKey: "slack", name: "Tailscale Slack workspace" });
 

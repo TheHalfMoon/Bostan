@@ -15,7 +15,7 @@ const swSource = () =>
 
 describe("embedServiceWorkerOfflineStyles", () => {
   it("embeds CSS as a safe JavaScript string, preserving quotes and newlines", () => {
-    const css = '.paperclip-offline {\n  font-family: "Segoe UI", sans-serif;\n}';
+    const css = '.bostan-offline {\n  font-family: "Segoe UI", sans-serif;\n}';
     const source = 'return "__PAPERCLIP_OFFLINE_STYLES__";';
     const embedded = embedServiceWorkerOfflineStyles(
       source, `/* offline-recovery:start */${css}/* offline-recovery:end */`,

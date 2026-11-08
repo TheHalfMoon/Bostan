@@ -18,15 +18,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  linux:
+  gates:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
       - run: node scripts/bostan-workflow-quarantine-gate.mjs
       - run: node --test scripts/bostan-workflow-quarantine-gate.test.mjs
+      - run: node scripts/bostan-private-preflight.mjs
+      - run: >-
+          node --test scripts/bostan-private-workflow-admission.test.mjs
+          scripts/bostan-private-preflight.test.mjs
+          scripts/bostan-private-docs-entry-gate.test.mjs
+          scripts/bostan-private-ui-brand-gate.test.mjs
+
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -36,7 +50,73 @@ jobs:
       - run: pnpm -r --workspace-concurrency=1 typecheck
         env:
           NODE_OPTIONS: --max-old-space-size=6144
-      - run: pnpm test:run
+      # node:test suites under server/scripts (excluded from server vitest).
+      - run: node --test $(grep -lE "from ['\"]node:test['\"]" scripts/*.test.mjs)
+        working-directory: server
+      - run: node --test scripts/*.test.mjs
+        working-directory: ui
+      # bostan-local-install exercises the compiled preview CLI in cli/dist.
+      - run: node scripts/build-bostan-preview.mjs
+        working-directory: cli
+      - run: node --test $(grep -lE "from ['\"]node:test['\"]" src/__tests__/*.test.mjs)
+        working-directory: cli
+      - run: >-
+          node --test packages/adapters/codex-local/scripts/copy-build-assets.test.mjs
+          packages/adapters/grok-local/scripts/copy-build-assets.test.mjs
+
+  # The full suite is several hours of vitest time; one 2-core runner cannot
+  # finish it. Groups and shards are the ones scripts/run-vitest-stable.mjs
+  # already defines.
+  test:
+    name: test (${{ matrix.lane }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { lane: server-1, args: "--mode general --group general-server-without-chat --shard-index 0 --shard-count 4" }
+          - { lane: server-2, args: "--mode general --group general-server-without-chat --shard-index 1 --shard-count 4" }
+          - { lane: server-3, args: "--mode general --group general-server-without-chat --shard-index 2 --shard-count 4" }
+          - { lane: server-4, args: "--mode general --group general-server-without-chat --shard-index 3 --shard-count 4" }
+          - { lane: chat, args: "--mode general --group general-chat" }
+          - { lane: workspaces-a, args: "--mode general --group general-workspaces-a" }
+          - { lane: workspaces-b, args: "--mode general --group general-workspaces-b" }
+          - { lane: workspaces-c, args: "--mode general --group general-workspaces-c" }
+          - { lane: serialized-1, args: "--mode serialized --shard-index 0 --shard-count 2" }
+          - { lane: serialized-2, args: "--mode serialized --shard-index 1 --shard-count 2" }
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run preflight:workspace-links
+      - run: pnpm --filter @bostan/plugin-sdk ensure-build-deps
+      # Server suites (dot-runner, native-codex-runner) build the Rust runner
+      # with a 5-minute bound; a cold release build exceeds it on 2-core
+      # runners. Build (cached) up front so their freshness check is quick.
+      - if: startsWith(matrix.lane, 'server-')
+        uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
+        with:
+          workspaces: packages/paperclip-runner/runner
+          cache-on-failure: true
+      # Mirror each suite's exact cargo invocation: feature unification differs
+      # between the single-bin (dot-runner) and two-bin (native-codex-runner)
+      # builds, so building only one leaves the other cold.
+      # Run from packages/paperclip-runner like the suites do: rustup selects the
+      # pinned toolchain from its rust-toolchain.toml by working directory, and
+      # a build under the runner's default toolchain is not reusable.
+      - if: startsWith(matrix.lane, 'server-')
+        working-directory: packages/paperclip-runner
+        run: |
+          cargo build --release --locked --manifest-path runner/Cargo.toml -p paperclip-runner-core --bin paperclip-runnerd
+          cargo build --release --locked --manifest-path runner/Cargo.toml -p paperclip-runner-core --bin paperclip-runnerd --bin fake-codex-app-server
+      - run: node scripts/run-vitest-stable.mjs ${{ matrix.args }}
 
   windows:
     runs-on: windows-latest
@@ -51,3 +131,4 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: node --test scripts/link-plugin-dev-sdk.test.js

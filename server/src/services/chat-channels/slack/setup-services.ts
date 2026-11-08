@@ -1,4 +1,4 @@
-import { chatIdentityLinks, chatExternalPrincipals, companyMemberships, toolConnections, type Db } from "@paperclipai/db";
+import { chatIdentityLinks, chatExternalPrincipals, companyMemberships, toolConnections, type Db } from "@bostan/db";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { conflict, forbidden, notFound } from "../../../errors.js";
 import { slackChatRegistrationService } from "../../chat-slack-registration.js";

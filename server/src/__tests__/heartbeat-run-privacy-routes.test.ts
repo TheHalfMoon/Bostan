@@ -20,8 +20,8 @@ import {
   toolApplications,
   toolConnections,
   workspaceOperations,
-} from "@paperclipai/db";
-import * as schema from "@paperclipai/db/schema/index";
+} from "@bostan/db";
+import * as schema from "@bostan/db/schema/index";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

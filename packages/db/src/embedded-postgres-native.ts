@@ -5,6 +5,10 @@ import path from "node:path";
 const require = createRequire(import.meta.url);
 
 function resolveNativePackageName(): string | null {
+  if (process.platform === "darwin") {
+    return process.arch === "arm64" ? "darwin-arm64"
+      : process.arch === "x64" ? "darwin-x64" : null;
+  }
   if (process.platform !== "linux") return null;
 
   switch (process.arch) {
@@ -71,6 +75,40 @@ export async function ensureLinuxSharedLibraryAliases(libDir: string): Promise<s
   return created;
 }
 
+/**
+ * Prebuilt macOS Postgres ships patch-versioned dylibs such as ICU 77.1,
+ * zstd 1.5.7 and zlib 1.3.1, while sibling binaries link the soname-level
+ * ICU.77, zstd.1 or zlib.1 path. Only create exact-major symlink aliases
+ * within that same dependency-owned lib directory. No cross-major aliases,
+ * replacement, external library search or library downloads.
+ */
+export async function ensureDarwinSharedLibraryAliases(libDir: string): Promise<string[]> {
+  const entries = await fs.readdir(libDir, { withFileTypes: true });
+  const created: string[] = [];
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    const match = entry.name.match(/^(lib[^/]+?\.\d+)\.\d+(?:\.\d+)?\.dylib$/);
+    if (!match) continue;
+    const majorAlias = match[1] + ".dylib";
+    // Postgres 18 also references ICU without a soname in a few binaries:
+    // libicui18n.dylib, despite shipping only libicui18n.77.1.dylib.
+    // Keep that exceptional unversioned alias limited to same-package ICU.
+    const unversionedIcuAlias = /^libicu(?:data|uc|i18n)\.\d+$/.test(match[1])
+      ? match[1].replace(/\.\d+$/, "") + ".dylib" : null;
+    for (const aliasName of [majorAlias, unversionedIcuAlias].filter((name): name is string => !!name)) {
+      const aliasPath = path.join(libDir, aliasName);
+      try {
+        await fs.symlink(entry.name, aliasPath);
+        created.push(aliasPath);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "EEXIST") continue;
+        throw error;
+      }
+    }
+  }
+  return created;
+}
+
 export async function prepareEmbeddedPostgresNativeRuntime(): Promise<void> {
   const nativePackageName = resolveNativePackageName();
   const packageRoot = resolveEmbeddedPostgresPackageRoot();
@@ -80,6 +118,10 @@ export async function prepareEmbeddedPostgresNativeRuntime(): Promise<void> {
   const libDir = path.join(nativeRoot, "native", "lib");
   if (!(await pathExists(libDir))) return;
 
+  if (process.platform === "darwin") {
+    await ensureDarwinSharedLibraryAliases(libDir);
+    return;
+  }
   prependPathEnv("LD_LIBRARY_PATH", libDir);
   await ensureLinuxSharedLibraryAliases(libDir);
 }

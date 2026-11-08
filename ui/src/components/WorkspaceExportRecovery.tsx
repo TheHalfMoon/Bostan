@@ -1,5 +1,5 @@
-import type { IssueRecoveryAction } from "@paperclipai/shared";
-import { isNativeWorkspaceExportRepairCause } from "@paperclipai/shared";
+import type { IssueRecoveryAction } from "@bostan/shared";
+import { isNativeWorkspaceExportRepairCause } from "@bostan/shared";
 import { asObject, cn } from "../lib/utils";
 
 /** Infrastructure repair belongs to the harness/operator, never a task form. */

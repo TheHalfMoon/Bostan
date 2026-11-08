@@ -8,8 +8,8 @@ import {
   assertWorkspaceRealizationLifecycle,
   assertExecutionLifecycle,
   assertEnvironmentError,
-} from "@paperclipai/plugin-sdk/testing";
-import type { PaperclipPluginManifestV1 } from "@paperclipai/shared";
+} from "@bostan/plugin-sdk/testing";
+import type { PaperclipPluginManifestV1 } from "@bostan/shared";
 
 const FAKE_MANIFEST: PaperclipPluginManifestV1 = {
   id: "test-env-plugin",

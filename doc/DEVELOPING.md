@@ -287,7 +287,7 @@ pnpm storybook
 pnpm build-storybook
 ```
 
-These run the `@paperclipai/ui` Storybook on port `6006` and build the static output to `ui/storybook-static/`.
+These run the `@bostan/ui` Storybook on port `6006` and build the static output to `ui/storybook-static/`.
 
 **Task chat → Failure notices** covers compact run errors and adjacent recovery
 notices in both presentation modes, with expanded details, fixture retry
@@ -535,7 +535,7 @@ the Tailwind `font-sans` token to those bundled files before system fallbacks.
 Linux screenshot or Storybook capture jobs should not install host Inter packages
 or inject external font CSS to make Paperclip text render correctly.
 
-Font assets live in Vite's public directory so `pnpm --filter @paperclipai/ui build`
+Font assets live in Vite's public directory so `pnpm --filter @bostan/ui build`
 emits them under `ui/dist/fonts/`. The server package copies the same output into
 `server/ui-dist/fonts/` through `scripts/prepare-server-ui-dist.sh`.
 
@@ -572,7 +572,7 @@ Primary-instance rebuilds that restart `paperclip.service` can request one-shot 
 
 ```sh
 old_main_pid="$(systemctl show paperclip.service -p MainPID --value)"
-pnpm --filter @paperclipai/server exec tsx ../scripts/request-hot-restart.ts --server-pid "$old_main_pid"
+pnpm --filter @bostan/server exec tsx ../scripts/request-hot-restart.ts --server-pid "$old_main_pid"
 systemctl restart paperclip.service
 ```
 
@@ -614,7 +614,7 @@ drain-and-retry path:
 
 ```sh
 old_main_pid="$(systemctl show paperclip.service -p MainPID --value)"
-pnpm --filter @paperclipai/server exec tsx ../scripts/request-hot-restart.ts \
+pnpm --filter @bostan/server exec tsx ../scripts/request-hot-restart.ts \
   --server-pid "$old_main_pid" --drain-required
 systemctl restart paperclip.service
 ```
@@ -793,7 +793,7 @@ build. It used to run the Runner's full `build` every time. Now the Runner's
 first step, forgets the previous stamp and records a digest of the build's
 inputs (every file under `packages/paperclip-runner` except `dist`,
 `dist-browser`, `runner/target`, `node_modules` and dot-directories; every
-file under `packages/paperclip-eval-kernel` except `dist` and `node_modules`;
+file under `packages/bostan-eval-kernel` except `dist` and `node_modules`;
 every file under the root `patches` directory, which the acpx profile check
 hashes and the provider entrypoint bundler copies into `dist`; and the root
 `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` and
@@ -807,8 +807,8 @@ runs leaves no stamp, so the next consumer rebuilds.
 stamp is for this platform, every recorded output is still there at its
 recorded size, and the current digest matches. Anything else (no stamp, a
 changed input, a deleted or truncated output, a stamp from another platform)
-runs `pnpm --filter @paperclipai/paperclip-runner build` exactly as before, so
-a standalone `pnpm --filter @paperclipai/server build` on a fresh checkout
+runs `pnpm --filter @bostan/runner build` exactly as before, so
+a standalone `pnpm --filter @bostan/server build` on a fresh checkout
 still builds the Runner itself. Inside `pnpm build` the Runner has just been
 built by the same command, and the step skips a 12-16s rebuild. The step
 prints one `paperclip.runner-vendor.timing.v1` line saying which it did.
@@ -837,7 +837,7 @@ per-query results and latency measurements; scale measurements are opt-in.
 Measure a fresh checkout with and without the repository object cache:
 
 ```sh
-pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-repository-object-cache.ts
+pnpm --filter @bostan/server exec tsx ../scripts/benchmark-repository-object-cache.ts
 ```
 
 This uses a synthetic 32 MiB repository and the real `file://` Git transport.
@@ -849,8 +849,8 @@ measurement.
 Measure cold sandbox staging with a disposable 10,000-file Git repository:
 
 ```sh
-pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-workspace-staging.ts --baseline-ref=origin/master
-pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-workspace-staging.ts --baseline-ref=origin/master --transfer-delay-ms=3000
+pnpm --filter @bostan/server exec tsx ../scripts/benchmark-workspace-staging.ts --baseline-ref=origin/master
+pnpm --filter @bostan/server exec tsx ../scripts/benchmark-workspace-staging.ts --baseline-ref=origin/master --transfer-delay-ms=3000
 ```
 
 The benchmark alternates the baseline and current implementations. Both pack,
@@ -1379,7 +1379,7 @@ guards. Close readiness derives ancestry from its existing ahead/behind
 comparison, avoiding a second history walk with `merge-base`.
 
 Measure the avoided reads on synthetic workspaces with
-`pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-workspace-record-reads.ts`.
+`pnpm --filter @bostan/server exec tsx ../scripts/benchmark-workspace-record-reads.ts`.
 The benchmark checks identical persisted fields and reports wall time and actual
 Git command counts. Use `--resident-mib=1536` to exercise a large Node process on
 Linux. It measures workspace reads, not end-to-end agent latency.
@@ -2301,9 +2301,9 @@ successful warm-session retention or admit another provider turn.
 Run the credential-free real-process restart suite with:
 
 ```sh
-pnpm --filter @paperclipai/paperclip-runner build:runner-binaries
+pnpm --filter @bostan/runner build:runner-binaries
 pnpm exec vitest run server/src/services/native-runtime/native-runner-restart-recovery.integration.test.ts
-pnpm --filter @paperclipai/paperclip-runner exec vitest run src/live/runnerd-codex-transport.test.ts -t 'adopts a live runner'
+pnpm --filter @bostan/runner exec vitest run src/live/runnerd-codex-transport.test.ts -t 'adopts a live runner'
 ```
 
 The suite uses isolated PostgreSQL state, isolated `PAPERCLIP_HOME` roots, real
@@ -2351,18 +2351,18 @@ still resolve their operational and feedback skills.
 Validate the catalog without writing the manifest:
 
 ```sh
-pnpm --filter @paperclipai/skills-catalog validate
+pnpm --filter @bostan/skills-catalog validate
 ```
 
 Regenerate `generated/catalog.json` after editing any catalog `SKILL.md`,
 frontmatter, file inventory, category, or slug:
 
 ```sh
-pnpm --filter @paperclipai/skills-catalog build:manifest
+pnpm --filter @bostan/skills-catalog build:manifest
 ```
 
 The package's `build` script runs `build:manifest` and then `tsc`; tests live
-under `pnpm --filter @paperclipai/skills-catalog test`. Validation fails when:
+under `pnpm --filter @bostan/skills-catalog test`. Validation fails when:
 
 - a catalog entry is not under `catalog/bundled/<category>/<slug>` or
   `catalog/optional/<category>/<slug>`
@@ -2379,7 +2379,7 @@ only), `assets` (other non-script files), or `scripts_executables` (any
 executable script). The build contract is documented in
 `doc/plans/2026-05-26-skills-cli-catalog-contract.md`.
 
-CI runs `pnpm --filter @paperclipai/skills-catalog validate` and the package's
+CI runs `pnpm --filter @bostan/skills-catalog validate` and the package's
 vitest suite, so always regenerate the manifest in the same commit as the
 catalog change.
 
@@ -2460,13 +2460,13 @@ packages/teams-catalog/
 Validate without writing the manifest:
 
 ```sh
-pnpm --filter @paperclipai/teams-catalog validate
+pnpm --filter @bostan/teams-catalog validate
 ```
 
 Regenerate `generated/catalog.json` after editing catalog team files:
 
 ```sh
-pnpm --filter @paperclipai/teams-catalog build:manifest
+pnpm --filter @bostan/teams-catalog build:manifest
 ```
 
 Team install/preview APIs enforce source policy. External skill sources require
@@ -2874,7 +2874,7 @@ runs cannot publish late progress from an old executor snapshot.
 Run the deterministic native event replay with the normal server test runner:
 
 ```sh
-pnpm --filter @paperclipai/server exec vitest run src/__tests__/native-observer-replay.test.ts
+pnpm --filter @bostan/server exec vitest run src/__tests__/native-observer-replay.test.ts
 ```
 
 The test uses disposable PostgreSQL and the production event persistence and
@@ -3157,7 +3157,7 @@ replaced with remote clones because of historical file ownership.
 The disposable workspace-preparation performance harness is:
 
 ```sh
-pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-workspace-preparation-history.ts --baseline-ref=df80616d98119cbf5abd40549794d9980a5fabf6
+pnpm --filter @bostan/server exec tsx ../scripts/benchmark-workspace-preparation-history.ts --baseline-ref=df80616d98119cbf5abd40549794d9980a5fabf6
 ```
 
 It compares actual preparation guards with synthetic history. Local timings are
@@ -3186,8 +3186,8 @@ policy controls admission until their terminal charge is known.
 Use a disposable real PostgreSQL database to compare cost evaluation and complete admission:
 
 ```sh
-pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-budget-enforcement.ts --baseline-ref=6c9b87d0922f1ebfc43e8b0c36889ac5ba7b9837 > /tmp/budget-forward.json
-pnpm --filter @paperclipai/server exec tsx ../scripts/benchmark-budget-enforcement.ts --baseline-ref=6c9b87d0922f1ebfc43e8b0c36889ac5ba7b9837 --reverse > /tmp/budget-reverse.json
+pnpm --filter @bostan/server exec tsx ../scripts/benchmark-budget-enforcement.ts --baseline-ref=6c9b87d0922f1ebfc43e8b0c36889ac5ba7b9837 > /tmp/budget-forward.json
+pnpm --filter @bostan/server exec tsx ../scripts/benchmark-budget-enforcement.ts --baseline-ref=6c9b87d0922f1ebfc43e8b0c36889ac5ba7b9837 --reverse > /tmp/budget-reverse.json
 ```
 
 The cost comparison keeps one company policy and no active runs while adding 0,

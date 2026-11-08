@@ -1,6 +1,6 @@
 import { DELIVERY_QUEUES, notifyDeliveryWork } from "./delivery-work-notifications.js";
-import type { Db } from "@paperclipai/db";
-import { companies, instanceSettings } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
+import { companies, instanceSettings } from "@bostan/db";
 
 /**
  * A `Db` or an open transaction handle — the subset of query builders the
@@ -27,12 +27,12 @@ import {
   type InstanceSettings,
   type PatchInstanceSettings,
   type PatchInstanceExperimentalSettings,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import {
   INSTANCE_FEATURE_CATALOG,
   applyOperatorGeneralDefaults,
   stripOperatorGeneralEchoes,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { eq } from "drizzle-orm";
 import { getManagedInstanceConfig, type ManagedInstanceConfig } from "./managed-config.js";
 import { getOperatorSettingDefaults } from "./setting-defaults.js";

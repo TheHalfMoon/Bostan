@@ -155,6 +155,7 @@ describe("InvitesSection", () => {
 
     expect(container.textContent).toContain("Choose a role");
     expect(container.textContent).toContain("Each invite link is single-use.");
+    expect(container.textContent).not.toContain("Paperclip domain");
     expect(container.textContent).toContain("Can create agents, invite users, assign tasks, and approve join requests.");
     expect(container.textContent).toContain("Everything in Admin, plus managing members.");
     expect(container.textContent).not.toContain("permission grants");
@@ -201,7 +202,7 @@ describe("InvitesSection", () => {
     });
     expect(clipboardWriteTextMock).toHaveBeenCalledWith("https://paperclip.local/invite/new-token");
     expect(container.textContent).toContain("Latest invite link");
-    expect(container.textContent).toContain("This URL includes the current Paperclip domain returned by the server.");
+    expect(container.textContent).toContain("This link uses the Bostan instance address returned by the server.");
     expect(container.querySelector('input[aria-label="Latest invite URL"]')).toHaveProperty(
       "value",
       "https://paperclip.local/invite/new-token",

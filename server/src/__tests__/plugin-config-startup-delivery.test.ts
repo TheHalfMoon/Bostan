@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { companies, createDb, pluginConfig, plugins } from "@paperclipai/db";
+import { companies, createDb, pluginConfig, plugins } from "@bostan/db";
 import { pluginRegistryService } from "../services/plugin-registry.js";
 import {
   getEmbeddedPostgresTestSupport,

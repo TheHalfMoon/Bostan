@@ -2,7 +2,7 @@ import { probeCopilotExecutionTarget } from "../services/copilot-connection-prob
 import { HttpError } from "../errors.js";
 import { probeAcpxClaudeInstallation, probeAcpxCursorInstallation, probeAcpxPiInstallation } from "../vendor/paperclip-runner/live/index.js";
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
-import { buildSandboxNpmInstallCommand } from "@paperclipai/adapter-utils";
+import { buildSandboxNpmInstallCommand } from "@bostan/adapter-utils";
 import type { ServerAdapterModule } from "../adapters/index.js";
 
 import {
@@ -395,6 +395,36 @@ describe("server adapter registry", () => {
     const result=await requireServerAdapter("paperclip_runner").testEnvironment({companyId:"company-1",adapterType:"paperclip_runner",config:{provider:"acpx",acpxAgent:"copilot",model:"gpt-5.6-luna",env:{COPILOT_GITHUB_TOKEN:"fixture-token"}}});
     expect(result).toMatchObject({status:"fail",checks:[{code}]});
   });
+  it("redacts arbitrary provider text in a classified Copilot HttpError",async()=>{
+    vi.mocked(probeCopilotExecutionTarget).mockRejectedValueOnce(
+      new HttpError(422,"PRIVATE_COPILOT_PROVIDER_TOKEN and /PRIVATE_PATH",{
+        code:"COPILOT_ENTITLEMENT_DENIED",
+      }));
+    const result=await requireServerAdapter("paperclip_runner").testEnvironment({
+      companyId:"company-1",adapterType:"paperclip_runner",
+      config:{provider:"acpx",acpxAgent:"copilot",model:"synthetic-model",
+        env:{COPILOT_GITHUB_TOKEN:"PRIVATE_COPILOT_ACCOUNT_TOKEN"}},
+    });
+    expect(result).toMatchObject({status:"fail",checks:[{
+      code:"COPILOT_ENTITLEMENT_DENIED",level:"error",
+    }]});
+    expect(JSON.stringify(result)).not.toMatch(
+      /PRIVATE_COPILOT_PROVIDER_TOKEN|PRIVATE_PATH|PRIVATE_COPILOT_ACCOUNT_TOKEN/);
+  });
+
+  it("redacts ACPX package probe errors containing private setup details",async()=>{
+    vi.mocked(probeAcpxClaudeInstallation).mockRejectedValueOnce(
+      new Error("PRIVATE_ACPX_PATH and PRIVATE_ACPX_KEY from remote exception"));
+    const result=await requireServerAdapter("paperclip_runner").testEnvironment({
+      companyId:"company-1",adapterType:"paperclip_runner",
+      config:{provider:"acpx",acpxAgent:"claude",model:"synthetic-model"},
+    });
+    expect(result).toMatchObject({status:"fail",checks:[{
+      code:"acpx_runtime_unavailable",level:"error",
+    }]});
+    expect(JSON.stringify(result)).not.toMatch(/PRIVATE_ACPX_PATH|PRIVATE_ACPX_KEY/);
+  });
+
   it("sanitizes unexpected Copilot metadata failures",async()=>{
     vi.mocked(probeCopilotExecutionTarget).mockRejectedValueOnce(new Error("fixture private implementation detail"));
     const result=await requireServerAdapter("paperclip_runner").testEnvironment({companyId:"company-1",adapterType:"paperclip_runner",config:{provider:"acpx",acpxAgent:"copilot",model:"gpt-5.6-luna",env:{COPILOT_GITHUB_TOKEN:"fixture-token"}}});

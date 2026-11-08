@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 
 import { SANDBOX_PLATFORM_PROBE_METADATA_KEY } from "./environment-custom-image-runtime.js";
 import { and, desc, eq, inArray, isNull, ne, sql, type SQL } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@bostan/db";
 import {
   agents,
   builtInManagedResources,
@@ -16,7 +16,7 @@ import {
   instanceSettings,
   issues,
   projects,
-} from "@paperclipai/db";
+} from "@bostan/db";
 import {
   ENVIRONMENT_DRIVERS,
   ENVIRONMENT_LEASE_CLEANUP_STATUSES,
@@ -32,7 +32,7 @@ import {
   type EnvironmentLeasePolicy,
   type EnvironmentLeaseStatus,
   type UpdateEnvironment,
-} from "@paperclipai/shared";
+} from "@bostan/shared";
 import { conflict, forbidden } from "../errors.js";
 import { logActivity } from "./activity-log.js";
 import { isCloudManagedInstance } from "./cloud-instance.js";
@@ -82,7 +82,7 @@ export interface KubernetesEnvironmentConfigInput {
    * environment config and validated by the sandbox config schema.
    */
   timeoutMs?: number;
-  adapters?: import("@paperclipai/shared").AdapterRegistryEntry[];
+  adapters?: import("@bostan/shared").AdapterRegistryEntry[];
   [key: string]: unknown;
 }
 

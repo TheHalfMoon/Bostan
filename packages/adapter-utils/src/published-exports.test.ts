@@ -2,37 +2,41 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-// This test pins the published subpath surface of `package.json`.
+// This test pins the subpath surface of `package.json`.
 //
-// `@paperclipai/server` is itself a published npm package. Its published
-// build imports `@paperclipai/adapter-utils/duplex-observability` as a real
-// npm dependency, not as a workspace link. Node resolves that import against
-// `publishConfig.exports`, so the subpath must stay published there. An
-// earlier revision of this file denied the subpath with an explicit `null`
-// entry; that denial broke module resolution for the published server. The
-// subpath now falls through to the wildcard entry, the same as every other
-// file in the package.
+// The compiled private Bostan server imports
+// `@bostan/adapter-utils/duplex-observability` through the package `exports`
+// (resolving `dist/` under the `bostan-compiled` condition, `src/` otherwise).
+// An earlier upstream revision denied the subpath with an explicit `null`
+// entry, which broke module resolution for the server. The subpath must keep
+// falling through to the wildcard entry, the same as every other file.
+//
+// The package is private while Bostan packaging is locked down, so it carries
+// no `publishConfig`; publishing is not part of this contract.
 
 interface PackageManifest {
+  private?: boolean;
   exports: Record<string, unknown>;
-  publishConfig: {
-    exports: Record<string, unknown>;
-  };
+  publishConfig?: unknown;
 }
 
 const manifestPath = fileURLToPath(new URL("../package.json", import.meta.url));
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as PackageManifest;
 
-describe("publishConfig publishes the duplex observability subpath", () => {
-  it("does not deny the subpath in publishConfig.exports", () => {
-    expect(manifest.publishConfig.exports).not.toHaveProperty("./duplex-observability");
+describe("adapter-utils exports keep the duplex observability subpath resolvable", () => {
+  it("does not deny the subpath", () => {
+    expect(manifest.exports).not.toHaveProperty("./duplex-observability");
   });
 
-  it("keeps the wildcard entry in publishConfig.exports so the subpath resolves through it", () => {
-    expect(manifest.publishConfig.exports["./*"]).toBeDefined();
+  it("resolves the subpath through the wildcard for compiled and source consumers", () => {
+    expect(manifest.exports["./*"]).toEqual({
+      "bostan-compiled": "./dist/*.js",
+      default: "./src/*.ts",
+    });
   });
 
-  it("keeps the top-level wildcard export unchanged", () => {
-    expect(manifest.exports["./*"]).toBe("./src/*.ts");
+  it("stays private with no publish configuration under the release lockdown", () => {
+    expect(manifest.private).toBe(true);
+    expect(manifest.publishConfig).toBeUndefined();
   });
 });

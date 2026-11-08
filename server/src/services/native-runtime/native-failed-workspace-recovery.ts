@@ -1,6 +1,6 @@
 import { notifyExecutionRunWork } from "../execution-control-notifications.js";
 import { and, asc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
-import { environmentLeases, heartbeatRuns, issues, nativeRunFinalizations, type Db } from "@paperclipai/db";
+import { environmentLeases, heartbeatRuns, issues, nativeRunFinalizations, type Db } from "@bostan/db";
 import { recordRequiredWorkspaceRestoreFailure } from "../legacy-execution-recovery.js";
 import { hasRequiredWorkspaceRecovery, nativeRunHasNoWorkspaceAccess } from "../workspace-restore-recovery-state.js";
 import { logActivity } from "../activity-log.js";

@@ -1,4 +1,4 @@
-import type { CaseHandoff, DocumentRevision, HandoffCaseInput, HandoffCaseResult, IssueDocument, IssueLabel } from "@paperclipai/shared";
+import type { CaseHandoff, DocumentRevision, HandoffCaseInput, HandoffCaseResult, IssueDocument, IssueLabel } from "@bostan/shared";
 import { api } from "./client";
 
 // -----------------------------------------------------------------------------
@@ -343,6 +343,25 @@ export function caseRevisionToDocumentRevision(caseId: string, key: string, revi
   };
 }
 
+/** Read-only board projection; freshness means canonical source version,
+ * never factual truth or authorization to execute an external effect. */
+export interface BostanVerificationBoardSummary {
+  schema: "bostan.verification.board-summary.v1";
+  caseId: string;
+  caseStatus: string;
+  current: boolean;
+  provenanceCurrent: boolean;
+  reportSummary: string | null;
+  citedDocumentCount: number;
+  reviewerAgentId?: string;
+  reportDocumentId?: string;
+  reviewRunId?: string;
+  factualRelevanceVerified: false;
+  sourceContentIsUntrusted: true;
+  executionAuthorized: false;
+  checkedAt: string;
+}
+
 export const casesApi = {
   handoff: (companyId: string, input: HandoffCaseInput) =>
     api.post<HandoffCaseResult>(`/companies/${companyId}/case-handoffs`, input),
@@ -356,6 +375,8 @@ export const casesApi = {
     api.get<CaseSummary[]>(`/companies/${companyId}/cases${toQuery(params)}`),
   listTypes: (companyId: string) => api.get<string[]>(`/companies/${companyId}/cases/types`),
   get: (idOrIdentifier: string) => api.get<CaseDetail>(`/cases/${idOrIdentifier}`),
+  getBostanVerification: (idOrIdentifier: string) =>
+    api.get<BostanVerificationBoardSummary>(`/cases/${idOrIdentifier}/bostan-verification`),
   patch: (idOrIdentifier: string, input: PatchCaseInput) =>
     api.patch<CaseDetail>(`/cases/${idOrIdentifier}`, input),
   listEvents: (idOrIdentifier: string, limit = 100) =>

@@ -2,7 +2,7 @@
 
 import { act as reactAct, type ComponentProps, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { CatalogSkill, CompanySkillDetail, CompanySkillListItem, CompanySkillVersion, FolderListResult } from "@paperclipai/shared";
+import type { CatalogSkill, CompanySkillDetail, CompanySkillListItem, CompanySkillVersion, FolderListResult } from "@bostan/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DiscoveryGrid,
@@ -451,7 +451,8 @@ describe("DiscoveryGrid IA presentation", () => {
     expect(node.textContent).toContain("Not enabled for any agents");
     expect(node.textContent).toContain("Available to install");
     expect(node.textContent).toContain("Local workspace");
-    expect(node.textContent).toContain("Paperclip catalog");
+    expect(node.textContent).toContain("Bostan catalog");
+    expect(node.textContent).not.toContain("Paperclip catalog");
   });
 
   it("uses the create callback from the New menu and empty state", async () => {

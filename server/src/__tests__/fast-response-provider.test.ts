@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { AiConnectionMetadata } from "@paperclipai/shared";
+import type { AiConnectionMetadata } from "@bostan/shared";
 import {
   fastResponsePrompt,
   fastResponseReceipt,

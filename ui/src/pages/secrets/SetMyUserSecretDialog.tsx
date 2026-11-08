@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { CompanySecret, UserSecretDefinition } from "@paperclipai/shared";
+import type { CompanySecret, UserSecretDefinition } from "@bostan/shared";
 import {
   Dialog,
   DialogContent,
@@ -13,8 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { secretsApi } from "../../api/secrets";
-import { ApiError } from "../../api/client";
 import { queryKeys } from "../../lib/queryKeys";
+import { safeSecretUiError } from "./secret-error-messages";
 import { useToastActions } from "../../context/ToastContext";
 import { UserSecretChip } from "./user-secret-presentation";
 
@@ -83,13 +83,7 @@ export function SetMyUserSecretDialog({
       onOpenChange(false);
     },
     onError: (err) => {
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : "Failed to save value",
-      );
+      setError(safeSecretUiError(err));
     },
   });
 
@@ -136,7 +130,7 @@ export function SetMyUserSecretDialog({
                   autoFocus
                 />
                 <p className="text-(length:--text-micro) text-muted-foreground">
-                  Points at your own credential in the configured provider. Paperclip stores the
+                  Points at your own credential in the configured provider. Bostan stores the
                   reference, not the value.
                 </p>
               </div>

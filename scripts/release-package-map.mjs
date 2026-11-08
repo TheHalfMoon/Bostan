@@ -8,7 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, "..");
 const manifestPath = join(repoRoot, "scripts", "release-package-manifest.json");
 const roots = ["packages", "server", "ui", "cli"];
-const CHANNEL_ENTRYPOINT_PACKAGE = "paperclipai";
+const CHANNEL_ENTRYPOINT_PACKAGE = "bostan";
 
 function readJson(filePath) {
   return JSON.parse(readFileSync(filePath, "utf8"));
@@ -39,7 +39,10 @@ function discoverPublicPackages() {
     for (const entry of readdirSync(absDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
       if (entry.name === "node_modules" || entry.name === "dist" || entry.name === ".git") continue;
-      walk(join(relDir, entry.name));
+      // Manifest IDs are portable POSIX-style workspace-relative paths.
+      // path.join() would emit backslashes on Windows and falsely report
+      // every workspace package missing from the release inventory.
+      walk(relDir + "/" + entry.name);
     }
   }
 
@@ -102,7 +105,7 @@ function findUnpublishableWorkspaceEdges(packages) {
       if (!deps) continue;
 
       for (const [depName, spec] of Object.entries(deps)) {
-        if (!depName.startsWith("@paperclipai/")) continue;
+        if (!depName.startsWith("@paperclipai/") && !depName.startsWith("@bostan/")) continue;
         if (typeof spec !== "string" || !spec.startsWith("workspace:")) continue;
         if (publishFromCiByName.get(depName) === true) continue;
 
@@ -136,6 +139,25 @@ function buildReleasePackagePlan() {
     const pkg = packageByDir.get(entry.dir);
 
     if (!pkg) {
+      // Explicit, narrow inventory: owned Bostan packages stay private and
+      // cannot be implicitly turned into inherited public CI release jobs.
+      const expectedPrivateNames = {
+        cli: "bostan", ui: "@bostan/ui", server: "@bostan/server",
+        "packages/skills-catalog": "@bostan/skills-catalog",
+        "packages/teams-catalog": "@bostan/teams-catalog",
+        "packages/mcp-server": "@bostan/mcp-server",
+        "packages/kv-demo-mcp-server": "@bostan/kv-demo-mcp-server",
+        "packages/google-sheets-mcp-server": "@bostan/google-sheets-mcp-server",
+        "packages/plugins/sdk": "@bostan/plugin-sdk",
+        "packages/plugins/create-bostan-plugin": "@bostan/create-bostan-plugin",
+        "packages/plugins/plugin-workspace-diff": "@bostan/plugin-workspace-diff",
+      };
+      const expectedName = expectedPrivateNames[entry.dir];
+      const entryPackagePath = join(repoRoot, entry.dir, "package.json");
+      if (expectedName && entry.publishFromCi === false && existsSync(entryPackagePath)) {
+        const privateEntry = readJson(entryPackagePath);
+        if (privateEntry.private === true && privateEntry.name === expectedName && entry.name === expectedName) continue;
+      }
       problems.push(`${entry.dir} is listed in ${manifestPath} but is not a public package in this repo`);
       continue;
     }
@@ -212,22 +234,10 @@ function sortTopologically(packages) {
 }
 
 function getReleasePackages() {
-  const ordered = sortTopologically(buildReleasePackagePlan().filter((pkg) => pkg.publishFromCi));
-  const entrypoint = ordered.find((pkg) => pkg.name === CHANNEL_ENTRYPOINT_PACKAGE);
-
-  if (!entrypoint) {
-    throw new Error(
-      `release package graph is missing channel entrypoint ${CHANNEL_ENTRYPOINT_PACKAGE}`,
-    );
-  }
-
-  // npm trusted publishing can authenticate `npm publish`, but not a later
-  // `npm dist-tag add`. Publish the user-facing CLI last so its channel tag
-  // cannot advance until every other release package has been accepted by npm.
-  return [
-    ...ordered.filter((pkg) => pkg.name !== CHANNEL_ENTRYPOINT_PACKAGE),
-    entrypoint,
-  ];
+  // The inherited release pipeline belongs to the donor repository, not
+  // TheHalfMoon/Bostan. Publishing is forbidden until a separately approved
+  // Bostan-owned release channel, package ownership and CI are qualified.
+  throw new Error("Bostan publishing disabled: private release qualification only");
 }
 
 function replaceWorkspaceDeps(deps, version) {
@@ -285,15 +295,13 @@ function listPackages() {
 
 function checkConfiguration() {
   const packages = buildReleasePackagePlan();
-  const enabledCount = packages.filter((pkg) => pkg.publishFromCi).length;
-  const disabledCount = packages.length - enabledCount;
-
-  if (enabledCount === 0) {
-    throw new Error(`no packages are enabled for CI publishing in ${manifestPath}`);
+  const enabled = packages.filter((pkg) => pkg.publishFromCi);
+  if (enabled.length) {
+    throw new Error("Bostan release manifest must not enable inherited CI publishing");
   }
-
   process.stdout.write(
-    `Release package manifest OK: ${enabledCount} enabled for CI publish, ${disabledCount} disabled pending bootstrap.\n`,
+    "Bostan release inventory verified, " + packages.length +
+    " public donor-derived package entries disabled. No Bostan publishing enabled.\n",
   );
 }
 
