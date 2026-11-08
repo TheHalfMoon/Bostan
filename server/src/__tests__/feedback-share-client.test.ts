@@ -29,6 +29,8 @@ describe("feedback trace share client", () => {
     ["donor endpoint", "https://telemetry.paperclip.ing", "token"],
     ["donor subdomain", "https://docs.paperclip.ing", "token"],
     ["donor with trailing dot", "https://telemetry.paperclip.ing.", "token"],
+    ["donor cloud apex", "https://paperclip.app", "token"],
+    ["donor cloud subdomain", "https://my.paperclip.app", "token"],
     ["insecure HTTP", "http://feedback.bostan.example", "token"],
     ["credentials in URL", "https://user:pass@feedback.bostan.example", "token"],
     ["query parameters", "https://feedback.bostan.example/?key=secret", "token"],
