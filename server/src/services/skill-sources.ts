@@ -208,6 +208,9 @@ export function skillSourceService(db: Db) {
       const [source] = await tx.insert(sources).values({ id, companyId, repositoryId: scan.repositoryId, repositoryUrl: scan.repositoryUrl, fullName: scan.fullName,
         packageMode: scan.packageMode ?? 'skills', trackingRef: context.projectBindingId && input.trackingRef === 'HEAD' ? 'HEAD' : scan.trackingRef, connectionId: scan.connectionId ?? input.connectionId ?? null, lastAttemptAt: new Date(),
         accessScope: context.projectBindingId ? 'projects' : 'company', importNewSkills: Boolean(context.projectBindingId),
+        // Company sources do not refresh on their own (no automatic outbound fetches, #30);
+        // the owner enables it per source. Project-linked sources track their branch.
+        automaticUpdates: Boolean(context.projectBindingId),
         refreshUserId: context.setup?.userId, refreshAgentId: context.setup?.agentId, refreshLocalTrusted: context.setup?.localTrusted ?? false, refreshGrantId: reader.grantId ?? context.setup?.grantId }).onConflictDoNothing().returning();
       if (!source) throw conflict('This repository and branch are already in Sources. Manage its skills there.');
       if (context.projectBindingId) {

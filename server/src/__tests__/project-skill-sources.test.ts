@@ -874,7 +874,10 @@ describe.skipIf(!support.supported)('automatic project skill sources', () => {
       trackingRef: 'key-generic-public', commitSha: commit, selectedPaths: [] }, { ...context,
       actor: { type: 'agent', agentId: agent!.id }, setup: { userId: setup.refreshUserId, agentId: setup.refreshAgentId, localTrusted: setup.refreshLocalTrusted } });
     const [stored] = await db.select().from(companySkillSources).where(eq(companySkillSources.id, imported.source.id));
-    expect(stored).toMatchObject({ refreshUserId: null, refreshAgentId: agent!.id, refreshLocalTrusted: false, connectionId: null });
+    expect(stored).toMatchObject({ refreshUserId: null, refreshAgentId: agent!.id, refreshLocalTrusted: false, connectionId: null,
+      automaticUpdates: false });
+    // Company sources start with automatic updates off; the owner opts in.
+    await db.update(companySkillSources).set({ automaticUpdates: true }).where(eq(companySkillSources.id, imported.source.id));
     await db.insert(activityLog).values({ companyId, actorType: 'agent', actorId: agent!.id, agentId: agent!.id,
       responsibleUserId: 'local-board', action: 'company.skill_source_refreshed', entityType: 'company_skill_source', entityId: imported.source.id });
     await skillSourceSyncService(db).tick(new Date(Date.now() + 6 * 60_000));
