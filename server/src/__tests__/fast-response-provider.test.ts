@@ -467,7 +467,7 @@ describe("fast response provider", () => {
 function expectAttribution(url: string, init: RequestInit) {
   const headers = new Headers(init.headers);
   const expected = new URL(url).hostname === "openrouter.ai";
-  expect(headers.get("http-referer")).toBe(expected ? "https://paperclip.ing" : null);
-  expect(headers.get("x-openrouter-title")).toBe(expected ? "Paperclip" : null);
+  expect(headers.get("http-referer")).toBeNull();
+  expect(headers.get("x-openrouter-title")).toBe(expected ? "Bostan" : null);
   expect(headers.get("x-openrouter-categories")).toBe(expected ? "cloud-agent,programming-app" : null);
 }
