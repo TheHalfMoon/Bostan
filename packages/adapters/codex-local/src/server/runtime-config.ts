@@ -1,4 +1,4 @@
-import { isOpenRouterUrl, openRouterAttributionHeaders, OPENROUTER_ATTRIBUTION_HEADERS } from "@bostan/shared/openrouter-attribution";
+import { isOpenRouterUrl, openRouterAttributionHeaders, OPENROUTER_REPLACED_ATTRIBUTION_HEADERS } from "@bostan/shared/openrouter-attribution";
 import fs from "node:fs/promises";
 import path from "node:path";
 
@@ -113,8 +113,7 @@ function parseCodexProvidersConfig(
     if (isOpenRouterUrl(provider.base_url)) {
       provider.http_headers = openRouterAttributionHeaders(isPlainObject(provider.http_headers) ? provider.http_headers as Record<string, string> : {});
       if (isPlainObject(provider.env_http_headers)) {
-        const attribution = new Set(Object.keys(OPENROUTER_ATTRIBUTION_HEADERS).map(name => name.toLowerCase()));
-        provider.env_http_headers = Object.fromEntries(Object.entries(provider.env_http_headers).filter(([name]) => !attribution.has(name.toLowerCase())));
+        provider.env_http_headers = Object.fromEntries(Object.entries(provider.env_http_headers).filter(([name]) => !OPENROUTER_REPLACED_ATTRIBUTION_HEADERS.has(name.toLowerCase())));
       }
     }
     providers[key] = provider;

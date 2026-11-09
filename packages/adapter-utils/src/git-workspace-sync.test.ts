@@ -666,9 +666,9 @@ describe("git workspace sync", () => {
     const parents = (await git(repo, ["rev-list", "--parents", "-1", "HEAD"])).split(" ");
     expect(parents.slice(1)).toEqual([currentHead, importedHead]);
     expect(await git(repo, ["log", "-1", "--format=%an|%ae|%cn|%ce"]))
-      .toBe("Paperclip|noreply@paperclip.ing|Paperclip|noreply@paperclip.ing");
+      .toBe("Bostan|noreply@bostan.invalid|Bostan|noreply@bostan.invalid");
     expect(await git(repo, ["log", "-1", "--format=%s"]))
-      .toBe(`Paperclip remote git sync merge ${importedHead.slice(0, 12)}`);
+      .toBe(`Bostan remote git sync merge ${importedHead.slice(0, 12)}`);
     const mergedTree = await git(repo, ["ls-tree", "--name-only", "HEAD"]);
     expect(mergedTree).toContain("local.txt");
     expect(mergedTree).toContain("imported.txt");
@@ -862,7 +862,7 @@ exit 0
     expect(await git(repo, ["rev-parse", "HEAD^{tree}"])).toBe(importedTree);
     expect(await git(repo, ["log", "-1", "--format=%s"])).toBe("sandbox rewrite");
     const body = await git(repo, ["log", "-1", "--format=%B"]);
-    expect(body).toContain(`Paperclip remote git sync graft ${importedHead.slice(0, 12)}`);
+    expect(body).toContain(`Bostan remote git sync graft ${importedHead.slice(0, 12)}`);
     expect(body).toContain("shares no ancestor");
   });
 
