@@ -11,15 +11,16 @@ describe("OpenRouter attribution", () => {
   it("replaces mixed-case harness identity without changing credentials, routing, or privacy preferences", () => {
     const existing = { "http-referer": "https://harness.example", "x-TITLE": "Harness", "X-openrouter-title": "Harness", Authorization: "Bearer fixture", "X-Route": "custom", "X-OpenRouter-App-Visibility": "hidden" };
     const result = openRouterAttributionHeaders(existing);
-    expect(new Headers(result).get("http-referer")).toBe("https://paperclip.ing");
-    expect(new Headers(result).get("x-title")).toBe("Paperclip");
-    expect(new Headers(result).get("x-openrouter-title")).toBe("Paperclip");
+    expect(new Headers(result).get("http-referer")).toBeNull();
+    expect(new Headers(result).get("x-title")).toBe("Bostan");
+    expect(new Headers(result).get("x-openrouter-title")).toBe("Bostan");
     expect(result).toMatchObject({ Authorization: "Bearer fixture", "X-Route": "custom", "X-OpenRouter-App-Visibility": "hidden" });
     expect(existing["http-referer"]).toBe("https://harness.example");
   });
   it("merges Claude's newline format without splitting colon-bearing values", () => {
     const result = openRouterClaudeHeaders("http-referer: https://harness.example\r\nAuthorization: Bearer fixture\nX-Route: https://gateway.example:443/path");
-    expect(result).toContain("HTTP-Referer: https://paperclip.ing");
+    expect(result).not.toMatch(/http-referer/i);
+    expect(result).toContain("X-Title: Bostan");
     expect(result).not.toContain("harness.example");
     expect(result).toContain("Authorization: Bearer fixture");
     expect(result).toContain("X-Route: https://gateway.example:443/path");

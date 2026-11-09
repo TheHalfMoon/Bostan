@@ -33,9 +33,10 @@ describe("preparePiRuntimeConfig", () => {
     }) } });
     cleanupPaths.add(prepared.env.PI_CODING_AGENT_DIR);
     const { providers } = await readModelsJson(prepared.env.PI_CODING_AGENT_DIR) as { providers: Record<string, any> };
-    expect(providers.router).toMatchObject({ apiKey: "fixture-key", headers: { "HTTP-Referer": "https://paperclip.ing", "X-Route": "selected" } });
+    expect(providers.router).toMatchObject({ apiKey: "fixture-key", headers: { "X-Title": "Bostan", "X-Route": "selected" } });
     expect(providers.router.headers).not.toHaveProperty("http-referer");
-    expect(providers.router.modelOverrides.model.headers["X-Title"]).toBe("Paperclip");
+    expect(providers.router.headers).not.toHaveProperty("HTTP-Referer");
+    expect(providers.router.modelOverrides.model.headers["X-Title"]).toBe("Bostan");
     expect(providers.router.modelOverrides.model.headers).not.toHaveProperty("x-title");
     expect(providers.other).toEqual(other);
     expect(providers.openrouter).toEqual(other);

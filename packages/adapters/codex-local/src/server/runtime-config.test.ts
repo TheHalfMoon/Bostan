@@ -54,7 +54,8 @@ describe("prepareCodexRuntimeConfig", () => {
       } }) }, codexHome: home,
     });
     const content = await readConfigToml(home);
-    expect(content).toContain('HTTP-Referer = "https://paperclip.ing"');
+    expect(content).not.toMatch(/http-referer/i);
+    expect(content).toContain('X-Title = "Bostan"');
     expect(content).toContain('env_key = "ROUTER_KEY"');
     expect(content).toContain('X-Route = "selected"');
     expect(content).toContain('X-Tenant = "TENANT"');

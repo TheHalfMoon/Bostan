@@ -1,11 +1,11 @@
-import { OPENROUTER_ATTRIBUTION_HEADERS } from "@bostan/adapter-utils/openrouter-attribution";
+import { OPENROUTER_ATTRIBUTION_HEADERS, OPENROUTER_REPLACED_ATTRIBUTION_HEADERS } from "@bostan/adapter-utils/openrouter-attribution";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
 export function piOpenRouterExtensionSource(): string {
   return `const attribution = ${JSON.stringify(OPENROUTER_ATTRIBUTION_HEADERS)};
-const names = new Set(Object.keys(attribution).map(name => name.toLowerCase()));
+const names = new Set(${JSON.stringify([...OPENROUTER_REPLACED_ATTRIBUTION_HEADERS])});
 function isOpenRouter(value) {
   try {
     const url = new URL(value);
