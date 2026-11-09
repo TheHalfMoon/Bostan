@@ -155,6 +155,21 @@ export function managedConnectorProfile(value: string | undefined): {
   return null;
 }
 
+/** The broker subject a managed grant was issued to (agent, user, or connection owner). */
+export function managedConnectorSubject(
+  connection: typeof toolConnections.$inferSelect,
+  grant: typeof connectionGrants.$inferSelect,
+): string | null {
+  const oauth = oauthConfig(connection);
+  return grant.kind === "agent" && grant.subjectAgentId
+    ? `agent:${grant.subjectAgentId}`
+    : grant.kind === "user" && grant.subjectUserId
+      ? grant.subjectUserId
+      : typeof oauth.connectorSubjectUserId === "string"
+        ? oauth.connectorSubjectUserId
+        : null;
+}
+
 export function oauthGrantConfig(grant: typeof connectionGrants.$inferSelect) {
   return asRecord(asRecord(grant.providerTenant).oauth);
 }
