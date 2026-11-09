@@ -141,7 +141,7 @@ export async function resolvePaperclipRunnerTransport(input: {
     if (!ingressAuthorized) {
       throw new PaperclipRunnerTransportError(
         "runner_ingress_unavailable",
-        "Runner ingress is not authorized for this Paperclip Runner run.",
+        "Runner ingress is not authorized for this Bostan Runner run.",
       );
     }
     const getRunnerIngressEndpoint =

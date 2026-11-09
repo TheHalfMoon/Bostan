@@ -5301,7 +5301,7 @@ export function companyPortabilityService(db: Db, storage?: StorageService) {
         for (const agent of runnerSelections) {
           const config = input.adapterOverrides?.[agent.slug]?.adapterConfig ?? agent.adapterConfig;
           if (config.provider === "muse") {
-            if (experimental.enableMuse !== true || experimental.enableNativeRunner !== true) throw unprocessable("Muse and Paperclip Runner must be enabled before importing a Muse agent.", {code:"paperclip_runner_muse_disabled"});
+            if (experimental.enableMuse !== true || experimental.enableNativeRunner !== true) throw unprocessable("Muse and Bostan Runner must be enabled before importing a Muse agent.", {code:"paperclip_runner_muse_disabled"});
           } else if (config.provider === "openai_dot") {
             if (experimental.enableOpenAiDot !== true) throw unprocessable(
               "OpenAI Dot is experimental and disabled on this instance.",
@@ -5309,7 +5309,7 @@ export function companyPortabilityService(db: Db, storage?: StorageService) {
             );
           } else if (config.provider !== "codex" && config.provider !== "opencode" && config.provider !== undefined && !["claude_local", "pi_local"].includes(agentHarnessType("paperclip_runner", config)) && experimental.enableNativeRunner !== true) {
             throw unprocessable(
-              "Paperclip Runner is experimental and disabled on this instance.",
+              "Bostan Runner is experimental and disabled on this instance.",
               { code: "paperclip_runner_rollout_disabled" },
             );
           }

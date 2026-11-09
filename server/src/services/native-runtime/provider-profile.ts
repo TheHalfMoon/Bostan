@@ -272,7 +272,7 @@ function assertPermissionMode(
     if (provider === "codex") {
       throw new PaperclipRunnerProviderProfileError(
         "paperclip_runner_codex_permission_mode_unqualified",
-        "Paperclip Runner currently supports Codex only with codexPermissionMode set to never. Update the agent configuration before starting a new native run.",
+        "Bostan Runner currently supports Codex only with codexPermissionMode set to never. Update the agent configuration before starting a new native run.",
       );
     }
     throw new PaperclipRunnerProviderProfileError(
