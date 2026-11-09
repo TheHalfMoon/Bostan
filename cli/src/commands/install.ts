@@ -1,3 +1,4 @@
+import { assertNotUpstreamRepository, assertPublishedPackageAllowed, type PublishedPackagePolicy } from "../upstream-distribution.js";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -24,7 +25,6 @@ import {
 
 const execFileAsync = promisify(execFile);
 export const PUBLIC_NPM_REGISTRY = "https://registry.npmjs.org";
-const DEFAULT_GITHUB_REPO = "paperclipai/paperclip";
 const EXACT_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 
 export type InstallOptions = { canary?: boolean; version?: string; ref?: string; repo?: string; yes?: boolean };
@@ -131,8 +131,10 @@ export async function resolvePublishedVersion(spec: string, runCommand: CommandR
 export function resolveGitInstallRequest(options: InstallOptions): { repo: string; ref: string; pinned: boolean } | null {
   if (!options.ref && !options.repo) return null;
   if (!options.ref) throw new Error("--repo requires --ref.");
+  if (!options.repo) throw new Error("--ref requires --repo <owner/name>; there is no default repository.");
   if (options.canary || options.version) throw new Error("--ref cannot be combined with --canary or --version.");
-  const repo = (options.repo ?? DEFAULT_GITHUB_REPO).trim();
+  const repo = options.repo.trim();
+  assertNotUpstreamRepository(repo);
   const ref = options.ref.trim();
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) throw new Error(`--repo must be an owner/name GitHub repository, received '${repo}'.`);
   if (!ref || ref.startsWith("-") || /[\0\r\n]/.test(ref)) throw new Error(`Invalid GitHub ref '${options.ref}'.`);
@@ -359,11 +361,12 @@ async function confirmGitInstall(options: InstallOptions, repo: string, ref: str
 
 export async function installCommand(
   options: InstallOptions,
-  dependencies: { runCommand?: CommandRunner; now?: () => Date } = {},
+  dependencies: { runCommand?: CommandRunner; now?: () => Date } & PublishedPackagePolicy = {},
 ): Promise<void> {
   assertSupportedNodeVersion();
   const runCommand = dependencies.runCommand ?? runCommandWithDiagnostics;
   const gitRequest = resolveGitInstallRequest(options);
+  if (!gitRequest) assertPublishedPackageAllowed(dependencies);
   if (gitRequest) {
     await confirmGitInstall(options, gitRequest.repo, gitRequest.ref);
     const sha = await resolveGitHubRef(gitRequest.repo, gitRequest.ref, runCommand);

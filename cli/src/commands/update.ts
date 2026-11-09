@@ -1,3 +1,4 @@
+import { assertNotUpstreamRepository, assertPublishedPackageAllowed, type PublishedPackagePolicy } from "../upstream-distribution.js";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -17,7 +18,7 @@ import { packageVersion } from "../version.js";
 const execFileAsync = promisify(execFile);
 export type InstallMode = "managed" | "global-npm" | "npx" | "source" | "unknown";
 export type UpdateOptions = { canary?: boolean; latest?: boolean; version?: string; rollback?: boolean; check?: boolean; dryRun?: boolean; json?: boolean; yes?: boolean; backup?: boolean };
-type Dependencies = { executablePath: string; runCommand: CommandRunner; backup: () => Promise<void>; confirm: (message: string) => Promise<boolean>; now: () => Date; paths: InstallStorePaths; restartActiveService: (expectedVersion: string) => Promise<boolean>; hasInstanceData: () => boolean };
+type Dependencies = PublishedPackagePolicy & { executablePath: string; runCommand: CommandRunner; backup: () => Promise<void>; confirm: (message: string) => Promise<boolean>; now: () => Date; paths: InstallStorePaths; restartActiveService: (expectedVersion: string) => Promise<boolean>; hasInstanceData: () => boolean };
 
 const DATABASE_UNREACHABLE_CODES = new Set(["ECONNREFUSED", "EHOSTUNREACH", "ENETUNREACH", "ETIMEDOUT"]);
 
@@ -181,9 +182,11 @@ export async function updateCommand(options: UpdateOptions, overrides: Partial<D
   if (mode === "npx") { emit(options, { mode, action: "install" }, "This is an ephemeral npx install. Run `paperclipai install`, then use `paperclipai update` from the managed shim."); return; }
   if (mode === "source" || mode === "unknown") { emit(options, { mode, action: "manual" }, "This appears to be a source checkout. Update it with `git pull` followed by `pnpm install`; Paperclip will not mutate the repository."); return; }
   if (!options.check && !options.dryRun) assertSupportedNodeVersion();
+  if (!(mode === "managed" && manifest?.source === "git")) assertPublishedPackageAllowed(overrides);
   const request = resolveUpdateRequest(mode === "managed" ? manifest : null, options);
   if (mode === "managed" && manifest?.source === "git") {
     if (!manifest.repo || !manifest.ref || !manifest.sha) throw new Error("Managed git install metadata is incomplete.");
+    assertNotUpstreamRepository(manifest.repo);
     if (/^[0-9a-f]{7,40}$/i.test(manifest.ref)) { emit(options, { mode, source: "git", pinned: true, sha: manifest.sha }, `Git install is pinned at ${manifest.sha.slice(0, 12)}.`); return; }
     const targetSha = await resolveGitHubRef(manifest.repo, manifest.ref, runCommand);
     if (targetSha === manifest.sha) { emit(options, { mode, source: "git", changed: false, sha: targetSha, ref: manifest.ref }, `${manifest.repo}@${manifest.ref} is already at ${targetSha.slice(0, 12)}.`); return; }

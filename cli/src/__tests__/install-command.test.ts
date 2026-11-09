@@ -88,7 +88,8 @@ describe("managed install commands", () => {
 
   it("supports fork overrides and classifies SHA refs as pinned", () => {
     expect(resolveGitInstallRequest({ ref: "feature/test", repo: "HenkDz/paperclip" })).toEqual({ repo: "HenkDz/paperclip", ref: "feature/test", pinned: false });
-    expect(resolveGitInstallRequest({ ref: "abcdef1" })).toEqual({ repo: "paperclipai/paperclip", ref: "abcdef1", pinned: true });
+    expect(resolveGitInstallRequest({ ref: "abcdef1", repo: "HenkDz/paperclip" })).toEqual({ repo: "HenkDz/paperclip", ref: "abcdef1", pinned: true });
+    expect(() => resolveGitInstallRequest({ ref: "abcdef1" })).toThrow("no default repository");
     expect(() => resolveGitInstallRequest({ repo: "HenkDz/paperclip" })).toThrow("requires --ref");
   });
 
@@ -241,7 +242,7 @@ describe("managed install commands", () => {
       throw new Error(`Unexpected command: ${file} ${args.join(" ")}`);
     });
 
-    await installCommand({}, { runCommand, now: () => new Date("2026-07-22T18:00:00.000Z") });
+    await installCommand({}, { allowPublishedPackage: true, runCommand, now: () => new Date("2026-07-22T18:00:00.000Z") });
 
     const paths = resolveInstallStorePaths();
     const manifest = readInstallManifest(paths);
@@ -334,7 +335,7 @@ describe("managed install commands", () => {
     fs.symlinkSync(outside, paths.installsRoot, "dir");
     const runCommand = vi.fn(async () => ({ stdout: JSON.stringify("2026.720.0"), stderr: "" }));
 
-    await expect(installCommand({}, { runCommand })).rejects.toThrow("non-directory install-store path");
+    await expect(installCommand({}, { allowPublishedPackage: true, runCommand })).rejects.toThrow("non-directory install-store path");
     expect(runCommand).toHaveBeenCalledTimes(1);
     expect(fs.readdirSync(outside)).toEqual([]);
   });
@@ -383,4 +384,16 @@ describe("managed install commands", () => {
     expect(runCommand).not.toHaveBeenCalled();
   });
 
+});
+
+describe("upstream distribution guard", () => {
+  it("refuses npm installs and upstream repositories before running any command", async () => {
+    const { installCommand: install, resolveGitInstallRequest: resolveGit } = await import("../commands/install.js");
+    const runCommand = vi.fn();
+    await expect(install({}, { runCommand })).rejects.toThrow(/no published package/);
+    await expect(install({ canary: true }, { runCommand })).rejects.toThrow(/no published package/);
+    expect(() => resolveGit({ ref: "master", repo: "paperclipai/paperclip" })).toThrow(/no published package/);
+    expect(() => resolveGit({ ref: "master", repo: "PaperclipAI/fork" })).toThrow(/no published package/);
+    expect(runCommand).not.toHaveBeenCalled();
+  });
 });
