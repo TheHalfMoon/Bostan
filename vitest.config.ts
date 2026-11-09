@@ -11,6 +11,7 @@ export default defineConfig({
       "packages/teams-catalog",
       "packages/db",
       "packages/adapter-utils",
+      "packages/connector-broker",
       "packages/adapters/claude-local",
       "packages/adapters/codex-local",
       "packages/adapters/cursor-cloud",

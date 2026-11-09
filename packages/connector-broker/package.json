@@ -1,0 +1,47 @@
+{
+  "name": "@bostan/connector-broker",
+  "version": "0.1.0",
+  "license": "MIT",
+  "homepage": "https://github.com/TheHalfMoon/Bostan",
+  "bugs": {
+    "url": "https://github.com/TheHalfMoon/Bostan/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheHalfMoon/Bostan",
+    "directory": "packages/connector-broker"
+  },
+  "type": "module",
+  "bin": {
+    "bostan-connector-broker": "./dist/main.js"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/test-support.ts"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run src",
+    "start": "node --conditions=bostan-compiled dist/main.js",
+    "prepack": "node ../../scripts/bostan-release-disabled.mjs",
+    "prepublishOnly": "node ../../scripts/bostan-release-disabled.mjs"
+  },
+  "dependencies": {
+    "@bostan/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  },
+  "engines": {
+    "node": ">=24.11.0"
+  },
+  "private": true
+}
