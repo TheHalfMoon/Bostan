@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { resolveWindowsPostgresInspectorBinary } from "./windows-postgres-inspector-binary.mjs";
+import { createWindowsPostgresInspectorSession } from "./windows-postgres-inspector-session.js";
 import { parsePostmasterStartEpochSeconds, matchesPostmasterStartToCim } from "./windows-postgres-start-identity.mjs";
 
 const execAsync = promisify(execFile);
@@ -22,19 +23,19 @@ const actualRun: Runner = async (binary, args) => {
     windowsHide: true, shell: false, timeout: 45_000, maxBuffer: 131_072,
   });
 };
+// One reused PowerShell process per test worker: each scan is a fresh CIM
+// query, but PowerShell start-up (~2.5 s) is paid once instead of per scan.
+let inspectorSession: ReturnType<typeof createWindowsPostgresInspectorSession> | null = null;
 const actualInspect: Inspector = async () => {
   // No dynamic interpolation, command lines, environment or process output logs.
   // Collect only process identity fields; a denied CIM query must fail closed.
-  const script = [
-    "$ErrorActionPreference='Stop'",
-    "$items=@(Get-CimInstance Win32_Process -Filter \"Name='postgres.exe'\" | Select-Object ProcessId,ParentProcessId,ExecutablePath,@{Name='CreationDate';Expression={$_.CreationDate.ToUniversalTime().ToString('o')}})",
-    "ConvertTo-Json -InputObject $items -Compress -Depth 3",
-  ].join("; ");
   try {
-    const { stdout } = await execAsync(resolveWindowsPostgresInspectorBinary(), [
-      "-NoProfile", "-NonInteractive", "-Command", script,
-    ], { windowsHide: true, shell: false, timeout: 10_000, maxBuffer: 131_072 });
-    return JSON.parse(stdout);
+    if (!inspectorSession) {
+      resolveWindowsPostgresInspectorBinary();
+      inspectorSession = createWindowsPostgresInspectorSession();
+      process.once("exit", () => inspectorSession?.close());
+    }
+    return await inspectorSession.inspect();
   } catch {
     throw Error("Unable to inspect Windows PostgreSQL processes; retaining fixture");
   }
@@ -125,7 +126,7 @@ function isTransientIncompleteCimSnapshot(value: unknown): boolean {
 }
 // Use the same strict CIM identity validation before and after shutdown.
 // A bounded fresh CIM reinspection is NOT permission to proceed on ambiguity.
-type VerifiedPostgresProcess = { pid: number; executable: string; creationDate: string };
+type VerifiedPostgresProcess = { pid: number; parentPid: number; executable: string; creationDate: string };
 async function inspectVerifiedPostgresProcesses(
   inspect: Inspector, pause: Pause,
 ): Promise<VerifiedPostgresProcess[]> {
@@ -148,7 +149,7 @@ async function inspectVerifiedPostgresProcesses(
     if (executables.some(executable => executable === null))
       throw Error("Ambiguous Windows PostgreSQL process identity; retaining fixture");
     return processes.map((p, index) => ({
-      pid: p.ProcessId, executable: executables[index]!, creationDate: p.CreationDate!,
+      pid: p.ProcessId, parentPid: p.ParentProcessId, executable: executables[index]!, creationDate: p.CreationDate!,
     }));
   }
   throw Error("Ambiguous Windows PostgreSQL process identity; retaining fixture");
@@ -167,14 +168,32 @@ async function provePinnedPostmasterBeforeStop(
       && matchesPostmasterStartToCim(startEpochSeconds, process.creationDate)))
     throw Error("Unable to prove pinned PostgreSQL postmaster identity; retaining fixture");
 }
+type PostmasterOwner = { pid: number; startEpochSeconds: number };
 /**
- * Conservative policy: a process from the pinned PostgreSQL executable is
- * ambiguous across simultaneous suites. Never delete a cluster until every
- * such process is gone; never terminate any process (including foreign ones).
- * Two consecutive clean independent snapshots are required.
+ * Whether a pinned-binary process belongs to the stopped cluster: its verified
+ * postmaster, or a process whose parent is that postmaster and that was created
+ * after it started. On Windows every PostgreSQL child (backends, io_workers,
+ * checkpointer, ...) is created by the postmaster, and CIM keeps reporting the
+ * original ParentProcessId after the postmaster exits, so orphaned workers stay
+ * attributable. A process reusing the postmaster PID is still counted as owned,
+ * which errs toward waiting and then retaining the fixture.
+ */
+function isOwnedByPostmaster(process: VerifiedPostgresProcess, owner: PostmasterOwner): boolean {
+  if (process.pid === owner.pid) return true;
+  if (process.parentPid !== owner.pid) return false;
+  // Children of an earlier process that held the same PID predate this cluster.
+  return Date.parse(process.creationDate) >= owner.startEpochSeconds * 1000 - 1_000;
+}
+/**
+ * Never delete a cluster until its processes are gone; never terminate any
+ * process (including foreign ones). Two consecutive clean independent
+ * snapshots are required. With a verified postmaster identity, only that
+ * cluster's processes are awaited, so simultaneous suites sharing the pinned
+ * binary do not block each other. Without one (no PID marker), every process
+ * from the pinned executable is treated as possibly owned.
  */
 async function provePinnedBinaryQuiescent(
-  pgCtlExe: string, inspect: Inspector, pause: Pause,
+  pgCtlExe: string, inspect: Inspector, pause: Pause, owner?: PostmasterOwner,
 ): Promise<void> {
   const expected = normalizedPgCtlBinary(pgCtlExe);
   if (!expected)
@@ -182,7 +201,8 @@ async function provePinnedBinaryQuiescent(
   let clean = 0;
   for (let attempt = 0; attempt < 20; attempt += 1) {
     const processes = await inspectVerifiedPostgresProcesses(inspect, pause);
-    if (processes.some(process => process.executable === expected)) {
+    if (processes.some(process => process.executable === expected
+        && (!owner || isOwnedByPostmaster(process, owner)))) {
       clean = 0;
     } else if (++clean === 2) {
       return;
@@ -402,7 +422,7 @@ export async function stopOwnedWindowsEmbeddedPostgres(
   await run(pgCtlExe, ["-D", data, "-m", "fast", "-w", "-t", "40", "stop"]);
   if (pidMarkerPresent(marker))
     throw Error("PostgreSQL PID marker survived graceful shutdown");
-  await provePinnedBinaryQuiescent(pgCtlExe, inspect, pause);
+  await provePinnedBinaryQuiescent(pgCtlExe, inspect, pause, postmasterIdentity);
   if (pidMarkerPresent(marker))
     throw Error("PostgreSQL PID marker reappeared during worker verification; retaining fixture");
   assertClusterIdentityUnchanged();

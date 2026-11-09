@@ -1027,3 +1027,45 @@ it("never shuts down or deletes when every retry has ambiguous CIM metadata", as
     expect(fs.existsSync(marker)).toBe(true);
   });
 });
+
+// #234: after a graceful stop, wait only for the stopped cluster's processes.
+const ownedChild = (pid: number, parent = 123, created = "2026-10-30T12:00:05Z"): WindowsPostgresProcess => ({
+  ProcessId: pid, ParentProcessId: parent, ExecutablePath: pinnedExe, CreationDate: created,
+});
+it("does not wait for another suite's cluster from the same pinned binary after pg_ctl", async () => {
+  await fixture(async (data) => {
+    fs.writeFileSync(path.join(data, "postmaster.pid"), validPidMarker(data));
+    const otherSuite = [ownedChild(900, 1), ownedChild(901, 900)];
+    let inspections = 0;
+    expect(await stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { fs.unlinkSync(path.join(data, "postmaster.pid")); },
+      withOwnedPostmaster(async () => { inspections++; return otherSuite; }), noWait)).toBe("stopped");
+    expect(inspections).toBe(2);
+  });
+});
+it("waits for an orphaned io_worker of the stopped postmaster before declaring success", async () => {
+  await fixture(async (data) => {
+    fs.writeFileSync(path.join(data, "postmaster.pid"), validPidMarker(data));
+    let inspections = 0;
+    expect(await stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { fs.unlinkSync(path.join(data, "postmaster.pid")); },
+      withOwnedPostmaster(async () => (++inspections <= 2 ? [ownedChild(124)] : [])), noWait)).toBe("stopped");
+    expect(inspections).toBe(4);
+  });
+});
+it("retains the fixture while an orphaned child of the stopped postmaster never exits", async () => {
+  await fixture(async (data) => {
+    fs.writeFileSync(path.join(data, "postmaster.pid"), validPidMarker(data));
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { fs.unlinkSync(path.join(data, "postmaster.pid")); },
+      withOwnedPostmaster(async () => [ownedChild(124)]), noWait)).rejects.toThrow(/processes remain/);
+  });
+});
+it("ignores a process whose parent PID was held by an earlier process before this postmaster started", async () => {
+  await fixture(async (data) => {
+    fs.writeFileSync(path.join(data, "postmaster.pid"), validPidMarker(data));
+    expect(await stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { fs.unlinkSync(path.join(data, "postmaster.pid")); },
+      withOwnedPostmaster(async () => [ownedChild(124, 123, "2026-10-30T11:00:00Z")]), noWait)).toBe("stopped");
+  });
+});
