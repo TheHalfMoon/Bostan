@@ -695,7 +695,7 @@ test.describe("Onboarding wizard", () => {
       const setup = await (await setupResponse).json();
       await page.locator("summary").filter({ hasText: "Advanced" }).click();
       await page.getByRole("button", { name: "Experimental harness", exact: true }).click();
-      await page.getByRole("option", { name: "Grok Build (Paperclip Runner)", exact: true }).click();
+      await page.getByRole("option", { name: "Grok Build (Bostan Runner)", exact: true }).click();
       await page.getByRole("button", { name: "Configure agent", exact: true }).click();
       await expect(page.getByRole("heading", { name: "Connect a model", exact: true })).toBeVisible();
       expect(new URL(page.url()).searchParams.get("setupAgentId")).toBe(setup.id);

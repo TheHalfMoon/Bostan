@@ -115,7 +115,7 @@ describeEmbeddedPostgres("issue queued-comment routes", () => {
     await db.insert(agents).values({
       id: agentId,
       companyId,
-      name: "Paperclip Runner",
+      name: "Bostan Runner",
       role: "engineer",
       status: "idle",
       adapterType: "paperclip_runner",

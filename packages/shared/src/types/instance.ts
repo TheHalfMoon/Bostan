@@ -42,7 +42,7 @@ export interface InstanceGeneralSettings {
 export interface InstanceExperimentalSettings {
   enableEnvironments: boolean;
   /**
-   * Exposes the experimental Paperclip Runner adapter for new selections.
+   * Exposes the experimental Bostan Runner adapter for new selections.
    * Existing native runs ignore later flag changes so they remain recoverable.
    */
   enableNativeRunner: boolean;

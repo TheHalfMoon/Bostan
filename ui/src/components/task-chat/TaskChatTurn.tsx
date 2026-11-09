@@ -77,7 +77,7 @@ export function TaskChatTurn({
 }: TaskChatTurnProps) {
   const streamlined = useStreamlinedTaskChatPresentation();
   const parentRow = !item.settled && item.liveStatus != null;
-  // The new Paperclip Runner task surface owns one durable chronological
+  // The new Bostan Runner task surface owns one durable chronological
   // timeline. The Worked/Stopped row is its stable header, so it stays directly
   // below the preceding human bubble and above commentary, activity phases,
   // request receipts, and plan artifacts. The classic task interface continues

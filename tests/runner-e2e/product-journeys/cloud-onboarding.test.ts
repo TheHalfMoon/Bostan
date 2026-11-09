@@ -63,7 +63,7 @@ function fixture(entry: Entry, options: { intentFailure?: boolean; qualification
     if (saved) result.push({ role: "combobox", name: "Model", select(value) { expect(value).toBe(gateway.model); model = value; } });
     if (source) result.push({ role: "summary", name: "Advanced", click() { advanced = true; } });
     if (advanced) result.push({ role: "button", name: "Runner", click() { runnerOpen = true; } });
-    if (runnerOpen) result.push({ role: "option", name: "Paperclip Runner (default)", click() { runner = "paperclip"; runnerOpen = false; } });
+    if (runnerOpen) result.push({ role: "option", name: "Bostan Runner (default)", click() { runner = "paperclip"; runnerOpen = false; } });
     if (saved && model && runner) result.push({ role: "button", name: "Connect", click() {
       expect(events).toContain("qualified"); events.push("paid:connect"); hired = true;
     } });

@@ -11,7 +11,7 @@ import {
   resolvePaperclipRunnerCursorMode,
 } from "./paperclip-runner-permissions.js";
 
-describe("Paperclip Runner permission defaults", () => {
+describe("Bostan Runner permission defaults", () => {
   it("marks Pi and Copilot qualified with their provider credential bindings", () => {
     expect(PAPERCLIP_RUNNER_ACPX_PROFILES.find(profile => profile.value === "pi"))
       .toMatchObject({ qualified: true, credentialEnvironment: expect.arrayContaining(["OPENROUTER_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY"]) });

@@ -537,7 +537,7 @@ export interface TaskChatTurnItem {
   standaloneHeader?: boolean;
   /** This segment resumes the same native run after a steering input. */
   continuedAfterSteering?: boolean;
-  /** Durable response shown after the ordered Paperclip Runner timeline. */
+  /** Durable response shown after the ordered Bostan Runner timeline. */
   finalResponse?: TaskChatMessageItem;
   summary: {
     /** e.g. "38s" — omitted when unknown. */
