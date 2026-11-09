@@ -1,4 +1,4 @@
-export { execute, ensureCodexSkillsInjected } from "./execute.js";
+export { CODEX_DEFAULT_NETWORK_HOSTS, execute, ensureCodexSkillsInjected } from "./execute.js";
 export {
   resolveCodexAuthPrecedence,
   CODEX_SANDBOX_AUTH_PRECEDENCE_WARNING,

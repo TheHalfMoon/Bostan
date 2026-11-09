@@ -887,6 +887,7 @@ export type {
   AgentAccessState,
   AgentChainOfCommandEntry,
   AgentDetail,
+  AgentNetworkPostureView,
   ClearAgentErrorResponse,
   AgentPermissions,
   AgentPublicIdentity,

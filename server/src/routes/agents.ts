@@ -1,4 +1,5 @@
 import { prepareRuntimeSettingsPatch } from "../services/agent-runtime-settings.js";
+import { agentNetworkPostureView, NETWORK_POSTURE_ACKNOWLEDGEMENT_KEY } from "../services/agent-network-posture.js";
 import { completeSetupTokenAiConnection } from "../services/setup-token-ai-connection.js";
 import { cancellationRequestId } from "../services/native-runtime/native-cancellation-request.js";
 import { agentHarnessType, type AgentRunnerChoice } from "@bostan/shared";
@@ -1317,6 +1318,7 @@ export function agentRoutes(
       ...baseAgent,
       chainOfCommand,
       access: accessState,
+      ...(options?.restricted ? {} : { networkPosture: agentNetworkPostureView(agent) }),
     };
   }
 
@@ -2694,6 +2696,12 @@ export function agentRoutes(
     const runtimeConfigPatch = asRecord(patch.runtimeConfig);
     if (runtimeConfigPatch) {
       details.changedRuntimeConfigKeys = Object.keys(runtimeConfigPatch).sort();
+    }
+
+    // Record which unrestricted network posture an operator acknowledged.
+    const acknowledgement = asRecord(asRecord(patch.metadata)?.[NETWORK_POSTURE_ACKNOWLEDGEMENT_KEY]);
+    if (acknowledgement && typeof acknowledgement.reason === "string") {
+      details.networkPostureAcknowledged = acknowledgement.reason;
     }
 
     return details;
@@ -5371,6 +5379,9 @@ export function agentRoutes(
     if (requestedStatus !== undefined && !["paused", "idle", "terminated"].includes(String(requestedStatus))) throw badRequest("Use an agent lifecycle command to change status");
     const replaceAdapterConfig = patchData.replaceAdapterConfig === true;
     delete patchData.replaceAdapterConfig;
+    // Only a human operator may acknowledge an agent's unrestricted network posture.
+    if (req.actor.type === "agent" && hasOwn(asRecord(patchData.metadata) ?? {}, NETWORK_POSTURE_ACKNOWLEDGEMENT_KEY))
+      throw forbidden("Only an operator can acknowledge an agent's network posture.");
     // The apply-existing flag is not an agent column. The server binds the fixed
     // reference to the owner stored value with no login round trip. Remove it
     // from the patch so it never reaches the update values.
@@ -5633,7 +5644,7 @@ export function agentRoutes(
       details: summarizeAgentUpdateDetails(patchData),
     });
 
-    res.json(redactAgentRowForResponse(agent));
+    res.json({ ...redactAgentRowForResponse(agent), networkPosture: agentNetworkPostureView(agent) });
   });
 
   router.post("/agents/:id/lifecycle/retry", async (req, res) => {
