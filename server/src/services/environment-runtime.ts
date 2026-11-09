@@ -1880,7 +1880,7 @@ function createSandboxEnvironmentDriver(
         ? qualifiedSandboxSnapshotId(configuredEnvironment, input.companyId, parsed.config, selectedTemplate.value) : null;
       if (input.adapterType === "paperclip_runner" && !pinnedSnapshotId
         && hasSandboxSnapshotQualification(configuredEnvironment, input.companyId)) {
-        throw new Error("sandbox_snapshot_qualification_required: The snapshot qualification is missing or stale. Test this environment again before running Paperclip Runner.");
+        throw new Error("sandbox_snapshot_qualification_required: The snapshot qualification is missing or stale. Test this environment again before running Bostan Runner.");
       }
       if (input.configuredEnvironment) parsed.config = { ...parsed.config, reuseLease: storedParsed.config.reuseLease };
       if (pinnedSnapshotId) parsed.config = { ...parsed.config, snapshot: pinnedSnapshotId };

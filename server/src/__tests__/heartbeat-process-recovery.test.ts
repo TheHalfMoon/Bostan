@@ -4808,7 +4808,7 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
     ]);
   });
 
-  it("suspends native Paperclip Runner ownership on graceful restart without cancelling or creating a retry run", async () => {
+  it("suspends native Bostan Runner ownership on graceful restart without cancelling or creating a retry run", async () => {
     const { agentId, runId, issueId, wakeupRequestId } = await seedRunFixture({
       adapterType: "paperclip_runner",
       agentStatus: "running",

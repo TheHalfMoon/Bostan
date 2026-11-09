@@ -41,7 +41,7 @@ export type PaperclipRunnerPermissionCapability =
     };
 
 /**
- * Control-plane catalog for Paperclip Runner permission UX and validation.
+ * Control-plane catalog for Bostan Runner permission UX and validation.
  * Runtime contracts validate the same native values again at the process
  * boundary; this catalog must remain browser-safe.
  */

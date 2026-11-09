@@ -7,7 +7,7 @@ import {
   resolvePaperclipRunnerNativeProviderInput,
 } from "./native-runtime/provider-profile.js";
 
-describe("Paperclip Runner native provider configuration", () => {
+describe("Bostan Runner native provider configuration", () => {
   it.each([
     ["gpt-6.1-sol", "0.158.0", "gpt-6-sol"],
     ["gpt-6.1-sol", "0.156.0", "gpt-5.6-sol"],

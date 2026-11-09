@@ -398,7 +398,7 @@ export function claudeRunnerUnsupportedSettings(config: Record<string, unknown>)
 }
 
 /**
- * Resolve the immutable provider identity used for a fresh Paperclip Runner
+ * Resolve the immutable provider identity used for a fresh Bostan Runner
  * selection. The persisted adapterConfig is the authority; runtimeConfig is
  * deliberately not consulted so model-profile or migration metadata cannot
  * silently switch the harness selected for a run.
@@ -411,7 +411,7 @@ export function resolvePaperclipRunnerProviderProfile(
   if (!isPaperclipRunnerProvider(candidate)) {
     throw new PaperclipRunnerProviderProfileError(
       "paperclip_runner_provider_unsupported",
-      "Paperclip Runner provider must be Codex, OpenCode, Claude Managed, AWS AgentCore, or ACPX.",
+      "Bostan Runner provider must be Codex, OpenCode, Claude Managed, AWS AgentCore, or ACPX.",
     );
   }
 
@@ -429,7 +429,7 @@ export function resolvePaperclipRunnerProviderProfile(
   if (candidate === "acpx" && agentHarnessType("paperclip_runner", config) === "claude_local") {
     const unsupported = claudeRunnerUnsupportedSettings(config);
     if (unsupported.length) throw new PaperclipRunnerProviderProfileError("agent_runner_config_incompatible",
-      `Paperclip Runner cannot honor these settings: ${unsupported.join(", ")}. Remove them or select Legacy runner in Advanced.`);
+      `Bostan Runner cannot honor these settings: ${unsupported.join(", ")}. Remove them or select Legacy runner in Advanced.`);
   }
   assertPermissionMode(candidate, config);
   try {
@@ -459,7 +459,7 @@ export function resolvePaperclipRunnerProviderProfile(
     if (!model || !model.includes("/") || model.endsWith("/")) {
       throw new PaperclipRunnerProviderProfileError(
         "paperclip_runner_opencode_model_invalid",
-        "Paperclip Runner OpenCode requires model in provider/model form.",
+        "Bostan Runner OpenCode requires model in provider/model form.",
       );
     }
     return {
@@ -474,13 +474,13 @@ export function resolvePaperclipRunnerProviderProfile(
     if (!managedProfileId) {
       throw new PaperclipRunnerProviderProfileError(
         "paperclip_runner_claude_managed_profile_required",
-        "Paperclip Runner Claude Managed requires a company managed-agent profile.",
+        "Bostan Runner Claude Managed requires a company managed-agent profile.",
       );
     }
     if (config.managedAgentsRetentionAcknowledged !== true) {
       throw new PaperclipRunnerProviderProfileError(
         "paperclip_runner_claude_managed_retention_required",
-        "Paperclip Runner Claude Managed requires acknowledgement of stateful beta retention.",
+        "Bostan Runner Claude Managed requires acknowledgement of stateful beta retention.",
       );
     }
     if (model !== null && model !== CLAUDE_MANAGED_QUALIFIED_MODEL) {
@@ -497,7 +497,7 @@ export function resolvePaperclipRunnerProviderProfile(
       maxSessionListCostUsd: positiveNumberOrNull(
         config.maxSessionListCostUsd,
         "paperclip_runner_claude_managed_spend_cap_invalid",
-        "Paperclip Runner Claude Managed requires a positive session spend ceiling when overridden.",
+        "Bostan Runner Claude Managed requires a positive session spend ceiling when overridden.",
       ),
     };
   }
@@ -507,13 +507,13 @@ export function resolvePaperclipRunnerProviderProfile(
     if (!agentCoreProfileId) {
       throw new PaperclipRunnerProviderProfileError(
         "paperclip_runner_aws_agentcore_profile_required",
-        "Paperclip Runner AWS AgentCore requires a company remote-agent profile.",
+        "Bostan Runner AWS AgentCore requires a company remote-agent profile.",
       );
     }
     if (config.agentCoreRetentionAcknowledged !== true) {
       throw new PaperclipRunnerProviderProfileError(
         "paperclip_runner_aws_agentcore_retention_required",
-        "Paperclip Runner AWS AgentCore requires acknowledgement of 90-day Memory retention.",
+        "Bostan Runner AWS AgentCore requires acknowledgement of 90-day Memory retention.",
       );
     }
     if (model !== null && model !== AGENTCORE_QUALIFIED_MODEL) {
@@ -530,7 +530,7 @@ export function resolvePaperclipRunnerProviderProfile(
       maxEstimatedSessionCostUsd: positiveNumberOrNull(
         config.maxEstimatedSessionCostUsd,
         "paperclip_runner_aws_agentcore_spend_cap_invalid",
-        "Paperclip Runner AWS AgentCore requires a positive estimated session spend ceiling when overridden.",
+        "Bostan Runner AWS AgentCore requires a positive estimated session spend ceiling when overridden.",
       ),
     };
   }
@@ -561,7 +561,7 @@ export function resolvePaperclipRunnerProviderProfile(
   if (acpxAgent !== "claude" && acpxAgent !== "codex" && acpxAgent !== "grok" && acpxAgent !== "cursor" && acpxAgent !== "copilot" && acpxAgent !== "pi") {
     throw new PaperclipRunnerProviderProfileError(
       "paperclip_runner_acpx_agent_unavailable",
-      "Paperclip Runner ACPX requires a qualified agent profile.",
+      "Bostan Runner ACPX requires a qualified agent profile.",
     );
   }
   const selectedModel = model || DEFAULT_ACPX_RUNNER_MODELS[acpxAgent] || "";
@@ -570,7 +570,7 @@ export function resolvePaperclipRunnerProviderProfile(
   } catch (error) {
     throw new PaperclipRunnerProviderProfileError(
       "paperclip_runner_acpx_model_unqualified",
-      error instanceof Error ? error.message : "Paperclip Runner ACPX requires an admitted model.",
+      error instanceof Error ? error.message : "Bostan Runner ACPX requires an admitted model.",
     );
   }
   return {
@@ -628,7 +628,7 @@ export function resolvePaperclipRunnerNativeProviderInput(input: {
   if (profile.backend !== input.backend) {
     throw new PaperclipRunnerProviderProfileError(
       "paperclip_runner_provider_changed",
-      "Paperclip Runner provider changed after this run selected its native backend.",
+      "Bostan Runner provider changed after this run selected its native backend.",
     );
   }
   if (profile.provider === "muse") {
@@ -830,7 +830,7 @@ export function resolvePaperclipRunnerNativeProviderInput(input: {
   )) {
     throw new PaperclipRunnerProviderProfileError(
       "paperclip_runner_codex_effort_invalid",
-      "Paperclip Runner Codex reasoning effort is not supported for this model.",
+      "Bostan Runner Codex reasoning effort is not supported for this model.",
     );
   }
   return {

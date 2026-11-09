@@ -4256,7 +4256,7 @@ export const PAPERCLIP_FEEDBACK_SKILL_KEYS = [
 ] as const;
 
 /**
- * Native Paperclip Runner sessions receive the control-plane contract through
+ * Native Bostan Runner sessions receive the control-plane contract through
  * PRP, so carrying the legacy operational skill into their stored preference
  * is redundant and invalid. Normalize it away at persistence boundaries.
  * Legacy adapters remain unchanged because their runtime resolver mounts the

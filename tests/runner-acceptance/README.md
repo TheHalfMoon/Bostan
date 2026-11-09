@@ -10,9 +10,9 @@ The catalog covers:
 - every current built-in direct adapter except the explicitly deferred Pi
   adapter;
 - the external-plugin direct-adapter compatibility contract;
-- Paperclip Runner with Codex;
-- Paperclip Runner with the qualified OpenCode model; and
-- Paperclip Runner with the qualified ACPX Claude and Codex profiles.
+- Bostan Runner with Codex;
+- Bostan Runner with the qualified OpenCode model; and
+- Bostan Runner with the qualified ACPX Claude and Codex profiles.
 
 The direct-adapter cells assert the legacy boundary: runnerd does not start,
 native records are not created, direct finalization remains authoritative, and

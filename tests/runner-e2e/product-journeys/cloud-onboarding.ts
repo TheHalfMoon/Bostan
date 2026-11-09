@@ -66,7 +66,7 @@ export async function cloudOnboarding(input: CloudOnboardingInput): Promise<Jour
   await page.getByRole("combobox", { name: "Model", exact: true }).selectOption(input.gateway.model);
   await page.locator("summary").filter({ hasText: "Advanced" }).click();
   await page.getByRole("button", { name: "Runner", exact: true }).click();
-  await page.getByRole("option", { name: /^Paperclip Runner/ }).click();
+  await page.getByRole("option", { name: /^Bostan Runner/ }).click();
   await input.qualify(context, connection.id);
   // Connect performs the production probe and agent creation. Never press Retry.
   await page.getByRole("button", { name: "Connect", exact: true }).click();

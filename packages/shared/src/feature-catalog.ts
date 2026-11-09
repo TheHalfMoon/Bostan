@@ -56,9 +56,9 @@ export const INSTANCE_FEATURE_CATALOG: Record<InstanceFeatureKey, FeatureCatalog
     tier: "managed", cloudDefault: false, selfHostedDefault: false,
   },
   enableNativeRunner: {
-    title: "Paperclip Runner",
+    title: "Bostan Runner",
     description:
-      "Allow explicitly configured local Codex, OpenCode, and qualified ACPX agents to use the experimental Rust Paperclip Runner, including authenticated sandbox ingress when required. Onboarding remains on legacy adapters.",
+      "Allow explicitly configured local Codex, OpenCode, and qualified ACPX agents to use the experimental Rust Bostan Runner, including authenticated sandbox ingress when required. Onboarding remains on legacy adapters.",
     tier: "managed",
     cloudDefault: false,
     // On by default for self-hosted instances. Requires a Rust toolchain (or
@@ -136,14 +136,14 @@ export const INSTANCE_FEATURE_CATALOG: Record<InstanceFeatureKey, FeatureCatalog
   },
   enableGrokBot: {
     title: "Grok Bot",
-    description: "Connect an existing Grok Bot as an experimental Paperclip agent. Requires Assistant connections (MCP), Paperclip Runner, and an authenticated public HTTPS instance. Provider spending is not reported.",
+    description: "Connect an existing Grok Bot as an experimental Paperclip agent. Requires Assistant connections (MCP), Bostan Runner, and an authenticated public HTTPS instance. Provider spending is not reported.",
     tier: "managed",
     cloudDefault: false,
     selfHostedDefault: false,
   },
   enableMuse: {
     title: "Muse — Personal agent",
-    description: "Connect your personal Meta Muse through its managed background receiver and the external Paperclip Runner. Experimental; requires authenticated public HTTPS and Paperclip Runner.",
+    description: "Connect your personal Meta Muse through its managed background receiver and the external Bostan Runner. Experimental; requires authenticated public HTTPS and Bostan Runner.",
     tier: "managed", cloudDefault: false, selfHostedDefault: false,
   },
   enableChatConnectors: {
@@ -375,7 +375,7 @@ export const INSTANCE_FEATURE_CATALOG: Record<InstanceFeatureKey, FeatureCatalog
   enableRunnerPreviewIngress: {
     title: "Runner Preview Ingress (Deprecated)",
     description:
-      "Compatibility-only key retained for older managed configs. Runner ingress follows the Paperclip Runner setting.",
+      "Compatibility-only key retained for older managed configs. Runner ingress follows the Bostan Runner setting.",
     tier: "managed",
     cloudDefault: false,
     selfHostedDefault: false,

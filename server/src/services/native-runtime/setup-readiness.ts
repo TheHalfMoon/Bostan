@@ -216,7 +216,7 @@ export async function testNativeRunnerAuthentication(context: AdapterEnvironment
         linked = (await lstat(authPath)).isSymbolicLink();
         if (linked && !context.managedAiCredentialHome?.trim()) {
           const field = environment.CODEX_HOME?.trim() ? "env.CODEX_HOME" : "operator CODEX_HOME";
-          throw new Error(`${field} uses a linked auth.json that Paperclip Runner tasks cannot read. Choose Legacy runner in Advanced or use a managed Codex Connection.`);
+          throw new Error(`${field} uses a linked auth.json that Bostan Runner tasks cannot read. Choose Legacy runner in Advanced or use a managed Codex Connection.`);
         }
         const resolvedAuthPath = await realpath(authPath);
         const source = await stat(resolvedAuthPath);
