@@ -1141,8 +1141,9 @@ export async function createApp(
       );
       // Serve root/index through the same runtime HTML transform as SPA routes.
       staticUi.get(["/", "/index.html"], (_req, res) => {
-        setBostanStaticHtmlPrivacyHeaders(res);
-        res.type("html").set("Cache-Control", "no-cache").send(readBrandedStaticIndexHtml(uiDist));
+        const html = readBrandedStaticIndexHtml(uiDist);
+        setBostanStaticHtmlPrivacyHeaders(res, html);
+        res.type("html").set("Cache-Control", "no-cache").send(html);
       });
       // Non-hashed static files (favicon.ico, manifest, robots.txt, etc.):
       // short cache so operators who swap them out see the new version
@@ -1170,12 +1171,13 @@ export async function createApp(
           res.status(404).end();
           return;
         }
-        setBostanStaticHtmlPrivacyHeaders(res);
+        const html = readBrandedStaticIndexHtml(uiDist);
+        setBostanStaticHtmlPrivacyHeaders(res, html);
         res
           .status(200)
           .set("Content-Type", "text/html")
           .set("Cache-Control", "no-cache")
-          .end(readBrandedStaticIndexHtml(uiDist));
+          .end(html);
       });
     } else {
       console.warn("[paperclip] UI dist not found; running in API-only mode");
