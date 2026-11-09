@@ -1,6 +1,7 @@
 import { restConnectorFor } from "./connectors/rest-registry.js";
 import { createConnectionCredentialValidation } from "./tool-access/connections/credential-validation.js";
 import { createConnectionGrants } from "./tool-access/connections/grants.js";
+import { createManagedGrantRelease } from "./tool-access/oauth/managed-grant-release.js";
 import { createConnectionInstalls } from "./tool-access/connections/installs.js";
 import { createConnectionRemoval } from "./tool-access/connections/removal.js";
 import { createToolRemoteHttp } from "./tool-access/remote-http.js";
@@ -774,7 +775,11 @@ export function toolAccessService(
       ? createVercelConnectClient()
       : options.vercelConnectClient;
   const runtimeSupervisor = createToolRuntimeSupervisor(db, options);
-  const connectionGrantsService = createConnectionGrants(db, { getConnectionRow, assertSecretRefs, vercelConnect });
+  // Resolved lazily: the credential store is created below.
+  const connectionGrantsService = createConnectionGrants(db, {
+    getConnectionRow, assertSecretRefs, vercelConnect,
+    releaseManagedGrant: (connection, grant, actor) => createManagedGrantRelease({ currentCloudConnector, resolveOAuthGrantSecret })(connection, grant, actor),
+  });
   const removeConnection = createConnectionRemoval(db, { options, secrets, runtimeSupervisor, vercelConnect, getConnectionRow });
   const credentialStore = createOAuthCredentialStore(db, secrets);
   const { syncCredentialBindings, annotateSavedOAuthClientSecret, oauthClientForConnection, createOrRotateOAuthSecret, getOAuthGrantRow, resolveOAuthGrantSecret } = credentialStore;
