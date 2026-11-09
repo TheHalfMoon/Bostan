@@ -90,7 +90,7 @@ describe("Bostan connector broker end to end", () => {
       .rejects.toBeInstanceOf(PaperclipCloudConnectorError);
 
     await connector.revoke({ subject: "user-1", companyId: "company-1", profile: "gmail.draft", token: credentials.refreshToken! });
-    expect(harness.google.revoked).toHaveLength(1);
+    expect(harness.google.revoked).toHaveLength(0);
     await expect(connector.refresh({ subject: "user-1", companyId: "company-1", profile: "gmail.draft", refreshToken: credentials.refreshToken! }))
       .rejects.toMatchObject({ code: "REAUTHORIZATION_REQUIRED" });
   });

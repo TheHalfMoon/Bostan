@@ -36,6 +36,8 @@ export class FakeGoogle {
   grantScopes: ((requested: string[]) => string[]) = (requested) => requested;
   omitRefreshToken = false;
   refreshFailure: null | "invalid_grant" | "server_error" = null;
+  /** Runs while a refresh request is in flight at "Google". */
+  onRefresh: (() => Promise<void> | void) | null = null;
   #counter = 0;
 
   /** Simulates the user approving consent at accounts.google.com. */
@@ -75,6 +77,7 @@ export class FakeGoogle {
       });
     }
     if (form.get("grant_type") === "refresh_token") {
+      await this.onRefresh?.();
       if (this.refreshFailure === "server_error") return Response.json({ error: "backend_error" }, { status: 503 });
       if (this.refreshFailure === "invalid_grant" || !this.refreshTokens.has(form.get("refresh_token") ?? "")) {
         return Response.json({ error: "invalid_grant" }, { status: 400 });

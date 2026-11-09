@@ -30,6 +30,7 @@ export const SESSION_TTL_MS = 10 * 60_000;
 export const CLAIM_TTL_MS = 10 * 60_000;
 const MAX_CLAIM_REDEMPTIONS = 5;
 const MAX_PENDING_ENROLLMENTS = 50;
+const MAX_PENDING_ENROLLMENTS_PER_ORIGIN = 5;
 const MAX_PENDING_SESSIONS_PER_INSTANCE = 100;
 const MAX_REQUEST_LIFETIME_S = 120;
 const CLOCK_SKEW_S = 30;
@@ -72,7 +73,12 @@ export function createBroker(dependencies: BrokerDependencies) {
   const limits = {
     enrollment: new RateLimiter(10, 10 * 60_000, now),
     operator: new RateLimiter(5, 10 * 60_000, now),
-    session: new RateLimiter(30, 60_000, now),
+    // Caps operator-token guessing even when callers rotate addresses.
+    operatorGlobal: new RateLimiter(20, 10 * 60_000, now),
+    browser: new RateLimiter(60, 60_000, now),
+    signed: new RateLimiter(600, 60_000, now),
+    session: new RateLimiter(120, 60_000, now),
+    sessionSubject: new RateLimiter(10, 60_000, now),
     token: new RateLimiter(120, 60_000, now),
     status: new RateLimiter(60, 60_000, now),
   };
@@ -155,6 +161,8 @@ export function createBroker(dependencies: BrokerDependencies) {
       throw new Rejection(401, "REQUEST_EXPIRED");
     }
     if (typeof claims.jti !== "string" || claims.jti.length < 16 || claims.jti.length > 128) throw new Rejection(400, "MALFORMED_REQUEST");
+    // Limit before the replay record so a signer cannot force unbounded state writes.
+    if (!limits.signed.allow(`signed:${claims.iss}`)) throw new Rejection(429, "RATE_LIMITED");
     const replayKey = `${claims.iss}:${claims.jti}`;
     const fresh = store.mutate((state) => {
       pruneExpired(state, now());
@@ -263,9 +271,17 @@ export function createBroker(dependencies: BrokerDependencies) {
     store.mutate((state) => {
       pruneExpired(state, now());
       if (state.instances[instanceId]) throw new Rejection(409, "INVALID_REQUEST");
-      if (Object.keys(state.enrollments).length >= MAX_PENDING_ENROLLMENTS) throw new Rejection(429, "RATE_LIMITED");
       for (const [existing, enrollment] of Object.entries(state.enrollments)) {
-        if (enrollment.instanceId === instanceId) delete state.enrollments[existing];
+        if (enrollment.instanceId !== instanceId) continue;
+        // Only the key holder may replace its own pending request; an approved
+        // enrollment is never replaced by an unauthenticated request.
+        if (enrollment.status !== "pending" || enrollment.signPublicKey !== body.signPublicKey) throw new Rejection(409, "INVALID_REQUEST");
+        delete state.enrollments[existing];
+      }
+      const pending = Object.values(state.enrollments);
+      if (pending.length >= MAX_PENDING_ENROLLMENTS
+        || pending.filter((enrollment) => enrollment.origin === origin).length >= MAX_PENDING_ENROLLMENTS_PER_ORIGIN) {
+        throw new Rejection(429, "RATE_LIMITED");
       }
       state.enrollments[id] = {
         id,
@@ -316,7 +332,7 @@ export function createBroker(dependencies: BrokerDependencies) {
 
   async function decideEnrollment(request: Request, meta: RequestMeta): Promise<Response> {
     const form = await readForm(request);
-    if (!limits.operator.allow(`operator:${meta.remoteAddress}`)) throw new Rejection(429, "RATE_LIMITED");
+    if (!limits.operator.allow(`operator:${meta.remoteAddress}`) || !limits.operatorGlobal.allow("operator")) throw new Rejection(429, "RATE_LIMITED");
     const id = form.get("id") ?? "";
     const token = form.get("operator_token") ?? "";
     if (!safeEqual(token, config.operatorToken)) {
@@ -415,7 +431,10 @@ export function createBroker(dependencies: BrokerDependencies) {
   }
 
   function createSession(instance: Instance, claims: Record<string, unknown>): Response {
-    if (!limits.session.allow(`session:${instance.id}`)) throw new Rejection(429, "RATE_LIMITED");
+    if (!limits.session.allow(`session:${instance.id}`)
+      || !limits.sessionSubject.allow(`session:${instance.id}:${String(claims.cid)}:${String(claims.sub)}`)) {
+      throw new Rejection(429, "RATE_LIMITED");
+    }
     const { profile, scopes } = requestedProfile(claims);
     if (typeof claims.ruri !== "string") throw new Rejection(400, "INVALID_RETURN_URI");
     let returnUri: URL;
@@ -475,11 +494,16 @@ export function createBroker(dependencies: BrokerDependencies) {
 </form>`, ["https://accounts.google.com", new URL(session.returnUri).origin]);
   }
 
-  async function confirmSession(request: Request): Promise<Response> {
+  async function confirmSession(request: Request, meta: RequestMeta): Promise<Response> {
+    if (!limits.browser.allow(`browser:${meta.remoteAddress}`)) throw new Rejection(429, "RATE_LIMITED");
     const form = await readForm(request);
     const id = form.get("session") ?? "";
     const decision = form.get("decision");
     if (decision !== "continue" && decision !== "cancel") throw new Rejection(400, "INVALID_REQUEST");
+    const known = store.read().sessions[id];
+    if (!known || known.status !== "pending" || known.expiresAt <= now()) {
+      return page(404, "Request expired", "<p>This connection request has expired or was already used.</p>");
+    }
     const oauthState = randomToken(32);
     const codeVerifier = randomToken(48);
     const session = store.mutate((state) => {
@@ -514,14 +538,20 @@ export function createBroker(dependencies: BrokerDependencies) {
     return target.toString();
   }
 
-  async function googleCallback(url: URL): Promise<Response> {
+  async function googleCallback(url: URL, meta: RequestMeta): Promise<Response> {
+    if (!limits.browser.allow(`browser:${meta.remoteAddress}`)) throw new Rejection(429, "RATE_LIMITED");
     const oauthState = url.searchParams.get("state") ?? "";
     const stateHash = sha256(oauthState);
+    const matches = (candidate: Session) =>
+      candidate.status === "authorizing" && candidate.oauthStateHash !== undefined && safeEqual(candidate.oauthStateHash, stateHash);
+    // Unmatched callbacks must not cause a state write.
+    if (!Object.values(store.read().sessions).some(matches)) {
+      return page(400, "Request expired", "<p>This sign-in could not be matched to a pending request. Start again from Bostan.</p>");
+    }
     // Consume the session before talking to Google so a replayed callback cannot reuse it.
     const session = store.mutate((state) => {
       pruneExpired(state, now());
-      const match = Object.values(state.sessions).find((candidate) =>
-        candidate.status === "authorizing" && candidate.oauthStateHash !== undefined && safeEqual(candidate.oauthStateHash, stateHash));
+      const match = Object.values(state.sessions).find(matches);
       if (!match) return null;
       match.status = "completed";
       return structuredClone(match);
@@ -543,8 +573,9 @@ export function createBroker(dependencies: BrokerDependencies) {
     const effective = session.scopes.filter((scope) => granted.includes(scope));
     const complete = session.profile === "workspace.all" ? effective.length > 0 : effective.length === session.scopes.length;
     if (!complete || !tokens.refreshToken) {
-      // Never hand out a partial or non-refreshable grant; release it at Google.
-      await google.revoke(tokens.refreshToken ?? tokens.accessToken).catch(() => {});
+      // Never hand out a partial or non-refreshable grant. The tokens are
+      // discarded rather than revoked: Google revocation is client-wide and
+      // would also disconnect this account's other Workspace profiles.
       return fail(complete ? "REFRESH_TOKEN_MISSING" : "SCOPE_NOT_GRANTED");
     }
     const handle = `brk_rt_${randomToken(32)}`;
@@ -561,6 +592,7 @@ export function createBroker(dependencies: BrokerDependencies) {
       sealedProviderRefreshToken: box.seal(tokens.refreshToken, `grant:${handleHash}`),
       createdAt: now(),
       lastRefreshedAt: null,
+      pendingClaimId: claimId,
     };
     const claim: Claim = {
       id: claimId,
@@ -605,6 +637,9 @@ export function createBroker(dependencies: BrokerDependencies) {
       }
       if (current.redemptions >= MAX_CLAIM_REDEMPTIONS) return null;
       current.redemptions += 1;
+      for (const grant of Object.values(state.grants)) {
+        if (grant.pendingClaimId === current.id) delete grant.pendingClaimId;
+      }
       return structuredClone(current);
     });
     if (!claim) {
@@ -660,13 +695,16 @@ export function createBroker(dependencies: BrokerDependencies) {
       record({ event: "token.refresh_failed", instanceId: instance.id, companyId: grant.companyId, subject: grant.subject, provider: "google", profile, outcome: "failed", code: "SCOPE_NOT_GRANTED" });
       throw new Rejection(409, "PROVIDER_OPERATION_FAILED");
     }
-    store.mutate((state) => {
+    const stillGranted = store.mutate((state) => {
       const current = state.grants[grant.handleHash];
-      if (!current) return;
+      if (!current) return false;
       current.lastRefreshedAt = now();
       current.scopes = scopes;
       if (tokens.refreshToken) current.sealedProviderRefreshToken = box.seal(tokens.refreshToken, `grant:${grant.handleHash}`);
+      return true;
     });
+    // A revoke that completed while Google was answering wins.
+    if (!stillGranted) throw new Rejection(409, "PROVIDER_OPERATION_FAILED");
     record({ event: "token.refreshed", instanceId: instance.id, companyId: grant.companyId, subject: grant.subject, provider: "google", profile, outcome: "ok" });
     return json(200, {
       sealed: sealCredentials({
@@ -689,18 +727,12 @@ export function createBroker(dependencies: BrokerDependencies) {
     if (!limits.token.allow(`token:${instance.id}`)) throw new Rejection(429, "RATE_LIMITED");
     const grant = boundGrant(instance, claims, handle);
     if (grant) {
-      let providerOutcome = "ok";
-      try {
-        await google?.revoke(box.open(grant.sealedProviderRefreshToken, `grant:${grant.handleHash}`));
-      } catch {
-        // The broker's copy is deleted regardless; the user can also remove access in their Google account.
-        providerOutcome = "PROVIDER_REVOKE_FAILED";
-      }
+      // Destroy the only copy of Google's refresh token. Google's revocation
+      // endpoint is not called: it removes this OAuth client's access for the
+      // whole Google account, which would also disconnect the user's other
+      // profiles (the instance makes the same choice for per-profile removal).
       store.mutate((state) => { delete state.grants[grant.handleHash]; });
-      record({
-        event: "grant.revoked", instanceId: instance.id, companyId: grant.companyId, subject: grant.subject, provider: "google",
-        profile: grant.profile, outcome: "ok", ...(providerOutcome === "ok" ? {} : { code: providerOutcome }),
-      });
+      record({ event: "grant.revoked", instanceId: instance.id, companyId: grant.companyId, subject: grant.subject, provider: "google", profile: grant.profile, outcome: "ok", code: "LOCAL_ONLY" });
     }
     return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
   }
@@ -720,9 +752,9 @@ export function createBroker(dependencies: BrokerDependencies) {
       }
       if (path === "/connections/confirm") {
         if (request.method === "GET") return confirmationPage(url);
-        if (request.method === "POST") return await confirmSession(request);
+        if (request.method === "POST") return await confirmSession(request, meta);
       }
-      if (request.method === "GET" && path === GOOGLE_CALLBACK_PATH) return await googleCallback(url);
+      if (request.method === "GET" && path === GOOGLE_CALLBACK_PATH) return await googleCallback(url, meta);
       const operation = OPERATION_PATHS[path];
       if (request.method === "POST" && operation) return await instanceOperation(request, path, operation);
       // Webhook bindings, event leases and GitHub/Slack/Asana apps are not offered by this broker.

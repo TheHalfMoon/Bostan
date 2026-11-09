@@ -243,15 +243,17 @@ describe("Google authorization", () => {
     expect((await claim(harness, instance, claimId)).status).toBe(200);
   });
 
-  it("returns access_denied and releases the grant when Google narrows consent", async () => {
+  it("returns access_denied and keeps nothing when Google narrows consent", async () => {
     const harness = createTestBroker();
     harness.google.grantScopes = (requested) => requested.filter((scope) => !scope.endsWith("gmail.compose"));
     const instance = await enroll(harness);
     const { location } = await authorize(harness, instance);
     expect(location.searchParams.get("error")).toBe("access_denied");
     expect(location.searchParams.get("claim_id")).toBeNull();
-    expect(harness.google.revoked).toHaveLength(1);
+    // Client-wide Google revocation would disconnect the account's other profiles.
+    expect(harness.google.revoked).toHaveLength(0);
     expect(Object.keys(harness.store.read().grants)).toHaveLength(0);
+    expect(Object.keys(harness.store.read().claims)).toHaveLength(0);
   });
 
   it("returns access_denied when Google withholds a refresh token", async () => {
@@ -327,13 +329,13 @@ describe("refresh and revocation", () => {
     expect(Object.keys(harness.store.read().grants)).toHaveLength(1);
   });
 
-  it("revokes at Google, forgets the grant and refuses later refreshes", async () => {
+  it("destroys the grant without client-wide Google revocation and refuses later refreshes", async () => {
     const harness = createTestBroker();
     const { instance, credentials } = await connected(harness);
     const handle = credentials.refreshToken as string;
     const revoked = await signed(harness, instance, "/v1/connector/revoke", "revoke", gmailDraft, { field: "token", value: handle });
     expect(revoked.status).toBe(204);
-    expect(harness.google.revoked).toEqual([expect.stringMatching(/^google-refresh-/)]);
+    expect(harness.google.revoked).toEqual([]);
     expect(Object.keys(harness.store.read().grants)).toHaveLength(0);
     expect((await signed(harness, instance, "/v1/connector/revoke", "revoke", gmailDraft, { field: "token", value: handle })).status).toBe(204);
     expect((await signed(harness, instance, "/v1/connector/refresh", "refresh", gmailDraft, { field: "refreshToken", value: handle })).status).toBe(409);
@@ -345,6 +347,67 @@ describe("refresh and revocation", () => {
     const other = await enroll(harness);
     const response = await signed(harness, other, "/v1/connector/refresh", "refresh", gmailDraft, { field: "refreshToken", value: credentials.refreshToken as string });
     expect(response.status).toBe(403);
+  });
+});
+
+describe("review regressions", () => {
+  it("serves pages with a referrer policy that keeps the form Origin header", async () => {
+    const harness = createTestBroker();
+    const instance = await enroll(harness);
+    const session = await startSession(harness, instance);
+    const confirmation = (await session.json() as { confirmationUrl: string }).confirmationUrl;
+    const page = await harness.call(new URL(confirmation).pathname + new URL(confirmation).search);
+    expect(page.headers.get("referrer-policy")).toBe("same-origin");
+  });
+
+  it("does not let an unauthenticated request replace another key's enrollment", async () => {
+    const harness = createTestBroker();
+    const victim = createTestInstance();
+    const request = (signPublicKey: string) => harness.postJson("/v1/connector/enrollments", {
+      instanceId: victim.instanceId, environment: "development", origin: INSTANCE_ORIGIN,
+      returnUri: `${INSTANCE_ORIGIN}/api/tools/oauth/cloud-connector/enrollment-callback`, returnState: "r".repeat(43),
+      signPublicKey, sealPublicKey: victim.sealPublicKey,
+    });
+    expect((await request(victim.signPublicKey)).status).toBe(201);
+    expect((await request(createTestInstance().signPublicKey)).status).toBe(409);
+    // The key holder may restart its own pending request.
+    expect((await request(victim.signPublicKey)).status).toBe(201);
+  });
+
+  it("drops an unredeemed grant once its claim expires", async () => {
+    const harness = createTestBroker();
+    const instance = await enroll(harness);
+    await authorize(harness, instance);
+    expect(Object.keys(harness.store.read().grants)).toHaveLength(1);
+    harness.store.mutate((state) => { for (const pending of Object.values(state.claims)) pending.expiresAt = 0; });
+    await startSession(harness, instance);
+    expect(Object.keys(harness.store.read().grants)).toHaveLength(0);
+  });
+
+  it("keeps a grant after its claim is redeemed", async () => {
+    const harness = createTestBroker();
+    await connected(harness);
+    harness.store.mutate((state) => { for (const pending of Object.values(state.claims)) pending.expiresAt = 0; });
+    harness.store.mutate(() => {});
+    expect(Object.keys(harness.store.read().grants)).toHaveLength(1);
+  });
+
+  it("does not return a token when the grant was revoked during refresh", async () => {
+    const harness = createTestBroker();
+    const { instance, credentials } = await connected(harness);
+    harness.google.onRefresh = () => { harness.store.mutate((state) => { state.grants = {}; }); };
+    const response = await signed(harness, instance, "/v1/connector/refresh", "refresh", gmailDraft, { field: "refreshToken", value: credentials.refreshToken as string });
+    expect(response.status).toBe(409);
+  });
+
+  it("does not write state for unmatched callbacks", async () => {
+    const harness = createTestBroker();
+    let writes = 0;
+    const mutate = harness.store.mutate.bind(harness.store);
+    harness.store.mutate = ((fn) => { writes += 1; return mutate(fn); }) as typeof harness.store.mutate;
+    expect((await harness.call("/oauth/google/callback?state=guess&code=x")).status).toBe(400);
+    expect((await harness.postForm("/connections/confirm", { session: "ses_guess", decision: "continue" })).status).toBe(404);
+    expect(writes).toBe(0);
   });
 });
 

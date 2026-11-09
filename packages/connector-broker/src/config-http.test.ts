@@ -66,6 +66,15 @@ describe("HTTP adapter", () => {
     expect(seen).toBe("https://broker.example.test/healthz?x=1");
   });
 
+  it("rate-limits by the hop the trusted proxy observed, not a client-supplied one", async () => {
+    let seen = "";
+    const server = createBrokerHttpServer({ publicOrigin: "https://broker.example.test", trustProxy: true, handle: async (_request, meta) => { seen = meta.remoteAddress; return new Response("ok"); } });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    close = () => new Promise<void>((resolve) => server.close(() => resolve()));
+    await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/healthz`, { headers: { "x-forwarded-for": "1.2.3.4, 203.0.113.9" } });
+    expect(seen).toBe("203.0.113.9");
+  });
+
   it("refuses oversized bodies", async () => {
     const url = await listen(async () => new Response("ok"));
     const response = await fetch(`${url}/v1/connector/sessions`, { method: "POST", body: "x".repeat(70 * 1024) }).catch(() => null);

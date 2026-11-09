@@ -14,6 +14,8 @@ export class RateLimiter {
       for (const [entry, window] of this.#windows) if (window.resetAt <= now) this.#windows.delete(entry);
     }
     const window = this.#windows.get(key);
+    // Fail closed for new callers rather than growing without bound.
+    if (!window && this.#windows.size > 10_000) return false;
     if (!window || window.resetAt <= now) {
       this.#windows.set(key, { count: 1, resetAt: now + this.windowMs });
       return true;

@@ -15,7 +15,9 @@ export function pageSecurityHeaders(formTargets: readonly string[] = []): Record
       "frame-ancestors 'none'",
       "base-uri 'none'",
     ].join("; "),
-    "referrer-policy": "no-referrer",
+    // Not no-referrer: browsers then send "Origin: null" on the form POST,
+    // which the CSRF check rejects. same-origin leaks nothing cross-site.
+    "referrer-policy": "same-origin",
     "x-content-type-options": "nosniff",
     "x-frame-options": "DENY",
   };

@@ -75,6 +75,8 @@ export type Grant = {
   sealedProviderRefreshToken: string;
   createdAt: number;
   lastRefreshedAt: number | null;
+  /** Set until the instance redeems the claim; an unredeemed grant expires with its claim. */
+  pendingClaimId?: string;
 };
 
 export type BrokerState = {
@@ -104,6 +106,7 @@ export function pruneExpired(state: BrokerState, nowMs: number): void {
   for (const [id, record] of Object.entries(state.sessions)) if (record.expiresAt <= nowMs) delete state.sessions[id];
   for (const [id, record] of Object.entries(state.claims)) if (record.expiresAt <= nowMs) delete state.claims[id];
   for (const [jti, expiresAt] of Object.entries(state.replay)) if (expiresAt * 1000 <= nowMs) delete state.replay[jti];
+  for (const [id, grant] of Object.entries(state.grants)) if (grant.pendingClaimId && !state.claims[grant.pendingClaimId]) delete state.grants[id];
 }
 
 export class MemoryStore implements BrokerStore {

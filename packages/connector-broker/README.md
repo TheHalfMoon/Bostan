@@ -21,7 +21,10 @@ or any other third-party broker.
    instance receives Google's short-lived access token and an **opaque broker
    refresh handle**, never Google's refresh token.
 4. **Refresh and revoke.** Signed requests carrying the handle obtain new access
-   tokens or revoke the grant at Google.
+   tokens, or destroy the broker's copy of the grant. The broker does not call
+   Google's revocation endpoint: it removes the OAuth client's access for the
+   whole Google account, which would also disconnect the user's other profiles.
+   Users remove the broker's access entirely at myaccount.google.com.
 
 ## Security properties
 
@@ -30,7 +33,7 @@ or any other third-party broker.
 - Grants are bound to (instance, company, subject, profile); another instance,
   company or user cannot use a handle.
 - Profiles have fixed scope sets. A broadened request is refused, and a narrowed
-  Google consent is revoked and reported as `access_denied`.
+  Google consent is discarded and reported as `access_denied`.
 - Google refresh tokens, PKCE verifiers, return states and claim payloads are
   stored only as AES-256-GCM ciphertext bound to their record; handles and codes
   are stored as SHA-256 hashes.
@@ -65,7 +68,7 @@ broker's public origin.
 | `BOSTAN_BROKER_GOOGLE_PROFILES` | Comma-separated profiles to offer (default: all) |
 | `BOSTAN_BROKER_ALLOWED_INSTANCE_ORIGINS` | Optional allowlist of instance origins |
 | `BOSTAN_BROKER_LISTEN_HOST` / `_PORT` | Listener (default `127.0.0.1:8787`) |
-| `BOSTAN_BROKER_TRUST_PROXY` | `1` to rate-limit by the first `X-Forwarded-For` hop |
+| `BOSTAN_BROKER_TRUST_PROXY` | `1` to rate-limit by the last `X-Forwarded-For` hop (the address your single trusted proxy saw) |
 
 Secret files must be mode `600` on POSIX. Register
 `<public origin>/oauth/google/callback` as the Google client's redirect URI.

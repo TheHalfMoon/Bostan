@@ -39,7 +39,9 @@ export function createBrokerHttpServer(input: { publicOrigin: string; trustProxy
       ...(body === undefined ? {} : { body: new Uint8Array(body) }),
     });
     const forwarded = input.trustProxy ? req.headers["x-forwarded-for"] : undefined;
-    const remoteAddress = (typeof forwarded === "string" ? forwarded.split(",")[0]?.trim() : undefined) || req.socket.remoteAddress || "unknown";
+    // The rightmost hop is the address the trusted proxy itself observed;
+    // earlier hops are client-controlled.
+    const remoteAddress = (typeof forwarded === "string" ? forwarded.split(",").at(-1)?.trim() : undefined) || req.socket.remoteAddress || "unknown";
     const response = await input.handle(request, { remoteAddress });
     const outgoing: Record<string, string> = {};
     response.headers.forEach((value, name) => { outgoing[name] = value; });
