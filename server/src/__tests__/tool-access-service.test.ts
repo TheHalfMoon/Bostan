@@ -7806,7 +7806,12 @@ describeEmbeddedPostgres("tool access service", () => {
       await expect(
         service.revokeConnectionGrant(connected.connectionId, grant!.id, actor),
       ).resolves.toMatchObject({ status: "revoked" });
-      expect(connector.revoke).not.toHaveBeenCalled();
+      // The broker destroys only this grant's stored refresh token; it never
+      // calls Google's client-wide revocation.
+      expect(connector.revoke).toHaveBeenCalledOnce();
+      expect(connector.revoke).toHaveBeenCalledWith(expect.objectContaining({
+        subject: userId, companyId: company.id, profile: "gmail.draft", token: "gmail-refresh-token",
+      }));
     } finally {
       if (deadline) clearTimeout(deadline);
       await callbackDb.$client.end({ timeout: 0 }).catch(() => undefined);
