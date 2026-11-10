@@ -32,6 +32,12 @@ test("startup failure keeps bounded diagnosis without fixture paths, credentials
   for (const value of Object.values(values)) assert.equal(safe.includes(value), false);
   assert.equal(safe.includes("synthetic:temporary"), false);
   assert.equal(journeyFailureDiagnostic(JSON.stringify({ level: 30, msg: "ordinary status" }), values), null);
+  assert.equal(journeyFailureDiagnostic(JSON.stringify({ msg: "unclassified message" }), values), null);
+  for (const variant of ["C:/fixture-home/db", "c:\\FIXTURE-HOME\\db", "d:/FIXTURE-REPO/packages", "C^:^\\fixture^-home^\\db"]) {
+    const normalized = journeyFailureDiagnostic("initdb: error: cannot open " + variant, values);
+    assert.equal(normalized.includes(variant), false);
+    assert.match(normalized, /<redacted>/);
+  }
   assert.ok(journeyFailureDiagnostic("Error: " + "x".repeat(5000), values).length <= 1000);
 });
 

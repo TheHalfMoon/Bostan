@@ -50,6 +50,15 @@ The diagnostic TypeScript no-check emit was stopped after excessive memory use;
 esbuild emission was used only to locate the missing import. Full tsc and native
 runtime evidence still come from CI.
 
+The next hosted run loaded the full compiled graph, then PostgreSQL correctly
+refused the elevated `runneradmin` token. CI now creates a fresh standard local
+account, loads its own profile and runs the real journey under that identity.
+The launcher refuses operator PCs. It grants the disposable SID read/execute
+access to the disposable checkout, preserves PostgreSQL's administrator refusal,
+and removes only its own SID/profile and bounded log directory. The same worker
+can qualify a per-user desktop installer. This change still requires a passing
+native CI execution; account creation is never exercised on the operator PC.
+
 Still separate: compiled browser onboarding, persistence/recovery, packaged
 installation, and macOS/Linux runtime
 qualification. Issue #237 remains open until its acceptance evidence is complete.

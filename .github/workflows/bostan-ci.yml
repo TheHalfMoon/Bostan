@@ -179,4 +179,5 @@ jobs:
       # Build serially and drive the real authenticated server under plain Node.
       - run: pnpm --filter @bostan/server... --workspace-concurrency=1 build
       - run: node --test scripts/bostan-server-journey-command.test.mjs
-      - run: node scripts/bostan-windows-server-journey.mjs --compiled
+      - run: node --test scripts/bostan-ci-windows-user.test.mjs
+      - run: ./scripts/bostan-ci-windows-user.ps1 -Mode Server

@@ -39,14 +39,20 @@ export function journeyFailureDiagnostic(line, { repo, home, secret }) {
   let detail;
   try {
     const value = JSON.parse(line);
-    if (value.level < 50) return null;
+    if (typeof value.level !== "number" || value.level < 50) return null;
     detail = [value.msg, value.err?.message, ...(Array.isArray(value.recentLogs) ? value.recentLogs : [])]
       .filter(value => typeof value === "string").join(" | ");
   } catch {
     if (!/\b(?:Error|FATAL|initdb:|failed)\b/i.test(line)) return null;
     detail = line;
   }
-  for (const value of [secret, repo, home].filter(Boolean)) detail = detail.replaceAll(value, "<redacted>");
+  // initdb renders CMD-safe instructions with caret-escaped path punctuation.
+  detail = detail.replaceAll("^", "");
+  if (secret) detail = detail.replaceAll(secret, "<redacted>");
+  for (const value of [repo, home].filter(Boolean)) {
+    const pattern = value.replaceAll("^", "").split(/[\\/]/).map(part => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("[\\\\/]");
+    detail = detail.replace(new RegExp(pattern, "gi"), "<redacted>");
+  }
   return detail.replace(/\b[a-z][a-z0-9+.-]*:\/\/[^\s<>"']+/gi, "<url>")
     .replace(/[\x00-\x1f\x7f]/g, " ").slice(0, 1000);
 }
