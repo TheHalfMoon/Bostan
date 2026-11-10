@@ -203,6 +203,9 @@ jobs:
       - run: node -p "process.platform + '-' + process.arch"
       - run: pnpm install --frozen-lockfile
       - run: npm --prefix desktop ci
+      # npm may withhold dependency lifecycle scripts. Fetch Electron's pinned
+      # platform runtime explicitly before native host tests and packaging.
+      - run: node desktop/node_modules/electron/install.js
       - run: npm --prefix desktop test
       - run: npm --prefix desktop run test:host
       - run: pnpm --filter @bostan/server... --workspace-concurrency=1 build

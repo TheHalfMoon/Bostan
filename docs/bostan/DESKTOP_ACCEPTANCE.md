@@ -18,7 +18,7 @@ deployment, signing or notarization has been performed.
 
 | Gate | Result |
 | --- | --- |
-| Windows desktop unit/policy/NTFS/relocation tests | 8 passed |
+| Windows desktop unit/policy/NTFS/relocation/port tests | 9 passed |
 | Native Electron 45.2.3 host regressions | 3 passed |
 | Embedded Node version from actual Electron executable | 24.22.2 |
 | Desktop dependency audit, pinned lockfile | 0 reported vulnerabilities |
@@ -38,6 +38,15 @@ agent run. The data-directory test exercises Windows ACL changes and repeated
 launch on disposable directories without elevation.
 
 ## Failures preserved
+
+The first desktop CI failed before packaging: npm withheld Electron's download
+hook on macOS, and the Windows ACL helper exceeded its existing 15-second bound.
+CI now invokes the pinned Electron installer explicitly, and ACL verification
+uses the direct .NET API without PowerShell module autoload. The timeout remains
+unchanged. A local host rerun also exposed Chromium's rejection of OS-assigned
+port 6000. The desktop and redirect fixture now select free high loopback ports;
+the real redirect test remains intact. Nine unit and three native Electron tests
+passed afterward. Fresh hosted artifact qualification is still required.
 
 The initial full Windows build failed on CRLF-altered protocol fixtures. Checkout
 now disables conversion before reading the hashed sources. The next build

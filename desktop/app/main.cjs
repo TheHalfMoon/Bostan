@@ -1,7 +1,6 @@
 const { app, BrowserWindow, dialog, utilityProcess, Menu, shell } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
-const net = require("node:net");
 
 app.setName("Bostan");
 if (!app.requestSingleInstanceLock()) app.quit();
@@ -21,14 +20,8 @@ else {
   });
 
   async function freePort() {
-    const server = net.createServer();
-    await new Promise((resolve, reject) => {
-      server.once("error", reject);
-      server.listen(0, "127.0.0.1", resolve);
-    });
-    const port = server.address().port;
-    await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
-    return port;
+    const { selectLoopbackPort } = await import("./loopback-port.mjs");
+    return selectLoopbackPort();
   }
 
   async function start() {

@@ -15,12 +15,15 @@ test("actual Electron blocks a cross-origin HTTP redirect before the target is r
       app.setPath('userData',path.join(process.env.HOME,'profile'));app.disableHardwareAcceleration();
       app.whenReady().then(async()=>{
         const {configureWindowNavigation}=await import(${JSON.stringify(new URL("../app/policy.mjs", import.meta.url).href)});
+        const {selectLoopbackPort}=await import(${JSON.stringify(new URL("../app/loopback-port.mjs", import.meta.url).href)});
         let targetRequests=0;
         const target=http.createServer((_req,res)=>{targetRequests++;res.end('foreign')});
-        await new Promise(resolve=>target.listen(0,'127.0.0.1',resolve));
+        const targetPort=await selectLoopbackPort();
+        await new Promise(resolve=>target.listen(targetPort,'127.0.0.1',resolve));
         const targetUrl='http://127.0.0.1:'+target.address().port;
         const source=http.createServer((req,res)=>{if(req.url==='/redirect'){res.writeHead(302,{Location:targetUrl});res.end()}else res.end('Bostan fixture')});
-        await new Promise(resolve=>source.listen(0,'127.0.0.1',resolve));
+        const sourcePort=await selectLoopbackPort();
+        await new Promise(resolve=>source.listen(sourcePort,'127.0.0.1',resolve));
         const origin='http://127.0.0.1:'+source.address().port;
         const window=new BrowserWindow({show:false,webPreferences:{nodeIntegration:false,contextIsolation:true,sandbox:true}});
         configureWindowNavigation(window.webContents,{getOrigin:()=>origin,openExternal:()=>{throw Error('Unexpected handoff')}});

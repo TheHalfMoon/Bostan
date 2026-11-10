@@ -15,7 +15,7 @@ foreach($sid in @($user.Value,'S-1-5-18','S-1-5-32-544')) {
   $acl.AddAccessRule($rule)
 }
 [IO.Directory]::SetAccessControl($env:BOSTAN_DESKTOP_DATA_DIR,$acl)
-$actual=Get-Acl -LiteralPath $env:BOSTAN_DESKTOP_DATA_DIR
+$actual=[IO.Directory]::GetAccessControl($env:BOSTAN_DESKTOP_DATA_DIR)
 if(-not $actual.AreAccessRulesProtected) { throw 'ACL inheritance is not protected' }
 $rules=@($actual.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]))
 $allowed=@($user.Value,'S-1-5-18','S-1-5-32-544')
