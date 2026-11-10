@@ -50,6 +50,7 @@ describe("update command", () => {
     Object.defineProperty(process.versions, "node", { ...nodeVersion, value: "22.22.2" });
     try {
       await expect(updateCommand({ yes: true }, {
+        allowPublishedPackage: true,
         paths,
         executablePath: source === "global-npm" ? path.join(root, "lib", "node_modules", "paperclipai", "dist", "index.js") : entrypoint,
         runCommand, backup, restartActiveService,
@@ -75,10 +76,10 @@ describe("update command", () => {
     const nodeVersion = Object.getOwnPropertyDescriptor(process.versions, "node")!;
     Object.defineProperty(process.versions, "node", { ...nodeVersion, value: "22.22.2" });
     try {
-      await updateCommand({ check: true }, { paths, executablePath, runCommand });
-      await updateCommand({ dryRun: true }, { paths, executablePath, runCommand });
+      await updateCommand({ check: true }, { allowPublishedPackage: true, paths, executablePath, runCommand });
+      await updateCommand({ dryRun: true }, { allowPublishedPackage: true, paths, executablePath, runCommand });
       expect(readInstallManifest(paths)?.version).toBe("2.0.0");
-      await updateCommand({ rollback: true }, { paths, executablePath, restartActiveService });
+      await updateCommand({ rollback: true }, { allowPublishedPackage: true, paths, executablePath, restartActiveService });
       expect(readInstallManifest(paths)?.version).toBe("1.0.0");
       expect(restartActiveService).toHaveBeenCalledWith("1.0.0");
     } finally {
@@ -121,7 +122,7 @@ describe("update command", () => {
     createPayload(newPayload, "0.3.1");
     fs.writeFileSync(path.join(newPayload, "node_modules", "paperclipai", "package.json"), JSON.stringify({ version: "0.3.1" }));
     flipCurrentAtomic(oldPayload, paths);
-    writeInstallManifestAtomic({ schemaVersion: 1, source: "git", version: "0.3.1", channel: "pinned", repo: "paperclipai/paperclip", ref: "master", sha: oldSha, payloadPath: oldPayload, installedAt: "2026-07-22T00:00:00.000Z", previous: [] }, paths);
+    writeInstallManifestAtomic({ schemaVersion: 1, source: "git", version: "0.3.1", channel: "pinned", repo: "HenkDz/paperclip", ref: "master", sha: oldSha, payloadPath: oldPayload, installedAt: "2026-07-22T00:00:00.000Z", previous: [] }, paths);
     writeManagedShim(paths);
     // Simulate a launcher generated before child-runtime PATH pinning existed.
     fs.writeFileSync(paths.shimPath, fs.readFileSync(paths.shimPath, "utf8").replace(/^export PATH=.*\n/m, ""));
@@ -129,7 +130,7 @@ describe("update command", () => {
     const confirm = vi.fn(async () => true);
     const restartActiveService = vi.fn(async () => true);
     const runCommand = vi.fn(async (file: string) => file === "curl" ? { stdout: JSON.stringify({ sha: newSha }), stderr: "" } : { stdout: "0.3.1\n", stderr: "" });
-    await updateCommand({}, { paths, executablePath: executable, runCommand, backup, confirm, restartActiveService, hasInstanceData: () => true, now: () => new Date("2026-07-22T12:00:00Z") });
+    await updateCommand({}, { allowPublishedPackage: true, paths, executablePath: executable, runCommand, backup, confirm, restartActiveService, hasInstanceData: () => true, now: () => new Date("2026-07-22T12:00:00Z") });
     expect(confirm).toHaveBeenCalledWith(expect.stringContaining(`commit ${newSha.slice(0, 12)}`));
     expect(fs.readFileSync(paths.shimPath, "utf8")).toContain(`export PATH='${path.dirname(process.execPath)}'`);
     expect(backup).toHaveBeenCalledOnce();
@@ -142,9 +143,9 @@ describe("update command", () => {
     const paths = resolveInstallStorePaths(); initializeInstallStore(paths);
     const sha = "3".repeat(40); const payload = payloadPathFor(paths, "git", sha.slice(0, 12)); const executable = createPayload(payload, "0.3.1");
     flipCurrentAtomic(payload, paths);
-    writeInstallManifestAtomic({ schemaVersion: 1, source: "git", version: "0.3.1", channel: "pinned", repo: "paperclipai/paperclip", ref: sha.slice(0, 12), sha, payloadPath: payload, installedAt: "2026-07-22T00:00:00.000Z", previous: [] }, paths);
+    writeInstallManifestAtomic({ schemaVersion: 1, source: "git", version: "0.3.1", channel: "pinned", repo: "HenkDz/paperclip", ref: sha.slice(0, 12), sha, payloadPath: payload, installedAt: "2026-07-22T00:00:00.000Z", previous: [] }, paths);
     const runCommand = vi.fn(async () => ({ stdout: "", stderr: "" }));
-    await updateCommand({}, { paths, executablePath: executable, runCommand });
+    await updateCommand({}, { allowPublishedPackage: true, paths, executablePath: executable, runCommand });
     expect(runCommand).not.toHaveBeenCalled();
   });
 
@@ -153,14 +154,14 @@ describe("update command", () => {
     const payload = payloadPathFor(paths, "npm", "2.0.0"); const entrypoint = createPayload(payload, "2.0.0"); flipCurrentAtomic(payload, paths);
     writeInstallManifestAtomic({ schemaVersion: 1, ...record(payload, "2.0.0"), previous: [] }, paths);
     const runCommand = vi.fn(async () => ({ stdout: '"1.0.0"\n', stderr: "" }));
-    await expect(updateCommand({ version: "1.0.0", dryRun: true }, { paths, executablePath: entrypoint, runCommand, confirm: async () => false })).rejects.toThrow("Downgrade cancelled");
+    await expect(updateCommand({ version: "1.0.0", dryRun: true }, { allowPublishedPackage: true, paths, executablePath: entrypoint, runCommand, confirm: async () => false })).rejects.toThrow("Downgrade cancelled");
   });
 
   it("requires explicit confirmation before a global npm downgrade", async () => {
     const paths = resolveInstallStorePaths();
     const executable = path.join(root, "lib", "node_modules", "paperclipai", "dist", "index.js");
     const runCommand = vi.fn(async () => ({ stdout: '"0.2.0"\n', stderr: "" }));
-    await expect(updateCommand({ version: "0.2.0" }, { paths, executablePath: executable, runCommand, confirm: async () => false })).rejects.toThrow("Downgrade cancelled");
+    await expect(updateCommand({ version: "0.2.0" }, { allowPublishedPackage: true, paths, executablePath: executable, runCommand, confirm: async () => false })).rejects.toThrow("Downgrade cancelled");
     expect(runCommand).toHaveBeenCalledTimes(1);
   });
 
@@ -180,7 +181,7 @@ describe("update command", () => {
       expect(fs.readFileSync(commandOptions!.env!.NPM_CONFIG_USERCONFIG!, "utf8")).toContain("registry=https://registry.npmjs.org");
       return { stdout: "", stderr: "" };
     });
-    await updateCommand({}, { paths, executablePath: executable, runCommand });
+    await updateCommand({}, { allowPublishedPackage: true, paths, executablePath: executable, runCommand });
     expect(runCommand).toHaveBeenCalledTimes(2);
   });
 
@@ -198,7 +199,7 @@ describe("update command", () => {
       if (file === "npm" && args[0] === "install") { const prefix = args[args.indexOf("--prefix") + 1]; createPayload(prefix, "2.0.0"); return { stdout: "", stderr: "" }; }
       return { stdout: "2.0.0\n", stderr: "" };
     });
-    await updateCommand({}, { paths, executablePath: executable, runCommand, backup, restartActiveService, hasInstanceData: () => true, now: () => new Date("2026-07-22T12:00:00Z") });
+    await updateCommand({}, { allowPublishedPackage: true, paths, executablePath: executable, runCommand, backup, restartActiveService, hasInstanceData: () => true, now: () => new Date("2026-07-22T12:00:00Z") });
     expect(fs.readFileSync(paths.shimPath, "utf8")).toContain(`export PATH='${path.dirname(process.execPath)}'`);
     expect(backup).toHaveBeenCalledOnce();
     expect(restartActiveService).toHaveBeenCalledWith("2.0.0");
@@ -217,7 +218,7 @@ describe("update command", () => {
     const backup = vi.fn(async () => { throw backupError; });
     const runCommand = vi.fn(async () => ({ stdout: '"2.0.0"\n', stderr: "" }));
 
-    await expect(updateCommand({}, { paths, executablePath: executable, runCommand, backup, hasInstanceData: () => true })).rejects.toThrow(
+    await expect(updateCommand({}, { allowPublishedPackage: true, paths, executablePath: executable, runCommand, backup, hasInstanceData: () => true })).rejects.toThrow(
       "Start the service with `paperclipai service start` and retry, or skip the backup with `paperclipai update --no-backup`.",
     );
     expect(backup).toHaveBeenCalledOnce();
@@ -236,7 +237,7 @@ describe("update command", () => {
       return { stdout: "2.0.0\n", stderr: "" };
     });
 
-    await updateCommand({}, { paths, executablePath: executable, runCommand, backup, restartActiveService: async () => false, hasInstanceData: () => false });
+    await updateCommand({}, { allowPublishedPackage: true, paths, executablePath: executable, runCommand, backup, restartActiveService: async () => false, hasInstanceData: () => false });
 
     expect(backup).not.toHaveBeenCalled();
     expect(log).toHaveBeenCalledWith(expect.stringContaining("has not been onboarded and has no data to back up"));
@@ -249,7 +250,7 @@ describe("update command", () => {
     writeInstallManifestAtomic({ schemaVersion: 1, ...record(managedPayload, "1.2.3"), channel: "pinned", previous: [] }, paths);
     const executable = path.join(root, "lib", "node_modules", "paperclipai", "dist", "index.js");
     const runCommand = vi.fn(async (_file: string, args: string[]) => args[0] === "view" ? { stdout: '"2.0.0"\n', stderr: "" } : { stdout: "", stderr: "" });
-    await updateCommand({ dryRun: true }, { paths, executablePath: executable, runCommand });
+    await updateCommand({ dryRun: true }, { allowPublishedPackage: true, paths, executablePath: executable, runCommand });
     expect(runCommand).toHaveBeenCalledWith("npm", expect.arrayContaining(["view", "paperclipai@latest"]), expect.anything());
   });
 
@@ -263,7 +264,7 @@ describe("update command", () => {
       return { stdout: "2.0.0\n", stderr: "" };
     });
     const restartActiveService = vi.fn(async (version: string) => { if (version === "2.0.0") throw new Error("health timeout"); return true; });
-    await expect(updateCommand({}, { paths, executablePath: executable, runCommand, backup: async () => undefined, restartActiveService })).rejects.toThrow("rolled back to 1.0.0");
+    await expect(updateCommand({}, { allowPublishedPackage: true, paths, executablePath: executable, runCommand, backup: async () => undefined, restartActiveService })).rejects.toThrow("rolled back to 1.0.0");
     expect(readInstallManifest(paths)?.version).toBe("1.0.0");
     expect(fs.realpathSync(paths.currentPath)).toBe(fs.realpathSync(oldPayload));
     expect(restartActiveService).toHaveBeenLastCalledWith("1.0.0");
@@ -283,6 +284,7 @@ describe("update command", () => {
     });
 
     await expect(updateCommand({}, {
+      allowPublishedPackage: true,
       paths,
       executablePath: executable,
       runCommand,
@@ -295,4 +297,27 @@ describe("update command", () => {
     expect(restartActiveService).toHaveBeenNthCalledWith(2, "1.0.0");
   });
 
+});
+
+describe("upstream distribution guard", () => {
+  it("refuses a global npm update without contacting the registry", async () => {
+    const paths = resolveInstallStorePaths();
+    const executable = path.join(root, "lib", "node_modules", "paperclipai", "dist", "index.js");
+    const runCommand = vi.fn<CommandRunner>();
+    await expect(updateCommand({ check: true }, { paths, executablePath: executable, runCommand })).rejects.toThrow(/no published package/);
+    await expect(updateCommand({ yes: true }, { paths, executablePath: executable, runCommand })).rejects.toThrow(/no published package/);
+    expect(runCommand).not.toHaveBeenCalled();
+  });
+
+  it("refuses to follow a managed git install that points at the upstream repository", async () => {
+    const paths = resolveInstallStorePaths(); initializeInstallStore(paths);
+    const payload = payloadPathFor(paths, "npm", "1.0.0");
+    const executable = createPayload(payload, "1.0.0");
+    flipCurrentAtomic(payload, paths);
+    writeInstallManifestAtomic({ schemaVersion: 1, ...record(payload, "1.0.0"), source: "git", repo: "paperclipai/paperclip", ref: "master", sha: "a".repeat(40), previous: [] }, paths);
+    writeManagedShim(paths);
+    const runCommand = vi.fn<CommandRunner>();
+    await expect(updateCommand({ yes: true }, { paths, executablePath: executable, runCommand })).rejects.toThrow(/no published package/);
+    expect(runCommand).not.toHaveBeenCalled();
+  });
 });
