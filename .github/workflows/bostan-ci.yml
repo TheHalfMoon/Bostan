@@ -74,6 +74,7 @@ jobs:
         working-directory: server
       - run: node --test scripts/*.test.mjs
         working-directory: ui
+      - run: node --test packages/db/scripts/copy-runtime-assets.test.mjs
       # bostan-local-install exercises the compiled preview CLI in cli/dist.
       - run: node scripts/build-bostan-preview.mjs
         working-directory: cli
@@ -173,6 +174,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: node --test scripts/link-plugin-dev-sdk.test.js
+      - run: node --test packages/db/scripts/copy-runtime-assets.test.mjs
       # An install/typecheck does not exercise emitted JS or runtime assets.
       # Build serially and drive the real authenticated server under plain Node.
       - run: pnpm --filter @bostan/server... --workspace-concurrency=1 build

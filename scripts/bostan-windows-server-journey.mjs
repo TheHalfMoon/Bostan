@@ -15,7 +15,7 @@
  * up (for browser onboarding) until the ready file is deleted or the time ends.
  * No provider keys, paid models, telemetry or external network are used.
  */
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
@@ -206,10 +206,13 @@ function cleanup() {
     if (error.code !== "ESRCH") return false;
   }
   try {
-    const stdout = execFileSync(resolvePrivateWindowsPowerShellBinary(), [
+    const scan = spawnSync(resolvePrivateWindowsPowerShellBinary(), [
       "-NoProfile", "-NonInteractive", "-File", path.join(repo, "scripts/bostan-native-windows-postgres-no-orphans.ps1"), "-Run",
     ], { windowsHide: true, encoding: "utf8", timeout: 15000, maxBuffer: 8192 });
-    if (!evaluateWindowsPgOrphanCheck({ status: 0, stdout }).noOrphanPostgresProcessVerified) throw new Error();
+    if (!evaluateWindowsPgOrphanCheck({
+      status: scan.status, signal: scan.signal, errorCode: scan.error?.code,
+      stdout: scan.stdout, stderr: scan.stderr,
+    }).noOrphanPostgresProcessVerified) throw new Error();
     result("independent PostgreSQL orphan scans", "3 clean snapshots", true);
   } catch {
     stage("PostgreSQL orphan verification FAILED; temporary home retained");
