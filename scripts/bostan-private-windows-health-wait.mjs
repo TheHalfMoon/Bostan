@@ -46,6 +46,9 @@ function awaitAbortable(promise, signal) {
 // call response.json(): it buffers the entire body before enforcing a limit.
 // Count actual decoded stream bytes, not an untrusted Content-Length header.
 async function readBoundedHealthJson(response, signal) {
+  const type = response.headers?.get?.('content-type');
+  if (typeof type !== 'string' || !/^application\/json(?:\s*;\s*charset=utf-8)?\s*$/i.test(type))
+    throw Error('Private localhost health content type refused');
   const declared = response.headers?.get?.('content-length');
   if (declared !== undefined && declared !== null &&
       (typeof declared !== 'string' || !/^(0|[1-9][0-9]{0,4})$/.test(declared) ||
