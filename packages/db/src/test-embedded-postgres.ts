@@ -38,6 +38,7 @@ type EmbeddedPostgresCtor = new (opts: {
   port: number;
   persistent: boolean;
   initdbFlags?: string[];
+  postgresFlags?: string[];
   onLog?: (message: unknown) => void;
   onError?: (message: unknown) => void;
 }) => EmbeddedPostgresInstance;
@@ -148,6 +149,12 @@ async function getAvailablePort(): Promise<number> {
 const EMBEDDED_POSTGRES_USER = "paperclip";
 const EMBEDDED_POSTGRES_PASSWORD = "paperclip";
 const EMBEDDED_POSTGRES_INITDB_FLAGS = ["--encoding=UTF8", "--locale=C", "--lc-messages=C"];
+// Disposable test clusters do not need crash durability. With fsync on, every
+// migration commit and the shutdown checkpoint wait for disk flushes; on
+// Windows `pg_ctl stop -m fast` alone measured 9.7 s, past Vitest's hook
+// timeout. A clean shutdown still leaves consistent files, so template copies
+// remain valid; only crash recovery is given up.
+export const EMBEDDED_POSTGRES_TEST_FLAGS = ["-c", "fsync=off", "-c", "synchronous_commit=off", "-c", "full_page_writes=off"];
 
 async function createEmbeddedPostgresTestInstance(tempDirPrefix: string) {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), tempDirPrefix));
@@ -199,6 +206,7 @@ async function createEmbeddedPostgresTestInstanceAt(dataDir: string) {
     port,
     persistent: true,
     initdbFlags: EMBEDDED_POSTGRES_INITDB_FLAGS,
+    postgresFlags: EMBEDDED_POSTGRES_TEST_FLAGS,
     onLog: (message) => logBuffer.append(message),
     onError: (message) => logBuffer.append(message),
   });
@@ -387,8 +395,9 @@ async function startEmbeddedPostgresWithRetry(tempDirPrefix: string): Promise<{
 // those checks reject it. Windows has no uid; its temp directory is already
 // per user, so the ownership and mode checks are skipped there.
 //
-// Windows bypasses the template cache until owned worker teardown is verified
-// (issue #234). It never touches existing cache entries in this mode.
+// On Windows every template build and suite stop waits for the stopped
+// postmaster and all of its children to exit before a directory is reused,
+// renamed or deleted (issue #234).
 // Set PAPERCLIP_TEST_POSTGRES_TEMPLATE=0 to bypass the cache and run the fresh
 // path for every suite. Any failure on the template path (root checks, build,
 // copy, start, or publish) falls back to the fresh path, so a broken cache can
@@ -408,9 +417,6 @@ const TEMPLATE_BUILD_STOP_TIMEOUT_MS = 30_000;
 export type EmbeddedPostgresStartMode = "template" | "fresh";
 
 function isTemplateCacheDisabled(): boolean {
-  // #234: Windows shutdown has not proved that all owned io_worker children exit.
-  // Do not publish, reuse or prune cached clusters until that proof exists.
-  // Existing cache directories are preserved without modification.
   return isEmbeddedPostgresTemplateCacheDisabled(
     process.platform,
     process.env.PAPERCLIP_TEST_POSTGRES_TEMPLATE,

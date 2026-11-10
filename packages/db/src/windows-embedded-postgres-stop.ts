@@ -127,14 +127,41 @@ function isTransientIncompleteCimSnapshot(value: unknown): boolean {
 // Use the same strict CIM identity validation before and after shutdown.
 // A bounded fresh CIM reinspection is NOT permission to proceed on ambiguity.
 type VerifiedPostgresProcess = { pid: number; parentPid: number; executable: string; creationDate: string };
+/**
+ * With a verified postmaster PID, only processes that could belong to that
+ * cluster (the PID itself or its children) need a complete identity. Other
+ * PostgreSQL processes, such as concurrently exiting backends of another
+ * suite's cluster, need only well-formed, unique process IDs; CIM often
+ * reports them mid-exit with no executable or creation time. Without a
+ * postmaster PID every entry must be fully verifiable.
+ */
+function scopeSnapshotToPostmaster(snapshot: unknown, postmasterPid: number | undefined): unknown {
+  if (postmasterPid === undefined || !Array.isArray(snapshot)) return snapshot;
+  const pids = new Set<number>();
+  const relevant: unknown[] = [];
+  for (const entry of snapshot) {
+    if (!entry || typeof entry !== "object")
+      throw Error("Ambiguous Windows PostgreSQL process identity; retaining fixture");
+    const p = entry as Partial<WindowsPostgresProcess>;
+    if (!Number.isSafeInteger(p.ProcessId) || (p.ProcessId ?? 0) <= 0
+        || !Number.isSafeInteger(p.ParentProcessId) || (p.ParentProcessId ?? -1) < 0)
+      throw Error("Ambiguous Windows PostgreSQL process identity; retaining fixture");
+    if (pids.has(p.ProcessId!))
+      throw Error("Ambiguous duplicate Windows PostgreSQL PID; retaining fixture");
+    pids.add(p.ProcessId!);
+    if (p.ProcessId === postmasterPid || p.ParentProcessId === postmasterPid) relevant.push(entry);
+  }
+  return relevant;
+}
 async function inspectVerifiedPostgresProcesses(
-  inspect: Inspector, pause: Pause,
+  inspect: Inspector, pause: Pause, postmasterPid?: number,
 ): Promise<VerifiedPostgresProcess[]> {
   for (let attempt = 0; attempt < 4; attempt += 1) {
     let snapshot: unknown;
     try { snapshot = await inspect(); } catch {
       throw Error("Unable to inspect Windows PostgreSQL processes; retaining fixture");
     }
+    snapshot = scopeSnapshotToPostmaster(snapshot, postmasterPid);
     if (!Array.isArray(snapshot) || !snapshot.every(isValidProcess)) {
       if (attempt === 3 || !isTransientIncompleteCimSnapshot(snapshot))
         throw Error("Ambiguous Windows PostgreSQL process identity; retaining fixture");
@@ -163,7 +190,7 @@ async function provePinnedPostmasterBeforeStop(
   const expected = normalizedPgCtlBinary(pgCtlExe);
   if (!expected)
     throw Error("Ambiguous pinned Windows PostgreSQL binary identity; retaining fixture");
-  const processes = await inspectVerifiedPostgresProcesses(inspect, pause);
+  const processes = await inspectVerifiedPostgresProcesses(inspect, pause, pid);
   if (!processes.some(process => process.pid === pid && process.executable === expected
       && matchesPostmasterStartToCim(startEpochSeconds, process.creationDate)))
     throw Error("Unable to prove pinned PostgreSQL postmaster identity; retaining fixture");
@@ -200,7 +227,7 @@ async function provePinnedBinaryQuiescent(
     throw Error("Ambiguous pinned Windows PostgreSQL binary identity; retaining fixture");
   let clean = 0;
   for (let attempt = 0; attempt < 20; attempt += 1) {
-    const processes = await inspectVerifiedPostgresProcesses(inspect, pause);
+    const processes = await inspectVerifiedPostgresProcesses(inspect, pause, owner?.pid);
     if (processes.some(process => process.executable === expected
         && (!owner || isOwnedByPostmaster(process, owner)))) {
       clean = 0;

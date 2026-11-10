@@ -1069,3 +1069,42 @@ it("ignores a process whose parent PID was held by an earlier process before thi
       withOwnedPostmaster(async () => [ownedChild(124, 123, "2026-10-30T11:00:00Z")]), noWait)).toBe("stopped");
   });
 });
+
+// Concurrent suites: another cluster's exiting backends often appear in CIM
+// with no executable or creation time.
+const exitingForeign = (pid: number): WindowsPostgresProcess =>
+  ({ ProcessId: pid, ParentProcessId: 900, ExecutablePath: null, CreationDate: null }) as unknown as WindowsPostgresProcess;
+it("is not blocked by another cluster's processes mid-exit once the postmaster is known", async () => {
+  await fixture(async (data) => {
+    fs.writeFileSync(path.join(data, "postmaster.pid"), validPidMarker(data));
+    let first = true;
+    expect(await stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { fs.unlinkSync(path.join(data, "postmaster.pid")); },
+      async () => {
+        if (first) { first = false; return [row(), exitingForeign(901)]; }
+        return [exitingForeign(902), ownedChild(950, 900)];
+      }, noWait)).toBe("stopped");
+  });
+});
+it("still fails closed when the stopped postmaster's own child has an ambiguous identity", async () => {
+  await fixture(async (data) => {
+    fs.writeFileSync(path.join(data, "postmaster.pid"), validPidMarker(data));
+    const ambiguousChild = { ProcessId: 124, ParentProcessId: 123, ExecutablePath: null, CreationDate: null } as unknown as WindowsPostgresProcess;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { fs.unlinkSync(path.join(data, "postmaster.pid")); },
+      withOwnedPostmaster(async () => [ambiguousChild]), noWait)).rejects.toThrow(/Ambiguous/);
+  });
+});
+it("still fails closed on malformed or duplicate foreign process IDs", async () => {
+  await fixture(async (data) => {
+    fs.writeFileSync(path.join(data, "postmaster.pid"), validPidMarker(data));
+    const malformed = { ProcessId: "x", ParentProcessId: 1, ExecutablePath: null, CreationDate: null } as unknown as WindowsPostgresProcess;
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { fs.unlinkSync(path.join(data, "postmaster.pid")); },
+      withOwnedPostmaster(async () => [malformed]), noWait)).rejects.toThrow(/Ambiguous/);
+    fs.writeFileSync(path.join(data, "postmaster.pid"), validPidMarker(data));
+    await expect(stopOwnedWindowsEmbeddedPostgres(data, binary,
+      async () => { fs.unlinkSync(path.join(data, "postmaster.pid")); },
+      withOwnedPostmaster(async () => [exitingForeign(901), exitingForeign(901)]), noWait)).rejects.toThrow(/duplicate/);
+  });
+});
