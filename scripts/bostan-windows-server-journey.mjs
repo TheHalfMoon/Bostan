@@ -10,6 +10,9 @@
  * pg_ctl before ending the server process tree, then removes the temp home.
  *
  * Usage: node scripts/bostan-windows-server-journey.mjs [--port 43117] [--startup-seconds 420]
+ *        node scripts/bostan-windows-server-journey.mjs --serve <seconds> --ready-file <path>
+ * `--serve` skips the API journey and keeps the fresh, bootstrap_pending server
+ * up (for browser onboarding) until the ready file is deleted or the time ends.
  * No provider keys, paid models, telemetry or external network are used.
  */
 import { execFileSync, spawn } from "node:child_process";
@@ -29,6 +32,13 @@ const option = (name, fallback) => {
   return index >= 0 && args[index + 1] ? Number(args[index + 1]) : fallback;
 };
 const port = option("--port", 43117);
+const serveSeconds = option("--serve", 0);
+const readyIndex = args.indexOf("--ready-file");
+const readyFile = readyIndex >= 0 ? args[readyIndex + 1] : null;
+if (serveSeconds > 0 && !readyFile) {
+  console.error("bostan-windows-server-journey: --serve requires --ready-file <path>");
+  process.exit(2);
+}
 const startupSeconds = option("--startup-seconds", 420);
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const home = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-server-journey-"));
@@ -105,6 +115,15 @@ async function journey() {
     return;
   }
   stage("health ok");
+  if (serveSeconds > 0) {
+    fs.writeFileSync(readyFile, JSON.stringify({ url: base, bootstrapStatus: health.bootstrapStatus }));
+    stage(`serving for browser onboarding (up to ${serveSeconds}s)`);
+    const until = Date.now() + serveSeconds * 1000;
+    while (Date.now() < until && fs.existsSync(readyFile) && exited === null) await new Promise((resolve) => setTimeout(resolve, 1000));
+    fs.rmSync(readyFile, { force: true });
+    result("served until released", exited === null ? "released" : `server exited ${exited}`, exited === null);
+    return;
+  }
   result("health before claim", `${health.status}/${health.deploymentMode}/${health.deploymentExposure}/${health.bootstrapStatus}`,
     health.status === "ok" && health.deploymentMode === "authenticated" && health.deploymentExposure === "private" && health.bootstrapStatus === "bootstrap_pending");
 
