@@ -179,3 +179,25 @@ test('a complete health JSON within the 4096-byte cap remains valid',async()=>{
     assert.equal(result.healthy,true);
   });
 });
+
+test('HTTP 200 with HTML media type never qualifies even when body is valid JSON',async()=>{
+  await withServer((_req,res)=>{
+    res.setHeader('Content-Type','text/html');
+    res.end(JSON.stringify(privateHealth));
+  },async url=>{
+    const result=await probe({endpoint:url,childExited:()=>false,timeoutMs:500,pollDelayMs:0,maxProbes:1});
+    assert.equal(result.healthy,false);
+    assert.equal(result.observation,'health_invalid_json');
+  });
+});
+
+test('HTTP 200 without Content-Type never qualifies',async()=>{
+  await withServer((_req,res)=>{
+    res.removeHeader('Content-Type');
+    res.end(JSON.stringify(privateHealth));
+  },async url=>{
+    const result=await probe({endpoint:url,childExited:()=>false,timeoutMs:500,pollDelayMs:0,maxProbes:1});
+    assert.equal(result.healthy,false);
+    assert.equal(result.observation,'health_invalid_json');
+  });
+});
