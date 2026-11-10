@@ -179,7 +179,8 @@ jobs:
       # Build serially and drive the real authenticated server under plain Node.
       - run: pnpm --filter @bostan/server... --workspace-concurrency=1 build
       - run: node --test scripts/bostan-server-journey-command.test.mjs
-      - run: node scripts/bostan-windows-server-journey.mjs --compiled
+      - run: node --test scripts/bostan-ci-windows-user.test.mjs
+      - run: ./scripts/bostan-ci-windows-user.ps1 -Mode Server
 
   desktop:
     name: desktop (${{ matrix.os }})
@@ -210,9 +211,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=6144
       - run: npm --prefix desktop run package
       - if: runner.os == 'Windows'
-        run: node desktop/scripts/qualify-windows-installer.mjs
-        env:
-          BOSTAN_DESKTOP_INSTALLER_QA: "1"
+        run: ./scripts/bostan-ci-windows-user.ps1 -Mode Installer
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: bostan-unsigned-qualification-${{ matrix.os }}

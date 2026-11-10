@@ -22,7 +22,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isBostanWindowsHealthReady } from "./bostan-windows-server-health.mjs";
-import { serverJourneyCommand, serverJourneyEnvironment } from "./bostan-server-journey-command.mjs";
+import { serverJourneyCommand, serverJourneyEnvironment, journeyFailureDiagnostic } from "./bostan-server-journey-command.mjs";
 import { proveOwnedWindowsHttpListener } from "./bostan-private-windows-http-listener-proof.mjs";
 import { resolvePrivateWindowsPowerShellBinary } from "./bostan-private-windows-powershell-binary.mjs";
 import { evaluateWindowsPgOrphanCheck } from "./bostan-private-windows-pg-orphan-proof.mjs";
@@ -78,6 +78,7 @@ let exited = null;
 server.on("error", () => { exited = 1; stage("server spawn failed"); });
 server.on("exit", (code) => { exited = code ?? "signal"; stage(`server exited (code ${code})`); });
 const errorCodes = new Set();
+const failureDiagnostics = [];
 for (const stream of [server.stdout, server.stderr]) {
   let buffer = "";
   stream.on("data", (chunk) => {
@@ -90,8 +91,11 @@ for (const stream of [server.stdout, server.stderr]) {
       for (const code of line.match(/\bERR_[A-Z_]{1,80}\b/g) ?? []) {
         if (errorCodes.size < 10) errorCodes.add(code);
       }
+      const diagnostic = journeyFailureDiagnostic(line, { repo, home, secret: env.BETTER_AUTH_SECRET });
+      if (diagnostic) { failureDiagnostics.push(diagnostic); if (failureDiagnostics.length > 5) failureDiagnostics.shift(); }
       for (const [pattern, name] of markers) if (!seenMarkers.has(name) && pattern.test(line)) { seenMarkers.add(name); stage(name); }
     }
+    if (buffer.length > 65536) buffer = buffer.slice(-65536);
   });
 }
 
@@ -233,6 +237,7 @@ try {
 }
 console.log("Stages:");
 if (errorCodes.size) console.log("Startup error codes: " + [...errorCodes].join(", "));
+if (results.some(check => !check.ok)) for (const diagnostic of failureDiagnostics) console.log("Startup diagnostic: " + diagnostic);
 for (const line of stages) console.log(`  ${line}`);
 console.log("Checks:");
 for (const check of results) {
