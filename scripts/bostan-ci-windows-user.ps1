@@ -39,6 +39,8 @@ try {
   $stderr = Join-Path $qaScratch 'stderr.log'
   $arguments = @('-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',('"'+$worker+'"'),'-Mode',$Mode,'-NodeBinary',('"'+$nodeBinary+'"'))
   $process = Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe') -ArgumentList $arguments -Credential $credential -LoadUserProfile -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -Wait -PassThru
+  $process.WaitForExit()
+  if ($process.ExitCode -isnot [int]) { throw 'CI worker exit status unavailable; qualification refused' }
   Get-Content -LiteralPath $stdout
   if ((Get-Item -LiteralPath $stderr).Length -gt 0) { Get-Content -LiteralPath $stderr | Write-Output }
   $exitCode = $process.ExitCode
