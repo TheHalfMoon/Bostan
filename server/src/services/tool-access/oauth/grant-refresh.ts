@@ -13,7 +13,7 @@ import { isPaperclipCloudConnectorStrategy, PaperclipCloudConnectorError, type P
 
 import { actorForSecret, type OAuthCredentialStore } from "./credential-store.js";
 import { withoutOAuthRefreshLease, withoutOAuthGrantRefreshLease, type OAuthRefreshLeases } from "./refresh-leases.js";
-import { managedConnectorProfile, oauthGrantConfig, oauthGrantExpiresAtMs } from "./client-settings.js";
+import { managedConnectorProfile, managedConnectorSubject, oauthGrantConfig, oauthGrantExpiresAtMs } from "./client-settings.js";
 import { connectionSetupUrl, connectionReconnectUrl } from "../identifiers.js";
 import { singleFlight } from "../single-flight.js";
 function asRecord(value: unknown): Record<string, unknown> {
@@ -99,14 +99,7 @@ export function createOAuthGrantRefresh(db: Db, { now, store, leases, currentClo
                 : undefined,
             );
             const cloudConnector = currentCloudConnector();
-            const connectorSubject =
-              grant.kind === "agent" && grant.subjectAgentId
-                ? `agent:${grant.subjectAgentId}`
-                : grant.kind === "user" && grant.subjectUserId
-                  ? grant.subjectUserId
-                  : typeof oauth.connectorSubjectUserId === "string"
-                    ? oauth.connectorSubjectUserId
-                    : null;
+            const connectorSubject = managedConnectorSubject(connection, grant);
             const accessRef = grant.credentialSecretRefs.find(
               (ref) => ref.configPath === "oauth.access_token",
             );

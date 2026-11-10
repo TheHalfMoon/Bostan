@@ -15,9 +15,14 @@ type GrantDependencies = {
   getConnectionRow(idOrUid: string, companyId?: string): Promise<typeof toolConnections.$inferSelect>;
   assertSecretRefs: ReturnType<typeof createConnectionCredentialValidation>;
   vercelConnect: VercelConnectClient | null;
+  releaseManagedGrant?: (
+    connection: typeof toolConnections.$inferSelect,
+    grant: typeof connectionGrants.$inferSelect,
+    actor: ActorInfo | undefined,
+  ) => Promise<string>;
 };
 
-export function createConnectionGrants(db: Db, { getConnectionRow, assertSecretRefs, vercelConnect }: GrantDependencies) {
+export function createConnectionGrants(db: Db, { getConnectionRow, assertSecretRefs, vercelConnect, releaseManagedGrant }: GrantDependencies) {
   return {
     listConnectionGrants: async (idOrUid: string, companyId?: string) => {
       const connection = await getConnectionRow(idOrUid, companyId);
@@ -521,12 +526,13 @@ replaceConnectionGrantMembers: async (
       } else if (
         isPaperclipCloudConnectorStrategy(oauthConfig(connection).strategy)
       ) {
-        // Google revocation is client-wide for a user. The managed Workspace
-        // profiles intentionally share one Paperclip-owned client, so revoking
-        // one token here could invalidate unrelated Gmail, Drive, and Calendar
-        // grants. A per-profile removal is therefore local-only. A future
-        // provider-level disconnect must warn that it removes every profile.
-        providerRevocation = "local_only_shared_client";
+        // Google revocation is client-wide for a user, and the managed
+        // Workspace profiles share one broker client, so Google is never asked
+        // to revoke here. The Bostan broker instead destroys its encrypted
+        // copy of this grant's refresh token; other profiles are unaffected.
+        providerRevocation = releaseManagedGrant
+          ? await releaseManagedGrant(connection, currentGrant, actor)
+          : "local_only_shared_client";
       }
       const grant = await db.transaction(async (tx) => {
         const [lockedGrant] = await tx.select({ id: connectionGrants.id }).from(connectionGrants)
