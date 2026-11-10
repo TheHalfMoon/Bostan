@@ -34,3 +34,19 @@ export function serverJourneyEnvironment({ home, base, port, compiled, inherited
     BOSTAN_FEEDBACK_EXPORT_ENABLED: "0", NODE_ENV: compiled ? "production" : "development",
   };
 }
+
+export function journeyFailureDiagnostic(line, { repo, home, secret }) {
+  let detail;
+  try {
+    const value = JSON.parse(line);
+    if (value.level < 50) return null;
+    detail = [value.msg, value.err?.message, ...(Array.isArray(value.recentLogs) ? value.recentLogs : [])]
+      .filter(value => typeof value === "string").join(" | ");
+  } catch {
+    if (!/\b(?:Error|FATAL|initdb:|failed)\b/i.test(line)) return null;
+    detail = line;
+  }
+  for (const value of [secret, repo, home].filter(Boolean)) detail = detail.replaceAll(value, "<redacted>");
+  return detail.replace(/\b[a-z][a-z0-9+.-]*:\/\/[^\s<>"']+/gi, "<url>")
+    .replace(/[\x00-\x1f\x7f]/g, " ").slice(0, 1000);
+}

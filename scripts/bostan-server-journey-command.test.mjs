@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { serverJourneyCommand, serverJourneyEnvironment } from "./bostan-server-journey-command.mjs";
+import { serverJourneyCommand, serverJourneyEnvironment, journeyFailureDiagnostic } from "./bostan-server-journey-command.mjs";
 
 test("compiled qualification requires the built entry and never falls back to tsx", () => {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-journey-command-"));
@@ -22,6 +22,17 @@ test("compiled qualification requires the built entry and never falls back to ts
   } finally {
     fs.rmSync(repo, { recursive: true, force: true });
   }
+});
+
+test("startup failure keeps bounded diagnosis without fixture paths, credentials or URLs", () => {
+  const values = { repo: "D:\\fixture-repo", home: "C:\\fixture-home", secret: "synthetic-secret" };
+  const line = JSON.stringify({ level: 50, msg: "Embedded PostgreSQL failed", err: { message: "initdb refused C:\\fixture-home, D:\\fixture-repo, synthetic-secret postgres://synthetic:temporary@127.0.0.1/db" } });
+  const safe = journeyFailureDiagnostic(line, values);
+  assert.match(safe, /initdb refused/);
+  for (const value of Object.values(values)) assert.equal(safe.includes(value), false);
+  assert.equal(safe.includes("synthetic:temporary"), false);
+  assert.equal(journeyFailureDiagnostic(JSON.stringify({ level: 30, msg: "ordinary status" }), values), null);
+  assert.ok(journeyFailureDiagnostic("Error: " + "x".repeat(5000), values).length <= 1000);
 });
 
 test("synthetic server refuses inherited provider keys, DB, config and Node preloads", () => {
