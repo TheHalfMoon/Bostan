@@ -22,12 +22,14 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isBostanWindowsHealthReady } from "./bostan-windows-server-health.mjs";
+import { serverJourneyCommand } from "./bostan-server-journey-command.mjs";
 
 if (process.platform !== "win32") {
   console.error("bostan-windows-server-journey: native Windows only");
   process.exit(2);
 }
 const args = process.argv.slice(2);
+const compiled = args.includes("--compiled");
 const option = (name, fallback) => {
   const index = args.indexOf(name);
   return index >= 0 && args[index + 1] ? Number(args[index + 1]) : fallback;
@@ -42,6 +44,9 @@ if (serveSeconds > 0 && !readyFile) {
 }
 const startupSeconds = option("--startup-seconds", 420);
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+// Resolve before allocating the synthetic home. Compiled mode must use plain
+// Node and built workspace exports, with no tsx/development loader fallback.
+const serverArgs = serverJourneyCommand(repo, compiled);
 const home = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-server-journey-"));
 const base = `http://127.0.0.1:${port}`;
 const t0 = Date.now();
@@ -65,7 +70,7 @@ const env = {
   DO_NOT_TRACK: "1",
   OTEL_SDK_DISABLED: "true",
   BOSTAN_FEEDBACK_EXPORT_ENABLED: "0",
-  NODE_ENV: "development",
+  NODE_ENV: compiled ? "production" : "development",
 };
 for (const key of ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY",
   "SENTRY_DSN", "OTEL_EXPORTER_OTLP_ENDPOINT", "DATABASE_URL"]) delete env[key];
@@ -79,9 +84,10 @@ const markers = [
   [/Server listener bound/, "HTTP listener bound"],
 ];
 const seenMarkers = new Set();
-const server = spawn(process.execPath, [path.join(repo, "server", "node_modules", "tsx", "dist", "cli.mjs"), "src/index.ts"],
+const server = spawn(process.execPath, serverArgs,
   { cwd: path.join(repo, "server"), env, windowsHide: true });
 stage("server process spawned");
+stage(`server mode: ${compiled ? "compiled (plain Node)" : "source (tsx)"}`);
 let exited = null;
 server.on("exit", (code) => { exited = code; stage(`server exited (code ${code})`); });
 for (const stream of [server.stdout, server.stderr]) {

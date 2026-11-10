@@ -170,3 +170,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: node --test scripts/link-plugin-dev-sdk.test.js
+      # An install/typecheck does not exercise emitted JS or runtime assets.
+      # Build serially and drive the real authenticated server under plain Node.
+      - run: pnpm --filter @bostan/server... --workspace-concurrency=1 build
+      - run: node --test scripts/bostan-server-journey-command.test.mjs
+      - run: node scripts/bostan-windows-server-journey.mjs --compiled
