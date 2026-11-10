@@ -13,7 +13,8 @@ export async function selectLoopbackPort() {
         server.listen(port, "127.0.0.1", resolve);
       });
     } catch (error) {
-      if (error.code === "EADDRINUSE") continue;
+      // Windows Hyper-V/WSL exclusions report EACCES for reserved candidates.
+      if (error.code === "EADDRINUSE" || error.code === "EACCES") continue;
       throw error;
     }
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
