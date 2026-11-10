@@ -9,6 +9,33 @@ export function isApplicationNavigation(value, origin) {
   } catch { return false; }
 }
 
+export function externalBrowserUrl(value, origin) {
+  try {
+    if (typeof value !== "string" || value.length > 8192) return null;
+    const url = new URL(value);
+    if (url.username || url.password) return null;
+    return url.protocol === "https:" || (url.protocol === "http:" && url.origin === origin) ? url.href : null;
+  } catch { return null; }
+}
+
+export function configureWindowNavigation(contents, { getOrigin, openExternal }) {
+  const guard = (event, url = event.url) => {
+    if (!isApplicationNavigation(url, getOrigin())) event.preventDefault();
+  };
+  contents.on("will-navigate", guard);
+  contents.on("will-redirect", guard);
+  contents.on("will-frame-navigate", event => guard(event));
+  contents.setWindowOpenHandler(({ url }) => {
+    // Only a currently loaded application page may hand an HTTP(S) provider
+    // authorization link to the system browser. Never create another renderer.
+    if (isApplicationNavigation(contents.getURL(), getOrigin())) {
+      const target = externalBrowserUrl(url, getOrigin());
+      if (target) openExternal(target);
+    }
+    return { action: "deny" };
+  });
+}
+
 export function desktopEnvironment({ dataDir, port, inherited = process.env }) {
   // Keep executable discovery for explicitly configured local providers, but
   // never inherit routing, provider credentials, Node preloads or telemetry.

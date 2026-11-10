@@ -26,10 +26,11 @@ Unsigned installers are not OS-trusted releases. Actual installed-artifact
 onboarding, PostgreSQL lifecycle, restart, failure recovery and platform
 qualification must pass before any release-readiness claim.
 
-The renderer has no Node integration or IPC bridge. External navigation and new
-windows are blocked; browser permissions are denied by default. Provider/OAuth
-handoffs and microphone workflows need explicit desktop qualification before
-being advertised as supported.
+The renderer has no Node integration or IPC bridge. Cross-origin navigation,
+redirects and frames are blocked. HTTP(S) provider sign-in windows open in the
+system browser after validating the scheme, credentials and initiating app
+origin. Browser permissions are denied by default. Real provider/OAuth handoffs
+and microphone workflows still need live desktop qualification.
 
 Application state lives under the OS user's Bostan application-data directory,
 outside installation files. Authentication is private and signup/first-admin

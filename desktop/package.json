@@ -9,7 +9,7 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test app/*.test.mjs",
-    "test:host": "node --test scripts/server-child-electron.test.mjs",
+    "test:host": "node --test --test-concurrency=1 scripts/*-electron.test.mjs",
     "package": "node scripts/package.mjs",
     "prepack": "node ../scripts/bostan-release-disabled.mjs",
     "prepublishOnly": "node ../scripts/bostan-release-disabled.mjs"

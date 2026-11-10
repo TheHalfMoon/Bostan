@@ -21,6 +21,12 @@ assert.equal(installers.length, 1, "Expected exactly one prepared Windows instal
 const appData = path.join(process.env.APPDATA, "Bostan");
 assert.equal(fs.existsSync(appData), false, "Never qualify against pre-existing Bostan data");
 const scanner = resolvePrivateWindowsPowerShellBinary();
+function uninstallRegistrations() {
+  return Number(execFileSync(scanner, ["-NoProfile", "-NonInteractive", "-Command", "@(Get-ChildItem -LiteralPath 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall' -ErrorAction SilentlyContinue | Get-ItemProperty | Where-Object DisplayName -eq 'Bostan').Count"], {
+    encoding: "utf8", windowsHide: true, timeout: 15000,
+  }).trim());
+}
+assert.equal(uninstallRegistrations(), 0, "Never overwrite an existing Bostan installation");
 function noPostgres() {
   const scan = spawnSync(scanner, ["-NoProfile", "-NonInteractive", "-File", path.join(repo, "scripts/bostan-native-windows-postgres-no-orphans.ps1"), "-Run"], {
     encoding: "utf8", timeout: 15000, windowsHide: true, maxBuffer: 8192,
@@ -39,6 +45,7 @@ try {
   execFileSync(path.join(out, installers[0]), ["/S", "/D=" + install], { windowsHide: true, timeout: 120000, stdio: "pipe" });
   const executable = path.join(install, "Bostan.exe");
   assert.equal(fs.existsSync(executable), true, "Installer did not create the application executable");
+  assert.equal(uninstallRegistrations(), 1, "Installer registration is missing or ambiguous");
   // Prove these are unsigned qualification artifacts, never OS-trusted releases.
   const signature = execFileSync(scanner, ["-NoProfile", "-NonInteractive", "-Command", "(Get-AuthenticodeSignature -LiteralPath $env:BOSTAN_QA_EXECUTABLE).Status.ToString()"], {
     env: { ...process.env, BOSTAN_QA_EXECUTABLE: executable }, encoding: "utf8", windowsHide: true,
@@ -104,7 +111,14 @@ try {
   fs.writeFileSync(sentinel, "preserved");
   const uninstaller = fs.readdirSync(install).find(name => /^Uninstall.*\.exe$/i.test(name));
   assert.ok(uninstaller);
-  execFileSync(path.join(install, uninstaller), ["/S"], { windowsHide: true, timeout: 120000, stdio: "pipe" });
+  // NSIS normally relaunches from TEMP and lets its original process exit early.
+  // Run an external copy with _?= (as electron-builder itself does) so waiting
+  // for this process means the actual uninstall completed.
+  const uninstallCopy = path.join(temp, "bostan-uninstall-qa.exe");
+  fs.copyFileSync(path.join(install, uninstaller), uninstallCopy);
+  execFileSync(uninstallCopy, ["/S", "_?=" + install], { windowsHide: true, timeout: 120000, stdio: "pipe" });
+  assert.equal(fs.existsSync(executable), false, "Uninstaller did not remove the installed application");
+  assert.equal(uninstallRegistrations(), 0, "Uninstaller registration remains");
   assert.equal(fs.readFileSync(sentinel, "utf8"), "preserved", "Uninstall deleted application data");
   clean = true;
   console.log("BOSTAN_INSTALLED_WINDOWS_ONBOARDING_RESTART_UNINSTALL_PASS (synthetic account and deferred agent; no real model execution)");

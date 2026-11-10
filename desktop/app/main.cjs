@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, utilityProcess, Menu } = require("electron");
+const { app, BrowserWindow, dialog, utilityProcess, Menu, shell } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 const net = require("node:net");
@@ -11,11 +11,13 @@ else {
   let exited = false;
   let quitting = false;
   let stopping = false;
+  let shutdownTimer;
 
   app.on("second-instance", () => {
-    if (window?.isMinimized()) window.restore();
-    window?.show();
-    window?.focus();
+    if (window && !window.isDestroyed()) {
+      if (window.isMinimized()) window.restore();
+      window.show(); window.focus();
+    }
   });
 
   async function freePort() {
@@ -30,11 +32,13 @@ else {
   }
 
   async function start() {
-    const { desktopEnvironment, isApplicationNavigation } = await import("./policy.mjs");
+    const { desktopEnvironment, configureWindowNavigation } = await import("./policy.mjs");
     const { protectDataDirectory } = await import("./data-directory.mjs");
     Menu.setApplicationMenu(Menu.buildFromTemplate([
       { label: "Bostan", submenu: [{ role: "about" }, { type: "separator" }, { role: "quit" }] },
-      { role: "editMenu" }, { role: "viewMenu" }, { role: "windowMenu" },
+      { role: "editMenu" },
+      { label: "View", submenu: [{ role: "reload" }, { role: "resetZoom" }, { role: "zoomIn" }, { role: "zoomOut" }, { role: "togglefullscreen" }] },
+      { role: "windowMenu" },
     ]));
     let origin = null;
     window = new BrowserWindow({
@@ -42,9 +46,14 @@ else {
       icon: path.join(__dirname, "bostan.ico"),
       webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true },
     });
-    window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
-    window.webContents.on("will-navigate", (event, url) => {
-      if (!isApplicationNavigation(url, origin)) event.preventDefault();
+    configureWindowNavigation(window.webContents, {
+      getOrigin: () => origin,
+      openExternal: url => { void shell.openExternal(url).catch(() => dialog.showErrorBox("Could not open browser", "Open your browser and retry the provider's sign-in from Bostan.")); },
+    });
+    // Keep a reachable window while the backend drains. A failed shutdown must
+    // leave the user able to retry or inspect the still-running application.
+    window.on("close", event => {
+      if (!quitting && child && !exited) { event.preventDefault(); app.quit(); }
     });
     window.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
     window.webContents.session.setPermissionCheckHandler(() => false);
@@ -74,6 +83,13 @@ else {
         app.quit();
       }
     });
+    child.on("message", message => {
+      if (message?.type === "shutdown-failed" && stopping) {
+        clearTimeout(shutdownTimer); stopping = false;
+        dialog.showErrorBox("Bostan could not stop", "The backend did not confirm a clean shutdown. Your data is retained. Close Bostan again to retry.");
+        if (window && !window.isDestroyed()) { window.show(); window.focus(); }
+      }
+    });
     const actualPort = await new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error("Bostan startup did not complete. Your data is retained.")), 180_000);
       child.on("message", message => {
@@ -97,12 +113,12 @@ else {
     event.preventDefault();
     if (stopping) return;
     stopping = true;
-    const timer = setTimeout(() => {
+    shutdownTimer = setTimeout(() => {
       stopping = false;
       dialog.showErrorBox("Bostan is still stopping", "The backend has not confirmed a clean shutdown. Your data is retained. Close Bostan again to retry.");
     }, 60_000);
     child.once("exit", () => {
-      clearTimeout(timer); quitting = true; app.quit();
+      clearTimeout(shutdownTimer); quitting = true; app.quit();
     });
     child.postMessage({ type: "shutdown" });
   });

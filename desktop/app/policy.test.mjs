@@ -3,13 +3,22 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { desktopEnvironment, isApplicationNavigation, persistentAuthSecret } from "./policy.mjs";
+import { desktopEnvironment, isApplicationNavigation, persistentAuthSecret, externalBrowserUrl } from "./policy.mjs";
 
 test("renderer navigation stays inside its exact uncredentialed application origin", () => {
   const origin = "http://127.0.0.1:41321";
   assert.equal(isApplicationNavigation(origin + "/ABC/agents?view=all", origin), true);
   for (const url of ["https://example.test", "http://127.0.0.1:41322", "http://user@127.0.0.1:41321", "file:///tmp/test", "javascript:alert(1)"]) {
     assert.equal(isApplicationNavigation(url, origin), false);
+  }
+});
+
+test("external provider handoffs allow HTTPS and this application's own OAuth start endpoint", () => {
+  const origin = "http://127.0.0.1:41321";
+  assert.equal(externalBrowserUrl("https://accounts.example.test/authorize?client_id=synthetic", origin), "https://accounts.example.test/authorize?client_id=synthetic");
+  assert.equal(externalBrowserUrl(origin + "/api/oauth/start", origin), origin + "/api/oauth/start");
+  for (const value of ["file:///tmp/script", "javascript:alert(1)", "https://user:password@example.test", "http://127.0.0.1:41322/oauth", "http://example.test", "not a URL"]) {
+    assert.equal(externalBrowserUrl(value, origin), null);
   }
 });
 
