@@ -1,5 +1,7 @@
 # Installing Paperclip
 
+> **Bostan release safety notice (2026-11-10):** This document contains inherited upstream installation instructions retained for compatibility research. **Do not execute any `paperclip.ing` download, `paperclipai` npm/npx install, upstream GitHub raw installer, or `scripts/install.sh` command to install Bostan.** Those commands do not install a qualified Bostan desktop application and may download or execute a different product. Bostan has **no approved public installer, desktop package, or release**. The local `scripts/install.sh` entrypoint deliberately refuses execution. For Bostan source-only synthetic qualification, follow [Bostan's acceptance instructions](../docs/bostan/B0_FIRST_RUN_BROWSER_RECEIPT.md) and the repository's current safety gates. This is a warning, not release authorization.
+
 Paperclip supports a managed installation, an ephemeral `npx` tryout, a
 traditional global npm installation, and development from a source checkout.
 The managed installation is recommended because it provides atomic updates,
