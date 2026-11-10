@@ -1,0 +1,38 @@
+{
+  "name": "@bostan/desktop",
+  "version": "0.3.1",
+  "description": "Bostan desktop application",
+  "productName": "Bostan",
+  "private": true,
+  "license": "MIT",
+  "main": "app/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test app/*.test.mjs",
+    "test:host": "node --test scripts/server-child-electron.test.mjs",
+    "package": "node scripts/package.mjs",
+    "prepack": "node ../scripts/bostan-release-disabled.mjs",
+    "prepublishOnly": "node ../scripts/bostan-release-disabled.mjs"
+  },
+  "devDependencies": {
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0"
+  },
+  "overrides": { "minimatch": "11.0.1" },
+  "build": {
+    "appId": "io.bostan.desktop",
+    "productName": "Bostan",
+    "asar": true,
+    "files": ["app/**/*", "!app/**/*.test.mjs", "package.json"],
+    "directories": { "output": "dist" },
+    "extraResources": [{ "from": "runtime", "to": "runtime" }],
+    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }], "signAndEditExecutable": false },
+    "nsis": {
+      "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "mac": { "target": ["dmg"], "category": "public.app-category.productivity", "identity": null },
+    "linux": { "target": ["dir"], "category": "Office" },
+    "publish": null
+  }
+}
