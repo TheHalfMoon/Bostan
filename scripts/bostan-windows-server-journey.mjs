@@ -21,6 +21,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isBostanWindowsHealthReady } from "./bostan-windows-server-health.mjs";
 
 if (process.platform !== "win32") {
   console.error("bostan-windows-server-journey: native Windows only");
@@ -105,8 +106,9 @@ async function journey() {
   const deadline = Date.now() + startupSeconds * 1000;
   while (Date.now() < deadline && exited === null) {
     try {
-      health = await json(await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(2000) }));
-      if (health && health.status !== "starting") break;
+      const response = await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(2000) });
+      health = response.status === 200 ? await json(response) : null;
+      if (health?.status === "ok") break;
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
@@ -114,6 +116,10 @@ async function journey() {
     result("health ready within startup budget", health?.status ?? "no answer", false);
     return;
   }
+  const initialState = `${health.status}/${health.deploymentMode}/${health.deploymentExposure}/${health.bootstrapStatus}`;
+  const ready = isBostanWindowsHealthReady(health);
+  result("health before claim", initialState, ready);
+  if (!ready) return; // Never run signup or open a browser against an unexpected listener.
   stage("health ok");
   if (serveSeconds > 0) {
     fs.writeFileSync(readyFile, JSON.stringify({ url: base, bootstrapStatus: health.bootstrapStatus }));
@@ -124,9 +130,6 @@ async function journey() {
     result("served until released", exited === null ? "released" : `server exited ${exited}`, exited === null);
     return;
   }
-  result("health before claim", `${health.status}/${health.deploymentMode}/${health.deploymentExposure}/${health.bootstrapStatus}`,
-    health.status === "ok" && health.deploymentMode === "authenticated" && health.deploymentExposure === "private" && health.bootstrapStatus === "bootstrap_pending");
-
   const origin = base;
   async function signUp(tag) {
     const response = await fetch(`${base}/api/auth/sign-up/email`, {
