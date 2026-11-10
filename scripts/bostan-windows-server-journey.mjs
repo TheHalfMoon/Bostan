@@ -22,7 +22,10 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isBostanWindowsHealthReady } from "./bostan-windows-server-health.mjs";
-import { serverJourneyCommand } from "./bostan-server-journey-command.mjs";
+import { serverJourneyCommand, serverJourneyEnvironment } from "./bostan-server-journey-command.mjs";
+import { proveOwnedWindowsHttpListener } from "./bostan-private-windows-http-listener-proof.mjs";
+import { resolvePrivateWindowsPowerShellBinary } from "./bostan-private-windows-powershell-binary.mjs";
+import { evaluateWindowsPgOrphanCheck } from "./bostan-private-windows-pg-orphan-proof.mjs";
 
 if (process.platform !== "win32") {
   console.error("bostan-windows-server-journey: native Windows only");
@@ -56,24 +59,7 @@ const results = [];
 const stage = (name) => stages.push(`${seconds().padStart(6)}s ${name}`);
 const result = (name, value, ok) => results.push({ name, value, ok });
 
-const env = {
-  ...process.env,
-  PAPERCLIP_HOME: home,
-  PAPERCLIP_INSTANCE_ID: "windows-journey",
-  PORT: String(port),
-  HOST: "127.0.0.1",
-  PAPERCLIP_DEPLOYMENT_MODE: "authenticated",
-  PAPERCLIP_DEPLOYMENT_EXPOSURE: "private",
-  PAPERCLIP_AUTH_PUBLIC_BASE_URL: base,
-  BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
-  BOSTAN_OFFLINE: "1",
-  DO_NOT_TRACK: "1",
-  OTEL_SDK_DISABLED: "true",
-  BOSTAN_FEEDBACK_EXPORT_ENABLED: "0",
-  NODE_ENV: compiled ? "production" : "development",
-};
-for (const key of ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY",
-  "SENTRY_DSN", "OTEL_EXPORTER_OTLP_ENDPOINT", "DATABASE_URL"]) delete env[key];
+const env = serverJourneyEnvironment({ home, base, port, compiled });
 
 // Stage markers come from the server's own log lines; nothing else is kept.
 const markers = [
@@ -89,7 +75,9 @@ const server = spawn(process.execPath, serverArgs,
 stage("server process spawned");
 stage(`server mode: ${compiled ? "compiled (plain Node)" : "source (tsx)"}`);
 let exited = null;
-server.on("exit", (code) => { exited = code; stage(`server exited (code ${code})`); });
+server.on("error", () => { exited = 1; stage("server spawn failed"); });
+server.on("exit", (code) => { exited = code ?? "signal"; stage(`server exited (code ${code})`); });
+const errorCodes = new Set();
 for (const stream of [server.stdout, server.stderr]) {
   let buffer = "";
   stream.on("data", (chunk) => {
@@ -98,6 +86,10 @@ for (const stream of [server.stdout, server.stderr]) {
     while ((newline = buffer.indexOf("\n")) >= 0) {
       const line = buffer.slice(0, newline);
       buffer = buffer.slice(newline + 1);
+      // Retain bounded diagnostic codes only, never raw paths or server logs.
+      for (const code of line.match(/\bERR_[A-Z_]{1,80}\b/g) ?? []) {
+        if (errorCodes.size < 10) errorCodes.add(code);
+      }
       for (const [pattern, name] of markers) if (!seenMarkers.has(name) && pattern.test(line)) { seenMarkers.add(name); stage(name); }
     }
   });
@@ -126,6 +118,10 @@ async function journey() {
   const ready = isBostanWindowsHealthReady(health);
   result("health before claim", initialState, ready);
   if (!ready) return; // Never run signup or open a browser against an unexpected listener.
+  if (compiled) {
+    await proveOwnedWindowsHttpListener({ port, expectedPid: server.pid, childAlive: () => exited === null });
+    result("compiled HTTP listener belongs to spawned server", true, true);
+  }
   stage("health ok");
   if (serveSeconds > 0) {
     fs.writeFileSync(readyFile, JSON.stringify({ url: base, bootstrapStatus: health.bootstrapStatus }));
@@ -191,7 +187,7 @@ function cleanup() {
   })(home, 0);
   for (const marker of markersFound) {
     try {
-      execFileSync(pgCtl, ["-D", path.dirname(marker), "-m", "fast", "-w", "-t", "40", "stop"], { stdio: "ignore" });
+      execFileSync(pgCtl, ["-D", path.dirname(marker), "-m", "fast", "-w", "-t", "40", "stop"], { windowsHide: true, stdio: "ignore" });
       stage("embedded PostgreSQL stopped with pg_ctl");
     } catch {
       stage("pg_ctl stop FAILED; temp home retained");
@@ -199,8 +195,25 @@ function cleanup() {
     }
   }
   if (exited === null) {
-    try { execFileSync("taskkill", ["/PID", String(server.pid), "/T", "/F"], { stdio: "ignore" }); } catch {}
+    try { execFileSync("taskkill", ["/PID", String(server.pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" }); } catch {}
     stage("server process tree stopped");
+  }
+  try {
+    process.kill(server.pid, 0);
+    stage("server still alive; temporary home retained");
+    return false;
+  } catch (error) {
+    if (error.code !== "ESRCH") return false;
+  }
+  try {
+    const stdout = execFileSync(resolvePrivateWindowsPowerShellBinary(), [
+      "-NoProfile", "-NonInteractive", "-File", path.join(repo, "scripts/bostan-native-windows-postgres-no-orphans.ps1"), "-Run",
+    ], { windowsHide: true, encoding: "utf8", timeout: 15000, maxBuffer: 8192 });
+    if (!evaluateWindowsPgOrphanCheck({ status: 0, stdout }).noOrphanPostgresProcessVerified) throw new Error();
+    result("independent PostgreSQL orphan scans", "3 clean snapshots", true);
+  } catch {
+    stage("PostgreSQL orphan verification FAILED; temporary home retained");
+    return false;
   }
   fs.rmSync(home, { recursive: true, force: true });
   stage("temporary home removed");
@@ -216,6 +229,7 @@ try {
   if (!cleanup()) failed = true;
 }
 console.log("Stages:");
+if (errorCodes.size) console.log("Startup error codes: " + [...errorCodes].join(", "));
 for (const line of stages) console.log(`  ${line}`);
 console.log("Checks:");
 for (const check of results) {
