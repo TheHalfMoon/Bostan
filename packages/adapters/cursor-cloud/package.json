@@ -29,7 +29,7 @@
     "prepublishOnly": "node ../../../scripts/bostan-release-disabled.mjs"
   },
   "dependencies": {
-    "@cursor/sdk": "^1.0.28",
+    "@cursor/sdk": "^1.3.1",
     "@bostan/adapter-utils": "workspace:*",
     "picocolors": "^1.1.1"
   },
