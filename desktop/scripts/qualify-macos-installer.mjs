@@ -52,6 +52,10 @@ let dataIdentity;
 let clean = false;
 const env = { ...process.env };
 for (const key of Object.keys(env)) if (/^(?:ELECTRON_RUN_AS_NODE|NODE_OPTIONS|DATABASE_|PAPERCLIP_|BOSTAN_|OPENAI_|ANTHROPIC_|OPENROUTER_|GEMINI_|GOOGLE_|SENTRY_|OTEL_)/i.test(key)) delete env[key];
+const startedAt = Date.now();
+function phase(name) {
+  console.log("BOSTAN_MACOS_INSTALLER_PHASE " + JSON.stringify({ phase: name, elapsedMs: Date.now() - startedAt }));
+}
 function assertOwnedDirectory(directory, parent, identity) {
   const actual = fs.lstatSync(directory);
   assert.ok(identity && actual.isDirectory() && !actual.isSymbolicLink());
@@ -60,11 +64,15 @@ function assertOwnedDirectory(directory, parent, identity) {
   assert.equal(actual.dev, identity.dev); assert.equal(actual.ino, identity.ino);
 }
 try {
+  phase("mount_begin");
   execFileSync("/usr/bin/hdiutil", ["attach", "-readonly", "-nobrowse", "-mountpoint", mount, image], { stdio: "pipe", timeout: 60000 });
   mounted = true;
+  phase("mount_complete");
   const source = path.join(mount, "Bostan.app");
   assert.ok(fs.lstatSync(source).isDirectory() && !fs.lstatSync(source).isSymbolicLink());
+  phase("install_begin");
   execFileSync("/usr/bin/ditto", [source, installedApp], { stdio: "pipe", timeout: 120000 });
+  phase("install_complete");
   installedIdentity = fs.lstatSync(installedApp);
   execFileSync("/usr/bin/hdiutil", ["detach", mount], { stdio: "pipe", timeout: 60000 });
   mounted = false;
@@ -72,9 +80,12 @@ try {
   assert.ok(fs.statSync(executable).isFile(), "Disk image did not install an application executable");
   async function launch() {
     assertOwnedDirectory(installedApp, applications, installedIdentity);
+    phase("launch_begin");
     application = await _electron.launch({ executablePath: executable, env, timeout: 180000 });
+    phase("electron_connected");
     const actual = await application.evaluate(({ app }) => app.getPath("userData"));
     assert.equal(path.resolve(actual), appData);
+    phase("data_path_verified");
     if (!dataIdentity) {
       assert.equal(fs.realpathSync(appData), appData);
       fs.writeFileSync(path.join(appData, ".bostan-installer-qa-owned"), "disposable-ci", { flag: "wx", mode: 0o600 });
@@ -84,14 +95,17 @@ try {
       assert.equal(fs.readFileSync(path.join(appData, ".bostan-installer-qa-owned"), "utf8"), "disposable-ci");
     }
     const page = await application.firstWindow();
+    phase("first_window");
     await page.waitForURL(url => url.protocol === "http:" && url.hostname === "127.0.0.1", { timeout: 180000 });
+    phase("backend_page_ready");
     return page;
   }
   await qualifyInstalledApp({
     launch,
-    close: async () => { await application.close(); application = null; },
+    close: async () => { phase("close_begin"); await application.close(); application = null; phase("close_complete"); },
     afterClose: noPostgres,
   });
+  phase("onboarding_restart_complete");
   const sentinel = path.join(appData, "data/installer-data-preservation-qa");
   fs.writeFileSync(sentinel, "preserved", { flag: "wx", mode: 0o600 });
   assertOwnedDirectory(installedApp, applications, installedIdentity);
@@ -101,7 +115,7 @@ try {
   noPostgres();
   clean = true;
 } finally {
-  if (application) await application.close();
+  if (application) { phase("failure_close_begin"); await application.close(); phase("failure_close_complete"); }
   if (mounted) execFileSync("/usr/bin/hdiutil", ["detach", mount], { stdio: "pipe", timeout: 60000 });
   noPostgres();
   if (clean) {

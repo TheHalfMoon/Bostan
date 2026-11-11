@@ -204,3 +204,8 @@ traversal, absolute paths and nonportable separators. The real matcher/copy
 regressions include nonempty metadata files so omission cannot pass unnoticed.
 No installer acceptance is claimed until exact runtime equality and the actual
 installed lifecycle both pass.
+# Native installer continuation, 2026-11-11
+
+At head 61c05af50ef8818e1333cb1e299eebe7acf99527, run 43039500940 passed both native package builders and exact runtime resource comparisons. Windows installed qualification then failed at the existing 120-second NSIS installation bound (job 130587412100); no onboarding or uninstall acceptance was established. macOS installed qualification emitted no progress before the workflow's 60-minute job budget canceled it (job 130587412492). Runner cleanup reaped Electron/helper processes; this does not prove clean application shutdown. The separate compiled Windows lane still reported PostgreSQL chmod EPERM.
+
+The next diagnostic delta preserves timeouts, assertions and cleanup policy. It records bounded path-free extraction facts when Windows installation fails, and fixed macOS mount/install/launch/page/close phases with elapsed time. These observations are intended to discriminate the actual failure; they do not establish a fix. Local desktop suite remains 24 PASS / 1 Windows skip for POSIX executable-bit semantics, diff check PASS. Independent fresh diagnostic review found no must-fix findings; its verification-marker ordering suggestion was applied. Native rerun remains required.

@@ -42,7 +42,33 @@ let clean = false;
 const env = { ...process.env };
 for (const key of Object.keys(env)) if (/^(?:ELECTRON_RUN_AS_NODE|NODE_OPTIONS|DATABASE_|PAPERCLIP_|BOSTAN_|OPENAI_|ANTHROPIC_|OPENROUTER_|GEMINI_|GOOGLE_|SENTRY_|OTEL_)/i.test(key)) delete env[key];
 try {
-  execFileSync(path.join(out, installers[0]), ["/S", "/D=" + install], { windowsHide: true, timeout: 120000, stdio: "pipe" });
+  console.log("BOSTAN_WINDOWS_INSTALLER_PHASE install_begin");
+  try {
+    execFileSync(path.join(out, installers[0]), ["/S", "/D=" + install], { windowsHide: true, timeout: 120000, stdio: "pipe" });
+  } catch (error) {
+    // Fixed, bounded facts distinguish extraction progress from a pre-install hang.
+    // Never walk links, print paths, or replace the original installer failure.
+    const snapshot = { installerFailed: true, installedExecutable: false, entries: 0, scanCapped: false, scanFailed: false };
+    try {
+      snapshot.installedExecutable = fs.lstatSync(path.join(install, "Bostan.exe"), { throwIfNoEntry: false })?.isFile() === true;
+      const pending = [install];
+      while (pending.length && snapshot.entries < 4096) {
+        const directory = pending.pop();
+        const stat = fs.lstatSync(directory, { throwIfNoEntry: false });
+        if (!stat?.isDirectory() || stat.isSymbolicLink()) continue;
+        const entries = fs.readdirSync(directory, { withFileTypes: true });
+        for (const entry of entries) {
+          if (snapshot.entries === 4096) { snapshot.scanCapped = true; break; }
+          snapshot.entries++;
+          if (entry.isDirectory() && !entry.isSymbolicLink()) pending.push(path.join(directory, entry.name));
+        }
+      }
+      snapshot.scanCapped ||= pending.length > 0;
+    } catch { snapshot.scanFailed = true; }
+    console.log("BOSTAN_WINDOWS_INSTALLER_FAILURE " + JSON.stringify(snapshot));
+    throw error;
+  }
+  console.log("BOSTAN_WINDOWS_INSTALLER_PHASE install_complete");
   const executable = path.join(install, "Bostan.exe");
   assert.equal(fs.existsSync(executable), true, "Installer did not create the application executable");
   assert.equal(uninstallRegistrations(), 1, "Installer registration is missing or ambiguous");
