@@ -170,3 +170,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: node --test scripts/link-plugin-dev-sdk.test.js
+      - run: pnpm run preflight:workspace-links
+      - run: pnpm --filter @bostan/plugin-sdk ensure-build-deps
+      - run: pnpm exec vitest run server/src/__tests__/agent-directory-probe.test.ts -t MAX_PATH

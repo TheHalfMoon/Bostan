@@ -158,7 +158,10 @@ export const agentDirectoryTransferCleanupProgram = `${childNameHelper} const re
 export async function observeLocalAgentDirectory(root: string) {
   const result = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
     childProcess.execFile(process.execPath, ["-e", agentDirectoryProbeProgram, root], {
-      cwd: root, env: {}, timeout: 10_000, maxBuffer: 1024, killSignal: "SIGKILL", encoding: "utf8",
+      // Windows CreateProcess needs a namespaced cwd for deep per-run paths.
+      // Keep the canonical argument unchanged for the probe's identity checks.
+      cwd: process.platform === "win32" ? path.toNamespacedPath(root) : root,
+      env: {}, timeout: 10_000, maxBuffer: 1024, killSignal: "SIGKILL", encoding: "utf8",
     }, (error, stdout, stderr) => { if (error) reject(error); else resolve({ stdout, stderr }); });
   });
   if (result.stdout.length > 1024) throw new Error("Agent directory observation exceeds bound");
