@@ -89,7 +89,7 @@ try {
   const artifacts = await build({
     projectDir: desktop, publish: "never",
     config: {
-      extraResources: runtimeResourceEntries(stage),
+      extraResources: runtimeResourceEntries(stage, payload),
       afterPack: context => verifyPackagedRuntime(context, payload),
     },
   });

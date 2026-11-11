@@ -194,3 +194,13 @@ the omission under the old mapping, then require exact payload equality and
 load a nested dependency under both resource layouts with the corrected mapping.
 Strict runtime closure validation remains unchanged; native artifact acceptance
 still requires a fresh successful run.
+
+The next run `43034666672` at `97ff8a77` reached afterPack on both native
+platforms. The only remaining differences were two Undici `.gitkeep` files.
+The installed `builder-util` walker always skips `.gitkeep` and `.DS_Store`.
+Verified regular files with those names now receive explicit file mappings;
+their bytes are preserved rather than removed or ignored. Mappings reject
+traversal, absolute paths and nonportable separators. The real matcher/copy
+regressions include nonempty metadata files so omission cannot pass unnoticed.
+No installer acceptance is claimed until exact runtime equality and the actual
+installed lifecycle both pass.

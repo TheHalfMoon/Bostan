@@ -43,6 +43,9 @@ for (const platform of ["win32", "darwin"]) test(`includes production dependenci
   const dependency = "node_modules/.pnpm/demo/node_modules/@bostan/demo/index.js";
   fs.mkdirSync(path.dirname(path.join(stage, dependency)), { recursive: true });
   fs.writeFileSync(path.join(stage, dependency), "module.exports = 'production dependency';");
+  const metadata = path.join(path.dirname(dependency), ".gitkeep");
+  fs.writeFileSync(path.join(stage, metadata), "retained package metadata");
+  fs.writeFileSync(path.join(stage, "node_modules/.DS_Store"), "retained source bytes");
   const expected = await captureRuntimePayload(stage);
   async function copy(entries) {
     const matchers = getFileMatchers({ extraResources: entries }, "extraResources", path.dirname(runtime), {
@@ -53,10 +56,17 @@ for (const platform of ["win32", "darwin"]) test(`includes production dependenci
   // Preserve the failing boundary: a raw copyDir test cannot expose this filter.
   await copy([{ from: stage, to: "runtime" }]);
   assert.equal(fs.existsSync(path.join(runtime, dependency)), false);
-  await assert.rejects(verifyPackagedRuntime(context, expected), /"missing":1/);
-  await copy(runtimeResourceEntries(stage));
+  await assert.rejects(verifyPackagedRuntime(context, expected), /"missing":3/);
+  await copy(runtimeResourceEntries(stage, expected));
   await verifyPackagedRuntime(context, expected);
   assert.equal(createRequire(import.meta.url)(path.join(runtime, dependency)), "production dependency");
+  assert.equal(fs.readFileSync(path.join(runtime, metadata), "utf8"), "retained package metadata");
+});
+
+test("metadata resource mappings refuse traversal and nonportable separators", () => {
+  for (const file of ["../.gitkeep", "/foreign/.gitkeep", "safe/..\\../.gitkeep", "C:foreign/.gitkeep"]) {
+    assert.throws(() => runtimeResourceEntries("unused-stage", [{ path: file, kind: "file" }]), /Non-portable/);
+  }
 });
 
 test("refuses a missing interface in the packaged runtime", async t => {

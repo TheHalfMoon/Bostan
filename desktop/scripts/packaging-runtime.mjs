@@ -52,9 +52,20 @@ export function packagedRuntimePath(context) {
 
 /** electron-builder always filters a source root's node_modules directory.
  * A separate source root is required to include the verified production graph. */
-export function runtimeResourceEntries(stage) {
-  return [{ from: stage, to: "runtime" },
+export function runtimeResourceEntries(stage, payload) {
+  const entries = [{ from: stage, to: "runtime" },
     { from: path.join(stage, "node_modules"), to: "runtime/node_modules" }];
+  // builder-util's directory walker also skips these names unconditionally.
+  // Explicit file sources bypass that walker and preserve the verified bytes.
+  for (const file of payload) {
+    if (file.kind !== "file" || ![".gitkeep", ".DS_Store"].includes(path.posix.basename(file.path))) continue;
+    if (/[\\:\x00-\x1f]/.test(file.path) || path.posix.isAbsolute(file.path)
+        || file.path.split("/").some(segment => !segment || segment === "." || segment === "..")) {
+      throw new Error("Non-portable Bostan runtime metadata path");
+    }
+    entries.push({ from: path.join(stage, file.path), to: "runtime/" + file.path });
+  }
+  return entries;
 }
 
 /** Fail packaging before accepting an installer if any runtime byte, link or
