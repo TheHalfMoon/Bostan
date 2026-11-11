@@ -189,6 +189,20 @@ function cleanup() {
       else if (entry.name === "postmaster.pid") markersFound.push(full);
     }
   })(home, 0);
+  // Stop only the HTTP server PID first, not its process tree: PostgreSQL is a
+  // child process and must remain alive for pg_ctl to stop it cleanly. Leaving
+  // the server running can race pg_ctl with its embedded database supervisor.
+  if (exited === null) {
+    try { execFileSync("taskkill", ["/PID", String(server.pid), "/F"], { windowsHide: true, stdio: "ignore" }); } catch {}
+    stage("server process stop requested");
+  }
+  try {
+    process.kill(server.pid, 0);
+    stage("server still alive; temporary home retained");
+    return false;
+  } catch (error) {
+    if (error.code !== "ESRCH") return false;
+  }
   for (const marker of markersFound) {
     try {
       execFileSync(pgCtl, ["-D", path.dirname(marker), "-m", "fast", "-w", "-t", "40", "stop"], { windowsHide: true, stdio: "ignore" });
@@ -197,17 +211,6 @@ function cleanup() {
       stage("pg_ctl stop FAILED; temp home retained");
       return false;
     }
-  }
-  if (exited === null) {
-    try { execFileSync("taskkill", ["/PID", String(server.pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" }); } catch {}
-    stage("server process tree stopped");
-  }
-  try {
-    process.kill(server.pid, 0);
-    stage("server still alive; temporary home retained");
-    return false;
-  } catch (error) {
-    if (error.code !== "ESRCH") return false;
   }
   try {
     const scan = spawnSync(resolvePrivateWindowsPowerShellBinary(), [
