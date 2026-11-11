@@ -141,16 +141,16 @@ jobs:
       - if: startsWith(matrix.lane, 'server-')
         uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
         with:
-          workspaces: packages/paperclip-runner/runner
+          workspaces: packages/bostan-runner/runner
           cache-on-failure: true
       # Mirror each suite's exact cargo invocation: feature unification differs
       # between the single-bin (dot-runner) and two-bin (native-codex-runner)
       # builds, so building only one leaves the other cold.
-      # Run from packages/paperclip-runner like the suites do: rustup selects the
+      # Run from packages/bostan-runner like the suites do: rustup selects the
       # pinned toolchain from its rust-toolchain.toml by working directory, and
       # a build under the runner's default toolchain is not reusable.
       - if: startsWith(matrix.lane, 'server-')
-        working-directory: packages/paperclip-runner
+        working-directory: packages/bostan-runner
         run: |
           cargo build --release --locked --manifest-path runner/Cargo.toml -p paperclip-runner-core --bin paperclip-runnerd
           cargo build --release --locked --manifest-path runner/Cargo.toml -p paperclip-runner-core --bin paperclip-runnerd --bin fake-codex-app-server

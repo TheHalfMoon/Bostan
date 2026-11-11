@@ -191,7 +191,7 @@ export function resolvePaperclipRunnerBinary(
     defaultCapabilityRunnerdBinary(),
     resolve(
       moduleDirectory,
-      "../../../../packages/paperclip-runner/runner/target/release",
+      "../../../../packages/bostan-runner/runner/target/release",
       executableName(),
     ),
   ].filter((candidate): candidate is string => Boolean(candidate));

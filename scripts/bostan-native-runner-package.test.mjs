@@ -10,7 +10,7 @@ const json=p=>JSON.parse(read(p));
 const bins=['eval-session','codex-proxy','opencode-proxy','acpx-sidecar','copilot-metadata-probe'];
 
 test('native Bostan runner package is private, internally owned and cannot publish',()=>{
- const m=json('packages/paperclip-runner/package.json');
+ const m=json('packages/bostan-runner/package.json');
  assert.equal(m.name,'@bostan/runner');
  assert.equal(m.private,true);
  assert.equal(m.publishConfig,undefined);
@@ -22,7 +22,7 @@ test('native Bostan runner package is private, internally owned and cannot publi
  assert.ok(!json('scripts/release-package-manifest.json').some(e=>e.name==='@bostan/runner'));
  for(const target of Object.values(m.bin)){
   assert.ok(target.startsWith('./dist/cli/'),`no unsafe path ${target}`);
-  assert.ok(existsSync(resolve(root,'packages/paperclip-runner',target)),`TypeScript provider build must produce ${target}`);
+  assert.ok(existsSync(resolve(root,'packages/bostan-runner',target)),`TypeScript provider build must produce ${target}`);
  }
 });
 
@@ -32,17 +32,17 @@ test('standalone server and core consumers resolve Bostan runner workspace, not 
  assert.ok(!Object.hasOwn(m.devDependencies,'@paperclipai/paperclip-runner'));
  const lock=read('pnpm-lock.yaml');
  assert.match(lock,/\n      '@bostan\/runner':\n        specifier: workspace:\*/);
- assert.equal(json('packages/paperclip-runner/package.json').devDependencies['@bostan/eval-kernel'],'workspace:*');
+ assert.equal(json('packages/bostan-runner/package.json').devDependencies['@bostan/eval-kernel'],'workspace:*');
 });
 
 test('runner transport schema and the versioned native executable binary contract are preserved',()=>{
- const m=json('packages/paperclip-runner/package.json');
+ const m=json('packages/bostan-runner/package.json');
  assert.equal(m.exports['./testing'].import,'./dist/testing.js');
  assert.equal(m.exports['./evals'].import,'./dist/evals/index.js');
  const scripts=m.scripts;
  assert.match(scripts['build:binary'],/--bin paperclip-runnerd/,'do not silently rename versioned Rust native binary');
  assert.match(scripts['typecheck:rust'],/cargo check/);
- assert.match(read('packages/paperclip-runner/scripts/check-package-boundaries.mjs'),/bostan-eval-kernel/);
+ assert.match(read('packages/bostan-runner/scripts/check-package-boundaries.mjs'),/bostan-eval-kernel/);
 });
 
 test('Bostan release guard refuses npm packaging before writing artifacts',()=>{

@@ -34,8 +34,8 @@ import { getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } fro
 
 import { createPublicMcpEvents, publicMcpEventDefinitions } from "../services/public-mcp/events.js";
 import { createDotRunnerMcpBridge } from "../services/public-mcp/dot-runner.js";
-import { DotHarnessDriver } from "../../../packages/paperclip-runner/src/drivers/dot/dot-harness-driver.js";
-import { HarnessDriverBackend } from "../../../packages/paperclip-runner/src/backends/harness-driver-backend.js";
+import { DotHarnessDriver } from "../../../packages/bostan-runner/src/drivers/dot/dot-harness-driver.js";
+import { HarnessDriverBackend } from "../../../packages/bostan-runner/src/backends/harness-driver-backend.js";
 import { eventFetch, signingKey, type EventFetch } from "../services/public-mcp/event-webhooks.js";
 
 const externalUrl = resolveExternalTestDatabaseUrl("PAPERCLIP_PUBLIC_MCP_TEST_DATABASE_URL");

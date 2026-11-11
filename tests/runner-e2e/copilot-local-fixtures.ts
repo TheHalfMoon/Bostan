@@ -6,7 +6,7 @@ import { watch, lstatSync, readFileSync, readlinkSync, statSync, type FSWatcher 
 import { lstat, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer, type Socket } from "node:net";
 import { basename, join, relative } from "node:path";
-import { readLinuxProcessStartedAt } from "../../packages/paperclip-runner/src/live/linux-process-start.js";
+import { readLinuxProcessStartedAt } from "../../packages/bostan-runner/src/live/linux-process-start.js";
 
 export const sha256 = (value: string) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
 const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;

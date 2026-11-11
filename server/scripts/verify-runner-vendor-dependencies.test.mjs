@@ -22,7 +22,7 @@ describe("findMissingVendorDependencies", () => {
 
   it("flags a runner dependency that isn't mirrored into server/package.json", () => {
     // This is the exact shape of the incident this check exists to catch:
-    // packages/paperclip-runner/package.json grew a new runtime dependency
+    // packages/bostan-runner/package.json grew a new runtime dependency
     // (smol-toml) that never got mirrored into server/package.json, so the
     // vendored `cp -R` copy failed to resolve it at runtime (#13110, #13116).
     const missing = findMissingVendorDependencies(
@@ -46,7 +46,7 @@ describe("findMissingVendorDependencies", () => {
 describe("findRunnerExternalPackages", () => {
   // Fixture-level coverage for the actual esbuild scan, not just the diff
   // function: a real dist/index.js + dist/testing.js on disk, structurally
-  // matching packages/paperclip-runner's shape (testing.js re-exports
+  // matching packages/bostan-runner's shape (testing.js re-exports
   // index.js, which imports another local module that imports a bare npm
   // specifier), plus package.json dependency noise that should be ignored
   // because nothing reachable from these entry points imports it.
@@ -90,7 +90,7 @@ describe("findRunnerExternalPackages", () => {
 
   it("checks dynamically resolved bundled providers even without a JavaScript import", async () => {
     const entryPoints = writeFixture();
-    const profiles = JSON.parse(readFileSync(new URL("../../packages/paperclip-runner/acpx-profiles.json", import.meta.url), "utf8"));
+    const profiles = JSON.parse(readFileSync(new URL("../../packages/bostan-runner/acpx-profiles.json", import.meta.url), "utf8"));
     const packages = await findRunnerRuntimePackages(entryPoints, profiles);
     expect(findMissingVendorDependencies(packages, new Set(["smol-toml", "@agentclientprotocol/codex-acp"])))
       .toEqual(["@agentclientprotocol/claude-agent-acp"]);
@@ -110,7 +110,7 @@ describe("findRunnerExternalPackages", () => {
 // Claude is resolved through createRequire at runtime, outside esbuild's graph.
 it("ships the qualified Claude ACP server with the vendored runner", () => {
   const server = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-  const profiles = JSON.parse(readFileSync(new URL("../../packages/paperclip-runner/acpx-profiles.json", import.meta.url), "utf8"));
+  const profiles = JSON.parse(readFileSync(new URL("../../packages/bostan-runner/acpx-profiles.json", import.meta.url), "utf8"));
   const claude = profiles.profiles.claude;
   expect(server.dependencies[claude.agentServerPackage]).toBe(claude.agentServerVersion);
   expect(server.bundleDependencies).toContain(claude.agentServerPackage);

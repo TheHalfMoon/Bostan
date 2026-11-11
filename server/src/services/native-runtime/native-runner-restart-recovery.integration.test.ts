@@ -88,7 +88,7 @@ const describeEmbeddedPostgres = embeddedPostgresSupport.supported
 
 const fakeCodexAppServer = resolve(
   import.meta.dirname,
-  "../../../../packages/paperclip-runner/runner/target/debug/fake-codex-app-server",
+  "../../../../packages/bostan-runner/runner/target/debug/fake-codex-app-server",
 );
 const binariesAvailable =
   existsSync(defaultCapabilityRunnerdBinary()) && existsSync(fakeCodexAppServer);

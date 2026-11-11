@@ -62,7 +62,7 @@ export function verifyBostanPrivateWorkspace({
   }
   for(const category of catalogs)checkCatalogReleaseHooks(JSON.parse(read(`packages/${category}-catalog/package.json`)),category);
   const fixtures = [
-    ['packages/paperclip-runner/scripts/pi-distribution/package.json','bostan-pi-runtime-distribution'],
+    ['packages/bostan-runner/scripts/pi-distribution/package.json','bostan-pi-runtime-distribution'],
     ['packages/plugins/sandbox-providers/cloudflare/bridge-template/package.json','bostan-cloudflare-sandbox-bridge-template'],
     ['tests/speko-voice-proof/package.json','@bostan/speko-voice-proof'],
   ];
@@ -70,7 +70,7 @@ export function verifyBostanPrivateWorkspace({
     const pkg=JSON.parse(read(path));
     if(pkg.name!==name||pkg.private!==true)throw Error(`Bostan internal fixture identity mismatch: ${path}`);
   }
-  const piLock=JSON.parse(read('packages/paperclip-runner/scripts/pi-distribution/package-lock.json'));
+  const piLock=JSON.parse(read('packages/bostan-runner/scripts/pi-distribution/package-lock.json'));
   if(piLock.name!=='bostan-pi-runtime-distribution'
       ||piLock.packages?.['']?.name!==piLock.name)
     throw Error('Bostan PI distribution private lockfile identity mismatch');

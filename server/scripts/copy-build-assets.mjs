@@ -10,7 +10,7 @@ const DIRECTORIES=[
   ["server/src/onboarding-assets","server/dist/onboarding-assets"],
   ["server/src/built-ins","server/dist/built-ins"],
   ["server/src/services/scripts","server/dist/services/scripts"],
-  ["packages/paperclip-runner/dist","server/dist/vendor/paperclip-runner"],
+  ["packages/bostan-runner/dist","server/dist/vendor/paperclip-runner"],
 ];
 const RUNNER_SCRIPTS=[
   "install-copilot-assets.mjs",
@@ -55,7 +55,7 @@ export function copyServerBuildAssets(repoRoot){
     throw Error("Unexpected Bostan server package identity");
   const dirs=DIRECTORIES.map(([source,dest])=>[owned(root,source),owned(root,dest)]);
   const scripts=RUNNER_SCRIPTS.map(name=>[
-    owned(root,"packages/paperclip-runner/scripts/"+name),
+    owned(root,"packages/bostan-runner/scripts/"+name),
     owned(root,"server/dist/"+name),
   ]);
   const all=[...dirs,...scripts];

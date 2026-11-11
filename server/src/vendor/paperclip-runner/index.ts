@@ -79,7 +79,7 @@ export type PaperclipSemanticDispatcher =
   import("@bostan/runner").PaperclipSemanticDispatcher;
 
 const sourceUrl = new URL(
-  "../../../../packages/paperclip-runner/src/index.ts",
+  "../../../../packages/bostan-runner/src/index.ts",
   import.meta.url,
 );
 const runner = (await import(sourceUrl.href)) as RunnerModule;

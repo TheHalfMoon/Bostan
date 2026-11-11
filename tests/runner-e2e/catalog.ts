@@ -45,9 +45,9 @@ import { DEFAULT_CODEX_LOCAL_MODEL } from "../../packages/adapters/codex-local/s
 import { models as claudeModels } from "../../packages/adapters/claude-local/src/index.js";
 import { DEFAULT_KIMI_LOCAL_MODEL } from "../../packages/adapters/kimi-local/src/index.js";
 import { DEFAULT_GROK_LOCAL_MODEL } from "../../packages/adapters/grok-local/src/index.js";
-import { QUALIFIED_ACPX_PROFILES } from "../../packages/paperclip-runner/src/drivers/acpx/qualified-profiles.js";
+import { QUALIFIED_ACPX_PROFILES } from "../../packages/bostan-runner/src/drivers/acpx/qualified-profiles.js";
 import { ACPX_QUALIFICATION_MODELS } from "../acpx-qualification-models.js";
-import { QUALIFIED_OPENCODE_MODEL } from "../../packages/paperclip-runner/src/drivers/opencode/opencode-server-driver.js";
+import { QUALIFIED_OPENCODE_MODEL } from "../../packages/bostan-runner/src/drivers/opencode/opencode-server-driver.js";
 import { CREDENTIAL_NAMES } from "./types.js";
 import { repositorySkillsTask, repositorySkillsProfile } from "./repository-skills.js";
 import { createGitStreamingTask } from "./daytona-git-streaming.js";

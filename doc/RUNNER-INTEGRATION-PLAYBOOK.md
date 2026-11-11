@@ -57,10 +57,10 @@ Trace those responsibilities before copying an existing provider.
 
 | Integration responsibility | Owning boundary | Starting point |
 | --- | --- | --- |
-| Provider lifecycle and native session behavior | Harness driver and provider-owned translation | [Runner package](../packages/paperclip-runner/README.md) and the source map in section 3 |
-| ACP-based transport, when suitable | Existing ACPX driver plus provider-owned launch and extensions | [ACPX implementation](../packages/paperclip-runner/src/drivers/acpx/) |
+| Provider lifecycle and native session behavior | Harness driver and provider-owned translation | [Runner package](../packages/bostan-runner/README.md) and the source map in section 3 |
+| ACP-based transport, when suitable | Existing ACPX driver plus provider-owned launch and extensions | [ACPX implementation](../packages/bostan-runner/src/drivers/acpx/) |
 | Admission and product configuration | Shared contracts, server admission, and native Runner UI | Section 6 and the source map in section 3 |
-| Running this provider on an existing hosting target | Runtime distribution, execution-environment lifecycle, and networking | [RunnerExecutionDriver architecture](../packages/paperclip-runner/README.md#execution-environment-lifecycle) and section 11 |
+| Running this provider on an existing hosting target | Runtime distribution, execution-environment lifecycle, and networking | [RunnerExecutionDriver architecture](../packages/bostan-runner/README.md#execution-environment-lifecycle) and section 11 |
 
 Choose the richest stable interface that can meet the release contract. A native
 session API can be better than ACP when it exposes controls ACP cannot carry.
@@ -152,17 +152,17 @@ the Rust decoder or actual packaged sidecar.
 
 | Responsibility | Current source anchors |
 | --- | --- |
-| Public harness interfaces, capabilities, requests | [harness-driver.ts](../packages/paperclip-runner/src/contracts/harness-driver.ts), [native execution contracts](../packages/paperclip-runner/src/contracts/native-execution.ts) |
-| Canonical provider event inventory | [provider-events.ts](../packages/paperclip-runner/src/provider-events.ts), [protocol schemas](../packages/paperclip-runner/protocol/) |
-| ACPX capability and driver declarations | [driver-profile.ts](../packages/paperclip-runner/src/drivers/acpx/driver-profile.ts), [capability-profiles.ts](../packages/paperclip-runner/src/drivers/acpx/capability-profiles.ts) |
-| Provider-specific requests and activity | [profile-extensions.ts](../packages/paperclip-runner/src/drivers/acpx/profile-extensions.ts), [profile-activity.ts](../packages/paperclip-runner/src/drivers/acpx/profile-activity.ts) |
-| Actual ACPX manager and provider interaction | [codex-runtime-adapter.ts](../packages/paperclip-runner/src/drivers/acpx/codex-runtime-adapter.ts), [codex-acpx-driver.ts](../packages/paperclip-runner/src/drivers/acpx/codex-acpx-driver.ts) |
-| Model/mode and session identity | [model-verification.ts](../packages/paperclip-runner/src/drivers/acpx/model-verification.ts), [provider-mode.ts](../packages/paperclip-runner/src/drivers/acpx/provider-mode.ts), [recovery-identity.ts](../packages/paperclip-runner/src/drivers/acpx/recovery-identity.ts) |
-| TypeScript/Rust sidecar boundary | [sidecar schema](../packages/paperclip-runner/protocol/provider-schemas/acpx-sidecar.schema.json), [sidecar-protocol.ts](../packages/paperclip-runner/src/drivers/acpx/sidecar-protocol.ts), [sidecar CLI](../packages/paperclip-runner/src/cli/), [Rust core](../packages/paperclip-runner/runner/crates/runner-core/src/) |
-| Release identity | [acpx-profiles.json](../packages/paperclip-runner/acpx-profiles.json), [profile generator](../packages/paperclip-runner/scripts/generate-acpx-profiles.mjs), [qualified-profiles.ts](../packages/paperclip-runner/src/drivers/acpx/qualified-profiles.ts) |
+| Public harness interfaces, capabilities, requests | [harness-driver.ts](../packages/bostan-runner/src/contracts/harness-driver.ts), [native execution contracts](../packages/bostan-runner/src/contracts/native-execution.ts) |
+| Canonical provider event inventory | [provider-events.ts](../packages/bostan-runner/src/provider-events.ts), [protocol schemas](../packages/bostan-runner/protocol/) |
+| ACPX capability and driver declarations | [driver-profile.ts](../packages/bostan-runner/src/drivers/acpx/driver-profile.ts), [capability-profiles.ts](../packages/bostan-runner/src/drivers/acpx/capability-profiles.ts) |
+| Provider-specific requests and activity | [profile-extensions.ts](../packages/bostan-runner/src/drivers/acpx/profile-extensions.ts), [profile-activity.ts](../packages/bostan-runner/src/drivers/acpx/profile-activity.ts) |
+| Actual ACPX manager and provider interaction | [codex-runtime-adapter.ts](../packages/bostan-runner/src/drivers/acpx/codex-runtime-adapter.ts), [codex-acpx-driver.ts](../packages/bostan-runner/src/drivers/acpx/codex-acpx-driver.ts) |
+| Model/mode and session identity | [model-verification.ts](../packages/bostan-runner/src/drivers/acpx/model-verification.ts), [provider-mode.ts](../packages/bostan-runner/src/drivers/acpx/provider-mode.ts), [recovery-identity.ts](../packages/bostan-runner/src/drivers/acpx/recovery-identity.ts) |
+| TypeScript/Rust sidecar boundary | [sidecar schema](../packages/bostan-runner/protocol/provider-schemas/acpx-sidecar.schema.json), [sidecar-protocol.ts](../packages/bostan-runner/src/drivers/acpx/sidecar-protocol.ts), [sidecar CLI](../packages/bostan-runner/src/cli/), [Rust core](../packages/bostan-runner/runner/crates/runner-core/src/) |
+| Release identity | [acpx-profiles.json](../packages/bostan-runner/acpx-profiles.json), [profile generator](../packages/bostan-runner/scripts/generate-acpx-profiles.mjs), [qualified-profiles.ts](../packages/bostan-runner/src/drivers/acpx/qualified-profiles.ts) |
 | Server admission, permissions, finalization, recovery | [native-runtime services](../server/src/services/native-runtime/), including `acpx-qualification.ts`, `native-interaction-bridge.ts`, `native-run-finalizer.ts`, and `native-plan-wait-receipts.ts` |
 | Product selection and setup | [shared agent runner](../packages/shared/src/agent-runner.ts), [Runner UI adapter](../ui/src/adapters/paperclip-runner/), [runtime CLI](../cli/src/commands/runtime.ts) |
-| Packaging and image contents | [runner scripts](../packages/paperclip-runner/scripts/), [remote pack admission](../server/src/services/native-runtime/remote-provider-pack.ts), [Daytona image identity](../tests/runner-e2e/daytona-image-content.ts) |
+| Packaging and image contents | [runner scripts](../packages/bostan-runner/scripts/), [remote pack admission](../server/src/services/native-runtime/remote-provider-pack.ts), [Daytona image identity](../tests/runner-e2e/daytona-image-content.ts) |
 | Product acceptance | [runner-e2e](../tests/runner-e2e/README.md), [fixtures](../tests/runner-e2e/FIXTURES.md), [security](../tests/runner-e2e/SECURITY.md) |
 
 These are discovery anchors, not an exhaustive edit checklist. Search from the
@@ -729,9 +729,9 @@ steps. Author new cases alongside the maintained test families instead of buildi
 a one-off qualification system.
 
 **Provider and transport contracts:** use
-[`packages/paperclip-runner/test/`](../packages/paperclip-runner/test/) and the
+[`packages/bostan-runner/test/`](../packages/bostan-runner/test/) and the
 co-located driver tests. For example, the
-[installed ACPX model-selection test](../packages/paperclip-runner/test/acpx-model-selection-package-contract.test.mjs)
+[installed ACPX model-selection test](../packages/bostan-runner/test/acpx-model-selection-package-contract.test.mjs)
 loads the actual installed manager and replaces only the provider process with
 a controlled peer. Its advertised model list omits the requested model; the
 peer records the exact selection and can accept, reject, or acknowledge a
@@ -751,8 +751,8 @@ Cover at least the fragile contracts the new implementation introduces:
 - Process shutdown with pending work, child cleanup, late callbacks, and asset
   integrity failures. Assert the intended native boundary was reached.
 
-Use the existing [mock control plane](../packages/paperclip-runner/src/mock-core/)
-and [conformance suite](../packages/paperclip-runner/src/conformance/) when a
+Use the existing [mock control plane](../packages/bostan-runner/src/mock-core/)
+and [conformance suite](../packages/bostan-runner/src/conformance/) when a
 semantic/protocol check needs Runner plus a controlled server peer. Label synthetic
 provider responses as synthetic. A deterministic pass cannot qualify model
 behavior. Any additional live protocol campaign is a separate evidence family;

@@ -52,7 +52,7 @@ mkdir -p server/dist/onboarding-assets server/dist/built-ins server/dist/service
 cp -R server/src/onboarding-assets/. server/dist/onboarding-assets/
 cp -R server/src/built-ins/. server/dist/built-ins/
 cp -R server/src/services/scripts/. server/dist/services/scripts/
-cp -Rf packages/paperclip-runner/dist/. server/dist/vendor/paperclip-runner/
+cp -Rf packages/bostan-runner/dist/. server/dist/vendor/paperclip-runner/
 node server/scripts/write-build-stamp.mjs
 # Reuse established disposable db + loopback HTTP acceptance, not a test stub.
 bash scripts/bostan-local-http-postgres-smoke.sh --run-dist

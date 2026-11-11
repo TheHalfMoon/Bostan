@@ -23,15 +23,15 @@ test("Bostan eval kernel has a private and release-blocked workspace identity",(
 });
 
 test("Bostan runner imports reviewed eval kernel only as a private workspace dependency",()=>{
- const runner=JSON.parse(read("packages/paperclip-runner/package.json"));
+ const runner=JSON.parse(read("packages/bostan-runner/package.json"));
  assert.equal(runner.devDependencies["@bostan/eval-kernel"],"workspace:*");
  assert.equal(runner.devDependencies["@paperclipai/paperclip-eval-kernel"],undefined);
- const src=read("packages/paperclip-runner/src/eval/workflow-harness.ts");
+ const src=read("packages/bostan-runner/src/eval/workflow-harness.ts");
  assert.ok(src.includes('from "@bostan/eval-kernel"'));
  const lock=read("pnpm-lock.yaml");
  assert.ok(lock.includes("packages/bostan-eval-kernel:"));
  assert.ok(!lock.includes("packages/paperclip-eval-kernel:"));
- assert.ok(read("packages/paperclip-runner/scripts/build-inputs.mjs")
+ assert.ok(read("packages/bostan-runner/scripts/build-inputs.mjs")
    .includes('EVAL_KERNEL_PACKAGE_RELATIVE = "packages/bostan-eval-kernel"'));
 });
 
@@ -42,7 +42,7 @@ test("Bostan eval package identity preserves the versioned wire schema",()=>{
 });
 
 test("Runner import-boundary guard restricts old and Bostan workspace namespaces",()=>{
- const guard=read("packages/paperclip-runner/scripts/lib/forbidden-imports.mjs");
+ const guard=read("packages/bostan-runner/scripts/lib/forbidden-imports.mjs");
  assert.ok(guard.includes('"@bostan/"'));
  assert.ok(guard.includes('"@paperclipai/"'));
  assert.ok(guard.includes('const REVIEWED_EVAL_KERNEL = "@bostan/eval-kernel"'));

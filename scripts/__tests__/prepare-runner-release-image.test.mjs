@@ -73,7 +73,7 @@ test('image daemon must match source, receipt, public package and actual archite
 });
 
 test('frozen release JSON must be the bounded requested source file', () => {
-  const path = 'packages/paperclip-runner/acpx-profiles.json';
+  const path = 'packages/bostan-runner/acpx-profiles.json';
   const content = Buffer.from(JSON.stringify({ acpxVersion: 'frozen' }));
   const file = { type: 'file', path, encoding: 'base64', size: content.length, content: content.toString('base64') };
   assert.deepEqual(decodeReleaseJson(file, path), { acpxVersion: 'frozen' });

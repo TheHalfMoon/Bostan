@@ -213,10 +213,10 @@ equivalents before editing; do not paste line numbers from historical notes.
 | --- | --- |
 | Bot broker and tool definitions | `server/src/services/dot-runner-broker.ts` |
 | Prototype public MCP bridge | `server/src/services/public-mcp/dot-runner.ts` |
-| Rust assignment backend | `packages/paperclip-runner/runner/crates/runner-core/src/dot_provider_backend.rs` |
-| TypeScript Runner driver | `packages/paperclip-runner/src/drivers/dot/runnerd-dot-driver.ts` |
-| Driver/backend selection | `packages/paperclip-runner/src/backends/native-backend-factory.ts` |
-| Per-turn instructions | `packages/paperclip-runner/src/backends/runtime-context.ts` |
+| Rust assignment backend | `packages/bostan-runner/runner/crates/runner-core/src/dot_provider_backend.rs` |
+| TypeScript Runner driver | `packages/bostan-runner/src/drivers/dot/runnerd-dot-driver.ts` |
+| Driver/backend selection | `packages/bostan-runner/src/backends/native-backend-factory.ts` |
+| Per-turn instructions | `packages/bostan-runner/src/backends/runtime-context.ts` |
 | Governed tool authority | `server/src/services/native-runtime/paperclip-runner-tool-authority.ts` |
 | Admission, wake, terminal reconciliation | `server/src/services/heartbeat.ts`, `server/src/services/heartbeat/queue.ts`, `server/src/services/heartbeat/run-lifecycle.ts` |
 | Real Rust/DB and managed qualification | `server/src/__tests__/dot-runner.test.ts` |

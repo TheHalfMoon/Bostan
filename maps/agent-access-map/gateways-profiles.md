@@ -126,9 +126,9 @@ these fixtures do not certify a live external-client journey.
 Native assigned tools return bounded input-schema repair guidance after argument
 validation fails. Rejection creates no execution receipt and discloses no submitted
 values or unknown keys. Corrected calls keep the same authorization checks.
-[Runner regressions](../../packages/paperclip-runner/runner/crates/runner-core/src/tests/provider_assigned_tool_validation.rs)
+[Runner regressions](../../packages/bostan-runner/runner/crates/runner-core/src/tests/provider_assigned_tool_validation.rs)
 cover discovery repair and unauthorized calls; the
-[Codex transport fixture](../../packages/paperclip-runner/runner/crates/runner-core/tests/support/codex_assigned_tool_validation.rs)
+[Codex transport fixture](../../packages/bostan-runner/runner/crates/runner-core/tests/support/codex_assigned_tool_validation.rs)
 covers rejection, corrected dispatch, and completion with a simulated provider.
 This does not establish live model or GitHub access.
 
@@ -206,11 +206,11 @@ ACPX adapters use their applicable ACPX permission policy. Host-assigned native
 Codex tools run without a new per-call prompt, matching existing execution-host shell
 utilities. Explicit deny/prompt rules remain effective; requested approvals use
 PRP with active thread/turn checks and one-time decisions. Preconfigured Claude
-rejects interactive approval requests. See the [Runner contract](../../packages/paperclip-runner/README.md#assigned-local-mcp-servers).
+rejects interactive approval requests. See the [Runner contract](../../packages/bostan-runner/README.md#assigned-local-mcp-servers).
 
-Local fixture coverage: [binding validation](../../packages/paperclip-runner/src/drivers/stdio-mcp.test.ts),
-[relay processes and cancellation](../../packages/paperclip-runner/runner/crates/runner-core/tests/stdio_mcp.rs),
-and [approval projection](../../packages/paperclip-runner/src/drivers/codex/codex-question-adapter.test.ts).
+Local fixture coverage: [binding validation](../../packages/bostan-runner/src/drivers/stdio-mcp.test.ts),
+[relay processes and cancellation](../../packages/bostan-runner/runner/crates/runner-core/tests/stdio_mcp.rs),
+and [approval projection](../../packages/bostan-runner/src/drivers/codex/codex-question-adapter.test.ts).
 Provider-client image and approval smoke tests used native Codex and Claude SDK;
 that coverage is not an exhaustive adapter compatibility test.
 Vendor-client evidence belongs in the PR. These checks do not

@@ -46,7 +46,7 @@ function targetPlatform(platform: string, architecture: string, glibc = true, gl
 
 function resolveFixtureCodexCommand(home: string): string {
   const source = `
-    import { resolveCodexCommand } from ${JSON.stringify(new URL("../../../packages/paperclip-runner/src/drivers/codex/codex-command.ts", import.meta.url).href)};
+    import { resolveCodexCommand } from ${JSON.stringify(new URL("../../../packages/bostan-runner/src/drivers/codex/codex-command.ts", import.meta.url).href)};
     try { console.log(JSON.stringify({ command: resolveCodexCommand(${JSON.stringify(path.join(root!, "issuer.js"))}, { PATH: "/missing-codex" }, ${JSON.stringify(home)}) })); }
     catch (error) { console.log(JSON.stringify({ error: error.message })); }
   `;

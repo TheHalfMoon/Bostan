@@ -74,7 +74,7 @@ test("every PR reader pins the compiler before the key is computed", () => {
     const setup = pr.slice(select, cache);
     // Nothing may sit between the pin and the restore that could change the key.
     assert.equal(setup.match(/^      - name: /gm).length, 1, `${name}: no step between the toolchain pin and the restore`);
-    assert.match(setup, /working-directory: packages\/paperclip-runner/, name);
+    assert.match(setup, /working-directory: packages\/bostan-runner/, name);
     assert.match(setup, /rustup show active-toolchain/, name);
     assert.match(setup, /echo "RUSTUP_TOOLCHAIN=\$toolchain" >> "\$GITHUB_ENV"/, name);
     // The gate routes to either ubuntu-latest or the public PR fleet, so a
@@ -155,7 +155,7 @@ test("every reader and the writer pin an identical checkout-independent Rust wor
     assert.match(body, /- name: Pin the Runner Rust workspace path\n\s+id: runner_rust_workspace\n/, name);
     // Anchor under $HOME, which both runner images share, never under the checkout.
     assert.match(body, /pinned="\$HOME\/[A-Za-z0-9._-]+"/, name);
-    assert.match(body, /rm -rf "\$pinned"\n\s+ln -s "\$GITHUB_WORKSPACE\/packages\/paperclip-runner\/runner" "\$pinned"/, name);
+    assert.match(body, /rm -rf "\$pinned"\n\s+ln -s "\$GITHUB_WORKSPACE\/packages\/bostan-runner\/runner" "\$pinned"/, name);
     assert.match(body, /echo "path=\$pinned" >> "\$GITHUB_OUTPUT"/, name);
   }
 });

@@ -41,7 +41,7 @@ if (!embeddedPostgresSupport.supported) {
 
 const runnerWorkspace = resolve(
   import.meta.dirname,
-  "../../../../packages/paperclip-runner/runner",
+  "../../../../packages/bostan-runner/runner",
 );
 const executableSuffix = process.platform === "win32" ? ".exe" : "";
 const runnerBinary = resolve(

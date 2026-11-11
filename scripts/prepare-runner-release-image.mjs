@@ -7,7 +7,7 @@ import { Transform } from 'node:stream';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
-import { verifyReleaseProviderPack } from '../packages/paperclip-runner/scripts/release-provider-pack.mjs';
+import { verifyReleaseProviderPack } from '../packages/bostan-runner/scripts/release-provider-pack.mjs';
 
 export function validateReleaseRun(run, source) {
   if (!/^[a-f0-9]{40}$/.test(source) || !/^[a-f0-9]{40}$/.test(run.head_sha ?? '') || run.conclusion !== 'success'
@@ -131,7 +131,7 @@ z.extractall(dest)
   // The workflow source can be newer than the immutable release being consumed.
   // Read data from that release commit, never execute source from the artifact.
   const [profiles, distributions] = await Promise.all(['acpx-profiles.json', 'cursor-distributions.json'].map(async name => {
-    const path = `packages/paperclip-runner/${name}`;
+    const path = `packages/bostan-runner/${name}`;
     return decodeReleaseJson(await api(`contents/${path}?ref=${source}`), path);
   }));
   verifyReleaseProviderPack(pack, source, 'linux-x64', { profiles, distributions });
