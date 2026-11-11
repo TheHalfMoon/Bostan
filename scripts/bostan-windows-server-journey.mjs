@@ -204,6 +204,15 @@ function cleanup() {
     if (error.code !== "ESRCH") return false;
   }
   for (const marker of markersFound) {
+    // The server may already have stopped its embedded cluster during exit.
+    // A stale pre-exit marker snapshot is not evidence that pg_ctl must run:
+    // pg_ctl returns nonzero when the cluster has already shut down. This
+    // shortcut is never a success receipt by itself; the independent native
+    // process-tree scan below must still prove three clean snapshots.
+    if (!fs.existsSync(marker)) {
+      stage("PostgreSQL PID marker absent after server exit; verifying process tree");
+      continue;
+    }
     try {
       execFileSync(pgCtl, ["-D", path.dirname(marker), "-m", "fast", "-w", "-t", "40", "stop"], { windowsHide: true, stdio: "ignore" });
       stage("embedded PostgreSQL stopped with pg_ctl");
