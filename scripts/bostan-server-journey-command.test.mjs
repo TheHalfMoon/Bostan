@@ -73,3 +73,15 @@ test("already-stopped PostgreSQL never bypasses the independent orphan proof", (
   assert.match(source.slice(scan, cleanup), /noOrphanPostgresProcessVerified/);
   assert.match(source.slice(scan, cleanup), /return false;/);
 });
+
+test("failed pg_ctl stop requires status=3 and independent orphan proof before cleanup", () => {
+  const source = fs.readFileSync(new URL("./bostan-windows-server-journey.mjs", import.meta.url), "utf8");
+  const stop = source.indexOf('execFileSync(pgCtl, ["-D"');
+  const status = source.indexOf('spawnSync(pgCtl, ["-D"', stop);
+  const stopped = source.indexOf('status.status === 3 && !status.error && !status.signal', status);
+  const scan = source.indexOf("evaluateWindowsPgOrphanCheck({", stopped);
+  const remove = source.indexOf("fs.rmSync(home, { recursive: true, force: true });", scan);
+  assert.ok(stop >= 0 && status > stop && stopped > status && scan > stopped && remove > scan);
+  assert.match(source.slice(stopped, scan), /return false;/);
+  assert.match(source.slice(scan, remove), /noOrphanPostgresProcessVerified/);
+});
