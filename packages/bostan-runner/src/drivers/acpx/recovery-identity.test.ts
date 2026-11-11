@@ -33,6 +33,7 @@ describe("ACPX recovery identity", () => {
     ["pi", "../../../test-fixtures/pi-acp/profile-v14-identity.json"],
     ["pi", "../../../test-fixtures/pi-acp/profile-v22-identity.json"],
     ["pi", "../../../test-fixtures/pi-acp/profile-v23-identity.json"],
+    ["pi", "../../../test-fixtures/pi-acp/profile-v28-identity.json"],
     ["cursor", "../../../test/fixtures/cursor-acp/profile-v7-identity.json"],
     ["cursor", "../../../test/fixtures/cursor-acp/profile-v8-identity.json"],
     ["cursor", "../../../test/fixtures/cursor-acp/profile-v9-identity.json"],
@@ -55,9 +56,11 @@ describe("ACPX recovery identity", () => {
       requestedModel: prior.requestedModel, effectiveModel: prior.effectiveModel,
       ...(agent === "cursor" ? { mode: "agent" as const } : {}), ...(agent === "pi" ? { piThinkingLevel: "low" as const } : {}) };
     const record = createAcpxIdentityRecord(priorExpected, prior);
+    const retainedRecord = JSON.stringify(record);
     expect(next.profileDigest).not.toBe(prior.profileDigest);
     expect(next.profileSessionKey).not.toBe(prior.profileSessionKey);
     expect(() => verifyExpectedAcpxIdentity({ ...priorExpected, profileDigest: next.commandDigest }, next, record)).toThrow(/persisted runtime record/);
+    expect(JSON.stringify(record)).toBe(retainedRecord);
   });
 
   it("binds Cursor mode on recovery and rejects missing or changed persisted mode", async () => {

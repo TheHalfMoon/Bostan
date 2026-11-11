@@ -1,12 +1,19 @@
-// Kept in sync with shared/src/openrouter-attribution.ts by the server attribution test.
-// Runner is independently published and cannot depend on the control-plane packages.
-/** Public product identity only: never include company, user, run, or credential data. */
+/**
+ * Public product identity only: never include company, user, run, or credential data.
+ * Bostan has no public site, so no HTTP-Referer is sent; harness-supplied referers are
+ * still stripped (see OPENROUTER_REPLACED_ATTRIBUTION_HEADERS).
+ */
 export const OPENROUTER_ATTRIBUTION_HEADERS = Object.freeze({
-  "HTTP-Referer": "https://paperclip.ing",
-  "X-Title": "Paperclip",
-  "X-OpenRouter-Title": "Paperclip",
+  "X-Title": "Bostan",
+  "X-OpenRouter-Title": "Bostan",
   "X-OpenRouter-Categories": "cloud-agent,programming-app",
 });
+
+/** Lower-case attribution header names removed from caller headers before Bostan's are applied. */
+export const OPENROUTER_REPLACED_ATTRIBUTION_HEADERS: ReadonlySet<string> = new Set([
+  "http-referer",
+  ...Object.keys(OPENROUTER_ATTRIBUTION_HEADERS).map(key => key.toLowerCase()),
+]);
 
 export function isOpenRouterUrl(value: unknown): boolean {
   if (typeof value !== "string") return false;
@@ -20,9 +27,8 @@ export function isOpenRouterUrl(value: unknown): boolean {
 
 /** Replace attribution case-insensitively while preserving authentication and routing. */
 export function openRouterAttributionHeaders(headers: Record<string, string> = {}): Record<string, string> {
-  const replaced = new Set(Object.keys(OPENROUTER_ATTRIBUTION_HEADERS).map(key => key.toLowerCase()));
   return {
-    ...Object.fromEntries(Object.entries(headers).filter(([key]) => !replaced.has(key.toLowerCase()))),
+    ...Object.fromEntries(Object.entries(headers).filter(([key]) => !OPENROUTER_REPLACED_ATTRIBUTION_HEADERS.has(key.toLowerCase()))),
     ...OPENROUTER_ATTRIBUTION_HEADERS,
   };
 }
