@@ -865,7 +865,7 @@ function errorResult(err: unknown, baseUrl: URL, redactText: TextRedactor = sani
   const errorMessage = code === "hermes_gateway_auth_failed"
     ? `${redactErrorMessage(err, redactText)}. Check adapterConfig.apiKey matches the Hermes API_SERVER_KEY for the running gateway.`
     : loopbackRefused
-      ? `${redactErrorMessage(err, redactText)}. The configured loopback gateway refers to the Paperclip server, not an agent sandbox or your browser's machine. Check that the Hermes API server is running there, or set adapterConfig.apiBaseUrl to its address reachable from the Paperclip server. Hermes Gateway connects to an already-running gateway; use hermes_local if Paperclip should launch the local Hermes CLI.`
+      ? `${redactErrorMessage(err, redactText)}. The configured loopback gateway refers to the Bostan server, not an agent sandbox or your browser's machine. Check that the Hermes API server is running there, or set adapterConfig.apiBaseUrl to its address reachable from the Bostan server. Hermes Gateway connects to an already-running gateway; use hermes_local if Bostan should launch the local Hermes CLI.`
       : redactErrorMessage(err, redactText);
   return {
     exitCode: 1,

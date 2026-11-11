@@ -45,17 +45,17 @@ export async function prepareCompatibleClaudeCommand(
   });
   if (installation?.level !== "info") return { ...original, check: {
     code: "claude_runtime_preparation_failed", level: "warn",
-    message: "Paperclip could not install a compatible Claude runtime.",
+    message: "Bostan could not install a compatible Claude runtime.",
     detail: installationFailureDetail(installation),
   } };
   const version = await readClaudeCommandVersion({ ...input, command });
   if (!version || !claudeCliVersionAtLeast(version, input.minimumVersion)) return { ...original, check: {
     code: "claude_runtime_preparation_failed", level: "warn",
-    message: "Paperclip installed the Claude runtime but could not verify a compatible version.",
+    message: "Bostan installed the Claude runtime but could not verify a compatible version.",
     detail: version ? `The prepared runtime reported Claude Code ${version}.` : "The prepared runtime did not report its version.",
   } };
   return { command, version, check: {
     code: "claude_runtime_prepared", level: "info",
-    message: `Paperclip prepared Claude Code ${version} for the selected model.`,
+    message: `Bostan prepared Claude Code ${version} for the selected model.`,
   } };
 }

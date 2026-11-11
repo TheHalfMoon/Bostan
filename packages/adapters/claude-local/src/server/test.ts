@@ -300,7 +300,7 @@ export async function testEnvironment(
           ? `Detected Claude Code ${detectedCliVersion}.`
           : "Could not determine the installed Claude Code version.",
         hint: targetIsSandbox && command === "claude"
-          ? "Paperclip could not prepare a compatible Claude runtime. Retry connecting."
+          ? "Bostan could not prepare a compatible Claude runtime. Retry connecting."
           : "Upgrade Claude Code or restore the default ACP lane, then retry the Test.",
       });
     }
@@ -321,8 +321,8 @@ export async function testEnvironment(
       checks.push({
         code: "claude_hello_probe_skipped_unresolved_command",
         level: "warn",
-        message: "Skipped the Claude hello probe because `claude` is not installed on the Paperclip host.",
-        hint: "Install the `claude` CLI on the Paperclip host, then retry the Test.",
+        message: "Skipped the Claude hello probe because `claude` is not installed on the Bostan host.",
+        hint: "Install the `claude` CLI on the Bostan host, then retry the Test.",
       });
     } else {
       const model = configuredModel;
