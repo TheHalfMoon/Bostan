@@ -45,7 +45,12 @@ export async function proveOwnedWindowsHttpListener({
   for (let sample=0; sample<2; sample++) {
     if (childAlive() !== true) refused('child_exited');
     let rows;
-    try { rows = await inspect(port); } catch { refused('inspection_failed'); }
+    try { rows = await inspect(port); } catch (error) {
+      // Preserve only our own bounded diagnostic codes; never forward OS output.
+      if (typeof error?.message === 'string' &&
+          /^Private Windows QA HTTP listener ownership unverified \[(?:powershell_unavailable|query_failed|invalid_query_output)\]$/.test(error.message)) throw error;
+      refused('inspection_failed');
+    }
     if (!Array.isArray(rows) || rows.length !== 1) refused('listener_count');
     const row = rows[0];
     if (!row || typeof row !== 'object' || Array.isArray(row) ||
