@@ -24,6 +24,14 @@ import {
 } from "./tool-taxonomy";
 
 describe("tool activity vocabulary", () => {
+  it.each(["mcp.paperclip.search_tasks", "mcp__bostan__search_tasks"])(
+    "brands %s without rewriting its technical identity", (name) => {
+      expect(toolActivityPresentation({ name })).toMatchObject({
+        sourceLabel: "Bostan",
+        technicalName: name,
+      });
+    },
+  );
   it("maps Claude, Codex, and Pi built-ins to action-specific copy and icons", () => {
     expect(toolTaxonomy("Bash")).toEqual({ family: "terminal", icon: Terminal, verbLabel: "Running a command" });
     expect(toolTaxonomy("exec_command")).toEqual({ family: "terminal", icon: Terminal, verbLabel: "Running a command" });

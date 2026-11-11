@@ -1233,12 +1233,12 @@ describe("MarkdownEditor", () => {
   });
 
   it("keeps mention queries active across spaces", () => {
-    expect(findMentionMatch("Ping @Paperclip App", "Ping @Paperclip App".length)).toEqual({
+    expect(findMentionMatch("Ping @Bostan App", "Ping @Bostan App".length)).toEqual({
       trigger: "mention",
       marker: "@",
       query: "Bostan App",
       atPos: 5,
-      endPos: "Ping @Paperclip App".length,
+      endPos: "Ping @Bostan App".length,
     });
   });
 
@@ -1406,11 +1406,12 @@ describe("MarkdownEditor", () => {
     matchText = "Bostan App",
   ): Promise<{ option: HTMLButtonElement; root: ReturnType<typeof createRoot>; menu: HTMLElement }> {
     const root = createRoot(container);
+    const mentionQuery = `@${matchText.slice(0, 3)}`;
 
     await act(async () => {
       root.render(
         <MarkdownEditor
-          value="@Pap"
+          value={mentionQuery}
           onChange={handleChange}
           mentions={mentions}
         />,
@@ -1426,7 +1427,7 @@ describe("MarkdownEditor", () => {
 
     const selection = window.getSelection();
     const range = document.createRange();
-    range.setStart(textNode!, "@Pap".length);
+    range.setStart(textNode!, mentionQuery.length);
     range.collapse(true);
     selection?.removeAllRanges();
     selection?.addRange(range);
@@ -1457,7 +1458,7 @@ describe("MarkdownEditor", () => {
     });
 
     expect(handleChange).toHaveBeenCalledWith(
-      `[@Paperclip App](${buildProjectMentionHref("project-123", "#336699")}) `,
+      `[@Bostan App](${buildProjectMentionHref("project-123", "#336699")}) `,
     );
 
     await act(async () => {
@@ -1596,7 +1597,7 @@ describe("MarkdownEditor", () => {
         <Dialog open>
           <DialogContent>
             <DialogTitle>Create task</DialogTitle>
-            <MarkdownEditor value="@Pap" onChange={() => {}} mentions={mentions} />
+            <MarkdownEditor value="@Bos" onChange={() => {}} mentions={mentions} />
           </DialogContent>
         </Dialog>,
       );
@@ -1609,7 +1610,7 @@ describe("MarkdownEditor", () => {
 
     const selection = window.getSelection();
     const range = document.createRange();
-    range.setStart(textNode!, "@Pap".length);
+    range.setStart(textNode!, "@Bos".length);
     range.collapse(true);
     selection?.removeAllRanges();
     selection?.addRange(range);
