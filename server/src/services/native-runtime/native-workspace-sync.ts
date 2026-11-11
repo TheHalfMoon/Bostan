@@ -31,7 +31,7 @@ import type {
   WorkspaceInboundMode,
 } from "@bostan/adapter-utils/sandbox-managed-runtime";
 import { assertWorkspaceManifestDiskSpace, isPathManifest, manifestFileSha256, readManifestRecords, type PathManifest, type WorkspacePaths } from "@bostan/adapter-utils/workspace-manifest";
-import { resolvePaperclipInstanceRoot } from "../../home-paths.js";
+import { resolveBostanInstanceRoot } from "../../home-paths.js";
 import { parseObject } from "../../adapters/utils.js";
 import type { NativeRestartRecoveryClaim } from "./native-restart-recovery.js";
 
@@ -151,7 +151,7 @@ function requireSafeSegment(value: string, label: string): string {
 }
 
 export function nativeWorkspaceSyncStateRoot(): string {
-  return path.join(resolvePaperclipInstanceRoot(), STATE_ROOT_NAME);
+  return path.join(resolveBostanInstanceRoot(), STATE_ROOT_NAME);
 }
 
 function descriptorDirectory(runId: string): string {
@@ -1001,7 +1001,7 @@ export async function prepareNativeWorkspaceSync(input: {
       acquisition,
       hasPriorStamp: priorStamp !== null,
     });
-    const seedCacheCompanyDirectory = path.join(resolvePaperclipInstanceRoot(), STATE_ROOT_NAME, "generations", requireSafeSegment(input.companyId, "company_id"));
+    const seedCacheCompanyDirectory = path.join(resolveBostanInstanceRoot(), STATE_ROOT_NAME, "generations", requireSafeSegment(input.companyId, "company_id"));
     const seedCacheDirectory = path.join(seedCacheCompanyDirectory, requireSafeSegment(input.workspaceId, "workspace_id"));
     runtime = await prepareRuntime({
       runId: input.runId,

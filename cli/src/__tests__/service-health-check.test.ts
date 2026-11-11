@@ -11,12 +11,12 @@ import {
   renderSystemdUnit,
 } from "../services/service-manager.js";
 import { resolveRestartExpectedVersion, withHotRestartLock } from "../commands/service.js";
-import type { PaperclipConfig } from "../config/schema.js";
+import type { BostanConfig } from "../config/schema.js";
 import { buildLocalHealthUrl } from "../utils/health-url.js";
 
 const config = {
   server: { host: "127.0.0.1", port: 3100 },
-} as PaperclipConfig;
+} as BostanConfig;
 
 let previousPaperclipHome: string | undefined;
 let previousServiceManaged: string | undefined;

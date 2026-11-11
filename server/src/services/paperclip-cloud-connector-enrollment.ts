@@ -10,7 +10,7 @@ import {
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { resolvePaperclipInstanceRoot } from "../home-paths.js";
+import { resolveBostanInstanceRoot } from "../home-paths.js";
 import { runtimePublicOrigin } from "./cloud-runtime-identity.js";
 import { bostanCloudBrokerOrigin, requireBostanCloudBrokerOrigin } from "./bostan-cloud-broker-policy.js";
 
@@ -57,7 +57,7 @@ export type PaperclipCloudConnectorEnrollmentStatus = {
 };
 
 export function paperclipCloudConnectorIdentityPath(): string {
-  return path.join(resolvePaperclipInstanceRoot(), "secrets", ENROLLMENT_FILE);
+  return path.join(resolveBostanInstanceRoot(), "secrets", ENROLLMENT_FILE);
 }
 
 export function loadPaperclipCloudConnectorIdentity(): PaperclipCloudConnectorIdentity | null {

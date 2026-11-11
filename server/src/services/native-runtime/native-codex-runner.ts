@@ -10,7 +10,7 @@ import type { CommandManagedRuntimeRunner } from "@bostan/adapter-utils/command-
 import type { Db } from "@bostan/db";
 import { agentSessionGoalActions, agentTaskSessions } from "@bostan/db";
 
-import { resolvePaperclipInstanceRoot } from "../../home-paths.js";
+import { resolveBostanInstanceRoot } from "../../home-paths.js";
 import { failRunnerGoalAction } from "../runner-goals.js";
 import {
   createPaperclipRunnerAuthorizedToolSet,
@@ -357,7 +357,7 @@ export async function executeNativeCodexRunner(input: {
   const runnerDigest = `sha256:${createHash("sha256").update(readFileSync(binary)).digest("hex")}`;
   const runtimeRoot = input.runtimeRoot
     ? resolve(input.runtimeRoot)
-    : resolve(resolvePaperclipInstanceRoot(), "runtime", "paperclip-runner");
+    : resolve(resolveBostanInstanceRoot(), "runtime", "paperclip-runner");
   const runnerStateDirectory = resolve(runtimeRoot, "runner", input.runId);
   const goalControl = await readNativeGoalControl({
     db: input.db,

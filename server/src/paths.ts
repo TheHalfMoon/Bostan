@@ -23,12 +23,18 @@ function findConfigFileFromAncestors(startDir: string): string | null {
   return null;
 }
 
-export function resolvePaperclipConfigPath(overridePath?: string): string {
+export function resolveBostanConfigPath(overridePath?: string): string {
   if (overridePath) return path.resolve(overridePath);
   if (process.env.PAPERCLIP_CONFIG) return path.resolve(process.env.PAPERCLIP_CONFIG);
   return findConfigFileFromAncestors(process.cwd()) ?? resolveDefaultConfigPath();
 }
 
-export function resolvePaperclipEnvPath(overrideConfigPath?: string): string {
-  return path.resolve(path.dirname(resolvePaperclipConfigPath(overrideConfigPath)), PAPERCLIP_ENV_FILENAME);
+export function resolveBostanEnvPath(overrideConfigPath?: string): string {
+  return path.resolve(path.dirname(resolveBostanConfigPath(overrideConfigPath)), PAPERCLIP_ENV_FILENAME);
 }
+
+/** Compatibility exports; configuration files and precedence remain unchanged. */
+export {
+  resolveBostanConfigPath as resolvePaperclipConfigPath,
+  resolveBostanEnvPath as resolvePaperclipEnvPath,
+};

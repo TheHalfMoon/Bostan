@@ -22,7 +22,7 @@ import {
   resolveCanonicalWorktreeSeedSource,
   type CanonicalWorktreeSeedSource,
 } from "@bostan/shared/worktree-seed-source";
-import { resolvePaperclipConfigPath } from "../paths.js";
+import { resolveBostanConfigPath } from "../paths.js";
 import { validate } from "../middleware/validate.js";
 import {
   accessService,
@@ -83,7 +83,7 @@ function isReadableFile(filePath: string) {
  * still rejected.
  */
 function resolveFallbackSeedSourceConfigPath(baseWorkspaceCwd: string): string | null {
-  return baseWorkspaceDeclaresInstanceConfig(baseWorkspaceCwd) ? null : resolvePaperclipConfigPath();
+  return baseWorkspaceDeclaresInstanceConfig(baseWorkspaceCwd) ? null : resolveBostanConfigPath();
 }
 
 export function executionWorkspaceRoutes(db: Db, opts: { pluginWorkerManager?: PluginWorkerManager } = {}) {

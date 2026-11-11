@@ -42,7 +42,7 @@ import {
   setupRunnerPrpWebSocketServer,
 } from "../../realtime/runner-prp-ws.js";
 import { readProcessStartedAt } from "../hot-restart.js";
-import { resolvePaperclipInstanceRoot } from "../../home-paths.js";
+import { resolveBostanInstanceRoot } from "../../home-paths.js";
 import { prepareNativeHeartbeatRun } from "./prepare-native-run.js";
 import { buildNativeExecutionInput } from "./native-execution-input.js";
 import { nativeRuntimeContextFixture } from "./runtime-context.test-fixture.js";
@@ -428,7 +428,7 @@ describeEmbeddedPostgres("native runner restart recovery with real processes", (
         })).rejects.toThrow("prior_owner_terminal_state_indeterminate");
       }
       if (scenario === "legacy") {
-        const checkpoints = resolve(resolvePaperclipInstanceRoot(), "runtime", "paperclip-runner", "sessions");
+        const checkpoints = resolve(resolveBostanInstanceRoot(), "runtime", "paperclip-runner", "sessions");
         let changed = 0;
         for (const name of await readdir(checkpoints)) {
           if (!name.endsWith(".json")) continue;

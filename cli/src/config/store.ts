@@ -2,13 +2,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import {
-  mergePaperclipConfig,
-  paperclipConfigSchema,
-  type PaperclipConfig,
+  mergeBostanConfig,
+  bostanConfigSchema,
+  type BostanConfig,
 } from "./schema.js";
 import {
   resolveDefaultConfigPath,
-  resolvePaperclipInstanceId,
+  resolveBostanInstanceId,
 } from "./home.js";
 
 const DEFAULT_CONFIG_BASENAME = "config.json";
@@ -34,7 +34,7 @@ function findConfigFileFromAncestors(startDir: string): string | null {
 export function resolveConfigPath(overridePath?: string): string {
   if (overridePath) return path.resolve(overridePath);
   if (process.env.PAPERCLIP_CONFIG) return path.resolve(process.env.PAPERCLIP_CONFIG);
-  return findConfigFileFromAncestors(process.cwd()) ?? resolveDefaultConfigPath(resolvePaperclipInstanceId());
+  return findConfigFileFromAncestors(process.cwd()) ?? resolveDefaultConfigPath(resolveBostanInstanceId());
 }
 
 function parseJson(filePath: string): unknown {
@@ -88,19 +88,19 @@ function formatValidationError(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-export function readConfig(configPath?: string): PaperclipConfig | null {
+export function readConfig(configPath?: string): BostanConfig | null {
   const filePath = resolveConfigPath(configPath);
   if (!fs.existsSync(filePath)) return null;
   const raw = parseJson(filePath);
   const migrated = migrateLegacyConfig(raw);
-  const parsed = paperclipConfigSchema.safeParse(migrated);
+  const parsed = bostanConfigSchema.safeParse(migrated);
   if (!parsed.success) {
     throw new Error(`Invalid config at ${filePath}: ${formatValidationError(parsed.error)}`);
   }
   return parsed.data;
 }
 
-function effectiveConfig(config: PaperclipConfig): Record<string, unknown> {
+function effectiveConfig(config: BostanConfig): Record<string, unknown> {
   const meta = { ...config.$meta } as Record<string, unknown>;
   delete meta.updatedAt;
   delete meta.source;
@@ -129,7 +129,8 @@ function durableCopyFile(sourcePath: string, destinationPath: string, flags = 0)
   fs.copyFileSync(sourcePath, destinationPath, flags);
   fs.chmodSync(destinationPath, 0o600);
 
-  const backupDescriptor = fs.openSync(destinationPath, "r");
+  // Windows FlushFileBuffers requires a descriptor opened for writing.
+  const backupDescriptor = fs.openSync(destinationPath, "r+");
   try {
     fs.fsyncSync(backupDescriptor);
   } finally {
@@ -184,7 +185,7 @@ export function backupInvalidConfig(configPath?: string): string {
 }
 
 export function writeConfig(
-  config: PaperclipConfig,
+  config: BostanConfig,
   configPath?: string,
   options: { invalidBackupPath?: string } = {},
 ): boolean {
@@ -192,11 +193,11 @@ export function writeConfig(
   const dir = path.dirname(filePath);
   fs.mkdirSync(dir, { recursive: true });
 
-  let nextConfig = paperclipConfigSchema.parse(config);
+  let nextConfig = bostanConfigSchema.parse(config);
   if (fs.existsSync(filePath)) {
     try {
-      const source = paperclipConfigSchema.parse(migrateLegacyConfig(parseJson(filePath)));
-      nextConfig = paperclipConfigSchema.parse(mergePaperclipConfig(source, nextConfig));
+      const source = bostanConfigSchema.parse(migrateLegacyConfig(parseJson(filePath)));
+      nextConfig = bostanConfigSchema.parse(mergeBostanConfig(source, nextConfig));
       if (isDeepStrictEqual(effectiveConfig(source), effectiveConfig(nextConfig))) {
         return false;
       }

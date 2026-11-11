@@ -69,7 +69,7 @@ import {
 import type { Command } from "commander";
 import { ensureAgentJwtSecret, ensureToolActionSigningSecret, loadPaperclipEnvFile, mergePaperclipEnvEntries, readPaperclipEnvEntries, resolvePaperclipEnvFile } from "../config/env.js";
 import { expandHomePrefix } from "../config/home.js";
-import type { PaperclipConfig } from "../config/schema.js";
+import type { BostanConfig } from "../config/schema.js";
 import { readConfig, resolveConfigPath, writeConfig } from "../config/store.js";
 import { printPaperclipCliBanner } from "../utils/banner.js";
 import { resolveRuntimeLikePath } from "../utils/path-resolver.js";
@@ -393,7 +393,7 @@ function buildS3ObjectKey(prefix: string, objectKey: string): string {
 
 const dynamicImport = new Function("specifier", "return import(specifier);") as (specifier: string) => Promise<any>;
 
-function createConfiguredStorageFromPaperclipConfig(config: PaperclipConfig): ConfiguredStorage {
+function createConfiguredStorageFromPaperclipConfig(config: BostanConfig): ConfiguredStorage {
   if (config.storage.provider === "local_disk") {
     const baseDir = expandHomePrefix(config.storage.localDisk.baseDir);
     return {
@@ -1038,7 +1038,7 @@ async function ensureRepairTargetWorktree(input: {
   };
 }
 
-function resolveSourceConnectionString(config: PaperclipConfig, envEntries: Record<string, string>, portOverride?: number): string {
+function resolveSourceConnectionString(config: BostanConfig, envEntries: Record<string, string>, portOverride?: number): string {
   if (config.database.mode === "postgres") {
     const connectionString = nonEmpty(envEntries.DATABASE_URL) ?? nonEmpty(config.database.connectionString);
     if (!connectionString) {
@@ -1055,7 +1055,7 @@ function resolveSourceConnectionString(config: PaperclipConfig, envEntries: Reco
 
 export function copySeededSecretsKey(input: {
   sourceConfigPath: string;
-  sourceConfig: PaperclipConfig;
+  sourceConfig: BostanConfig;
   sourceEnvEntries: Record<string, string>;
   targetKeyFilePath: string;
 }): void {
@@ -1421,7 +1421,7 @@ type WorktreeSeedValidationExpectation = {
 };
 
 export function requiresWorktreeSeedCredentialAccount(
-  deploymentMode: PaperclipConfig["server"]["deploymentMode"],
+  deploymentMode: BostanConfig["server"]["deploymentMode"],
 ): boolean {
   return deploymentMode === "authenticated";
 }
@@ -1503,7 +1503,7 @@ export async function inspectLegacyWorktreeDatabase(
 async function inspectVerifiedSeedDatabase(
   connectionString: string,
   options: {
-    deploymentMode: PaperclipConfig["server"]["deploymentMode"];
+    deploymentMode: BostanConfig["server"]["deploymentMode"];
     expected?: WorktreeSeedValidationExpectation;
     migrationRequirement?: "sourcePrefix" | "upToDate";
     requiredCompanyId?: string;
@@ -1643,8 +1643,8 @@ async function inspectVerifiedSeedDatabase(
 
 async function seedWorktreeDatabase(input: {
   sourceConfigPath: string;
-  sourceConfig: PaperclipConfig;
-  targetConfig: PaperclipConfig;
+  sourceConfig: BostanConfig;
+  targetConfig: BostanConfig;
   targetPaths: WorktreeLocalPaths;
   instanceId: string;
   seedMode: WorktreeSeedMode;
@@ -2128,8 +2128,8 @@ function startWorktreeSeedAttempt(configPath: string, now = new Date()): Worktre
 async function runVerifiedWorktreeSeed(input: {
   configPath: string;
   sourceConfigPath: string;
-  sourceConfig: PaperclipConfig;
-  targetConfig: PaperclipConfig;
+  sourceConfig: BostanConfig;
+  targetConfig: BostanConfig;
   targetPaths: WorktreeLocalPaths;
   instanceId: string;
   seedMode: WorktreeSeedMode;
@@ -3283,7 +3283,7 @@ function renderMergePlan(plan: Awaited<ReturnType<typeof collectMergePlan>>["pla
   return lines.join("\n");
 }
 
-function resolveRunningEmbeddedPostgresPid(config: PaperclipConfig): number | null {
+function resolveRunningEmbeddedPostgresPid(config: BostanConfig): number | null {
   if (config.database.mode !== "embedded-postgres") {
     return null;
   }
@@ -4232,7 +4232,7 @@ export async function worktreeMergeHistoryCommand(sourceArg: string | undefined,
 }
 
 async function backupWorktreeReseedTarget(input: {
-  targetConfig: PaperclipConfig;
+  targetConfig: BostanConfig;
   targetPaths: WorktreeLocalPaths;
 }): Promise<string> {
   if (input.targetConfig.database.mode !== "embedded-postgres") {

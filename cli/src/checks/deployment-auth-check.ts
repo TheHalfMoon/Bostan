@@ -1,8 +1,8 @@
 import { inferBindModeFromHost } from "@bostan/shared";
-import type { PaperclipConfig } from "../config/schema.js";
+import type { BostanConfig } from "../config/schema.js";
 import type { CheckResult } from "./index.js";
 
-export function deploymentAuthCheck(config: PaperclipConfig): CheckResult {
+export function deploymentAuthCheck(config: BostanConfig): CheckResult {
   const mode = config.server.deploymentMode;
   const exposure = config.server.exposure;
   const auth = config.auth;

@@ -37,7 +37,7 @@ import {
   type FeedbackTraceTargetSummary,
   type FeedbackVoteValue,
 } from "@bostan/shared";
-import { resolveHomeAwarePath, resolvePaperclipInstanceRoot } from "../home-paths.js";
+import { resolveHomeAwarePath, resolveBostanInstanceRoot } from "../home-paths.js";
 import { notFound, unprocessable } from "../errors.js";
 import { agentInstructionsBundleMode, agentInstructionsService } from "./agent-instructions.js";
 import {
@@ -396,7 +396,7 @@ async function buildCodexTraceFiles(input: {
   }
 
   const managedRoot = path.join(
-    resolvePaperclipInstanceRoot(),
+    resolveBostanInstanceRoot(),
     "companies",
     input.companyId,
     "codex-home",

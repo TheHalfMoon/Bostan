@@ -8,8 +8,8 @@ import {
   resolveDefaultLogsDir,
   resolveDefaultSecretsKeyFilePath,
   resolveDefaultStorageDir,
-  resolvePaperclipConfigPathForInstance,
-  resolvePaperclipInstanceRoot,
+  resolveBostanConfigPathForInstance,
+  resolveBostanInstanceRoot,
 } from "./home-paths.js";
 
 const ORIGINAL_ENV = { ...process.env };
@@ -25,8 +25,8 @@ describe("home path resolution", () => {
     delete process.env.PAPERCLIP_INSTANCE_ID;
 
     const instanceRoot = path.join(home, "instances", "default");
-    expect(resolvePaperclipInstanceRoot()).toBe(instanceRoot);
-    expect(resolvePaperclipConfigPathForInstance()).toBe(path.join(instanceRoot, "config.json"));
+    expect(resolveBostanInstanceRoot()).toBe(instanceRoot);
+    expect(resolveBostanConfigPathForInstance()).toBe(path.join(instanceRoot, "config.json"));
     expect(resolveDefaultEmbeddedPostgresDir()).toBe(path.join(instanceRoot, "db"));
     expect(resolveDefaultBackupDir()).toBe(path.join(instanceRoot, "data", "backups"));
     expect(resolveDefaultLogsDir()).toBe(path.join(instanceRoot, "logs"));

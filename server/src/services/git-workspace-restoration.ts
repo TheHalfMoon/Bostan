@@ -7,7 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { execFile as execFileCallback } from "node:child_process";
 import { createHash } from "node:crypto";
-import { resolveManagedProjectWorkspaceDir, resolvePaperclipInstanceRoot } from "../home-paths.js";
+import { resolveManagedProjectWorkspaceDir, resolveBostanInstanceRoot } from "../home-paths.js";
 import { materializeManagedProjectWorkspace } from "./managed-repository-checkout.js";
 import { promisify } from "node:util";
 import type { GitRemoteAuthProvider } from "./git-credentials.js";
@@ -68,7 +68,7 @@ async function verifiedGitCacheSource(workspace: Workspace, sourcePath: string) 
     return (await verifiedRecordedIsolatedRemoteSource(workspace))!;
   }
   if (!managedSourcePaths(workspace).includes(sourcePath)) throw new GitCacheRestorationFailure();
-  const root = resolvePaperclipInstanceRoot();
+  const root = resolveBostanInstanceRoot();
   const actual = await fs.realpath(sourcePath);
   if (actual !== path.join(await fs.realpath(root), path.relative(root, sourcePath))) throw new GitCacheRestorationFailure();
   const storage = await fs.lstat(path.join(actual, ".git"));
@@ -618,7 +618,7 @@ export async function restoreGitCacheBase(workspace: Workspace, recipe: GitCache
       throw error;
     });
     if (!present && recipe.sourceKind === "managed_project") {
-      const root = resolvePaperclipInstanceRoot();
+      const root = resolveBostanInstanceRoot();
       let parent = await fs.realpath(root);
       for (const segment of path.relative(root, path.dirname(recipe.sourcePath)).split(path.sep)) {
         parent = path.join(parent, segment);

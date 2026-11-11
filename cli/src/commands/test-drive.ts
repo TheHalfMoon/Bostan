@@ -14,7 +14,7 @@ import {
   resolveDefaultContextPath,
 } from "../config/home.js";
 import { readConfig } from "../config/store.js";
-import type { PaperclipConfig } from "../config/schema.js";
+import type { BostanConfig } from "../config/schema.js";
 import { runCommand, type StartedServer } from "./run.js";
 import { isLinkedGitWorktree } from "./git-workspace.js";
 
@@ -213,7 +213,7 @@ export async function prepareTestDriveEnvironment(
 export function assertTestDriveDatabaseIsolation(
   configPath?: string,
   env: NodeJS.ProcessEnv = process.env,
-  readConfigFile: (path?: string) => PaperclipConfig | null = readConfig,
+  readConfigFile: (path?: string) => BostanConfig | null = readConfig,
 ): void {
   if (env.DATABASE_URL?.trim() || env.DATABASE_MIGRATION_URL?.trim()) {
     throw new Error(

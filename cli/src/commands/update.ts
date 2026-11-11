@@ -9,7 +9,7 @@ import pc from "picocolors";
 import { assertManagedShimWritable, writeManagedShim, buildNextManifest, flipCurrentAtomic, isManagedExecutable, pruneInstallPayloads, readInstallManifest, resolveInstallStorePaths, withInstallStoreLock, writeInstallManifestAtomic, type InstallChannel, type InstallManifest, type InstallRecord, type InstallStorePaths } from "../install-store.js";
 import { dbBackupCommand } from "./db-backup.js";
 import { assertSupportedNodeVersion, installGitPayload, installNpmPayload, PUBLIC_NPM_REGISTRY, resolveGitHubRef, resolvePublishedVersion, type CommandRunner } from "./install.js";
-import { resolvePaperclipInstanceId, resolvePaperclipInstanceRoot } from "../config/home.js";
+import { resolveBostanInstanceId, resolveBostanInstanceRoot } from "../config/home.js";
 import { resolveConfigPath } from "../config/store.js";
 import { detectServiceManager } from "../services/service-manager.js";
 import { restartManagedService } from "./service.js";
@@ -25,7 +25,7 @@ const DATABASE_UNREACHABLE_CODES = new Set(["ECONNREFUSED", "EHOSTUNREACH", "ENE
 function hasPaperclipInstanceData(): boolean {
   return Boolean(process.env.DATABASE_URL?.trim())
     || fs.existsSync(resolveConfigPath())
-    || fs.existsSync(resolvePaperclipInstanceRoot());
+    || fs.existsSync(resolveBostanInstanceRoot());
 }
 
 function isDatabaseUnreachableError(error: unknown): boolean {
@@ -69,7 +69,7 @@ async function runPreUpdateBackup(options: UpdateOptions, backup: () => Promise<
 }
 
 async function restartActiveManagedService(expectedVersion: string): Promise<boolean> {
-  const instanceId = resolvePaperclipInstanceId();
+  const instanceId = resolveBostanInstanceId();
   const detection = await detectServiceManager({ instanceId });
   if (!detection.supported || !(await detection.manager.status()).active) return false;
   await restartManagedService({ instanceId, expectedVersion });

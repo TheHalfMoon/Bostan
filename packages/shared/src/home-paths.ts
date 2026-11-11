@@ -13,13 +13,13 @@ export function expandHomePrefix(value: string): string {
   return value;
 }
 
-export function resolvePaperclipHomeDir(homeOverride?: string): string {
+export function resolveBostanHomeDir(homeOverride?: string): string {
   const raw = homeOverride?.trim() || process.env.PAPERCLIP_HOME?.trim();
   if (raw) return path.resolve(expandHomePrefix(raw));
   return path.resolve(os.homedir(), ".paperclip");
 }
 
-export function resolvePaperclipInstanceId(instanceIdOverride?: string): string {
+export function resolveBostanInstanceId(instanceIdOverride?: string): string {
   const raw = instanceIdOverride?.trim() || process.env.PAPERCLIP_INSTANCE_ID?.trim() || DEFAULT_PAPERCLIP_INSTANCE_ID;
   if (!PATH_SEGMENT_RE.test(raw)) {
     throw new Error(`Invalid PAPERCLIP_INSTANCE_ID '${raw}'.`);
@@ -27,28 +27,28 @@ export function resolvePaperclipInstanceId(instanceIdOverride?: string): string 
   return raw;
 }
 
-export function resolvePaperclipInstanceRoot(input: {
+export function resolveBostanInstanceRoot(input: {
   homeDir?: string;
   instanceId?: string;
 } = {}): string {
-  return path.resolve(resolvePaperclipHomeDir(input.homeDir), "instances", resolvePaperclipInstanceId(input.instanceId));
+  return path.resolve(resolveBostanHomeDir(input.homeDir), "instances", resolveBostanInstanceId(input.instanceId));
 }
 
-export function resolvePaperclipInstanceConfigPath(input: {
+export function resolveBostanInstanceConfigPath(input: {
   homeDir?: string;
   instanceId?: string;
 } = {}): string {
-  return path.resolve(resolvePaperclipInstanceRoot(input), PAPERCLIP_CONFIG_BASENAME);
+  return path.resolve(resolveBostanInstanceRoot(input), PAPERCLIP_CONFIG_BASENAME);
 }
 
-export function resolvePaperclipConfigPathForInstance(input: {
+export function resolveBostanConfigPathForInstance(input: {
   homeDir?: string;
   instanceId?: string;
 } = {}): string {
-  return resolvePaperclipInstanceConfigPath(input);
+  return resolveBostanInstanceConfigPath(input);
 }
 
-export function resolvePaperclipEnvPathForConfig(configPath: string): string {
+export function resolveBostanEnvPathForConfig(configPath: string): string {
   return path.resolve(path.dirname(configPath), PAPERCLIP_ENV_FILENAME);
 }
 
@@ -56,37 +56,47 @@ export function resolveDefaultEmbeddedPostgresDir(input: {
   homeDir?: string;
   instanceId?: string;
 } = {}): string {
-  return path.resolve(resolvePaperclipInstanceRoot(input), "db");
+  return path.resolve(resolveBostanInstanceRoot(input), "db");
 }
 
 export function resolveDefaultLogsDir(input: {
   homeDir?: string;
   instanceId?: string;
 } = {}): string {
-  return path.resolve(resolvePaperclipInstanceRoot(input), "logs");
+  return path.resolve(resolveBostanInstanceRoot(input), "logs");
 }
 
 export function resolveDefaultSecretsKeyFilePath(input: {
   homeDir?: string;
   instanceId?: string;
 } = {}): string {
-  return path.resolve(resolvePaperclipInstanceRoot(input), "secrets", "master.key");
+  return path.resolve(resolveBostanInstanceRoot(input), "secrets", "master.key");
 }
 
 export function resolveDefaultStorageDir(input: {
   homeDir?: string;
   instanceId?: string;
 } = {}): string {
-  return path.resolve(resolvePaperclipInstanceRoot(input), "data", "storage");
+  return path.resolve(resolveBostanInstanceRoot(input), "data", "storage");
 }
 
 export function resolveDefaultBackupDir(input: {
   homeDir?: string;
   instanceId?: string;
 } = {}): string {
-  return path.resolve(resolvePaperclipInstanceRoot(input), "data", "backups");
+  return path.resolve(resolveBostanInstanceRoot(input), "data", "backups");
 }
 
 export function resolveHomeAwarePath(value: string): string {
   return path.resolve(expandHomePrefix(value));
 }
+
+/** Compatibility exports; these aliases resolve the same existing instance data. */
+export {
+  resolveBostanHomeDir as resolvePaperclipHomeDir,
+  resolveBostanInstanceId as resolvePaperclipInstanceId,
+  resolveBostanInstanceRoot as resolvePaperclipInstanceRoot,
+  resolveBostanInstanceConfigPath as resolvePaperclipInstanceConfigPath,
+  resolveBostanConfigPathForInstance as resolvePaperclipConfigPathForInstance,
+  resolveBostanEnvPathForConfig as resolvePaperclipEnvPathForConfig,
+};

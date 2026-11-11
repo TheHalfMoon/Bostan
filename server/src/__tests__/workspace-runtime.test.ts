@@ -78,7 +78,7 @@ import {
   type Environment,
   type EnvironmentLease,
 } from "@bostan/shared";
-import { resolvePaperclipConfigPath } from "../paths.ts";
+import { resolveBostanConfigPath } from "../paths.ts";
 import type { WorkspaceOperation } from "@bostan/shared";
 import type { WorkspaceOperationRecorder } from "../services/workspace-operations.ts";
 import { HttpError } from "../errors.ts";
@@ -2102,7 +2102,7 @@ process.stderr.write(${JSON.stringify(stderr)}, () => { process.exitCode = ${cod
       expect(envVars.PAPERCLIP_WORKTREE_NAME).toBe("PAP-885-show-worktree-banner");
 
       process.chdir(workspace.cwd);
-      expect(resolvePaperclipConfigPath()).toBe(configPath);
+      expect(resolveBostanConfigPath()).toBe(configPath);
 
       const preservedPort = 39999;
       await fs.writeFile(

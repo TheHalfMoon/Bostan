@@ -111,7 +111,7 @@ import {
   splitFrontmatterBlock,
   stringifyFrontmatter,
 } from "@bostan/shared";
-import { resolvePaperclipInstanceRoot } from "../home-paths.js";
+import { resolveBostanInstanceRoot } from "../home-paths.js";
 import { conflict, forbidden, notFound, unprocessable } from "../errors.js";
 import { ghFetch, gitHubApiBase, resolveRawGitHubUrl } from "./github-fetch.js";
 import { agentService } from "./agents.js";
@@ -2418,7 +2418,7 @@ export async function findMissingLocalSkillIds(
 }
 
 function resolveManagedSkillsRoot(companyId: string) {
-  return path.resolve(resolvePaperclipInstanceRoot(), "skills", companyId);
+  return path.resolve(resolveBostanInstanceRoot(), "skills", companyId);
 }
 
 /**

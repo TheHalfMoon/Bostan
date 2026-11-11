@@ -1,13 +1,13 @@
 import fs from "node:fs";
 import {
   DEPLOYMENT_MODES,
-  findPaperclipConfigKeyWarnings,
-  paperclipConfigSchema,
-  type PaperclipConfig,
+  findBostanConfigKeyWarnings,
+  bostanConfigSchema,
+  type BostanConfig,
   type DeploymentMode,
 } from "@bostan/shared";
 import { ZodError } from "zod";
-import { resolvePaperclipConfigPath } from "./paths.js";
+import { resolveBostanConfigPath } from "./paths.js";
 
 function formatConfigValidationError(error: ZodError): string {
   return error.issues
@@ -18,8 +18,8 @@ function formatConfigValidationError(error: ZodError): string {
     .join("; ");
 }
 
-export function readConfigFile(): PaperclipConfig | null {
-  const configPath = resolvePaperclipConfigPath();
+export function readConfigFile(): BostanConfig | null {
+  const configPath = resolveBostanConfigPath();
 
   if (!fs.existsSync(configPath)) return null;
 
@@ -32,8 +32,8 @@ export function readConfigFile(): PaperclipConfig | null {
   }
 
   try {
-    const config = paperclipConfigSchema.parse(raw);
-    for (const warning of findPaperclipConfigKeyWarnings(config)) {
+    const config = bostanConfigSchema.parse(raw);
+    for (const warning of findBostanConfigKeyWarnings(config)) {
       console.warn(
         `Unknown config key ${warning.path}; did you mean ${warning.suggestion}? It will be preserved.`,
       );

@@ -25,7 +25,7 @@ import {
   type NativeRuntimeAssetReference,
   type NativeRuntimeContextSnapshot,
 } from "../../vendor/paperclip-runner/index.js";
-import { resolvePaperclipInstanceRoot } from "../../home-paths.js";
+import { resolveBostanInstanceRoot } from "../../home-paths.js";
 import { agentInstructionsService, agentInstructionsBundleMode } from "../agent-instructions.js";
 import { agentInstructionRevisionService } from "../agent-instruction-revisions.js";
 import { toolAccessService } from "../tool-access.js";
@@ -105,7 +105,7 @@ export async function materializeAsset(files: AssetFile[]): Promise<NativeRuntim
     const manifestDigest = sha256(manifestText);
     return { sorted, manifestFiles, totalBytes, assetDigest, manifestText, manifestDigest };
   });
-  const assetsRoot = path.join(resolvePaperclipInstanceRoot(), "runtime-context-assets");
+  const assetsRoot = path.join(resolveBostanInstanceRoot(), "runtime-context-assets");
   const rootPath = path.join(assetsRoot, "bundles", assetDigest);
   const manifestPath = path.join(assetsRoot, "manifests", `${assetDigest}.json`);
   const existing = await measureRunPhase("runtime_context.asset_cache", () => fs.readFile(manifestPath, "utf8").catch(() => null));

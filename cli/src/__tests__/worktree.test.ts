@@ -66,7 +66,7 @@ import {
   rewriteLocalUrlPort,
   sanitizeWorktreeInstanceId,
 } from "../commands/worktree-lib.js";
-import type { PaperclipConfig } from "../config/schema.js";
+import type { BostanConfig } from "../config/schema.js";
 import {
   EMBEDDED_POSTGRES_TEST_TIMEOUT_MS,
   getEmbeddedPostgresTestSupport,
@@ -225,7 +225,7 @@ afterEach(() => {
   }
 });
 
-function buildSourceConfig(): PaperclipConfig {
+function buildSourceConfig(): BostanConfig {
   return {
     $meta: {
       version: 1,
@@ -290,8 +290,8 @@ function writeSeedConfigFiles(
   targetConfigPath: string,
   targetRoot: string,
   targetPaths: ReturnType<typeof resolveWorktreeLocalPaths>,
-  sourceConfig: PaperclipConfig,
-  targetConfig: PaperclipConfig,
+  sourceConfig: BostanConfig,
+  targetConfig: BostanConfig,
 ): void {
   fs.mkdirSync(path.dirname(sourceConfigPath), { recursive: true });
   fs.mkdirSync(path.dirname(targetConfigPath), { recursive: true });
@@ -630,7 +630,7 @@ describe("worktree helpers", () => {
     try {
       const configPath = path.join(tempRoot, "config.json");
       const sourceConfig = buildSourceConfig();
-      const config: PaperclipConfig = {
+      const config: BostanConfig = {
         ...sourceConfig,
         database: {
           ...sourceConfig.database,
@@ -1600,7 +1600,7 @@ describe("worktree helpers", () => {
       });
 
       const targetConfigPath = path.join(worktreeRoot, ".paperclip", "config.json");
-      const targetConfig = JSON.parse(fs.readFileSync(targetConfigPath, "utf8")) as PaperclipConfig;
+      const targetConfig = JSON.parse(fs.readFileSync(targetConfigPath, "utf8")) as BostanConfig;
       expect(readWorktreeSeedManifest(targetConfigPath)).toMatchObject({
         state: "verified",
         phase: "complete",
@@ -1789,7 +1789,7 @@ describe("worktree helpers", () => {
 
       const targetConfig = JSON.parse(
         fs.readFileSync(path.join(worktreeRoot, ".paperclip", "config.json"), "utf8"),
-      ) as PaperclipConfig;
+      ) as BostanConfig;
       const manifestText = fs.readFileSync(
         path.join(worktreeRoot, ".paperclip", "seed-manifest.json"),
         "utf8",
@@ -2247,7 +2247,7 @@ describe("worktree helpers", () => {
             keyFilePath: sourcePaths.secretsKeyFilePath,
           },
         },
-      } as PaperclipConfig;
+      } as BostanConfig;
 
       fs.writeFileSync(currentPaths.configPath, JSON.stringify(currentConfig, null, 2), "utf8");
       fs.writeFileSync(currentPaths.envPath, `PAPERCLIP_HOME=${homeDir}\nPAPERCLIP_INSTANCE_ID=${currentInstanceId}\n`, "utf8");
