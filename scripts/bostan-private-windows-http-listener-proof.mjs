@@ -23,7 +23,11 @@ export function inspectPrivateWindowsHttpListeners(port) {
   ].join('; ');
   const result = spawnSync(binary, ['-NoProfile','-NonInteractive','-Command',script], {
     windowsHide:true, encoding:'utf8', timeout:8000, maxBuffer:4096,
-    env:{SystemRoot:process.env.SystemRoot||'',WINDIR:process.env.WINDIR||''},
+    // Preserve only the OS module discovery path: a stripped environment can prevent
+    // Get-NetTCPConnection from loading NetTCPIP under the CI test account.
+    // Do not inherit the operator's arbitrary PSModulePath or PATH.
+    env:{SystemRoot:process.env.SystemRoot||'',WINDIR:process.env.WINDIR||'',
+      PSModulePath:(process.env.SystemRoot||'')+'\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\Modules'},
   });
   if (result.status !== 0 || result.signal || result.error ||
       typeof result.stdout !== 'string' || result.stderr?.trim()) refused('query_failed');
