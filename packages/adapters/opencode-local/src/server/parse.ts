@@ -1,4 +1,43 @@
 import { asString, parseJson, parseObject } from "@bostan/adapter-utils/server-utils";
+import { createStringCompactor } from "@bostan/adapter-utils/usage-checkpoint";
+
+const STEP_LIMIT_MESSAGE = "OpenCode reached the configured maximum agent steps before completing its turn.";
+
+/** Retain only bounded protocol text while observing the uncapped transport.
+ * Accounting deliberately strips tool state and cannot establish turn outcome. */
+export function createOpenCodeTurnObserver() {
+  const compact = createStringCompactor();
+  let remainder = "", finishReason = "";
+  let limitRefused = false, observed = false, invalid = false;
+  function record(line: string) {
+    if (line.length > 1024 * 1024) throw new Error("OpenCode completion record exceeds its observation bound");
+    const event = parseJson(line);
+    if (!event) return;
+    const type = asString(event.type, "");
+    if (type === "step_start") { limitRefused = false; finishReason = ""; observed = false; }
+    if (type === "step_finish") { finishReason = asString(parseObject(event.part).reason, ""); observed = true; }
+    if (type === "tool_use") {
+      const state = parseObject(parseObject(event.part).state);
+      if (state.status === "error" && state.error === "Tools are disabled after the maximum agent steps") limitRefused = true;
+    }
+  }
+  return {
+    write(chunk: string) {
+      if (invalid) return;
+      try {
+        const lines = (remainder + compact(chunk)).split("\n");
+        remainder = lines.pop() ?? "";
+        if (remainder.length > 1024 * 1024) throw new Error();
+        for (const line of lines) record(line);
+      } catch { invalid = true; remainder = ""; }
+    },
+    finish() {
+      if (invalid) throw new Error("OpenCode completion observation failed; turn outcome is unverified");
+      if (remainder) { record(remainder); remainder = ""; }
+      return { observed, stepLimitExceeded: limitRefused && finishReason === "tool-calls" };
+    },
+  };
+}
 
 function errorText(value: unknown): string {
   if (typeof value === "string") return value;
@@ -29,6 +68,8 @@ export function createOpenCodeJsonlParser() {
   const messages: string[] = [];
   const errors: string[] = [];
   const toolErrors: string[] = [];
+  let stepLimitRefused = false;
+  let lastFinishReason = "";
   const usage = {
     inputTokens: 0,
     cachedInputTokens: 0,
@@ -52,6 +93,12 @@ export function createOpenCodeJsonlParser() {
 
       const type = asString(event.type, "");
 
+      if (type === "step_start") {
+        stepLimitRefused = false;
+        lastFinishReason = "";
+        continue;
+      }
+
       if (type === "text") {
         const part = parseObject(event.part);
         const text = asString(part.text, "").trim();
@@ -61,6 +108,7 @@ export function createOpenCodeJsonlParser() {
 
       if (type === "step_finish") {
         const part = parseObject(event.part);
+        lastFinishReason = asString(part.reason, "");
         const tokens = parseObject(part.tokens);
         const cache = parseObject(tokens.cache);
         const counts = [tokens.input, tokens.output, cache.read === undefined ? 0 : cache.read, cache.write === undefined ? 0 : cache.write, tokens.reasoning === undefined ? 0 : tokens.reasoning];
@@ -82,6 +130,7 @@ export function createOpenCodeJsonlParser() {
         if (asString(state.status, "") === "error") {
           const text = asString(state.error, "").trim();
           if (text) toolErrors.push(text);
+          if (text === "Tools are disabled after the maximum agent steps") stepLimitRefused = true;
         }
         continue;
       }
@@ -93,6 +142,7 @@ export function createOpenCodeJsonlParser() {
       }
     }
 
+    const stepLimitExceeded = errors.length === 0 && stepLimitRefused && lastFinishReason === "tool-calls";
     return {
       sessionId,
       summary: messages.join("\n\n").trim(),
@@ -100,7 +150,9 @@ export function createOpenCodeJsonlParser() {
       usageReported,
       usageComplete: usageReported && !missingUsage,
       costUsd: missingCost ? null : costUsd,
-      errorMessage: errors.length > 0 ? errors.join("\n") : null,
+      errorMessage: errors.length > 0 ? errors.join("\n") : stepLimitExceeded
+        ? STEP_LIMIT_MESSAGE : null,
+      errorCode: stepLimitExceeded ? "opencode_step_limit_exceeded" : null,
       toolErrors,
     };
   };

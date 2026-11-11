@@ -47,6 +47,66 @@ describe("OpenCode local skill injection", () => {
     await fs.rm(configHome, { recursive: true, force: true });
   });
 
+  it.each([false, true])("fails a terminal step limit despite zero process exit (display clipped=%s)", async clipped => {
+    const commandPath = path.join(configHome, "fake-opencode");
+    await fs.writeFile(commandPath, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+    const stdout = [
+      { type: "step_start", sessionID: "bounded-session" },
+      { type: "text", part: { text: "I will use a tool next." } },
+      { type: "tool_use", part: { state: { status: "error", error: "Tools are disabled after the maximum agent steps" } } },
+      { type: "step_finish", part: { reason: "tool-calls", cost: 0, tokens: { input: 12, output: 8 } } },
+    ].map(row => JSON.stringify(row)).join("\n");
+    runProcessMock.mockReset();
+    runProcessMock.mockImplementationOnce(async (...args) => {
+      await args[4].onLog("stdout", stdout + "\n");
+      return probeResult({ stdout: clipped ? stdout.split("\n").slice(0, 2).join("\n") : stdout });
+    });
+    const result = await execute({
+      runId: "bounded-run",
+      agent: { id: "agent-1", companyId: "company-1", name: "OpenCode", adapterType: "opencode_local", adapterConfig: {} },
+      runtime: { sessionId: null, sessionParams: null, sessionDisplayId: null, taskKey: null },
+      config: { command: commandPath, cwd: configHome, model: "fixture/local", maxAgentSteps: 1,
+        paperclipRuntimeSkills: [], env: { OPENCODE_ALLOW_ALL_MODELS: "1" } },
+      context: {}, onLog: async () => {},
+    });
+    expect(result).toMatchObject({
+      exitCode: 1, timedOut: false, errorCode: "opencode_step_limit_exceeded",
+      errorMessage: "OpenCode reached the configured maximum agent steps before completing its turn.",
+      usage: { inputTokens: 12, outputTokens: 8, cachedInputTokens: 0 }, costUsd: 0,
+      sessionId: "bounded-session",
+    });
+  });
+
+  it.each([
+    { exitCode: 1, timedOut: false, signal: null, errorCode: "duplex_channel_lost", providerError: null },
+    { exitCode: 143, timedOut: true, signal: "SIGTERM", errorCode: null, providerError: null },
+    { exitCode: 0, timedOut: false, signal: null, errorCode: null, providerError: null },
+    { exitCode: 0, timedOut: false, signal: null, errorCode: null, providerError: "Synthetic provider unavailable" },
+  ])("preserves transport priority when completion observation exceeds its bound: %j", async disposition => {
+    const commandPath = path.join(configHome, "fake-opencode");
+    await fs.writeFile(commandPath, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+    runProcessMock.mockReset();
+    runProcessMock.mockImplementationOnce(async (...args) => {
+      await args[4].onLog("stdout", " ".repeat(1024 * 1024 + 1));
+      return probeResult({ ...disposition, stdout: disposition.providerError
+        ? JSON.stringify({ type: "error", error: { message: disposition.providerError } }) : "",
+      stderr: "synthetic transport failure" });
+    });
+    const result = await execute({
+      runId: "observation-fault", agent: { id: "agent-1", companyId: "company-1", name: "OpenCode", adapterType: "opencode_local", adapterConfig: {} },
+      runtime: { sessionId: null, sessionParams: null, sessionDisplayId: null, taskKey: null },
+      config: { command: commandPath, cwd: configHome, model: "fixture/local", paperclipRuntimeSkills: [], env: { OPENCODE_ALLOW_ALL_MODELS: "1" } },
+      context: {}, onLog: async () => {},
+    });
+    expect(result.exitCode).toBe(disposition.exitCode === 0 ? 1 : disposition.exitCode);
+    expect(result.timedOut).toBe(disposition.timedOut);
+    if (disposition.timedOut) expect(result.errorMessage).toBe("OpenCode execution timed out");
+    else if (disposition.providerError) {
+      expect(result.errorMessage).toBe(disposition.providerError);
+      expect(result.errorCode).toBeNull();
+    } else expect(result.errorCode).toBe(disposition.errorCode ?? "opencode_output_observation_failed");
+  });
+
   it.each([false, true])("keeps chat policy with a legacy OpenCode prompt (custom=%s)", async (custom) => {
     const commandPath = path.join(configHome, "fake-opencode");
     await fs.writeFile(commandPath, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
