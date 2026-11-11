@@ -7566,7 +7566,7 @@ describeEmbeddedPostgres("chat channel control-plane integration", () => {
         await expect(f.service.sendSlackTestMessage(f.endpoint.id, actor, { requestId: randomUUID() })).rejects.toThrow("Enable direct messages");
         await db.update(chatEndpoints).set({ allowDirectMessages: true }).where(eq(chatEndpoints.id, f.endpoint.id));
         await db.update(companyMemberships).set({ status: "inactive" }).where(and(eq(companyMemberships.companyId, f.companyId), eq(companyMemberships.principalId, actor.userId)));
-        await expect(f.service.sendSlackTestMessage(f.endpoint.id, actor, { requestId: randomUUID() })).rejects.toThrow("active Paperclip account");
+        await expect(f.service.sendSlackTestMessage(f.endpoint.id, actor, { requestId: randomUUID() })).rejects.toThrow("active Bostan account");
         expect(posts(f)).toHaveLength(0);
       });
       it("redacts provider failures and never retries an ambiguous send", async () => {

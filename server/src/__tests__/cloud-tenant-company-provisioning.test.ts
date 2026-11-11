@@ -51,7 +51,7 @@ function legacyProvisionedPrefix(stackId: string) {
 }
 
 function legacyProvisionedDescription(stackId: string) {
-  return `Provisioned by Bostan Cloud for stack ${stackId}.`;
+  return `Provisioned by Paperclip Cloud for stack ${stackId}.`;
 }
 
 describeEmbeddedPostgres("cloud tenant company provisioning", () => {
