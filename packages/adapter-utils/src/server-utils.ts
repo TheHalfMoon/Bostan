@@ -4364,7 +4364,7 @@ export async function ensurePaperclipSkillSymlink(
   linkSkill: (source: string, target: string) => Promise<void> = (
     linkSource,
     linkTarget,
-  ) => fs.symlink(linkSource, linkTarget),
+  ) => fs.symlink(linkSource, linkTarget, process.platform === "win32" ? "junction" : "dir"),
 ): Promise<"created" | "repaired" | "skipped"> {
   const existing = await fs.lstat(target).catch(() => null);
   if (!existing) {
@@ -4482,7 +4482,7 @@ async function acquireMaterializeLock(
         continue;
       if (Date.now() >= deadline) {
         throw new Error(
-          `Timed out waiting for Paperclip skill materialization lock at ${lockDir}`,
+          `Timed out waiting for Bostan skill materialization lock at ${lockDir}`,
         );
       }
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -4555,7 +4555,7 @@ export async function materializePaperclipSkillCopy(
     );
   }
   if (!rootStat.isDirectory()) {
-    throw new Error("Paperclip skills must be directories.");
+    throw new Error("Bostan skills must be directories.");
   }
 
   const result: MaterializedPaperclipSkillCopyResult = {

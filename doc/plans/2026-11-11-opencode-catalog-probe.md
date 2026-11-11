@@ -1,0 +1,7 @@
+# OpenCode catalog and live-probe continuation
+
+A genuine zero-cost local Qwen2.5 1.5B environment test returned these checks together: model catalog discovery timed out at the existing 20-second bound; configured-model validation passed; the actual model answered `Hello.`; aggregate status was fail. This blocked the synthetic saved agent in lifecycle verification. The model catalog was the failure, rather than a failed inference or missing credential.
+
+The correction retains the failed catalog observation as a warning only after both configured-model validation and a successful actual hello probe. All other check severities remain unchanged. Model rejection prevents the probe; authentication failure, timeout and unexpected output cannot downgrade the catalog error. No provider-specific bypass, synthetic success, paid fallback or timeout increase is introduced.
+
+The new success regression failed before the correction. Focused OpenCode environment/remote/free-capacity/free-transport tests: 56 PASS. OpenCode package typecheck and diff check PASS. Full exact-head CI and corrected-source live/persisted qualification remain pending. This change does not establish installed desktop, task/tool/artifact, restart or release acceptance. Earlier direct adapter success and failed persisted-server attempts remain in the previous continuation records and PR #549 evidence. Related: #34, #237.

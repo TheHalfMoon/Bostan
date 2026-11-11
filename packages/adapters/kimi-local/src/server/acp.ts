@@ -296,7 +296,7 @@ export async function testKimiAcpEnvironment(
       code: "kimi_acp_remote_target",
       level: "info",
       message: "Kimi ACP will run against the remote execution environment.",
-      hint: "Remote ACP requires a bidirectional process target such as SSH or Paperclip's sandbox process-session bridge.",
+      hint: "Remote ACP requires a bidirectional process target such as SSH or Bostan's sandbox process-session bridge.",
     });
   }
 

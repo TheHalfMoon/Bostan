@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseOpenCodeJsonl, isOpenCodeUnknownSessionError } from "./parse.js";
+import { createOpenCodeJsonlParser, createOpenCodeTurnObserver, parseOpenCodeJsonl, isOpenCodeUnknownSessionError } from "./parse.js";
 
 describe("parseOpenCodeJsonl", () => {
   it("parses assistant text, usage, cost, and errors", () => {
@@ -69,6 +69,30 @@ describe("parseOpenCodeJsonl", () => {
     expect(parsed.toolErrors).toEqual(["File not found: e2b-adapter-result.txt"]);
   });
 
+  it("reports a terminal maximum-step refusal even when the CLI exits cleanly", () => {
+    const stdout = [
+      { type: "text", part: { text: "I will use a tool next." } },
+      { type: "tool_use", part: { state: { status: "error", error: "Tools are disabled after the maximum agent steps" } } },
+      { type: "step_finish", part: { reason: "tool-calls", cost: 0, tokens: { input: 12, output: 8 } } },
+    ].map(row => JSON.stringify(row)).join("\n");
+    expect(parseOpenCodeJsonl(stdout)).toMatchObject({
+      errorCode: "opencode_step_limit_exceeded",
+      errorMessage: "OpenCode reached the configured maximum agent steps before completing its turn.",
+      usage: { inputTokens: 12, outputTokens: 8, cachedInputTokens: 0 },
+    });
+  });
+
+  it("keeps a later completed turn successful after a step-limit tool refusal", () => {
+    const consume = createOpenCodeJsonlParser();
+    consume(JSON.stringify({ type: "tool_use", part: { state: { status: "error", error: "Tools are disabled after the maximum agent steps" } } }));
+    consume(JSON.stringify({ type: "step_finish", part: { reason: "tool-calls" } }));
+    expect(consume([
+      { type: "step_start" },
+      { type: "text", part: { text: "Completed without tools." } },
+      { type: "step_finish", part: { reason: "stop" } },
+    ].map(row => JSON.stringify(row)).join("\n"))).toMatchObject({ errorCode: null, errorMessage: null });
+  });
+
   it("detects unknown session errors", () => {
     expect(isOpenCodeUnknownSessionError("Session not found: s_123", "")).toBe(true);
     expect(isOpenCodeUnknownSessionError("", "unknown session id")).toBe(true);
@@ -82,6 +106,37 @@ describe("OpenCode price availability", () => {
     expect(parseOpenCodeJsonl(JSON.stringify(event))).toMatchObject({ costUsd: null, usage: { inputTokens: 30, cachedInputTokens: 100, outputTokens: 3 } });
     expect(parseOpenCodeJsonl(JSON.stringify({ ...event, part: { ...event.part, cost: 0 } })).costUsd).toBe(0);
     expect(parseOpenCodeJsonl([event, { ...event, part: { ...event.part, cost: 1 } }].map((row) => JSON.stringify(row)).join("\n")).costUsd).toBeNull();
+  });
+});
+
+describe("OpenCode uncapped turn observation", () => {
+  it("observes a split terminal refusal after a large content record without retaining its text", () => {
+    const observer = createOpenCodeTurnObserver();
+    const rows = [
+      { type: "text", part: { text: "synthetic-content-".repeat(100000) } },
+      { type: "tool_use", part: { state: { status: "error", error: "Tools are disabled after the maximum agent steps" } } },
+      { type: "step_finish", part: { reason: "tool-calls" } },
+    ].map(row => JSON.stringify(row)).join("\n");
+    const split = rows.indexOf("maximum") + 3;
+    observer.write(rows.slice(0, split)); observer.write(rows.slice(split));
+    expect(observer.finish()).toEqual({ observed: true, stepLimitExceeded: true });
+  });
+
+  it("does not preserve an earlier refusal after a subsequent completed turn", () => {
+    const observer = createOpenCodeTurnObserver();
+    observer.write([
+      { type: "tool_use", part: { state: { status: "error", error: "Tools are disabled after the maximum agent steps" } } },
+      { type: "step_finish", part: { reason: "tool-calls" } },
+      { type: "step_start" },
+      { type: "step_finish", part: { reason: "stop" } },
+    ].map(row => JSON.stringify(row)).join("\n"));
+    expect(observer.finish()).toEqual({ observed: true, stepLimitExceeded: false });
+  });
+
+  it("fails closed when a structural record exceeds its observation bound", () => {
+    const observer = createOpenCodeTurnObserver();
+    observer.write(" ".repeat(1024 * 1024 + 1));
+    expect(() => observer.finish()).toThrow("OpenCode completion observation failed; turn outcome is unverified");
   });
 });
 
