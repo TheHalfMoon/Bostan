@@ -7,13 +7,15 @@ $ErrorActionPreference='Stop'
 [Console]::Error.WriteLine('BOSTAN_ACL_PHASE:start')
 $user=[Security.Principal.WindowsIdentity]::GetCurrent().User
 [Console]::Error.WriteLine('BOSTAN_ACL_PHASE:identity_ready')
-$acl=New-Object Security.AccessControl.DirectorySecurity
+# Use .NET constructors directly. New-Object invokes PowerShell command/module
+# discovery, which can stall in a minimal environment before any ACL is built.
+$acl=[Security.AccessControl.DirectorySecurity]::new()
 $acl.SetOwner($user)
 $acl.SetAccessRuleProtection($true,$false)
 $inherit=[Security.AccessControl.InheritanceFlags]'ContainerInherit,ObjectInherit'
 foreach($sid in @($user.Value,'S-1-5-18','S-1-5-32-544')) {
-  $identity=New-Object Security.Principal.SecurityIdentifier($sid)
-  $rule=New-Object Security.AccessControl.FileSystemAccessRule($identity,'FullControl',$inherit,'None','Allow')
+  $identity=[Security.Principal.SecurityIdentifier]::new($sid)
+  $rule=[Security.AccessControl.FileSystemAccessRule]::new($identity,'FullControl',$inherit,'None','Allow')
   $acl.AddAccessRule($rule)
 }
 [Console]::Error.WriteLine('BOSTAN_ACL_PHASE:policy_ready')

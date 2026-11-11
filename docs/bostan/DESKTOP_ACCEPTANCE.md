@@ -121,3 +121,24 @@ now distinguish where it stalled without exposing paths or changing the ACL,
 timeout or concise user-facing failure message. Native hosted qualification is
 still required, including an actual Mac installed-app lifecycle. Signing,
 notarization and publication remain disabled.
+
+## 2026-11-11 second native failure and targeted repair
+
+Run `42968075324` at `55abeb6b` failed both desktop jobs again. Windows
+reported `timeout` at `identity_ready`, before `policy_ready`; the earlier
+statement about avoiding module autoload was incomplete because `New-Object`
+still performed command discovery. ACL objects now use direct .NET constructors
+throughout, retaining the same policy, verification and 15-second bound. Local
+Windows tests again pass 19 cases with one POSIX executable-bit skip. Native
+hosted success remains required; the diagnostic does not establish the timeout's
+complete root cause.
+
+Mac failed before building an installer: pnpm 9 attempted to create
+`/Users/private` while linking bins for a stage under the canonical OS temporary
+directory. The stage now lives inside the workspace, under `desktop`, outside
+the builder output tree. It still has an independently owned container and the
+same identity-checked cleanup. Generated stages are ignored by Git and excluded
+from the app's explicit file allowlist. A minimal zero-network workspace deploy
+fixture passed for both internal and external stages on Windows; this does not
+reproduce or close the macOS-specific failure. Full native CI must validate the
+actual production deploy and packaged payload.

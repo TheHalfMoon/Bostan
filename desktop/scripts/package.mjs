@@ -22,7 +22,9 @@ for (const required of ["server/dist/index.js", "server/dist/build-info.json", "
   }
 }
 fs.mkdirSync(out, { recursive: true });
-const ownedStage = createPackagingStage();
+// pnpm 9 computes workspace-relative module/bin paths during deploy. Keep the
+// stage inside the workspace, but outside the output tree builder replaces.
+const ownedStage = createPackagingStage(desktop);
 const stage = ownedStage.directory;
 try {
   const pnpm = resolvePnpmInvocation();
