@@ -27,7 +27,7 @@ export function inspectPrivateWindowsHttpListeners(port) {
     // Get-NetTCPConnection from loading NetTCPIP under the CI test account.
     // Do not inherit the operator's arbitrary PSModulePath or PATH.
     env:{SystemRoot:process.env.SystemRoot||'',WINDIR:process.env.WINDIR||'',
-      PSModulePath:(process.env.SystemRoot||'')+'\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\Modules'},
+      PSModulePath:(process.env.SystemRoot||'')+'\\System32\\WindowsPowerShell\\v1.0\\Modules'},
   });
   if (result.status !== 0 || result.signal || result.error ||
       typeof result.stdout !== 'string' || result.stderr?.trim()) refused('query_failed');
