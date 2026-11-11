@@ -4,10 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { createRequire } from "node:module";
-import { captureRuntimePayload, verifyPackagedRuntime } from "./packaging-runtime.mjs";
+import { captureRuntimePayload, verifyPackagedRuntime, runtimeResourceEntries } from "./packaging-runtime.mjs";
 import { prepareRuntimeLinks, restoreRuntimeLinks } from "../app/runtime-links.mjs";
 
 const { copyDir } = createRequire(import.meta.url)("builder-util/out/fs.js");
+const { getFileMatchers, copyFiles } = createRequire(import.meta.url)("app-builder-lib/out/fileMatcher.js");
 
 function fixture(t, platform = "win32") {
   const parent = fs.realpathSync(os.tmpdir());
@@ -35,6 +36,27 @@ function fixture(t, platform = "win32") {
 for (const platform of ["win32", "darwin"]) test(`verifies the real copied ${platform} resource layout`, async t => {
   const { stage, context } = fixture(t, platform);
   await verifyPackagedRuntime(context, await captureRuntimePayload(stage));
+});
+
+for (const platform of ["win32", "darwin"]) test(`includes production dependencies through the actual ${platform} extra-resource filters`, async t => {
+  const { root, stage, runtime, context } = fixture(t, platform);
+  const dependency = "node_modules/.pnpm/demo/node_modules/@bostan/demo/index.js";
+  fs.mkdirSync(path.dirname(path.join(stage, dependency)), { recursive: true });
+  fs.writeFileSync(path.join(stage, dependency), "module.exports = 'production dependency';");
+  const expected = await captureRuntimePayload(stage);
+  async function copy(entries) {
+    const matchers = getFileMatchers({ extraResources: entries }, "extraResources", path.dirname(runtime), {
+      defaultSrc: root, globalOutDir: context.appOutDir, customBuildOptions: {}, macroExpander: value => value,
+    });
+    await copyFiles(matchers);
+  }
+  // Preserve the failing boundary: a raw copyDir test cannot expose this filter.
+  await copy([{ from: stage, to: "runtime" }]);
+  assert.equal(fs.existsSync(path.join(runtime, dependency)), false);
+  await assert.rejects(verifyPackagedRuntime(context, expected), /"missing":1/);
+  await copy(runtimeResourceEntries(stage));
+  await verifyPackagedRuntime(context, expected);
+  assert.equal(createRequire(import.meta.url)(path.join(runtime, dependency)), "production dependency");
 });
 
 test("refuses a missing interface in the packaged runtime", async t => {

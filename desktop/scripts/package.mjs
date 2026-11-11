@@ -8,7 +8,7 @@ import { prepareRuntimeLinks } from "../app/runtime-links.mjs";
 import { resolvePnpmInvocation } from "../../server/scripts/prepare-runner-vendor.mjs";
 import { inspectLinks, verifyStage } from "../../scripts/bostan-private-staged-server-check.mjs";
 import { createPackagingStage } from "./packaging-stage.mjs";
-import { captureRuntimePayload, verifyPackagedRuntime } from "./packaging-runtime.mjs";
+import { captureRuntimePayload, verifyPackagedRuntime, runtimeResourceEntries } from "./packaging-runtime.mjs";
 
 const desktop = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repo = path.dirname(desktop);
@@ -89,7 +89,7 @@ try {
   const artifacts = await build({
     projectDir: desktop, publish: "never",
     config: {
-      extraResources: [{ from: stage, to: "runtime" }],
+      extraResources: runtimeResourceEntries(stage),
       afterPack: context => verifyPackagedRuntime(context, payload),
     },
   });

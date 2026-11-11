@@ -181,3 +181,16 @@ without printing payload contents, link destinations or absolute local paths.
 The native Windows compiled-server lane still reports the separately owned
 PostgreSQL chmod blocker, and server-4 reported one login-cleanup assertion
 failure. Those are preserved as distinct qualification failures.
+
+## 2026-11-11 production dependency copy correction
+
+Run `43030893239` at `1b31617d` reached Mac afterPack and reported 58,249 missing
+runtime entries, starting with dependency executables. The installed builder's
+`util/filter.js` unconditionally rejects a copy source's root `node_modules`;
+the earlier raw `copyDir` test did not exercise that filter. Packaging now gives
+the verified production dependency graph its own extra-resource source entry.
+New regressions use the actual `getFileMatchers` and `copyFiles`: they reproduce
+the omission under the old mapping, then require exact payload equality and
+load a nested dependency under both resource layouts with the corrected mapping.
+Strict runtime closure validation remains unchanged; native artifact acceptance
+still requires a fresh successful run.

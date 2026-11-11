@@ -50,6 +50,13 @@ export function packagedRuntimePath(context) {
   return path.join(resources, "runtime");
 }
 
+/** electron-builder always filters a source root's node_modules directory.
+ * A separate source root is required to include the verified production graph. */
+export function runtimeResourceEntries(stage) {
+  return [{ from: stage, to: "runtime" },
+    { from: path.join(stage, "node_modules"), to: "runtime/node_modules" }];
+}
+
 /** Fail packaging before accepting an installer if any runtime byte, link or
  * executable bit was lost/changed, or if an unexpected payload was added. */
 export async function verifyPackagedRuntime(context, expected) {
