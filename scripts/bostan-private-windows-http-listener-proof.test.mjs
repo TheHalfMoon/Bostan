@@ -51,3 +51,9 @@ test('bounded failure categories preserve fail-closed behavior without leaking i
   await assert.rejects(prove({...params,inspect:async()=>[{...row,OwningProcess:pid+1}]}),/\[listener_mismatch\]/);
   await assert.rejects(prove({...params,childAlive:()=>false}),/\[child_exited\]/);
 });
+
+test('safe OS-query reason survives proof while arbitrary inspector text is suppressed',async()=>{
+  await assert.rejects(prove({...params,inspect:async()=>{throw Error('Private Windows QA HTTP listener ownership unverified [query_failed]');}}),/\[query_failed\]/);
+  await assert.rejects(prove({...params,inspect:async()=>{throw Error('Private Windows QA HTTP listener ownership unverified [secret]');}}),error=>
+    error.message.endsWith('[inspection_failed]') && !error.message.includes('[secret]'));
+});
