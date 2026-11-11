@@ -1201,7 +1201,7 @@ export function paperclipRunnerHistoryItems(
 }
 
 /**
- * Semantic rows for the Paperclip runner's Codex-style activity disclosure.
+ * Semantic rows for the Bostan runner's Codex-style activity disclosure.
  *
  * This is intentionally narrower than the stored transcript and the runner
  * inspector: it keeps work a person can understand or act on while excluding
@@ -1642,12 +1642,12 @@ function phaseSummary(
         case "paperclip_read":
           text =
             count === 1
-              ? "Read from Paperclip"
-              : `Read from Paperclip ${count} times`;
+              ? "Read from Bostan"
+              : `Read from Bostan ${count} times`;
           break;
         case "task_operation":
           text =
-            count === 1 ? "Used Paperclip" : `Used Paperclip ${count} times`;
+            count === 1 ? "Used Bostan" : `Used Bostan ${count} times`;
           break;
         default:
           text = count === 1 ? "Used a tool" : `Used ${count} tools`;

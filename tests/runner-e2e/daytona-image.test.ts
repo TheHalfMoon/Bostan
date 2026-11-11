@@ -15,12 +15,12 @@ const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 describe("runner E2E Daytona image contract", () => {
   it("retains the active Copilot identity declaration in the Docker context", async () => {
     const [generator, dockerignore] = await Promise.all([
-      readFile(path.join(repositoryRoot, "packages/paperclip-runner/scripts/copilot-profile-identity.mjs"), "utf8"),
+      readFile(path.join(repositoryRoot, "packages/bostan-runner/scripts/copilot-profile-identity.mjs"), "utf8"),
       readFile(path.join(repositoryRoot, ".dockerignore"), "utf8"),
     ]);
     const fixture = generator.match(/const fixture = resolve\(root, "([^"]+)"\)/)?.[1];
     expect(fixture).toBeDefined();
-    const fixturePath = `packages/paperclip-runner/${fixture}`;
+    const fixturePath = `packages/bostan-runner/${fixture}`;
     expect(DAYTONA_IMAGE_INPUT_PATHS).toContain(fixturePath);
     await expect(readFile(path.join(repositoryRoot, fixturePath), "utf8")).resolves.toContain('"commandDigest"');
     // Docker's last matching rule wins, including the parent-directory exclusion.
@@ -32,18 +32,18 @@ describe("runner E2E Daytona image contract", () => {
     expect(lastRule?.startsWith("!")).toBe(true);
     // The exception also covers the next version without exposing other live evidence.
     const exception = lastRule!.slice(1);
-    expect(path.matchesGlob("packages/paperclip-runner/test/fixtures/copilot-profile-v999-identity.json", exception)).toBe(true);
-    expect(path.matchesGlob("packages/paperclip-runner/test/fixtures/copilot-live-denial-2026-09-28.json", exception)).toBe(false);
+    expect(path.matchesGlob("packages/bostan-runner/test/fixtures/copilot-profile-v999-identity.json", exception)).toBe(true);
+    expect(path.matchesGlob("packages/bostan-runner/test/fixtures/copilot-live-denial-2026-09-28.json", exception)).toBe(false);
   });
 
   it("invalidates the image content ID when the active Copilot identity changes", async () => {
     const generator = await readFile(
-      path.join(repositoryRoot, "packages/paperclip-runner/scripts/copilot-profile-identity.mjs"),
+      path.join(repositoryRoot, "packages/bostan-runner/scripts/copilot-profile-identity.mjs"),
       "utf8",
     );
     const fixture = generator.match(/const fixture = resolve\(root, "([^"]+)"\)/)?.[1];
     expect(fixture).toBeDefined();
-    const fixturePath = `packages/paperclip-runner/${fixture}`;
+    const fixturePath = `packages/bostan-runner/${fixture}`;
     const root = await mkdtemp(path.join(tmpdir(), "paperclip-daytona-copilot-identity-"));
     const options = {
       repositoryRoot: root,
@@ -65,8 +65,8 @@ describe("runner E2E Daytona image contract", () => {
   it("keeps the qualified native Grok binary separate from the legacy command", async () => {
     const [dockerfile, packBuilder, runnerPackage] = await Promise.all([
       readFile(path.join(repositoryRoot, "docker/daytona-runner/Dockerfile"), "utf8"),
-      readFile(path.join(repositoryRoot, "packages/paperclip-runner/scripts/build-provider-pack.mjs"), "utf8"),
-      readFile(path.join(repositoryRoot, "packages/paperclip-runner/package.json"), "utf8"),
+      readFile(path.join(repositoryRoot, "packages/bostan-runner/scripts/build-provider-pack.mjs"), "utf8"),
+      readFile(path.join(repositoryRoot, "packages/bostan-runner/package.json"), "utf8"),
     ]);
     expect(dockerfile).toMatch(/@xai-official\/grok@\d+\.\d+\.\d+/);
     expect(dockerfile).not.toMatch(/for cli in[^;]*\bgrok\b/);
@@ -75,7 +75,7 @@ describe("runner E2E Daytona image contract", () => {
     expect(packBuilder).toContain('path: "dist/providers/grok/launcher.cjs"');
     expect(dockerfile).toContain("scripts/provision-grok.mjs");
     expect(dockerfile).toContain("/opt/paperclip/providers/grok/1.0.13/grok");
-    expect(DAYTONA_IMAGE_INPUT_PATHS).toContain("packages/paperclip-runner/scripts/provision-grok.mjs");
+    expect(DAYTONA_IMAGE_INPUT_PATHS).toContain("packages/bostan-runner/scripts/provision-grok.mjs");
     expect(DAYTONA_IMAGE_INPUT_PATHS).not.toContain("packages/grok-acp/package.json");
   });
 
@@ -103,7 +103,7 @@ describe("runner E2E Daytona image contract", () => {
       "COPY packages/bostan-eval-kernel ./packages/bostan-eval-kernel",
     );
     expect(normalizedDockerfile).not.toContain(
-      "COPY packages/paperclip-runner ./packages/paperclip-runner",
+      "COPY packages/bostan-runner ./packages/bostan-runner",
     );
     expect(dockerfile).toContain(
       "COPY packages ./packages",
@@ -135,27 +135,27 @@ describe("runner E2E Daytona image contract", () => {
       "daytonaio/sandbox:0.8.0@sha256:eadf88e4391072b7ad4bed27d9cadfc9fe9d8ed375d9219d34c2ccb518f213e3",
     ]);
     expect(dockerignore).toContain("**/node_modules");
-    expect(dockerignore).toContain("packages/paperclip-runner/dist");
-    expect(dockerignore).toContain("packages/paperclip-runner/runner/target");
-    expect(await readFile(path.join(repositoryRoot, ".github/docker-context-checks.Dockerfile"), "utf8")).toContain("node packages/paperclip-runner/scripts/generate-acpx-profiles.mjs --check");
+    expect(dockerignore).toContain("packages/bostan-runner/dist");
+    expect(dockerignore).toContain("packages/bostan-runner/runner/target");
+    expect(await readFile(path.join(repositoryRoot, ".github/docker-context-checks.Dockerfile"), "utf8")).toContain("node packages/bostan-runner/scripts/generate-acpx-profiles.mjs --check");
     for (const declaration of [
       "test-fixtures/pi-acp/profile-v19-identity.json",
       "test/fixtures/copilot-profile-v16-identity.json",
     ]) {
-      expect(dockerignore).toContain(`!packages/paperclip-runner/${declaration}`);
-      await expect(readFile(path.join(repositoryRoot, "packages/paperclip-runner", declaration), "utf8")).resolves.toBeTruthy();
+      expect(dockerignore).toContain(`!packages/bostan-runner/${declaration}`);
+      await expect(readFile(path.join(repositoryRoot, "packages/bostan-runner", declaration), "utf8")).resolves.toBeTruthy();
     }
     for (const developmentOnlyInput of [
-      "packages/paperclip-runner/devtools",
-      "packages/paperclip-runner/docs",
-      "packages/paperclip-runner/examples",
-      "packages/paperclip-runner/test",
-      "packages/paperclip-runner/test-fixtures",
-      "packages/paperclip-runner/test-support",
-      "packages/paperclip-runner/**/*.md",
-      "packages/paperclip-runner/**/*.test.ts",
-      "packages/paperclip-runner/runner/crates/*/tests",
-      "packages/paperclip-runner/scripts/*-smoke.mjs",
+      "packages/bostan-runner/devtools",
+      "packages/bostan-runner/docs",
+      "packages/bostan-runner/examples",
+      "packages/bostan-runner/test",
+      "packages/bostan-runner/test-fixtures",
+      "packages/bostan-runner/test-support",
+      "packages/bostan-runner/**/*.md",
+      "packages/bostan-runner/**/*.test.ts",
+      "packages/bostan-runner/runner/crates/*/tests",
+      "packages/bostan-runner/scripts/*-smoke.mjs",
     ]) {
       expect(dockerignore).toContain(developmentOnlyInput);
     }
@@ -213,10 +213,10 @@ describe("runner E2E Daytona image contract", () => {
     expect(workflow).toContain('.config.User == "daytona"');
     expect(workflow).toContain("PAPERCLIP_RUNNER_PROVIDER_PACK_ROOT=");
     expect(workflow).toContain(
-      "node packages/paperclip-runner/scripts/build-provider-pack.mjs packages/paperclip-runner/provider-pack",
+      "node packages/bostan-runner/scripts/build-provider-pack.mjs packages/bostan-runner/provider-pack",
     );
     expect(workflow).toContain(
-      "PAPERCLIP_RUNNER_REMOTE_PROVIDER_PACK_PATH: ${{ github.workspace }}/packages/paperclip-runner/provider-pack",
+      "PAPERCLIP_RUNNER_REMOTE_PROVIDER_PACK_PATH: ${{ github.workspace }}/packages/bostan-runner/provider-pack",
     );
     expect(workflow).toContain(
       "PAPERCLIP_RUNNER_SOURCE_REVISION: ${{ needs.daytona_image.outputs.source_revision }}",
@@ -255,33 +255,33 @@ describe("runner E2E Daytona image contract", () => {
       "pnpm-lock.yaml",
       "patches",
       "packages/bostan-eval-kernel/src",
-      "packages/paperclip-runner/package.json",
-      "packages/paperclip-runner/scripts/candidate-provider-pack.mjs",
-      "packages/paperclip-runner/scripts/build-copilot-distribution.mjs",
-      "packages/paperclip-runner/scripts/copilot-inner-distribution.mjs",
-      "packages/paperclip-runner/scripts/copilot-profile-identity.mjs",
-      "packages/paperclip-runner/scripts/materialize-copilot-binary.mjs",
-      "packages/paperclip-runner/scripts/install-copilot-assets.mjs",
-      "packages/paperclip-runner/test/fixtures/copilot-profile-v12-identity.json",
-      "packages/paperclip-runner/test/fixtures/copilot-profile-v14-identity.json",
-      "packages/paperclip-runner/test/fixtures/copilot-profile-v21-identity.json",
-  "packages/paperclip-runner/test/fixtures/copilot-profile-v24-identity.json",
-  "packages/paperclip-runner/test/fixtures/copilot-profile-v25-identity.json",
-  "packages/paperclip-runner/test/fixtures/copilot-profile-v26-identity.json",
-  "packages/paperclip-runner/test/fixtures/copilot-profile-v35-identity.json",
-  "packages/paperclip-runner/test/fixtures/copilot-profile-v40-identity.json",
-  "packages/paperclip-runner/test/fixtures/copilot-profile-v42-identity.json",
-  "packages/paperclip-runner/test/fixtures/copilot-profile-v46-identity.json",
-  "packages/paperclip-runner/test/fixtures/copilot-profile-v47-identity.json",
-  "packages/paperclip-runner/test/fixtures/copilot-profile-v48-identity.json",
-  "packages/paperclip-runner/test/fixtures/copilot-profile-v49-identity.json",
-      "packages/paperclip-runner/scripts/materialize-cursor-distribution.mjs",
-      "packages/paperclip-runner/scripts/cursor-runtime-patch.mjs",
-      "packages/paperclip-runner/cursor-distributions.json",
-      "packages/paperclip-runner/runner/crates",
-      "packages/paperclip-runner/scripts/materialize-pi-distribution.mjs",
-      "packages/paperclip-runner/scripts/pi-distribution",
-      "packages/paperclip-runner/src",
+      "packages/bostan-runner/package.json",
+      "packages/bostan-runner/scripts/candidate-provider-pack.mjs",
+      "packages/bostan-runner/scripts/build-copilot-distribution.mjs",
+      "packages/bostan-runner/scripts/copilot-inner-distribution.mjs",
+      "packages/bostan-runner/scripts/copilot-profile-identity.mjs",
+      "packages/bostan-runner/scripts/materialize-copilot-binary.mjs",
+      "packages/bostan-runner/scripts/install-copilot-assets.mjs",
+      "packages/bostan-runner/test/fixtures/copilot-profile-v12-identity.json",
+      "packages/bostan-runner/test/fixtures/copilot-profile-v14-identity.json",
+      "packages/bostan-runner/test/fixtures/copilot-profile-v21-identity.json",
+  "packages/bostan-runner/test/fixtures/copilot-profile-v24-identity.json",
+  "packages/bostan-runner/test/fixtures/copilot-profile-v25-identity.json",
+  "packages/bostan-runner/test/fixtures/copilot-profile-v26-identity.json",
+  "packages/bostan-runner/test/fixtures/copilot-profile-v35-identity.json",
+  "packages/bostan-runner/test/fixtures/copilot-profile-v40-identity.json",
+  "packages/bostan-runner/test/fixtures/copilot-profile-v42-identity.json",
+  "packages/bostan-runner/test/fixtures/copilot-profile-v46-identity.json",
+  "packages/bostan-runner/test/fixtures/copilot-profile-v47-identity.json",
+  "packages/bostan-runner/test/fixtures/copilot-profile-v48-identity.json",
+  "packages/bostan-runner/test/fixtures/copilot-profile-v49-identity.json",
+      "packages/bostan-runner/scripts/materialize-cursor-distribution.mjs",
+      "packages/bostan-runner/scripts/cursor-runtime-patch.mjs",
+      "packages/bostan-runner/cursor-distributions.json",
+      "packages/bostan-runner/runner/crates",
+      "packages/bostan-runner/scripts/materialize-pi-distribution.mjs",
+      "packages/bostan-runner/scripts/pi-distribution",
+      "packages/bostan-runner/src",
     ]) {
       expect(DAYTONA_IMAGE_INPUT_PATHS).toContain(requiredPath);
     }
@@ -289,7 +289,7 @@ describe("runner E2E Daytona image contract", () => {
       "packages/bostan-eval-kernel",
     );
     expect(DAYTONA_IMAGE_INPUT_PATHS).not.toContain(
-      "packages/paperclip-runner",
+      "packages/bostan-runner",
     );
     expect(DAYTONA_IMAGE_DOCKERFILE_PATH).toBe(
       "docker/daytona-runner/Dockerfile",
@@ -307,11 +307,11 @@ describe("runner E2E Daytona image contract", () => {
       "docker/daytona-runner/Dockerfile",
       "package.json",
       "pnpm-lock.yaml",
-      "packages/paperclip-runner/package.json",
-      "packages/paperclip-runner/src",
-      "packages/paperclip-runner/runner/crates",
-      "packages/paperclip-runner/scripts/materialize-pi-distribution.mjs",
-      "packages/paperclip-runner/scripts/pi-distribution",
+      "packages/bostan-runner/package.json",
+      "packages/bostan-runner/src",
+      "packages/bostan-runner/runner/crates",
+      "packages/bostan-runner/scripts/materialize-pi-distribution.mjs",
+      "packages/bostan-runner/scripts/pi-distribution",
     ] as const;
     const options = {
       repositoryRoot: root,
@@ -323,13 +323,13 @@ describe("runner E2E Daytona image contract", () => {
       await mkdir(path.join(root, "docker/daytona-runner"), {
         recursive: true,
       });
-      await mkdir(path.join(root, "packages/paperclip-runner/src"), {
+      await mkdir(path.join(root, "packages/bostan-runner/src"), {
         recursive: true,
       });
       await mkdir(
         path.join(
           root,
-          "packages/paperclip-runner/runner/crates/runner-core/src",
+          "packages/bostan-runner/runner/crates/runner-core/src",
         ),
         { recursive: true },
       );
@@ -343,25 +343,25 @@ describe("runner E2E Daytona image contract", () => {
         "lockfileVersion: 9\n",
       );
       await writeFile(
-        path.join(root, "packages/paperclip-runner/package.json"),
+        path.join(root, "packages/bostan-runner/package.json"),
         '{"name":"@bostan/runner"}\n',
       );
       await writeFile(
-        path.join(root, "packages/paperclip-runner/src/runner.ts"),
+        path.join(root, "packages/bostan-runner/src/runner.ts"),
         "version one\n",
       );
       await writeFile(
         path.join(
           root,
-          "packages/paperclip-runner/runner/crates/runner-core/src/lib.rs",
+          "packages/bostan-runner/runner/crates/runner-core/src/lib.rs",
         ),
         'pub const VERSION: &str = "one";\n',
       );
-      await mkdir(path.join(root, "packages/paperclip-runner/scripts/pi-distribution"), { recursive: true });
+      await mkdir(path.join(root, "packages/bostan-runner/scripts/pi-distribution"), { recursive: true });
       for (const relativePath of [
-        "packages/paperclip-runner/scripts/materialize-pi-distribution.mjs",
-        "packages/paperclip-runner/scripts/pi-distribution/package.json",
-        "packages/paperclip-runner/scripts/pi-distribution/package-lock.json",
+        "packages/bostan-runner/scripts/materialize-pi-distribution.mjs",
+        "packages/bostan-runner/scripts/pi-distribution/package.json",
+        "packages/bostan-runner/scripts/pi-distribution/package-lock.json",
       ]) await writeFile(path.join(root, relativePath), "version one\n");
       const baseline = await computeDaytonaImageContentId(options);
       const candidate = await computeDaytonaImageContentId({ ...options, candidateProviders: ["pi"] });
@@ -396,12 +396,12 @@ describe("runner E2E Daytona image contract", () => {
         "docker/daytona-runner/Dockerfile",
         "package.json",
         "pnpm-lock.yaml",
-        "packages/paperclip-runner/package.json",
-        "packages/paperclip-runner/src/runner.ts",
-        "packages/paperclip-runner/scripts/materialize-pi-distribution.mjs",
-        "packages/paperclip-runner/scripts/pi-distribution/package.json",
-        "packages/paperclip-runner/scripts/pi-distribution/package-lock.json",
-        "packages/paperclip-runner/runner/crates/runner-core/src/lib.rs",
+        "packages/bostan-runner/package.json",
+        "packages/bostan-runner/src/runner.ts",
+        "packages/bostan-runner/scripts/materialize-pi-distribution.mjs",
+        "packages/bostan-runner/scripts/pi-distribution/package.json",
+        "packages/bostan-runner/scripts/pi-distribution/package-lock.json",
+        "packages/bostan-runner/runner/crates/runner-core/src/lib.rs",
       ]) {
         const absolutePath = path.join(root, relativePath);
         const original = await readFile(absolutePath, "utf8");
@@ -421,8 +421,8 @@ describe("runner E2E Daytona image contract", () => {
   });
 
   it.each([
-    "packages/paperclip-runner/scripts/cursor-runtime-patch.mjs",
-    "packages/paperclip-runner/scripts/provider-pack-executable-shims.mjs",
+    "packages/bostan-runner/scripts/cursor-runtime-patch.mjs",
+    "packages/bostan-runner/scripts/provider-pack-executable-shims.mjs",
   ])("invalidates the image when %s changes", async (patchPath) => {
     const root = await mkdtemp(path.join(tmpdir(), "paperclip-provider-image-id-"));
     expect(DAYTONA_IMAGE_INPUT_PATHS).toContain(patchPath);
@@ -450,12 +450,12 @@ describe("runner E2E Daytona image contract", () => {
     );
     const options = {
       repositoryRoot: root,
-      inputPaths: ["packages/paperclip-runner"],
+      inputPaths: ["packages/bostan-runner"],
       baseImages: [`example.test/base:1@sha256:${"a".repeat(64)}`],
       frontendDigest: `sha256:${"c".repeat(64)}`,
     } as const;
     try {
-      const runnerRoot = path.join(root, "packages/paperclip-runner");
+      const runnerRoot = path.join(root, "packages/bostan-runner");
       await mkdir(path.join(runnerRoot, "src/live"), { recursive: true });
       await mkdir(path.join(runnerRoot, "docs"), { recursive: true });
       await mkdir(path.join(runnerRoot, "spec"), { recursive: true });

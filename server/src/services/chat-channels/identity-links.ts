@@ -292,7 +292,7 @@ export function createChatIdentityLinks(db: Db, options: ChatIdentityLinkOptions
         .then((rows) => rows[0] ?? null);
       if (membership?.status !== "active") {
         throw forbidden(
-          "The signed-in Paperclip account is not a member of this company",
+          "The signed-in Bostan account is not a member of this company",
         );
       }
       const conflictingLink = await tx
@@ -313,7 +313,7 @@ export function createChatIdentityLinks(db: Db, options: ChatIdentityLinkOptions
         .then((rows) => rows[0] ?? null);
       if (conflictingLink) {
         throw conflict(
-          "This provider identity is linked to a different Paperclip account",
+          "This provider identity is linked to a different Bostan account",
           {
             code: "chat_identity_link_conflict",
           },

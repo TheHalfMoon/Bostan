@@ -246,7 +246,7 @@ For family selection, ownership, provenance, history, and failure taxonomy,
 see the [Paperclip evaluation guide](../../doc/evals.md). This README is the
 authoritative runbook for Product E2E runner cells; the separate Runner Evals
 protocol guide lives at
-`packages/paperclip-runner/docs/runner-protocol-live-evals.md`.
+`packages/bostan-runner/docs/runner-protocol-live-evals.md`.
 
 This is the billable browser acceptance campaign system for Paperclip runner
 profiles. It is deliberately separate from `tests/e2e`: every independently

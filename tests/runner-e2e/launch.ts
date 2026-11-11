@@ -243,7 +243,7 @@ async function prepareProviderPath(
   const toolBin = path.join(temporaryRoot, "provider-bin");
   await mkdir(toolBin, { recursive: true });
   const runnerRequire = createRequire(
-    path.join(repositoryRoot, "packages/paperclip-runner/package.json"),
+    path.join(repositoryRoot, "packages/bostan-runner/package.json"),
   );
   const codexAcpPackage = runnerRequire.resolve(
     "@agentclientprotocol/codex-acp/package.json",
@@ -267,7 +267,7 @@ async function prepareProviderPath(
   );
   const packageBin = path.join(
     repositoryRoot,
-    "packages/paperclip-runner/node_modules/.bin",
+    "packages/bostan-runner/node_modules/.bin",
   );
   return [toolBin, packageBin, inheritedPath]
     .filter(Boolean)

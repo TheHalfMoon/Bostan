@@ -7566,7 +7566,7 @@ describeEmbeddedPostgres("chat channel control-plane integration", () => {
         await expect(f.service.sendSlackTestMessage(f.endpoint.id, actor, { requestId: randomUUID() })).rejects.toThrow("Enable direct messages");
         await db.update(chatEndpoints).set({ allowDirectMessages: true }).where(eq(chatEndpoints.id, f.endpoint.id));
         await db.update(companyMemberships).set({ status: "inactive" }).where(and(eq(companyMemberships.companyId, f.companyId), eq(companyMemberships.principalId, actor.userId)));
-        await expect(f.service.sendSlackTestMessage(f.endpoint.id, actor, { requestId: randomUUID() })).rejects.toThrow("active Paperclip account");
+        await expect(f.service.sendSlackTestMessage(f.endpoint.id, actor, { requestId: randomUUID() })).rejects.toThrow("active Bostan account");
         expect(posts(f)).toHaveLength(0);
       });
       it("redacts provider failures and never retries an ambiguous send", async () => {
@@ -11814,7 +11814,7 @@ describeEmbeddedPostgres("chat channel control-plane integration", () => {
 
     const [reply] = await db.select().from(chatActions).where(and(eq(chatActions.endpointId, endpoint.id), eq(chatActions.kind, "github_review_publication")));
     await db.update(chatActions).set({ status: "processing" }).where(eq(chatActions.id, reply.id));
-    await expect(service.test(endpoint.id)).rejects.toThrow("Wait for the Paperclip agent to reply");
+    await expect(service.test(endpoint.id)).rejects.toThrow("Wait for the Bostan agent to reply");
     await db.update(chatActions).set({ status: "processed" }).where(eq(chatActions.id, reply.id));
     const activated = await service.test(endpoint.id);
     expect(activated).toMatchObject({

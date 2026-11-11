@@ -100,7 +100,7 @@ const support = await getEmbeddedPostgresTestSupport();
   it("rejects Backlog voice work before claiming that it was accepted", async () => {
     const f = await fixture();
     await db.update(issues).set({status: "backlog"}).where(eq(issues.id, f.issueId));
-    await expect(f.store.runTool(f.toolInput("submit_request", {text: "Inspect disk space"}))).rejects.toMatchObject({status: 409, message: "Move this task to Todo in Paperclip before requesting voice work."});
+    await expect(f.store.runTool(f.toolInput("submit_request", {text: "Inspect disk space"}))).rejects.toMatchObject({status: 409, message: "Move this task to Todo in Bostan before requesting voice work."});
     expect(await db.select().from(chatDeliveries).where(eq(chatDeliveries.endpointId, f.endpointId))).toHaveLength(0);
     expect(await db.select().from(chatVoiceToolCalls).where(eq(chatVoiceToolCalls.sessionId, f.sessionId))).toHaveLength(0);
   });

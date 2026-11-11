@@ -4,7 +4,7 @@ import path from "node:path";
 import { and, asc, eq, gt, gte, inArray, lte, sql } from "drizzle-orm";
 import { agents, companies, companySkills, companySkillVersions, type Db } from "@bostan/db";
 import { readPaperclipSkillSyncPreference } from "@bostan/adapter-utils/server-utils";
-import { resolvePaperclipInstanceRoot } from "../home-paths.js";
+import { resolveBostanInstanceRoot } from "../home-paths.js";
 import { logger } from "../middleware/logger.js";
 import { allocatedBytes, ensureSkillCacheDirectory, hasRestorableSnapshot, lastUsedAt,
   protectedVersions, SkillCacheBusy, skillVersionCachePaths, touchSkillVersionCache,
@@ -47,7 +47,7 @@ const versionSnapshotRemovals = new Map<string, Promise<unknown>>();
 const activeTrash = new Set<string>();
 
 export function resolveCompanySkillVersionsRoot(companyId: string) {
-  return path.resolve(resolvePaperclipInstanceRoot(), "skills", companyId, VERSIONS_DIR);
+  return path.resolve(resolveBostanInstanceRoot(), "skills", companyId, VERSIONS_DIR);
 }
 
 export function resolveSkillVersionSnapshotDir(companyId: string, skillId: string, versionId: string) {

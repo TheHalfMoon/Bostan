@@ -163,7 +163,7 @@ for its own pending repository in its current workspace. An explicit yield may
 use that saved continuation; explicit completion remains completion. Existing
 status decisions and wake admission retain Stop and authorization gates. The
 [workspace API regression](../../server/src/__tests__/task-workspace-api.test.ts)
-and [driver regression](../../packages/paperclip-runner/src/drivers/completion-continuation.test.ts)
+and [driver regression](../../packages/bostan-runner/src/drivers/completion-continuation.test.ts)
 cover this contract; live qualification remains separate.
 
 Policy: Company/project/workspace visibility and runtime authority; active run, trust

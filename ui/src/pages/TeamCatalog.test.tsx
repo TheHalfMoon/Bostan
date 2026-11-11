@@ -185,7 +185,7 @@ function makePreview(): CatalogTeamImportPreviewResult {
     portabilityPreview: {
       include: { company: false, agents: true, projects: true, issues: false, skills: true },
       targetCompanyId: "company-1",
-      targetCompanyName: "Paperclip",
+      targetCompanyName: "Bostan",
       collisionStrategy: "rename",
       selectedAgentSlugs: ["ceo", "cto"],
       plan: {
@@ -251,7 +251,7 @@ describe("TeamCatalog install preview path", () => {
     mockTeamCatalogApi.install.mockResolvedValue({
       team: makeTeam(),
       portabilityImport: {
-        company: { id: "company-1", name: "Paperclip", action: "unchanged" },
+        company: { id: "company-1", name: "Bostan", action: "unchanged" },
         agents: [],
         projects: [],
         envInputs: [],

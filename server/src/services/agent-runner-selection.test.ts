@@ -277,7 +277,7 @@ describe("server-owned Codex runner selection", () => {
     expect(resolveCodexExecutionEngine(adapterConfig).engine).toBe("acp");
     expect(buildCodexAcpConfig(adapterConfig)).toMatchObject({ env: { PAPERCLIP_CODEX_ACP_NETWORK_ACCESS: "false" } });
     const { codexNetworkAccess } = await import(new URL(
-      "../../../packages/paperclip-runner/src/drivers/codex/codex-security-config.ts", import.meta.url,
+      "../../../packages/bostan-runner/src/drivers/codex/codex-security-config.ts", import.meta.url,
     ).href);
     expect(codexNetworkAccess({ PAPERCLIP_RUNNER_NETWORK_ACCESS: "enabled", PAPERCLIP_CODEX_ACP_NETWORK_ACCESS: "false" })).toBe(true);
     for (const runner of [undefined, "auto", "paperclip"] as const) {

@@ -11,7 +11,7 @@ test("Runner dependency caching selects the package's pinned compiler before com
   const cache = runner.indexOf("      - name: Cache Runner Rust dependencies");
   assert.ok(select >= 0 && cache > select);
   const setup = runner.slice(select, cache);
-  assert.match(setup, /working-directory: packages\/paperclip-runner/);
+  assert.match(setup, /working-directory: packages\/bostan-runner/);
   assert.match(setup, /rustup show active-toolchain/);
   assert.match(setup, /echo "RUSTUP_TOOLCHAIN=\$toolchain" >> "\$GITHUB_ENV"/);
   assert.match(runner, /uses: Swatinem\/rust-cache@[0-9a-f]{40} # v[0-9.]+/);
@@ -35,7 +35,7 @@ test("the shared cache excludes workspace artifacts and only restores or saves t
 });
 
 test("parallel lanes cover check:all exactly once and never bypass verification", () => {
-  const scripts = JSON.parse(readFileSync(new URL("../../../packages/paperclip-runner/package.json", import.meta.url))).scripts;
+  const scripts = JSON.parse(readFileSync(new URL("../../../packages/bostan-runner/package.json", import.meta.url))).scripts;
   const checks = [...runner.matchAll(/^            checks: (.+)$/gm)].flatMap(([, value]) => value.split(" "));
   assert.deepEqual(checks, scripts["check:all"].split(" && ").map((command) => command.replace(/^pnpm run /, "")));
   assert.deepEqual([...runner.matchAll(/^          - lane: (.+)$/gm)].map(([, value]) => value), ["protocol", "rust", "server-integration"]);

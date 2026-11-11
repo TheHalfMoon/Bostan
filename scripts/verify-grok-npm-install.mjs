@@ -236,7 +236,7 @@ try {
   const imageReady = prefetch('image', 'docker', ['pull', '--platform', 'linux/amd64', GROK_PUBLIC_INSTALL_IMAGE]);
   // Provision as the unprivileged verification user, never into the host's /opt.
   // Only the positive probe sees this file at the canonical sandbox path.
-  const grokReady = prefetch('grok', process.execPath, [join(repo, 'packages/paperclip-runner/scripts/provision-grok.mjs'), stagedGrok]);
+  const grokReady = prefetch('grok', process.execPath, [join(repo, 'packages/bostan-runner/scripts/provision-grok.mjs'), stagedGrok]);
   // The server, the CLI and every public workspace package they reach through
   // `workspace:` specs. The npm cache warm-up reads the same closure, so both
   // take it from one module.
@@ -392,7 +392,7 @@ try {
   assert.equal(existsSync(prerequisite), false, 'npm must not provision Grok');
   const server = join(consumer, 'node_modules/@bostan/server');
   const installed = join(server, 'dist/vendor/paperclip-runner');
-  const codexVersion = JSON.parse(readFileSync(join(repo, 'packages/paperclip-runner/acpx-profiles.json'), 'utf8')).profiles.codex.agentRuntimeVersion;
+  const codexVersion = JSON.parse(readFileSync(join(repo, 'packages/bostan-runner/acpx-profiles.json'), 'utf8')).profiles.codex.agentRuntimeVersion;
   assert.match(codexVersion, /^\d+\.\d+\.\d+$/);
   writeFileSync(join(assets, 'codex-probe.mjs'), installedCodexProbeSource(
     '/consumer/node_modules/@bostan/server/dist/vendor/paperclip-runner/index.js', '/consumer', codexVersion), { mode: 0o644 });

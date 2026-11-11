@@ -9,7 +9,7 @@ const folders=[
   "server/src/onboarding-assets",
   "server/src/built-ins",
   "server/src/services/scripts",
-  "packages/paperclip-runner/dist",
+  "packages/bostan-runner/dist",
 ];
 const sourceScripts=[
   "install-copilot-assets.mjs",
@@ -27,7 +27,7 @@ function fixture(run){
   put("server/package.json",JSON.stringify({name:"@bostan/server",private:true}));
   for(const [index,dir] of folders.entries())put(dir+"/nested/sample.bin",Buffer.from([0,index,255,11]));
   for(const [index,name] of sourceScripts.entries())
-    put("packages/paperclip-runner/scripts/"+name,Buffer.from([0,15,index]));
+    put("packages/bostan-runner/scripts/"+name,Buffer.from([0,15,index]));
   try{return run(root,put);}
   finally{fs.rmSync(root,{recursive:true,force:true});}
 }
@@ -59,7 +59,7 @@ test("preserves unrelated compiled output in dist",()=>{
 });
 test("missing required inputs fail before any copied output",()=>{
   fixture((root)=>{
-    fs.rmSync(path.join(root,"packages/paperclip-runner/dist"),{recursive:true});
+    fs.rmSync(path.join(root,"packages/bostan-runner/dist"),{recursive:true});
     assert.throws(()=>copyServerBuildAssets(root),/missing required input/);
     assert.equal(fs.existsSync(path.join(root,"server/dist/onboarding-assets")),false);
   });

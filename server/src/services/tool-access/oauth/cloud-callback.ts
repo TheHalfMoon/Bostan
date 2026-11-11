@@ -93,7 +93,7 @@ export function createCloudOAuthCallback(db: Db, dependencies: Dependencies) {
     const cloudConnector = currentCloudConnector();
     if (!cloudConnector) {
       throw unprocessable(
-        `${providerName} connections through Paperclip are not available on this instance yet`,
+        `${providerName} connections through Bostan are not available on this instance yet`,
         {
           code: "paperclip_cloud_connector_unavailable",
         },

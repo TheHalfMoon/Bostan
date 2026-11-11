@@ -397,7 +397,7 @@ export function prepareBundledPackage(sourceDir, destinationDir, { sourceRoot = 
   const publishManifest = materializePublishManifest(sourcePackage);
   const rootPackage = JSON.parse(readFileSync(resolve(sourceRoot, "package.json"), "utf8"));
   const profileData = bundledDependencies.includes("@agentclientprotocol/codex-acp")
-    ? JSON.parse(readFileSync(resolve(sourceRoot, "packages/paperclip-runner/acpx-profiles.json"), "utf8")) : undefined;
+    ? JSON.parse(readFileSync(resolve(sourceRoot, "packages/bostan-runner/acpx-profiles.json"), "utf8")) : undefined;
   const { installManifest, profiles } = configureBundledProviderOverrides(
     createBundledInstallManifest(publishManifest, bundledDependencies), bundledDependencies, rootPackage, profileData,
   );

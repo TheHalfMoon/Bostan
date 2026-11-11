@@ -61,7 +61,7 @@ account, image or active captured template invalidates
 the record; normal metadata edits cannot forge or overwrite it, and API reads
 omit the private metadata. Reading this evidence for discovery or creation does
 not allocate a sandbox. The draft `probe-config` checks are not a saved-image
-qualification operation. See the [runtime contract](../../packages/paperclip-runner/README.md)
+qualification operation. See the [runtime contract](../../packages/bostan-runner/README.md)
 and [adapter validation recipe](./runs-adapters.md#adapter-setup) for native
 binary/provider readiness after platform qualification.
 

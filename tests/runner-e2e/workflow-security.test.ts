@@ -324,7 +324,7 @@ describe("public repository paid workflow security", () => {
     expect(grokPreparation).toBeGreaterThan(paidInstall);
     expect(paidExecution).toBeGreaterThan(grokPreparation);
     expect(paidJob).toContain("if: matrix.environmentId == 'local' && (matrix.profileId == 'runner-acpx-grok' || matrix.profileId == 'runner-acpx-grok-subscription')");
-    expect(paidJob).toContain("run: sudo node packages/paperclip-runner/scripts/provision-grok.mjs /opt/paperclip/providers/grok/1.0.13/grok");
+    expect(paidJob).toContain("run: sudo node packages/bostan-runner/scripts/provision-grok.mjs /opt/paperclip/providers/grok/1.0.13/grok");
 
     const everydayOracleStep = paidJob.slice(
       everydayOraclePreparation,
@@ -643,10 +643,10 @@ describe("public repository paid workflow security", () => {
       "pnpm --filter @bostan/runner build:runner-binaries",
     );
     expect(buildJob).toContain(
-      "node packages/paperclip-runner/scripts/build-provider-pack.mjs",
+      "node packages/bostan-runner/scripts/build-provider-pack.mjs",
     );
     expect(buildJob).toContain(
-      "node packages/paperclip-runner/scripts/materialize-opencode-binary.mjs",
+      "node packages/bostan-runner/scripts/materialize-opencode-binary.mjs",
     );
     expect(buildJob).toContain("runner-e2e-build-bundle.tar.gz.sha256");
     expect(buildJob).toContain("runner-e2e-provider-pack.tar.gz.sha256");
@@ -690,7 +690,7 @@ describe("public repository paid workflow security", () => {
       testJob.indexOf("tar --extract"),
     );
     expect(testJob).toContain(
-      "test -x packages/paperclip-runner/runner/target/debug/paperclip-runnerd",
+      "test -x packages/bostan-runner/runner/target/debug/paperclip-runnerd",
     );
     expect(testJob).toContain(".payload.runnerSourceRevision == $revision");
     expect(workflow).toContain("Qualify local provider Node interpreter");
@@ -701,7 +701,7 @@ describe("public repository paid workflow security", () => {
       "matrix.profileId == 'legacy-opencode' || matrix.profileId == 'runner-opencode' || matrix.suiteId == 'openrouter-model-breadth'",
     );
     expect(testJob).toContain(
-      "node packages/paperclip-runner/scripts/materialize-opencode-binary.mjs",
+      "node packages/bostan-runner/scripts/materialize-opencode-binary.mjs",
     );
     expect(testJob).not.toContain("postinstall.mjs");
     expect(testJob).not.toContain("pnpm rebuild");

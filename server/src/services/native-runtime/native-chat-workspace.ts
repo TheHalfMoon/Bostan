@@ -2,7 +2,7 @@ import { lstat, mkdir, realpath } from "node:fs/promises";
 import path from "node:path";
 import { and, eq, sql } from "drizzle-orm";
 import { chatConversations, issues, executionWorkspaces, projectWorkspaces, type Db } from "@bostan/db";
-import { resolvePaperclipInstanceRoot } from "../../home-paths.js";
+import { resolveBostanInstanceRoot } from "../../home-paths.js";
 
 export type NativeChatWorkspaceScope = {
   companyId: string;
@@ -77,7 +77,7 @@ export async function findNativeChatWorkspaceScope(
   if (issue.originKind !== "chat_channel" && !issue.hasConversation)
     return null;
   const instanceRoot = await realpath(
-    input.instanceRoot ?? resolvePaperclipInstanceRoot(),
+    input.instanceRoot ?? resolveBostanInstanceRoot(),
   );
   const projectId = issue.boundWorkspaceId ? issue.boundProjectId : issue.selection?.selection.kind === "task_directory"
     ? null : issue.configuredProjectId ?? (issue.hasConfiguredDefault ? issue.projectId : null);

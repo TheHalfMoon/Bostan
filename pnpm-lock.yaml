@@ -517,7 +517,7 @@ importers:
         specifier: ^5.0.3
         version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
-  packages/paperclip-runner:
+  packages/bostan-runner:
     dependencies:
       '@agentclientprotocol/claude-agent-acp':
         specifier: 0.73.0
@@ -1144,7 +1144,7 @@ importers:
         version: link:../packages/connector-broker
       '@bostan/runner':
         specifier: workspace:*
-        version: link:../packages/paperclip-runner
+        version: link:../packages/bostan-runner
       '@opentelemetry/context-async-hooks':
         specifier: 2.10.0
         version: 2.10.0(@opentelemetry/api@1.9.1)

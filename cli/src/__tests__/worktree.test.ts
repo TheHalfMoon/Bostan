@@ -66,7 +66,7 @@ import {
   rewriteLocalUrlPort,
   sanitizeWorktreeInstanceId,
 } from "../commands/worktree-lib.js";
-import type { PaperclipConfig } from "../config/schema.js";
+import type { BostanConfig } from "../config/schema.js";
 import {
   EMBEDDED_POSTGRES_TEST_TIMEOUT_MS,
   getEmbeddedPostgresTestSupport,
@@ -225,7 +225,7 @@ afterEach(() => {
   }
 });
 
-function buildSourceConfig(): PaperclipConfig {
+function buildSourceConfig(): BostanConfig {
   return {
     $meta: {
       version: 1,
@@ -290,8 +290,8 @@ function writeSeedConfigFiles(
   targetConfigPath: string,
   targetRoot: string,
   targetPaths: ReturnType<typeof resolveWorktreeLocalPaths>,
-  sourceConfig: PaperclipConfig,
-  targetConfig: PaperclipConfig,
+  sourceConfig: BostanConfig,
+  targetConfig: BostanConfig,
 ): void {
   fs.mkdirSync(path.dirname(sourceConfigPath), { recursive: true });
   fs.mkdirSync(path.dirname(targetConfigPath), { recursive: true });
@@ -583,7 +583,7 @@ describe("worktree helpers", () => {
       availableMigrations: ["0001_initial.sql", "0002_current.sql"],
       appliedMigrations: ["0001_initial.sql", "0003_unknown.sql"],
       journalEntryCount: 3,
-    }, "sourcePrefix")).toThrow("Migration journal is not a prefix of this Paperclip checkout");
+    }, "sourcePrefix")).toThrow("Migration journal is not a prefix of this Bostan checkout");
   });
 
   it("accepts a current source whose migration application order differs from filename order", () => {
@@ -630,7 +630,7 @@ describe("worktree helpers", () => {
     try {
       const configPath = path.join(tempRoot, "config.json");
       const sourceConfig = buildSourceConfig();
-      const config: PaperclipConfig = {
+      const config: BostanConfig = {
         ...sourceConfig,
         database: {
           ...sourceConfig.database,
@@ -1163,7 +1163,7 @@ describe("worktree helpers", () => {
     try {
       await db.insert(companies).values({
         id: companyId,
-        name: "Paperclip",
+        name: "Bostan",
         issuePrefix: "WTQ",
         requireBoardApprovalForNewAgents: false,
       });
@@ -1600,7 +1600,7 @@ describe("worktree helpers", () => {
       });
 
       const targetConfigPath = path.join(worktreeRoot, ".paperclip", "config.json");
-      const targetConfig = JSON.parse(fs.readFileSync(targetConfigPath, "utf8")) as PaperclipConfig;
+      const targetConfig = JSON.parse(fs.readFileSync(targetConfigPath, "utf8")) as BostanConfig;
       expect(readWorktreeSeedManifest(targetConfigPath)).toMatchObject({
         state: "verified",
         phase: "complete",
@@ -1789,7 +1789,7 @@ describe("worktree helpers", () => {
 
       const targetConfig = JSON.parse(
         fs.readFileSync(path.join(worktreeRoot, ".paperclip", "config.json"), "utf8"),
-      ) as PaperclipConfig;
+      ) as BostanConfig;
       const manifestText = fs.readFileSync(
         path.join(worktreeRoot, ".paperclip", "seed-manifest.json"),
         "utf8",
@@ -1971,7 +1971,7 @@ describe("worktree helpers", () => {
     }
   });
 
-  it("defaults the seed source config to the current repo-local Paperclip config", () => {
+  it("defaults the seed source config to the current repo-local Bostan config", () => {
     const tempRoot = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "paperclip-worktree-source-config-"));
     const repoRoot = path.join(tempRoot, "repo");
     const localConfigPath = path.join(repoRoot, ".paperclip", "config.json");
@@ -2085,7 +2085,7 @@ describe("worktree helpers", () => {
         resolveWorktreeReseedTargetPaths({
           configPath,
           rootPath: worktreeRoot,
-        })).toThrow("does not look like a worktree-local Paperclip instance");
+        })).toThrow("does not look like a worktree-local Bostan instance");
     } finally {
       fs.rmSync(tempRoot, { recursive: true, force: true });
     }
@@ -2247,7 +2247,7 @@ describe("worktree helpers", () => {
             keyFilePath: sourcePaths.secretsKeyFilePath,
           },
         },
-      } as PaperclipConfig;
+      } as BostanConfig;
 
       fs.writeFileSync(currentPaths.configPath, JSON.stringify(currentConfig, null, 2), "utf8");
       fs.writeFileSync(currentPaths.envPath, `PAPERCLIP_HOME=${homeDir}\nPAPERCLIP_INSTANCE_ID=${currentInstanceId}\n`, "utf8");
@@ -2403,7 +2403,7 @@ describe("worktree helpers", () => {
     }
   });
 
-  it("repairs the current linked worktree when Paperclip metadata is missing", async () => {
+  it("repairs the current linked worktree when Bostan metadata is missing", async () => {
     const tempRoot = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "paperclip-worktree-repair-current-"));
     const repoRoot = path.join(tempRoot, "repo");
     const worktreePath = path.join(repoRoot, ".paperclip", "worktrees", "repair-me");
@@ -2492,7 +2492,7 @@ describeEmbeddedPostgres("pauseSeededScheduledRoutines", () => {
     try {
       await db.insert(companies).values({
         id: companyId,
-        name: "Paperclip",
+        name: "Bostan",
         issuePrefix: `T${companyId.replace(/-/g, "").slice(0, 6).toUpperCase()}`,
         requireBoardApprovalForNewAgents: false,
       });

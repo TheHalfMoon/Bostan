@@ -190,7 +190,7 @@ for await (const line of createInterface({input:process.stdin})) {
     const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
     await writeFile(command, `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(provider)}\n`, { mode: 0o700 });
     await chmod(command, 0o700);
-    const resolver = await vi.importActual<{ resolveCodexCommand: () => string }>("../../../packages/paperclip-runner/src/drivers/codex/codex-command.js");
+    const resolver = await vi.importActual<{ resolveCodexCommand: () => string }>("../../../packages/bostan-runner/src/drivers/codex/codex-command.js");
     const spy = vi.spyOn(resolver, "resolveCodexCommand").mockReturnValue(command); restoreCodex = () => spy.mockRestore();
     const wait = async (predicate: () => Promise<boolean>, label: string, bound = 35_000) => {
       const deadline = Date.now() + bound;

@@ -3057,7 +3057,7 @@ describe("TaskChatThread runtime transcript selection", () => {
       comments: testCase.withRecoveryNotice ? [{
         id: "recovery-after-stop", companyId: "company", issueId: "issue", metadata: null,
         authorType: "system", authorAgentId: null, authorUserId: null,
-        body: "Paperclip retried continuation, but it still has no live execution path.",
+        body: "Bostan retried continuation, but it still has no live execution path.",
         presentation: { kind: "system_notice", title: "No live execution path", tone: "danger", detailsDefaultOpen: false },
         createdAt: new Date("2026-08-25T18:00:03.000Z"), updatedAt: new Date("2026-08-25T18:00:03.000Z"),
       }] : [],
@@ -3564,7 +3564,7 @@ describe("TaskChatThread no-live-execution-path recovery", () => {
     authorType: "system" as const,
     authorAgentId: null,
     authorUserId: null,
-    body: "Paperclip retried continuation, but it still has no live execution path.",
+    body: "Bostan retried continuation, but it still has no live execution path.",
     presentation: {
       kind: "system_notice" as const,
       tone: "danger" as const,
@@ -4686,7 +4686,7 @@ describe("TaskChatThread live transcript", () => {
           agentId: "agent-1",
           agentName: "Runner",
           // Reproduces the lag that caused DOT-202: the transcript already has
-          // a Paperclip request while the linked-run adapter classification is
+          // a Bostan request while the linked-run adapter classification is
           // still stale.
           adapterType: "codex_local",
         }}
@@ -4933,6 +4933,6 @@ it("explains a missing provider runtime with an installation repair", () => {
   expect(container.textContent).toContain("Runtime missing");
   const toggle = container.querySelector<HTMLButtonElement>('[data-testid="task-chat-collapsible-marker"] button[aria-expanded]')!;
   flushSync(() => toggle.click());
-  expect(container.textContent).toContain("Reinstall or rebuild Paperclip");
+  expect(container.textContent).toContain("Reinstall or rebuild Bostan");
   expect(container.textContent).toContain("test the agent's runtime");
 });

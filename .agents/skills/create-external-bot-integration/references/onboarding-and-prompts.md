@@ -165,7 +165,7 @@ Historical instruction surfaces to locate in the current checkout:
 - `ui/src/lib/agent-onboarding-prompt.ts`
 - `server/src/routes/access.ts` and its actual onboarding text renderer
 - `server/src/services/dot-runner-broker.ts` pairing/event/capability responses
-- `packages/paperclip-runner/src/backends/runtime-context.ts`
+- `packages/bostan-runner/src/backends/runtime-context.ts`
 - `packages/shared/src/external-agent-guidance.ts`
 
 ## Test prompts must constrain the destination without disabling the bot

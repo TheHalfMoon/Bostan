@@ -4,7 +4,7 @@ import type { RunnerApi } from "./api.js";
 import { collectAttemptFeedback, emptyFeedbackSummary, feedbackReview, observeFeedbackInvocations, summarizeCampaignFeedback, FEEDBACK_COLLECTION_LIMITS, type FeedbackEvidence } from "./feedback.js";
 import { runCleanupWithObservers } from "./cleanup-verification.js";
 import { isHistoricalBundlePathAllowed } from "./history-publish.js";
-import { canonicalProviderEventsFromOpenCodePart } from "../../packages/paperclip-runner/src/provider-events.js";
+import { canonicalProviderEventsFromOpenCodePart } from "../../packages/bostan-runner/src/provider-events.js";
 
 function entry(id: string, body = "Please preserve the original tool error."): AgentCommentaryDetail {
   return { id, kind: "complaint", preview: body.slice(0, 280), body,

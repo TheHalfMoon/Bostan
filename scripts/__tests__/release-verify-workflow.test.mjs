@@ -498,7 +498,7 @@ test("release verify workflow covers the same split test surface as stable PR ve
   );
   assert.match(verifyWorkflow, /pnpm -r typecheck/);
   assert.match(verifyWorkflow, /pnpm build/);
-  const runnerScripts = JSON.parse(readFileSync(path.join(repoRoot, "packages/paperclip-runner/package.json"), "utf8")).scripts;
+  const runnerScripts = JSON.parse(readFileSync(path.join(repoRoot, "packages/bostan-runner/package.json"), "utf8")).scripts;
   const runnerChecks = [...verifyWorkflow.matchAll(/^            checks: (.+)$/gm)]
     .flatMap(([, checks]) => checks.split(" "));
   assert.deepEqual(runnerChecks, runnerScripts["check:all"].split(" && ")
@@ -726,7 +726,7 @@ test("Runner eval workflows pin actions and gate paid live execution", () => {
   assert.ok(runnerBlock, "expected Runner chaos test command");
   assert.ok(serverBlock, "expected server chaos test command");
   for (const [base, block] of [
-    [path.join(repoRoot, "packages/paperclip-runner"), runnerBlock],
+    [path.join(repoRoot, "packages/bostan-runner"), runnerBlock],
     [path.join(repoRoot, "server"), serverBlock],
   ]) {
     const listedTestPaths =
@@ -750,8 +750,8 @@ test("Runner eval workflows pin actions and gate paid live execution", () => {
 test("direct Grok qualification installs the pinned binary and scopes the selected credential", () => {
   const workflow = readWorkflow("runner-protocol-live-evals.yml");
   assert.ok(workflow.includes("XAI_API_KEY: ${{ matrix.credentialName == 'XAI_API_KEY' && secrets.XAI_API_KEY || '' }}"));
-  assert.ok(workflow.includes("if [ -f packages/paperclip-runner/scripts/provision-grok.mjs ]; then"));
-  assert.ok(workflow.indexOf("sudo node packages/paperclip-runner/scripts/provision-grok.mjs /opt/paperclip/providers/grok/1.0.13/grok") < workflow.indexOf("pnpm --filter @bostan/runner deploy --prod"));
+  assert.ok(workflow.includes("if [ -f packages/bostan-runner/scripts/provision-grok.mjs ]; then"));
+  assert.ok(workflow.indexOf("sudo node packages/bostan-runner/scripts/provision-grok.mjs /opt/paperclip/providers/grok/1.0.13/grok") < workflow.indexOf("pnpm --filter @bostan/runner deploy --prod"));
   assert.ok(workflow.includes("PAPERCLIP_ACPX_GROK_AUTH_JSON_SECRET: ${{ matrix.credentialName == 'PAPERCLIP_ACPX_GROK_AUTH_JSON_SECRET' && secrets.GROK_AUTH_JSON || '' }}"));
   assert.equal((workflow.match(/secrets\.GROK_AUTH_JSON/gu) ?? []).length, 1);
 });
@@ -759,7 +759,7 @@ test("direct Grok qualification installs the pinned binary and scopes the select
 test("direct protocol concurrency override only lowers the configured ceiling", () => {
   const workflow = readWorkflow("runner-protocol-live-evals.yml");
   const start = workflow.indexOf('          if [ -n "${REQUESTED_MAX_PARALLEL:-}" ]; then');
-  const end = workflow.indexOf("          node packages/paperclip-runner/scripts/runner-protocol-eval-campaign.mjs catalog", start);
+  const end = workflow.indexOf("          node packages/bostan-runner/scripts/runner-protocol-eval-campaign.mjs catalog", start);
   assert.ok(start > 0 && end > start);
   const script = workflow.slice(start, end) + '\nprintf "%s" "$MAX_PARALLEL"\n';
   for (const [requested, expected] of [["", "8"], ["2", "2"], ["8", "8"], ["1", null], ["9", null], ["0", null], ["-1", null], ["2.5", null], ["garbage", null], ["9999999999999999999999", null]]) {
@@ -791,7 +791,7 @@ test("release daemon production uses exact-source native hosts and no publisher 
   assert.match(producer, /git rev-parse HEAD/);
   assert.match(producer, /process.platform \+ "-" \+ process.arch/);
   assert.match(producer, /\['native', \['build:binary'\]/);
-  const runner = JSON.parse(readFileSync(path.join(repoRoot, 'packages/paperclip-runner/package.json'), 'utf8'));
+  const runner = JSON.parse(readFileSync(path.join(repoRoot, 'packages/bostan-runner/package.json'), 'utf8'));
   assert.match(runner.scripts['build:binary'], /cargo build --release --manifest-path runner\/Cargo.toml --locked/);
   assert.match(runner.scripts['build:binary'], /&& node scripts\/stage-runner-binary.mjs$/);
   assert.match(producer, /stage-release-runner-binaries.mjs record/);
@@ -852,7 +852,7 @@ test('native dependency caches are target-bound and unmerged master callers cann
   const cache = producer.split('      - name: Cache native Rust dependencies\n')[1].split('\n      - ')[0];
   assert.match(cache, /Swatinem\/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6/);
   assert.match(cache, /workspaces: \$\{\{ steps.native_rust_workspace.outputs.path \}\} -> target/);
-  assert.match(cache, /shared-key: release-native-v2-\$\{\{ matrix.host \}\}-\$\{\{ matrix.target \}\}-\$\{\{ hashFiles\('packages\/paperclip-runner\/protocol\/\*\*', 'packages\/paperclip-runner\/src\/\*\*', 'packages\/paperclip-runner\/\*.json'\) \}\}/);
+  assert.match(cache, /shared-key: release-native-v2-\$\{\{ matrix.host \}\}-\$\{\{ matrix.target \}\}-\$\{\{ hashFiles\('packages\/bostan-runner\/protocol\/\*\*', 'packages\/bostan-runner\/src\/\*\*', 'packages\/bostan-runner\/\*.json'\) \}\}/);
   for (const option of ['cache-workspace-crates', 'cache-bin', 'cache-on-failure']) {
     assert.match(cache, new RegExp(option + ': false'));
   }
@@ -871,7 +871,7 @@ test('native dependency caches are target-bound and unmerged master callers cann
     [{ repository_id: '1' }, github.sha],
   ]) assert.equal(canSave({ ...github, ...overrides }, { ref: input }), false);
   assert.match(producer, /pinned="\$HOME\/paperclip-runner-rust"/);
-  assert.match(producer, /ln -s "\$GITHUB_WORKSPACE\/packages\/paperclip-runner\/runner" "\$pinned"/);
+  assert.match(producer, /ln -s "\$GITHUB_WORKSPACE\/packages\/bostan-runner\/runner" "\$pinned"/);
   assert.match(producer, /echo "RUSTUP_TOOLCHAIN=\$toolchain" >> "\$GITHUB_ENV"/);
   assert.doesNotMatch(producer, /cache-hit|continue-on-error/);
   assert.ok(producer.indexOf('Bind immutable producer source and target') < producer.indexOf('Cache native Rust dependencies'));
@@ -901,7 +901,7 @@ async function withNativePreparationFixture(mode, check) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'native-preparation-')));
   let controller;
   try {
-    for (const directory of ['scripts', 'tools', 'packages/paperclip-runner', 'logs']) {
+    for (const directory of ['scripts', 'tools', 'packages/bostan-runner', 'logs']) {
       mkdirSync(path.join(root, directory), { recursive: true });
     }
     for (const helper of ['prefetch-child.mjs', 'prefetch-supervisor.mjs']) {
@@ -966,7 +966,7 @@ test('native preparation overlaps independent outputs and joins both before reco
     const result = await completed;
     assert.equal(result.status, 0, result.stderr);
     for (const name of ['native', 'typescript']) assert.equal(readFileSync(path.join(root, name + '.finished'), 'utf8'), 'joined');
-    assert.equal(JSON.parse(readFileSync(path.join(root, 'native.started'), 'utf8')).cwd, path.join(root, 'packages/paperclip-runner'));
+    assert.equal(JSON.parse(readFileSync(path.join(root, 'native.started'), 'utf8')).cwd, path.join(root, 'packages/bostan-runner'));
     assert.deepEqual(JSON.parse(readFileSync(path.join(root, 'native.started'), 'utf8')).args, ['build:binary']);
     assert.deepEqual(JSON.parse(readFileSync(path.join(root, 'typescript.started'), 'utf8')).args, ['--filter', '@bostan/runner', 'build:typescript']);
     const results = result.stdout.split('\n').filter(line => line.startsWith('{')).map(line => JSON.parse(line));
@@ -1138,8 +1138,8 @@ test("exact-source daemon matrices read inert data and never execute preview run
     };
     const template = path.join(root, 'empty-template'); mkdirSync(template);
     git(['init', '-q', '--template=' + template]);
-    const source = path.join(root, 'packages/paperclip-runner/scripts/stage-release-runner-binaries.mjs');
-    const dataFile = path.join(root, 'packages/paperclip-runner/release-runner-targets.json');
+    const source = path.join(root, 'packages/bostan-runner/scripts/stage-release-runner-binaries.mjs');
+    const dataFile = path.join(root, 'packages/bostan-runner/release-runner-targets.json');
     mkdirSync(path.dirname(source), { recursive: true });
     const output = path.join(root, 'outputs'), marker = path.join(root, 'candidate-executed');
     const historical = ['darwin-arm64', 'darwin-x64', 'linux-x64'];

@@ -134,7 +134,7 @@ download dependencies when a task starts.
 ## Candidate ACP qualification assets
 
 Provider branches can build their pinned assets with
-`node packages/paperclip-runner/scripts/build-provider-pack.mjs /absolute/pack --candidate-providers=cursor`
+`node packages/bostan-runner/scripts/build-provider-pack.mjs /absolute/pack --candidate-providers=cursor`
 (or `copilot` or `pi`). The source revision must include the named provider's
 builder. Assets are installed at build time under `provider-assets/<provider>/<platform>-<architecture>`.
 The pack manifest binds each complete asset tree. Runtime admission separately

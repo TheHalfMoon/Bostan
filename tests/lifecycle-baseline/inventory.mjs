@@ -21,9 +21,9 @@ export const lanes = {
   runner: {
     files: [
       "tests/lifecycle-baseline/runner.test.ts",
-      "packages/paperclip-runner/src/native-session-runtime.test.ts",
-      "packages/paperclip-runner/src/protocol/result-normalization.test.ts",
-      "packages/paperclip-runner/src/contracts/completion-result.test.ts",
+      "packages/bostan-runner/src/native-session-runtime.test.ts",
+      "packages/bostan-runner/src/protocol/result-normalization.test.ts",
+      "packages/bostan-runner/src/contracts/completion-result.test.ts",
     ],
   },
   integration: {
@@ -66,7 +66,7 @@ const integ = (name, pattern = ".") =>
 const runner = (pattern) =>
   ref(
     "runner",
-    "packages/paperclip-runner/src/native-session-runtime.test.ts",
+    "packages/bostan-runner/src/native-session-runtime.test.ts",
     pattern,
   );
 export const scenarios = [

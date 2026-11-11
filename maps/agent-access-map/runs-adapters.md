@@ -300,7 +300,7 @@ invalidation. Verify saved configuration, current versus historical run identity
 restart and follow-up without granting session-reset authority to an agent.
 
 Scoped Evidence: `source-only` — the
-[native transport](../../packages/paperclip-runner/src/live/runnerd-codex-transport.ts)
+[native transport](../../packages/bostan-runner/src/live/runnerd-codex-transport.ts)
 joins owned startup before certifying cleanup. Rejected duplicates cannot replace
 that owner or mutate recovery state. Unconfirmed preparation or registration
 retains recovery state; late registration may release only its own route and

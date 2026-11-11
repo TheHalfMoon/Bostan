@@ -172,7 +172,7 @@ export function createPublicMcpExecutor(db: Db, oauth: PublicMcpOAuth, api: ApiD
       input = envelope.arguments;
     }
     const capability = publicMcpCapabilities.find((c) => c.name === name);
-    if (!capability) throw new McpCapabilityError("Unknown Paperclip operation.");
+    if (!capability) throw new McpCapabilityError("Unknown Bostan operation.");
     const args = capability.schema.parse(input);
     if (args.companyId !== undefined && args.companyId !== principal.grant.companyId) throw new McpCapabilityError("Company does not match the authorized connection.");
     if (!principal.grant.scopes.includes("paperclip:read")) throw new McpCapabilityError("Read permission is required.");
@@ -188,7 +188,7 @@ export function createPublicMcpExecutor(db: Db, oauth: PublicMcpOAuth, api: ApiD
       const [existing] = await db.select().from(mcpMutationReceipts).where(and(eq(mcpMutationReceipts.companyId, principal.grant.companyId), eq(mcpMutationReceipts.userId, principal.grant.userId), eq(mcpMutationReceipts.operation, name), eq(mcpMutationReceipts.requestId, key.requestId)));
       if (!existing || existing.argumentsHash !== argumentsHash) throw new McpCapabilityError("requestId was already used with different arguments.");
       if (existing.status === "completed" && existing.result) return existing.result;
-      return { outcome: "unknown", requestId: key.requestId, message: "This action is in progress or its outcome is unknown. Inspect tasks/comments in Paperclip before taking another action. Do not retry with a new requestId." };
+      return { outcome: "unknown", requestId: key.requestId, message: "This action is in progress or its outcome is unknown. Inspect tasks/comments in Bostan before taking another action. Do not retry with a new requestId." };
     }
     try {
       await logActivity(db, { companyId: principal.grant.companyId, actorType: "user", actorId: principal.grant.userId,
@@ -203,7 +203,7 @@ export function createPublicMcpExecutor(db: Db, oauth: PublicMcpOAuth, api: ApiD
         return result;
       }
       await db.update(mcpMutationReceipts).set({ status: "unknown" }).where(eq(mcpMutationReceipts.id, receipt.id));
-      return { outcome: "unknown", requestId: key.requestId, message: "Paperclip did not confirm this action. Inspect the task and comments before another action; do not retry with a new requestId." };
+      return { outcome: "unknown", requestId: key.requestId, message: "Bostan did not confirm this action. Inspect the task and comments before another action; do not retry with a new requestId." };
     }
   };
 }

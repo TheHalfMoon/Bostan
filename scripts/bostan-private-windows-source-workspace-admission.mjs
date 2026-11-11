@@ -8,7 +8,7 @@ import { createRequire } from 'node:module';
 import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 
-const SCOPES = Object.freeze(['server', 'packages/adapter-utils', 'packages/paperclip-runner']);
+const SCOPES = Object.freeze(['server', 'packages/adapter-utils', 'packages/bostan-runner']);
 const DEPENDENCY = 'smol-toml';
 const refuse = reason => Object.freeze({ allowed: false, reason });
 

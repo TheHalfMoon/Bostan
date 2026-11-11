@@ -404,7 +404,7 @@ async function throwProviderWriteOrReservedRowRollbackError(input: {
       },
       "remote secret provider write failed and reserved secret rollback failed",
     );
-    throw new HttpError(500, "Secret create failed and Paperclip could not roll back the local secret reservation.", {
+    throw new HttpError(500, "Secret create failed and Bostan could not roll back the local secret reservation.", {
       code: "secret_create_rollback_failed",
       provider: input.provider,
       operation: input.operation,
@@ -450,7 +450,7 @@ async function deleteLocalSecretCreateReservationOrThrow(input: {
       },
       "secret create failed and local reserved secret rollback failed",
     );
-    throw new HttpError(500, "Secret create failed and Paperclip could not roll back the local secret reservation.", {
+    throw new HttpError(500, "Secret create failed and Bostan could not roll back the local secret reservation.", {
       code: "secret_create_rollback_failed",
       provider: input.provider,
       operation: input.operation,
@@ -467,7 +467,7 @@ function throwProviderCleanupFailedAfterCreateRollback(input: {
   operation: string;
 }): never {
   const providerConfigId = providerConfigIdentifier(input);
-  throw new HttpError(500, "Secret create failed and Paperclip could not clean up the remote provider secret.", {
+  throw new HttpError(500, "Secret create failed and Bostan could not clean up the remote provider secret.", {
     code: "secret_create_provider_cleanup_failed",
     provider: input.provider,
     operation: input.operation,

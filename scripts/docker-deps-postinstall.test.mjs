@@ -21,7 +21,7 @@ test("dependency-layer inputs can run both Copilot postinstall entrypoints befor
       const destination = args.pop();
       for (const source of args) {
         if (source !== "pnpm-workspace.yaml"
-          && !source.startsWith("packages/paperclip-runner/")
+          && !source.startsWith("packages/bostan-runner/")
           && !source.startsWith("server/")) continue;
         assert.ok(destination.endsWith("/"), "fixture supports directory COPY destinations");
         const target = path.join(fixture, destination, path.basename(source));
@@ -29,7 +29,7 @@ test("dependency-layer inputs can run both Copilot postinstall entrypoints befor
         await cp(path.join(repo, source), target, { recursive: true });
       }
     }
-    for (const owner of ["packages/paperclip-runner", "server"]) {
+    for (const owner of ["packages/bostan-runner", "server"]) {
       const cwd = path.join(fixture, owner);
       const manifest = JSON.parse(await readFile(path.join(cwd, "package.json"), "utf8"));
       assert.equal(manifest.scripts.postinstall, "node scripts/install-copilot-assets.mjs");

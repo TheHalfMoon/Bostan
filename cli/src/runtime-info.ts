@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { resolvePaperclipInstanceRoot } from "./config/home.js";
+import { resolveBostanInstanceRoot } from "./config/home.js";
 
 export const PAPERCLIP_RUNTIME_INFO_FILENAME = "runtime-info.json";
 
@@ -15,7 +15,7 @@ export type PaperclipRuntimeInfo = {
 };
 
 export function resolveRuntimeInfoPath(instanceId?: string): string {
-  return path.join(resolvePaperclipInstanceRoot(instanceId), PAPERCLIP_RUNTIME_INFO_FILENAME);
+  return path.join(resolveBostanInstanceRoot(instanceId), PAPERCLIP_RUNTIME_INFO_FILENAME);
 }
 
 function parseRuntimeInfo(value: unknown): PaperclipRuntimeInfo | null {

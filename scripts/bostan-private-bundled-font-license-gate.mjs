@@ -9,7 +9,7 @@ import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const inventoryPath='scripts/bostan-private-bundled-font-inventory.json';
 const uiNotice='ui/public/fonts/NOTICE.md';
-const capabilityNotice='packages/paperclip-runner/devtools/issue-thread/src/fonts/NOTICE.md';
+const capabilityNotice='packages/bostan-runner/devtools/issue-thread/src/fonts/NOTICE.md';
 
 function requireText(source,fragments,name) {
   for(const fragment of fragments)
@@ -64,7 +64,7 @@ export function verifyBundledFontNotices({
   const directories=new Map();
   const noticeCounts=new Map();
   for(const item of list.assets){
-    if(typeof item?.path!=='string'||!(/^(ui\/public\/fonts|packages\/paperclip-runner\/devtools\/issue-thread\/src\/fonts)\/[\w.-]+\.woff2$/).test(item.path)
+    if(typeof item?.path!=='string'||!(/^(ui\/public\/fonts|packages\/bostan-runner\/devtools\/issue-thread\/src\/fonts)\/[\w.-]+\.woff2$/).test(item.path)
       ||seen.has(item.path)||!/^[a-f0-9]{64}$/.test(item.sha256)
       ||!['OFL-1.1','Bitstream-Vera'].includes(item.license)
       ||![uiNotice,capabilityNotice].includes(item.notice))
@@ -88,7 +88,7 @@ export function verifyBundledFontNotices({
     if(count!==expected.length||JSON.stringify(actual)!==JSON.stringify(expected))
       throw Error('Unaccounted bundled Bostan font discovered without license inventory');
   }
-  if(directories.size!==2||noticeCounts.size!==2||directories.get('ui/public/fonts')!==3||directories.get('packages/paperclip-runner/devtools/issue-thread/src/fonts')!==5)
+  if(directories.size!==2||noticeCounts.size!==2||directories.get('ui/public/fonts')!==3||directories.get('packages/bostan-runner/devtools/issue-thread/src/fonts')!==5)
     throw Error('Bostan bundled font directory and notice coverage incomplete');
   return {schema:list.schema,passed:true,releaseQualified:false,
     bundledFonts:seen.size,boardFonts:3,issueThreadFonts:5,

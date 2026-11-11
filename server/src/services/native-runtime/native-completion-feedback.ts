@@ -224,7 +224,7 @@ export async function nativeCompletionFeedback(
         throw new Error(`The referenced tool-action approval is already resolved (${card.id}). Read its persisted interaction result and continue from that decision. Do not repeat the service call or request approval again.`);
       }
       if (card.status === "pending" && signals.actionableAttentionRequests.some(request => request.kind === "approval" && request.ownerClass === "human")) {
-        throw new Error(`This tool action already has an approval card (${card.id}). Wait on that existing interaction with a yielded response_wake report and no duplicate approval attentionRequest. Paperclip will resume from its decision; do not create a completion review or repeat the service call.`);
+        throw new Error(`This tool action already has an approval card (${card.id}). Wait on that existing interaction with a yielded response_wake report and no duplicate approval attentionRequest. Bostan will resume from its decision; do not create a completion review or repeat the service call.`);
       }
     }
   }
@@ -302,7 +302,7 @@ export async function nativeCompletionFeedback(
     signals.actionableAttentionRequests.length === 0
   ) {
     throw new Error(
-      "needs_review requires a concrete decision and a named reviewer in attentionRequests. Continue unfinished work or checks; report done when complete. Paperclip will not create an automatic completion approval.",
+      "needs_review requires a concrete decision and a named reviewer in attentionRequests. Continue unfinished work or checks; report done when complete. Bostan will not create an automatic completion approval.",
     );
   }
   for (const request of signals.actionableAttentionRequests) {

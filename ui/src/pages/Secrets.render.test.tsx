@@ -502,7 +502,7 @@ describe("Secrets page layout", () => {
     });
   });
 
-  it("warns that removing a provider vault only removes Paperclip config", async () => {
+  it("warns that removing a provider vault only removes Bostan config", async () => {
     mockSecretsApi.removeProviderConfig.mockResolvedValueOnce(providerConfigs[1]);
     const root = await renderSecrets(container);
 

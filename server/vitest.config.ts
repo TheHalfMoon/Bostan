@@ -17,13 +17,13 @@ export default defineConfig({
       {
         find: /^@bostan\/runner\/live$/,
         replacement: fileURLToPath(
-          new URL("../packages/paperclip-runner/src/live/index.ts", import.meta.url),
+          new URL("../packages/bostan-runner/src/live/index.ts", import.meta.url),
         ),
       },
       {
         find: /^@bostan\/runner$/,
         replacement: fileURLToPath(
-          new URL("../packages/paperclip-runner/src/index.ts", import.meta.url),
+          new URL("../packages/bostan-runner/src/index.ts", import.meta.url),
         ),
       },
     ],

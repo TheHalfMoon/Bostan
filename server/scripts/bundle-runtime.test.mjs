@@ -124,12 +124,12 @@ describe("preserveModuleLocation", () => {
 
 describe("opt-in Bostan source QA prebundle", () => {
   for (const [name, oldRelative, newRelative] of [
-    ["index.ts", "../../../../packages/paperclip-runner/src/index.ts",
-      "../../../../packages/paperclip-runner/dist/index.js"],
-    ["testing.ts", "../../../../packages/paperclip-runner/src/testing.ts",
-      "../../../../packages/paperclip-runner/dist/testing.js"],
-    ["live/index.ts", "../../../../../packages/paperclip-runner/src/live/index.ts",
-      "../../../../../packages/paperclip-runner/dist/live/index.js"],
+    ["index.ts", "../../../../packages/bostan-runner/src/index.ts",
+      "../../../../packages/bostan-runner/dist/index.js"],
+    ["testing.ts", "../../../../packages/bostan-runner/src/testing.ts",
+      "../../../../packages/bostan-runner/dist/testing.js"],
+    ["live/index.ts", "../../../../../packages/bostan-runner/src/live/index.ts",
+      "../../../../../packages/bostan-runner/dist/live/index.js"],
   ]) {
     it("targets only the exact runner vendor shim: " + name, () => {
       const filename = path.join("/tmp/test", "server", "src", "vendor", "paperclip-runner", name);

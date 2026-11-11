@@ -31,7 +31,7 @@ import {
 } from "./prepare-bundled-package.mjs";
 
 const rootPackage = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
-const profileData = JSON.parse(await readFile(new URL("../packages/paperclip-runner/acpx-profiles.json", import.meta.url), "utf8"));
+const profileData = JSON.parse(await readFile(new URL("../packages/bostan-runner/acpx-profiles.json", import.meta.url), "utf8"));
 const nativeTargets = ["linux-x64", "darwin-arm64", "darwin-x64"];
 function esbuildFixture(t) {
   const directory = realpathSync(mkdtempSync(join(tmpdir(), "paperclip-bundled-esbuild-")));
@@ -108,7 +108,7 @@ const adapterUtilsPackage = JSON.parse(
   await readFile(new URL("../packages/adapter-utils/package.json", import.meta.url), "utf8"),
 );
 const runnerPackage = JSON.parse(
-  await readFile(new URL("../packages/paperclip-runner/package.json", import.meta.url), "utf8"),
+  await readFile(new URL("../packages/bostan-runner/package.json", import.meta.url), "utf8"),
 );
 const serverPackage = JSON.parse(
   await readFile(new URL("../server/package.json", import.meta.url), "utf8"),
@@ -595,9 +595,9 @@ test("server package staging applies every bundled runtime patch and preserves t
   mkdirSync(join(nativePackage, "vendor"), { recursive: true });
   writeFileSync(join(nativePackage, "package.json"), JSON.stringify({ name: "@openai/codex", version: "0.160.0-linux-x64", os: ["linux"], cpu: ["x64"] }));
   writeFileSync(join(nativePackage, "vendor/codex"), "producer host fixture; never executed");
-  mkdirSync(join(fixtureSourceRoot, "packages/paperclip-runner/src/drivers/acpx"), { recursive: true });
+  mkdirSync(join(fixtureSourceRoot, "packages/bostan-runner/src/drivers/acpx"), { recursive: true });
   writeFileSync(join(fixtureSourceRoot, "package.json"), JSON.stringify(rootPackage));
-  writeFileSync(join(fixtureSourceRoot, "packages/paperclip-runner/acpx-profiles.json"), JSON.stringify(profileData));
+  writeFileSync(join(fixtureSourceRoot, "packages/bostan-runner/acpx-profiles.json"), JSON.stringify(profileData));
   mkdirSync(join(fixtureSourceRoot, "patches"));
   for (const patchPath of Object.values(rootPackage.pnpm.patchedDependencies)) {
     writeFileSync(join(fixtureSourceRoot, patchPath), readFileSync(new URL(`../${patchPath}`, import.meta.url)));
@@ -748,7 +748,7 @@ test("npm builds use corepack instead of requiring a global pnpm", () => {
 
 
 test("installed ACPX runtime persists and restores optional goal capabilities", () => {
-  const requireRunner = createRequire(new URL("../packages/paperclip-runner/package.json", import.meta.url));
+  const requireRunner = createRequire(new URL("../packages/bostan-runner/package.json", import.meta.url));
   const runtimeSource = readFileSync(requireRunner.resolve("acpx/runtime"), "utf8");
   const start = runtimeSource.indexOf("function persistedGoalCapability(");
   const end = runtimeSource.indexOf("function planUpdateEvent(", start);

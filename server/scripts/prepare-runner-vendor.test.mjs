@@ -13,7 +13,7 @@ import {
   buildInputsStampPath,
   readBuildInputsStamp,
   recordRunnerBuild,
-} from "../../packages/paperclip-runner/scripts/build-inputs.mjs";
+} from "../../packages/bostan-runner/scripts/build-inputs.mjs";
 import {
   FORCE_REBUILD_VARIABLE,
   RUNNER_VENDOR_BUILD_COMMAND,
@@ -26,7 +26,7 @@ import {
 const execFileAsync = promisify(execFile);
 const prepareScript = fileURLToPath(new URL("./prepare-runner-vendor.mjs", import.meta.url));
 const recordScript = fileURLToPath(
-  new URL("../../packages/paperclip-runner/scripts/record-build-inputs.mjs", import.meta.url),
+  new URL("../../packages/bostan-runner/scripts/record-build-inputs.mjs", import.meta.url),
 );
 const executable = process.platform === "win32" ? "paperclip-runnerd.exe" : "paperclip-runnerd";
 
@@ -51,16 +51,16 @@ function makeRepo() {
     "tsconfig.base.json": "{}\n",
     "patches/acpx@0.13.1.patch": "--- a\n+++ b\n",
     "server/package.json": '{"name":"@paperclipai/server"}\n',
-    "packages/paperclip-runner/package.json": '{"name":"@bostan/runner"}\n',
-    "packages/paperclip-runner/src/index.ts": "export const one = 1;\n",
-    "packages/paperclip-runner/dist/index.js": "export const one = 1;\n",
-    "packages/paperclip-runner/dist/live/index.js": "export {};\n",
-    "packages/paperclip-runner/dist/testing.js": "export {};\n",
-    "packages/paperclip-runner/dist/cli/acpx-runtime-sidecar.cjs": "module.exports = {};\n",
-    [`packages/paperclip-runner/dist/bin/${executable}`]: "binary\n",
+    "packages/bostan-runner/package.json": '{"name":"@bostan/runner"}\n',
+    "packages/bostan-runner/src/index.ts": "export const one = 1;\n",
+    "packages/bostan-runner/dist/index.js": "export const one = 1;\n",
+    "packages/bostan-runner/dist/live/index.js": "export {};\n",
+    "packages/bostan-runner/dist/testing.js": "export {};\n",
+    "packages/bostan-runner/dist/cli/acpx-runtime-sidecar.cjs": "module.exports = {};\n",
+    [`packages/bostan-runner/dist/bin/${executable}`]: "binary\n",
     "packages/bostan-eval-kernel/src/index.ts": "export const kernel = 1;\n",
   });
-  const packageRoot = path.join(repoRoot, "packages", "paperclip-runner");
+  const packageRoot = path.join(repoRoot, "packages", "bostan-runner");
   return { repoRoot, packageRoot };
 }
 

@@ -109,7 +109,7 @@ import {
 import { runningProcesses } from "../adapters/index.ts";
 import {
   resolveDefaultAgentWorkspaceDir,
-  resolvePaperclipInstanceRoot,
+  resolveBostanInstanceRoot,
 } from "../home-paths.js";
 import { buildNativeExecutionInput } from "../services/native-runtime/native-execution-input.js";
 import { nativeRuntimeContextFixture } from "../services/native-runtime/runtime-context.test-fixture.js";
@@ -3689,7 +3689,7 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
     await withTempPaperclipHome(async () => {
       const { companyId, agentId, issueId, runId } =
         await seedQueuedIssueRunFixture();
-      await fs.mkdir(resolvePaperclipInstanceRoot(), { recursive: true });
+      await fs.mkdir(resolveBostanInstanceRoot(), { recursive: true });
       const projectId = placement === "projectless" ? null : randomUUID();
       if (projectId) {
         await db.insert(projects).values({ id: projectId, companyId, name: "Chat channel project default" });
@@ -3735,7 +3735,7 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
       const input = nativeSessionBackendFactory.mock.calls[0]![0];
       expect(input.workspace.cwd).toBe(
         path.join(
-          await fs.realpath(resolvePaperclipInstanceRoot()),
+          await fs.realpath(resolveBostanInstanceRoot()),
           "isolated-workspaces",
           companyId,
           issueId,
@@ -3755,7 +3755,7 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
   it.each(["managed_isolated", "shared"] as const)("prepares a fresh native chat configured source safely: %s", async (mode) => {
     await withTempPaperclipHome(async () => {
       const { companyId, agentId, issueId, runId } = await seedQueuedIssueRunFixture();
-      const instanceRoot = resolvePaperclipInstanceRoot();
+      const instanceRoot = resolveBostanInstanceRoot();
       await fs.mkdir(instanceRoot, { recursive: true });
       const cwd = path.join(instanceRoot, "source-repository");
       await fs.mkdir(cwd, { recursive: true });
@@ -3948,7 +3948,7 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
       expect(mockAdapterExecute).not.toHaveBeenCalled();
       expect(mockTerminateLocalService).not.toHaveBeenCalled();
       await expect(
-        fs.stat(path.join(resolvePaperclipInstanceRoot(), "chat-workspaces")),
+        fs.stat(path.join(resolveBostanInstanceRoot(), "chat-workspaces")),
       ).rejects.toMatchObject({ code: "ENOENT" });
       expect(
         await db
@@ -13198,7 +13198,7 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
     "rechecks only unadmitted native bootstrap recovery after a committed close: %s",
     async (admission) => {
       await withTempPaperclipHome(async () => {
-        await fs.mkdir(resolvePaperclipInstanceRoot(), { recursive: true });
+        await fs.mkdir(resolveBostanInstanceRoot(), { recursive: true });
         const { source, child } = await seedPreparedChatRecovery(admission);
         const [prepared] = await db
           .select()
@@ -13240,7 +13240,7 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
     "does not acquire a new chat gate lock for protected native recovery: %s",
     async (admission) => {
       await withTempPaperclipHome(async () => {
-        await fs.mkdir(resolvePaperclipInstanceRoot(), { recursive: true });
+        await fs.mkdir(resolveBostanInstanceRoot(), { recursive: true });
         const { source, child } = await seedPreparedChatRecovery(admission);
         let release!: () => void;
         let locked: Promise<unknown> | undefined;

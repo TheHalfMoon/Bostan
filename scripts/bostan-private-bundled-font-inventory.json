@@ -20,34 +20,34 @@
       "notice": "ui/public/fonts/NOTICE.md"
     },
     {
-      "path": "packages/paperclip-runner/devtools/issue-thread/src/fonts/dejavu-sans-mono-latin-400.woff2",
+      "path": "packages/bostan-runner/devtools/issue-thread/src/fonts/dejavu-sans-mono-latin-400.woff2",
       "sha256": "8ddb2808290634d60e3d9439560254294bb7eabdc2790ef23e216415fa58a17e",
       "license": "Bitstream-Vera",
-      "notice": "packages/paperclip-runner/devtools/issue-thread/src/fonts/NOTICE.md"
+      "notice": "packages/bostan-runner/devtools/issue-thread/src/fonts/NOTICE.md"
     },
     {
-      "path": "packages/paperclip-runner/devtools/issue-thread/src/fonts/dejavu-sans-mono-latin-700.woff2",
+      "path": "packages/bostan-runner/devtools/issue-thread/src/fonts/dejavu-sans-mono-latin-700.woff2",
       "sha256": "8b487fffe8fdc43811bab48a7d57d03c1cc8853c627d14265a354ab61ef83fcf",
       "license": "Bitstream-Vera",
-      "notice": "packages/paperclip-runner/devtools/issue-thread/src/fonts/NOTICE.md"
+      "notice": "packages/bostan-runner/devtools/issue-thread/src/fonts/NOTICE.md"
     },
     {
-      "path": "packages/paperclip-runner/devtools/issue-thread/src/fonts/dejavu-sans-symbols.woff2",
+      "path": "packages/bostan-runner/devtools/issue-thread/src/fonts/dejavu-sans-symbols.woff2",
       "sha256": "a84327cac331bb1c0c398b276040bc4d72fd9c655442e30cdd97001ba4c59f8c",
       "license": "Bitstream-Vera",
-      "notice": "packages/paperclip-runner/devtools/issue-thread/src/fonts/NOTICE.md"
+      "notice": "packages/bostan-runner/devtools/issue-thread/src/fonts/NOTICE.md"
     },
     {
-      "path": "packages/paperclip-runner/devtools/issue-thread/src/fonts/inter-latin.woff2",
+      "path": "packages/bostan-runner/devtools/issue-thread/src/fonts/inter-latin.woff2",
       "sha256": "e75c0927a305ceff7d6954f92634fb885a4391c8298eaef8e248fdbcaeffe92e",
       "license": "OFL-1.1",
-      "notice": "packages/paperclip-runner/devtools/issue-thread/src/fonts/NOTICE.md"
+      "notice": "packages/bostan-runner/devtools/issue-thread/src/fonts/NOTICE.md"
     },
     {
-      "path": "packages/paperclip-runner/devtools/issue-thread/src/fonts/noto-sans-symbols2-hourglass.woff2",
+      "path": "packages/bostan-runner/devtools/issue-thread/src/fonts/noto-sans-symbols2-hourglass.woff2",
       "sha256": "31d7ffcf4c0a0d247c344499205e85243541de8bb1894a179270edcc6323021c",
       "license": "OFL-1.1",
-      "notice": "packages/paperclip-runner/devtools/issue-thread/src/fonts/NOTICE.md"
+      "notice": "packages/bostan-runner/devtools/issue-thread/src/fonts/NOTICE.md"
     }
   ]
 }

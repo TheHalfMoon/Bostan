@@ -5,7 +5,7 @@ import { join, posix } from "node:path";
 import { ADAPTER_AUTH_MISSING_CHECK_CODE } from "@bostan/shared";
 import * as localCredentialFile from "../local-ai-credential-file.js";
 import * as codexCredentials from "@bostan/adapter-codex-local/server";
-const { prepareIsolatedCodexHome } = await import(new URL("../../../../packages/paperclip-runner/src/drivers/runtime-context-materializer.ts", import.meta.url).href);
+const { prepareIsolatedCodexHome } = await import(new URL("../../../../packages/bostan-runner/src/drivers/runtime-context-materializer.ts", import.meta.url).href);
 const { execute, nativeProbe, selectedRunner, selectedRemoteRunner, sshExecute, sshRunner, nativeArtifacts, remoteLauncher, registerPrp, ingressConnect } = vi.hoisted(() => ({ execute: vi.fn(), nativeProbe: vi.fn(), selectedRunner: vi.fn(), selectedRemoteRunner: vi.fn(), sshExecute: vi.fn(), sshRunner: vi.fn(), nativeArtifacts: vi.fn(), remoteLauncher: vi.fn(), registerPrp: vi.fn(), ingressConnect: vi.fn() }));
 const nativeProbeRuntimeDirectories = vi.hoisted(() => [] as string[]);
 vi.mock("node:fs/promises", async original => {

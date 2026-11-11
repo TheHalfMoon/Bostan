@@ -1,4 +1,4 @@
-import { Boxes, Folder, Link2, Paperclip, type LucideIcon } from "lucide-react";
+import { Boxes, Folder, Link2, Paperclip as AttachmentIcon, type LucideIcon } from "lucide-react";
 import { GithubIcon } from "@/components/icons/github-icon";
 import type { CompanySkillListItem } from "@bostan/shared";
 
@@ -104,11 +104,11 @@ export function buildAgentSkillSourceMeta(skill: SourceSkill): AgentSkillSourceM
   }
 
   if (skill.sourceBadge === "paperclip") {
-    const nativeLabel = skill.sourceLabel?.trim();
-    const label = nativeLabel === "Paperclip" ? "Bostan"
-      : nativeLabel === "Paperclip catalog" ? "Bostan catalog"
-      : !nativeLabel || nativeLabel === "Paperclip managed" ? "Bostan managed" : nativeLabel;
-    return { icon: Paperclip, label };
+    const nativeLabel = skill.sourceLabel?.trim().replace(/^Paperclip(?= |$)/, "Bostan");
+    const label = nativeLabel === "Bostan" ? "Bostan"
+      : nativeLabel === "Bostan catalog" ? "Bostan catalog"
+      : !nativeLabel || nativeLabel === "Bostan managed" ? "Bostan managed" : nativeLabel;
+    return { icon: AttachmentIcon, label };
   }
 
   if (skill.sourceBadge === "catalog" || skill.sourceType === "catalog") {

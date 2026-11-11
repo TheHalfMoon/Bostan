@@ -1,7 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
-import { parseNativeExecutionInput } from "../../packages/paperclip-runner/src/contracts/native-execution.js";
+import { parseNativeExecutionInput } from "../../packages/bostan-runner/src/contracts/native-execution.js";
 import { pollUntil, type RunnerApi } from "./api.js";
 import { nativeCompletionProfile } from "./native-completion-defaults.js";
 import { createRemoteFixtureClient } from "./remote-native-bootstrap.js";

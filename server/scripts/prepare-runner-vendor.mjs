@@ -1,4 +1,4 @@
-// Makes sure packages/paperclip-runner/dist is a current build before the
+// Makes sure packages/bostan-runner/dist is a current build before the
 // server build vendors it, rebuilding the Runner only when that is needed.
 //
 // The server build (and typecheck) used to run the Runner's full `build`
@@ -11,7 +11,7 @@
 //
 // The Runner's `build` now records a digest of its inputs, captured before its
 // first step and confirmed after its last, together with a manifest of every
-// file it left under dist (packages/paperclip-runner/scripts/build-inputs.mjs).
+// file it left under dist (packages/bostan-runner/scripts/build-inputs.mjs).
 // This step recomputes the digest and reuses the build when the stamp matches
 // and every recorded output is still there at its recorded size; anything else
 // runs the full Runner build exactly as before. The standalone guarantee
@@ -30,7 +30,7 @@ import { fileURLToPath } from "node:url";
 import {
   assessRunnerBuild,
   removeBuildInputsStamp,
-} from "../../packages/paperclip-runner/scripts/build-inputs.mjs";
+} from "../../packages/bostan-runner/scripts/build-inputs.mjs";
 
 /** The command the server build has always run here; the rebuild path is unchanged. */
 export const RUNNER_VENDOR_BUILD_COMMAND = "pnpm --filter @bostan/runner build";
@@ -92,7 +92,7 @@ export function prepareRunnerVendor({
   log = console.log,
   now = () => performance.now(),
 }) {
-  const packageRoot = path.join(repoRoot, "packages", "paperclip-runner");
+  const packageRoot = path.join(repoRoot, "packages", "bostan-runner");
   const checkStart = now();
   const assessment = assessRunnerBuild({ repoRoot, packageRoot });
   const decision = decideRunnerVendorAction({ env, assessment });

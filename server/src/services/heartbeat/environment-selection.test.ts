@@ -6,7 +6,7 @@ import { agents, companies, createDb, environments, heartbeatRuns, issues, proje
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { getEmbeddedPostgresTestSupport, startEmbeddedPostgresTestDatabase } from "../../__tests__/helpers/embedded-postgres.js";
-import { resolvePaperclipInstanceRoot } from "../../home-paths.js";
+import { resolveBostanInstanceRoot } from "../../home-paths.js";
 import { environmentService } from "../environments.js";
 import { executionWorkspaceService } from "../execution-workspaces.js";
 import { instanceSettingsService } from "../instance-settings.js";
@@ -30,7 +30,7 @@ describe.skipIf(!support.supported)("heartbeat environment selection boundary", 
     home = await mkdtemp(join(tmpdir(), "heartbeat-environment-selection-"));
     vi.stubEnv("PAPERCLIP_HOME", home);
     vi.stubEnv("PAPERCLIP_INSTANCE_ID", "environment-selection");
-    await mkdir(resolvePaperclipInstanceRoot(), { recursive: true });
+    await mkdir(resolveBostanInstanceRoot(), { recursive: true });
     database = await startEmbeddedPostgresTestDatabase("heartbeat-environment-selection-");
     db = createDb(database.connectionString);
     await db.execute(sql`set client_min_messages = warning`);

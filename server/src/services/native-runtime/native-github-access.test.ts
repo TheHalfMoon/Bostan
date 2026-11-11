@@ -85,7 +85,7 @@ function request(broker: NativeGitHubAccess, extra: RequestInit = {}, endpoint =
 it.each([false, true])("resolves managed GitHub credentials from OpenCode shell operations (runner projection: %s)", async throughRunner => {
   const b = await broker();
   const command = path.join(b.root, "fake-opencode-server.mjs");
-  const fixture = new URL("../../../../packages/paperclip-runner/test/fixtures/fake-opencode-server.mjs", import.meta.url);
+  const fixture = new URL("../../../../packages/bostan-runner/test/fixtures/fake-opencode-server.mjs", import.meta.url);
   await writeFile(command, await readFile(fixture), { mode: 0o700 });
   const source = { ...b.env, OPENROUTER_API_KEY: "fixture-provider-key", PAPERCLIP_API_KEY: "controller-must-not-cross" };
   const environment = throughRunner ? createCapabilityRunnerdProviderEnvironment({

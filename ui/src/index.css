@@ -3219,6 +3219,7 @@ span.paperclip-mention-chip[data-mention-kind="external-object"] {
    * allow ui/src/components/NewIssueDialog.test.tsx — mock label color fixtures
    * allow ui/src/components/ProjectTile.test.tsx — mock project color prop
    * allow ui/src/components/RoutineRunVariablesDialog.test.tsx — mock label color fixture
+   * allow ui/src/components/BostanOcrPreview.tsx — white JPEG alpha-flattening pixels for OCR input; functional image data independent of the UI theme
    * allow ui/src/components/SidebarProjects.test.tsx — mock project color fixture
    * allow ui/src/components/SidebarStarredProjects.test.tsx — mock project color fixture
    * allow ui/src/pages/CompanyEnvironments.test.tsx — xterm.js theme-mock assertion values (mirrors the allowlisted xterm.js config in the CompanyEnvironments.tsx source above)
@@ -3506,7 +3507,7 @@ span.paperclip-mention-chip[data-mention-kind="external-object"] {
 
 :root {
   /* Browser Use live viewer chrome: 30px tab strip + 40px navigation bar.
-     Provider integration measurement (2026-09-29), not Paperclip spacing.
+     Provider integration measurement (2026-09-29), not Bostan spacing.
      Keep navigation visible; the cross-origin viewer exposes no sizing message. */
   --browser-use-viewer-chrome-height: 70px;
 }

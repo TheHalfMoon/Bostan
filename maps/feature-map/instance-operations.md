@@ -84,11 +84,11 @@ identities and persistence; they do not establish a deployed staging walkthrough
 
 ### `runtime-provisioning`
 
-Automated: [Runtime commands](../../cli/src/__tests__/runtime.test.ts), [setup](../../cli/src/__tests__/runtime-setup.test.ts), [remote Pi companion](../../server/src/__tests__/remote-pi-companion.test.ts), and [Pi package provisioning](../../packages/paperclip-runner/scripts/provision-pi-package.test.mjs) cover parsing, fixtures, package identity, and integrity. They do not qualify every published installation or live provider.
+Automated: [Runtime commands](../../cli/src/__tests__/runtime.test.ts), [setup](../../cli/src/__tests__/runtime-setup.test.ts), [remote Pi companion](../../server/src/__tests__/remote-pi-companion.test.ts), and [Pi package provisioning](../../packages/bostan-runner/scripts/provision-pi-package.test.mjs) cover parsing, fixtures, package identity, and integrity. They do not qualify every published installation or live provider.
 
 Manual: Use a disposable published installation and its exact runtime release. Run setup for the intended host runtime, inspect verified version/path, and repeat to confirm the existing installation is reused. Test a corrupt, linked, or foreign installation and verify rejection preserves unrelated files. Import a matching Linux x64 Pi companion with an independently trusted manifest digest; repeat for verified_existing, then alter manifest, inventory, source/profile identity, or target files and verify failure without replacing unrelated state. Inspect cleanup/cancellation. Finally use the selected adapter/account to run a bounded task separately: installed bytes do not prove model execution.
 
-Sources: [Runtime CLI](../../cli/src/commands/runtime.ts), [instance-config bypass](../../cli/src/index.ts), [Pi provisioning](../../packages/paperclip-runner/scripts/provision-pi.mjs), [Cursor provisioning](../../packages/paperclip-runner/scripts/provision-cursor.mjs), and [companion importer](../../server/src/services/native-runtime/remote-pi-companion.ts).
+Sources: [Runtime CLI](../../cli/src/commands/runtime.ts), [instance-config bypass](../../cli/src/index.ts), [Pi provisioning](../../packages/bostan-runner/scripts/provision-pi.mjs), [Cursor provisioning](../../packages/bostan-runner/scripts/provision-cursor.mjs), and [companion importer](../../server/src/services/native-runtime/remote-pi-companion.ts).
 
 ## Gotchas
 

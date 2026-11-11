@@ -2163,7 +2163,7 @@ export function chatChannelService(db: Db, options: ChatChannelServiceOptions) {
         }
         if (!conversation)
           throw conflict(
-            "Could not bind external conversation to a Paperclip task",
+            "Could not bind external conversation to a Bostan task",
           );
 
         const issue =

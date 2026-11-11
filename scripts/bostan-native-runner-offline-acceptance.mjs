@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const fixtureRoot = join(root, 'packages/paperclip-runner/protocol/fixtures/local-runner/scripts');
+const fixtureRoot = join(root, 'packages/bostan-runner/protocol/fixtures/local-runner/scripts');
 const blocked = ['OPENAI_API_KEY','ANTHROPIC_API_KEY','GEMINI_API_KEY','GOOGLE_API_KEY','OPENROUTER_API_KEY','XAI_API_KEY','AWS_ACCESS_KEY_ID','AWS_SECRET_ACCESS_KEY','DATABASE_URL','OTEL_EXPORTER_OTLP_ENDPOINT','SENTRY_DSN'];
 const identity = {runId:'run_bostan_private_native_smoke',sessionId:'session_bostan_private_native_smoke',runnerId:'runner_bostan_native_smoke'};
 export function verifyMetadata(metadata) {

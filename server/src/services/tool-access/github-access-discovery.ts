@@ -223,7 +223,7 @@ export async function loadGitHubGrantMetadata(
       ? `https://github.com/apps/${resolvedAppSlug}/installations/new`
       : "https://github.com/settings/installations";
     throw unprocessable(
-      "GitHub access is required. Install Paperclip and grant at least one repository before refreshing access.",
+      "GitHub access is required. Install Bostan and grant at least one repository before refreshing access.",
       {
         code: "github_installation_required",
         installationUrl,

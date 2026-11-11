@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {checkPrivateWindowsSourceWorkspaceDependencies as check} from './bostan-private-windows-source-workspace-admission.mjs';
 
-const scopes=['server','packages/adapter-utils','packages/paperclip-runner'];
+const scopes=['server','packages/adapter-utils','packages/bostan-runner'];
 const isWindows=process.platform==='win32';
 function fixture(t){
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'bostan-b199-owned-'));

@@ -366,7 +366,7 @@ export class PaperclipRunnerToolAuthority {
       await this.binding.assertBridgeAuthority?.();
       if (!MUSE_NATIVE_OPERATIONS.has(call.tool)) throw forbidden("This operation is outside the Muse first-party runtime profile");
     }
-    if (this.binding.firstPartyOnly && (EXTERNAL_WORKSPACE_OPERATIONS.has(call.tool) || call.tool.startsWith("workspace_"))) throw forbidden("Paperclip workspace access is unavailable to this Grok Bot session.");
+    if (this.binding.firstPartyOnly && (EXTERNAL_WORKSPACE_OPERATIONS.has(call.tool) || call.tool.startsWith("workspace_"))) throw forbidden("Bostan workspace access is unavailable to this Grok Bot session.");
     if (this.binding.nativeReview) {
       if (call.tool === "resolve_review") return this.#resolveReview(call.arguments);
       if (!NATIVE_REVIEW_READ_TOOLS.has(call.tool)) {
@@ -448,7 +448,7 @@ export class PaperclipRunnerToolAuthority {
       return { ...response, apiOperationId: operationId };
     }
     if (this.binding.firstPartyOnly && (call.tool === READ_TOOL_RESULT || this.binding.assignedMcpTools?.has(call.tool) || isConnectorTool(call.tool)
-      || RUNTIME_CONNECTION_TOOL_DEFINITIONS.some(tool => tool.name === call.tool))) throw forbidden("This Grok Bot connection exposes first-party Paperclip operations. Use your own provider apps under their existing permissions.");
+      || RUNTIME_CONNECTION_TOOL_DEFINITIONS.some(tool => tool.name === call.tool))) throw forbidden("This Grok Bot connection exposes first-party Bostan operations. Use your own provider apps under their existing permissions.");
     if (call.tool === READ_TOOL_RESULT) return this.#readToolResult(call.arguments);
     if (this.binding.assignedMcpTools?.has(call.tool)) {
       const current = await this.#boundContext();
@@ -880,13 +880,13 @@ export class PaperclipRunnerToolAuthority {
     };
     const caseCaptureId = dedicatedCaseRoute ? options!.caseId
       : await caseIdForApiCapture(this.db, this.binding.companyId, operation.path, input.pathParams);
-    if (this.binding.firstPartyOnly && /\/(?:workspaces|workspace-runtime|repositories|tool-gateway|tool-connections|tool-profiles|tools|connection-intents|connections|plugins)(?:\/|$)/.test(operation.path)) throw forbidden("Third-party tools through Paperclip are unavailable for this Grok Bot connection.");
+    if (this.binding.firstPartyOnly && /\/(?:workspaces|workspace-runtime|repositories|tool-gateway|tool-connections|tool-profiles|tools|connection-intents|connections|plugins)(?:\/|$)/.test(operation.path)) throw forbidden("Third-party tools through Bostan are unavailable for this Grok Bot connection.");
     const sensitiveResponse = runnerApiSensitiveResponse(operation.method, operation.path);
     await this.#assertDotApiFileAccess(operation.path, input);
     const apiUrl = this.binding.apiUrl ?? process.env.PAPERCLIP_API_URL;
-    if (!apiUrl) throw new Error("Paperclip API origin is unavailable");
+    if (!apiUrl) throw new Error("Bostan API origin is unavailable");
     const token = this.#apiToken(bound);
-    if (!token) throw new Error("Paperclip run authentication is unavailable");
+    if (!token) throw new Error("Bostan run authentication is unavailable");
     const execute = async () => {
       const current = await this.#boundContext();
       assertAvailable(current.issue.workMode);
@@ -985,7 +985,7 @@ export class PaperclipRunnerToolAuthority {
     await authorize();
     const apiUrl = this.binding.apiUrl ?? process.env.PAPERCLIP_API_URL;
     const token = this.#apiToken(context);
-    if (!apiUrl || !token) throw new Error("Paperclip run authentication is unavailable");
+    if (!apiUrl || !token) throw new Error("Bostan run authentication is unavailable");
     // This dedicated read grants only a saved result from this task. It remains
     // available without generic call_api and uses the same authenticated asset
     // route, range/UTF-8 decoding, and responsible-user checks as API reads.

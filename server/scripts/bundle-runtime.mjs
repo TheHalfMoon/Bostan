@@ -25,12 +25,12 @@ export function preserveModuleLocation(source, file) {
 // TypeScript at runtime; a plain-Node bundle must point at the equivalent
 // previously built JS modules instead, without changing normal source mode.
 const COMPILED_RUNNER_QA_MAPPINGS = Object.freeze([
-  ["index.ts", "../../../../packages/paperclip-runner/src/index.ts",
-    "../../../../packages/paperclip-runner/dist/index.js"],
-  ["testing.ts", "../../../../packages/paperclip-runner/src/testing.ts",
-    "../../../../packages/paperclip-runner/dist/testing.js"],
-  ["live/index.ts", "../../../../../packages/paperclip-runner/src/live/index.ts",
-    "../../../../../packages/paperclip-runner/dist/live/index.js"],
+  ["index.ts", "../../../../packages/bostan-runner/src/index.ts",
+    "../../../../packages/bostan-runner/dist/index.js"],
+  ["testing.ts", "../../../../packages/bostan-runner/src/testing.ts",
+    "../../../../packages/bostan-runner/dist/testing.js"],
+  ["live/index.ts", "../../../../../packages/bostan-runner/src/live/index.ts",
+    "../../../../../packages/bostan-runner/dist/live/index.js"],
 ]);
 
 export function compiledRunnerQaShim(source, file) {

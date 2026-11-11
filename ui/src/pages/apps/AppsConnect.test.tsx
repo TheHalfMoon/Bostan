@@ -42,7 +42,7 @@ const mockParams = vi.hoisted(() => ({ appKey: undefined as string | undefined }
 const mockCompany = vi.hoisted(() => ({
   value: {
     selectedCompanyId: "company-1" as string | undefined,
-    selectedCompany: { id: "company-1", name: "Paperclip" } as { id: string; name: string } | null,
+    selectedCompany: { id: "company-1", name: "Bostan" } as { id: string; name: string } | null,
   },
 }));
 
@@ -354,7 +354,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     window.sessionStorage.clear();
     mockCompany.value = {
       selectedCompanyId: "company-1",
-      selectedCompany: { id: "company-1", name: "Paperclip" },
+      selectedCompany: { id: "company-1", name: "Bostan" },
     };
     mockSearch.value = "";
     mockParams.appKey = undefined;
@@ -591,7 +591,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     connectAppMock.mockResolvedValue({ connectionId: connection.id, connection, catalog: [], auth: { kind: "oauth" } });
     await render(undefined, false, <ConnectionSetupFlow host="dialog" serviceSlug="composio" interactionId="intent-inline" onPhaseChange={onPhaseChange} onComplete={onComplete} />);
     await act(async () => buttonByText("Connect Composio")!.click());
-    await vi.waitFor(() => expect(container.textContent).toContain("Paperclip couldn’t open sign-in"));
+    await vi.waitFor(() => expect(container.textContent).toContain("Bostan couldn’t open sign-in"));
 
     const link = container.querySelector<HTMLAnchorElement>('a[target="_blank"]')!;
     expect(link.href).toBe("https://mcp.notion.com/authorize?state=resumed");
@@ -601,7 +601,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     await act(async () => link.dispatchEvent(click));
     expect(click.defaultPrevented).toBe(false);
     expect(onPhaseChange).toHaveBeenLastCalledWith("authorizing");
-    expect(container.textContent).not.toContain("Paperclip couldn’t open sign-in");
+    expect(container.textContent).not.toContain("Bostan couldn’t open sign-in");
     expect(open).toHaveBeenCalledTimes(1);
     expect(connectAppMock).toHaveBeenCalledTimes(1);
     expect(startOAuthMock).toHaveBeenCalledTimes(1);
@@ -618,7 +618,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
       await act(async () => setInputValue(container.querySelector<HTMLInputElement>('input[id$="-url"]')!, "https://provider.example/mcp"));
     }
     await act(async () => buttonByText(`Connect ${provider[0].toUpperCase()}${provider.slice(1)}`)!.click());
-    await vi.waitFor(() => expect(container.textContent).toContain("Paperclip couldn’t open sign-in"));
+    await vi.waitFor(() => expect(container.textContent).toContain("Bostan couldn’t open sign-in"));
 
     const link = container.querySelector<HTMLAnchorElement>('a[target="_blank"]')!;
     expect(link.textContent).toBe("open sign-in again");
@@ -1089,7 +1089,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     expect(container.textContent).toContain("personal fine-grained token with Copilot Requests permission");
     expect(container.querySelector('input[placeholder="github_pat_..."]')).toBeTruthy();
     expect(container.querySelector('[aria-label="Copilot execution environment"]')).toBeTruthy();
-    expect(container.textContent).not.toContain("You must connect this instance to Paperclip");
+    expect(container.textContent).not.toContain("You must connect this instance to Bostan");
     expect(getCloudConnectorEnrollmentMock).not.toHaveBeenCalled();
     expect(startOAuthMock).not.toHaveBeenCalled();
     expect(connectAppMock).not.toHaveBeenCalled();
@@ -1324,7 +1324,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
   });
 
   it("shows Gmail's instance configuration notice instead of a dead connect path", async () => {
-    const reason = "Configure Paperclip ID before connecting Gmail.";
+    const reason = "Configure Bostan ID before connecting Gmail.";
     listGalleryMock.mockResolvedValue({
       apps: [{ ...GMAIL, availability: { available: false, reason } }],
     });
@@ -1344,7 +1344,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     getCloudConnectorEnrollmentMock.mockResolvedValue({ configured: false, status: "not_configured", origins: [] });
     await render();
     await passAccessStep();
-    expect(container.textContent).toContain("Connect with Paperclip");
+    expect(container.textContent).toContain("Connect with Bostan");
     await act(async () => { buttonByText("Use your own Asana OAuth app")!.click(); });
     await flushReact();
     expect(container.textContent).toContain("Your OAuth app");
@@ -1580,22 +1580,22 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     await render();
     await passAccessStep();
 
-    expect(container.textContent).toContain("Connect with Paperclip");
+    expect(container.textContent).toContain("Connect with Bostan");
     expect(container.textContent).toContain(
-      "You must connect this instance to Paperclip to connect to Gmail (you only need to do this once).",
+      "You must connect this instance to Bostan to connect to Gmail (you only need to do this once).",
     );
-    expect(buttonByText("Connect with Paperclip")?.closest(".rounded-xl")?.classList.contains("border-border")).toBe(true);
+    expect(buttonByText("Connect with Bostan")?.closest(".rounded-xl")?.classList.contains("border-border")).toBe(true);
     expect(container.textContent).not.toContain("Required once for managed Google sign-in.");
     expect(container.textContent).not.toContain("needs its own OAuth app");
 
     await act(async () => {
-      buttonByText("Connect with Paperclip")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      buttonByText("Connect with Bostan")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     await flushReact();
 
     expect(startCloudConnectorEnrollmentMock).toHaveBeenCalledWith(
       "company-1",
-      "Paperclip",
+      "Bostan",
       "/apps/connect?source=gmail&stage=setup",
     );
     expect(navigateTopLevelMock).toHaveBeenCalledWith(
@@ -1611,7 +1611,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     getCloudConnectorEnrollmentMock.mockResolvedValue({ status: "not_configured" });
     await render(client, false, <ConnectionSetupFlow host="dialog" serviceSlug="gmail" interactionId="intent-1" requestedAgentId="agent-1" />);
     await passAccessStep();
-    await act(async () => buttonByText("Connect with Paperclip")?.click());
+    await act(async () => buttonByText("Connect with Bostan")?.click());
     await flushReact();
     expect(open).toHaveBeenCalled();
     if (popupBlocked) {
@@ -1623,7 +1623,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     expect(fallback?.textContent).toBe("Open authorization in a new tab");
     expect(fallback?.href).toBe("https://broker.bostan.example/connections/enroll?id=enroll-test");
     expect(navigateTopLevelMock).not.toHaveBeenCalled();
-    expect(startCloudConnectorEnrollmentMock).toHaveBeenCalledWith("company-1", "Paperclip", "/apps/connect?source=gmail&stage=setup&intent=intent-1&enrollment_host=dialog");
+    expect(startCloudConnectorEnrollmentMock).toHaveBeenCalledWith("company-1", "Bostan", "/apps/connect?source=gmail&stage=setup&intent=intent-1&enrollment_host=dialog");
     listGalleryMock.mockResolvedValue({ apps: [{ ...GMAIL, ownershipAvailability: { ...GMAIL.ownershipAvailability, platform_shared: true } }] });
     getCloudConnectorEnrollmentMock.mockResolvedValue({ status: "active" });
     await act(async () => { await client.invalidateQueries({ queryKey: ["cloud-connector", "enrollment"] }); });
@@ -1656,7 +1656,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     }
     await render(undefined, false, <ConnectionSetupFlow host="dialog" serviceSlug="gmail" interactionId="intent-1" requestedAgentId="agent-1" />);
     await passAccessStep();
-    await act(async () => buttonByText("Connect with Paperclip")?.click());
+    await act(async () => buttonByText("Connect with Bostan")?.click());
     await flushReact();
     expect(popup.close).toHaveBeenCalledOnce();
     expect(popup.location.assign).not.toHaveBeenCalled();
@@ -1700,7 +1700,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
       await flushReact();
 
       expect(startCloudConnectorEnrollmentMock).toHaveBeenCalledWith(
-        "company-1", "Paperclip", "/apps/connect?source=github&stage=setup",
+        "company-1", "Bostan", "/apps/connect?source=github&stage=setup",
       );
       expect(navigateTopLevelMock).toHaveBeenCalledWith(
         "https://broker.bostan.example/connections/enroll?id=enroll-test",
@@ -1756,12 +1756,12 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     expect(radioContaining("Any agent")?.getAttribute("aria-checked")).toBe("true");
     expect(container.textContent).toContain("Which agents may use your GitHub when you’re responsible?");
     // Enrolment is the screen; its own action is the only primary one.
-    expect(buttonByText("Connect with Paperclip")).toBeDefined();
+    expect(buttonByText("Connect with Bostan")).toBeDefined();
     expect(buttonByText("Continue to GitHub")).toBeUndefined();
 
     await passAccessStep();
 
-    expect(container.textContent).toContain("Connect with Paperclip");
+    expect(container.textContent).toContain("Connect with Bostan");
     expect(container.textContent).not.toContain("GitHub token");
   });
 
@@ -1773,7 +1773,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
 
     expect(container.textContent).toContain("Continue to GitHub");
     expect(container.textContent).not.toContain("Connect GitHub as");
-    expect(container.textContent).not.toContain("Connect with Paperclip");
+    expect(container.textContent).not.toContain("Connect with Bostan");
   });
 
   it("explains unavailable GitHub sign-in without silently switching to a PAT", async () => {
@@ -1810,7 +1810,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
 
     await render(queryClient);
 
-    expect(container.textContent).toContain("Paperclip couldn’t check Cloud registration. Try again.");
+    expect(container.textContent).toContain("Bostan couldn’t check Cloud registration. Try again.");
     expect(container.textContent).not.toContain("Your GitHub key");
 
     await act(async () => {
@@ -1852,7 +1852,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     });
     await flushReact();
     await act(async () => {
-      buttonByText("Connect with Paperclip")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      buttonByText("Connect with Bostan")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     await flushReact();
 
@@ -1880,7 +1880,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     expect(window.sessionStorage.getItem("paperclip.connector-enrollment-access:github")).toBeNull();
     mockCompany.value = {
       selectedCompanyId: "company-1",
-      selectedCompany: { id: "company-1", name: "Paperclip" },
+      selectedCompany: { id: "company-1", name: "Bostan" },
     };
     await act(async () => {
       mountedRoot?.render(
@@ -1943,7 +1943,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
       }
       await flushReact();
       // Change auth methods too, including apps with only one capability.
-      expect(container.textContent).not.toContain("Connect with Paperclip");
+      expect(container.textContent).not.toContain("Connect with Bostan");
       expect(container.textContent).not.toContain("needs its own OAuth app");
       expect(buttonByText("Continue to sign in")?.disabled).toBe(false);
       const customerAuth = buttonByText("Use your own Google OAuth app");
@@ -1988,8 +1988,8 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
 
     await render();
 
-    expect(container.textContent).not.toContain("You must connect this instance to Paperclip");
-    expect(container.textContent).not.toContain("Connect with Paperclip");
+    expect(container.textContent).not.toContain("You must connect this instance to Bostan");
+    expect(container.textContent).not.toContain("Connect with Bostan");
   });
 
   it("keeps Google Drive prerequisites off access and defaults to its write-capable method", async () => {
@@ -1999,7 +1999,7 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     await render();
 
     expect(container.textContent).not.toContain("Google Developer Preview access required");
-    expect(container.textContent).not.toContain("does not enable unrelated Paperclip customers");
+    expect(container.textContent).not.toContain("does not enable unrelated Bostan customers");
     expect(container.textContent).not.toContain("final project-registration email");
     expect(container.textContent).not.toContain("Apply or verify Developer Preview enrollment");
     await openAccessAdvanced();
@@ -3159,8 +3159,8 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     }] });
     await render();
     await flushReact();
-    expect(container.textContent).toContain("Install Paperclip and grant at least one repository");
-    expect(container.querySelector('a[href="https://github.com/apps/paperclip-for-github/installations/new"]')?.textContent).toBe("Install Paperclip on GitHub");
+    expect(container.textContent).toContain("Install Bostan and grant at least one repository");
+    expect(container.querySelector('a[href="https://github.com/apps/paperclip-for-github/installations/new"]')?.textContent).toBe("Install Bostan on GitHub");
     expect(container.textContent).not.toContain("Your GitHub key");
     await act(async () => buttonByText("Try again")!.click());
     await flushReact();
@@ -4560,7 +4560,7 @@ describe("AppsConnect — guided generic MCP flow (PAP-17087)", () => {
     });
   });
 
-  it("blocks a header Paperclip refuses to send before making a request", async () => {
+  it("blocks a header Bostan refuses to send before making a request", async () => {
     await render();
     await gotoLinkFrame(container, "https://mcp.example.test/mcp");
     await openAdvanced();

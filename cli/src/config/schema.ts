@@ -1,5 +1,5 @@
 export {
-  paperclipConfigSchema,
+  bostanConfigSchema,
   configMetaSchema,
   llmConfigSchema,
   databaseBackupConfigSchema,
@@ -14,10 +14,10 @@ export {
   storageS3ConfigSchema,
   secretsConfigSchema,
   secretsLocalEncryptedConfigSchema,
-  mergePaperclipConfig,
-  findPaperclipConfigKeyWarnings,
+  mergeBostanConfig,
+  findBostanConfigKeyWarnings,
   type ConfigKeyWarning,
-  type PaperclipConfig,
+  type BostanConfig,
   type LlmConfig,
   type DatabaseBackupConfig,
   type DatabaseConfig,
@@ -32,4 +32,12 @@ export {
   type SecretsLocalEncryptedConfig,
   type ConfigMeta,
   type UpdatesConfig,
+} from "../../../packages/shared/src/config-schema.js";
+
+/** Compatibility exports for existing CLI integrations. */
+export {
+  bostanConfigSchema as paperclipConfigSchema,
+  mergeBostanConfig as mergePaperclipConfig,
+  findBostanConfigKeyWarnings as findPaperclipConfigKeyWarnings,
+  type BostanConfig as PaperclipConfig,
 } from "../../../packages/shared/src/config-schema.js";

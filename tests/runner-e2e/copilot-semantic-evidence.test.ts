@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { copilotAttachedFinishReady, copilotFinishAttemptBeforeCommandExit, onlyCopilotAttachedOperations, readCopilotSemanticCompletion } from "./copilot-semantic-evidence.js";
 import { readCopilotToolEvidence } from "./copilot-evidence.js";
 import { copilotActionNotices, findCopilotFixtureCommand } from "./copilot-protection-evidence.js";
-import { validatePrpStructuredRunResult } from "../../packages/paperclip-runner/src/protocol/replay-contract.js";
+import { validatePrpStructuredRunResult } from "../../packages/bostan-runner/src/protocol/replay-contract.js";
 import { runnerSuites, suiteDefinitionHash } from "./catalog.js";
 const hash = (v: string) => createHash("sha256").update(v).digest("hex");
 const canonical = (v: any): string => Array.isArray(v) ? `[${v.map(canonical).join(",")}]` : v !== null && typeof v === "object" ? `{${Object.keys(v).sort().map(k => `${JSON.stringify(k)}:${canonical(v[k])}`).join(",")}}` : JSON.stringify(v);

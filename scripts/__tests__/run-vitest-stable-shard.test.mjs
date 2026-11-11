@@ -442,12 +442,12 @@ test("the PR workflow wiring for the native-runner lane holds", () => {
     "exactly one final vitest shard carries the native-runner group");
 
   const runnerPackage = JSON.parse(
-    readFileSync(path.join(repoRoot, "packages/paperclip-runner/package.json"), "utf8"),
+    readFileSync(path.join(repoRoot, "packages/bostan-runner/package.json"), "utf8"),
   );
   assert.equal(runnerPackage.scripts["test:typescript:vitest"], "node ./scripts/run-pr-vitest-lane.mjs");
 });
 
-const laneWrapper = path.join(repoRoot, "packages/paperclip-runner/scripts/run-pr-vitest-lane.mjs");
+const laneWrapper = path.join(repoRoot, "packages/bostan-runner/scripts/run-pr-vitest-lane.mjs");
 
 function wrapperPlan(args, envOverrides = {}) {
   const result = spawnSync(process.execPath, [laneWrapper, ...args, "--dry-run"], {

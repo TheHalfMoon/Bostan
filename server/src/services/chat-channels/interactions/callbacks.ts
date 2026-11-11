@@ -553,7 +553,7 @@ export function createChatInteractionCallbacks(db: Db, options: InteractionCallb
       ["active"],
     );
     if (!record) {
-      throw forbidden("This chat action is not a current Paperclip question");
+      throw forbidden("This chat action is not a current Bostan question");
     }
     const deny = async (safelyKnown?: {
       conversationId?: string | null;
@@ -574,7 +574,7 @@ export function createChatInteractionCallbacks(db: Db, options: InteractionCallb
         // adapter can withhold that misleading acknowledgement. The runtime,
         // not raw JSON or discord.js methods, supplies the ingress context.
         throw Object.assign(
-          new Error("Discord Gateway action was not admitted by Paperclip"),
+          new Error("Discord Gateway action was not admitted by Bostan"),
           { code: "chat_discord_gateway_action_rejected" },
         );
       }
@@ -1410,7 +1410,7 @@ export function createChatInteractionCallbacks(db: Db, options: InteractionCallb
     runtimeContext: RuntimeContext,
   ): Promise<ModalResponse> {
     const denialError = () =>
-      forbidden("This chat form is not a current Paperclip question");
+      forbidden("This chat form is not a current Bostan question");
     const record = await runtimeCallbackRecord(
       event.endpointId,
       runtimeContext,

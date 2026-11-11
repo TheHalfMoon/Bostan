@@ -9,7 +9,7 @@ import pc from "picocolors";
 import { assertManagedShimWritable, writeManagedShim, buildNextManifest, flipCurrentAtomic, isManagedExecutable, pruneInstallPayloads, readInstallManifest, resolveInstallStorePaths, withInstallStoreLock, writeInstallManifestAtomic, type InstallChannel, type InstallManifest, type InstallRecord, type InstallStorePaths } from "../install-store.js";
 import { dbBackupCommand } from "./db-backup.js";
 import { assertSupportedNodeVersion, installGitPayload, installNpmPayload, PUBLIC_NPM_REGISTRY, resolveGitHubRef, resolvePublishedVersion, type CommandRunner } from "./install.js";
-import { resolvePaperclipInstanceId, resolvePaperclipInstanceRoot } from "../config/home.js";
+import { resolveBostanInstanceId, resolveBostanInstanceRoot } from "../config/home.js";
 import { resolveConfigPath } from "../config/store.js";
 import { detectServiceManager } from "../services/service-manager.js";
 import { restartManagedService } from "./service.js";
@@ -25,7 +25,7 @@ const DATABASE_UNREACHABLE_CODES = new Set(["ECONNREFUSED", "EHOSTUNREACH", "ENE
 function hasPaperclipInstanceData(): boolean {
   return Boolean(process.env.DATABASE_URL?.trim())
     || fs.existsSync(resolveConfigPath())
-    || fs.existsSync(resolvePaperclipInstanceRoot());
+    || fs.existsSync(resolveBostanInstanceRoot());
 }
 
 function isDatabaseUnreachableError(error: unknown): boolean {
@@ -51,7 +51,7 @@ function isDatabaseUnreachableError(error: unknown): boolean {
 
 async function runPreUpdateBackup(options: UpdateOptions, backup: () => Promise<void>, hasInstanceData = hasPaperclipInstanceData): Promise<void> {
   if (!hasInstanceData()) {
-    const message = "Skipping the pre-update backup because this Paperclip instance has not been onboarded and has no data to back up.";
+    const message = "Skipping the pre-update backup because this Bostan instance has not been onboarded and has no data to back up.";
     if (options.json) console.error(message); else console.log(pc.yellow(message));
     return;
   }
@@ -60,7 +60,7 @@ async function runPreUpdateBackup(options: UpdateOptions, backup: () => Promise<
   } catch (error) {
     if (isDatabaseUnreachableError(error)) {
       throw new Error(
-        "The Paperclip database is not running or reachable, so the pre-update backup cannot be taken. Start the service with `paperclipai service start` and retry, or skip the backup with `paperclipai update --no-backup`.",
+        "The Bostan database is not running or reachable, so the pre-update backup cannot be taken. Start the service with `paperclipai service start` and retry, or skip the backup with `paperclipai update --no-backup`.",
         { cause: error },
       );
     }
@@ -69,7 +69,7 @@ async function runPreUpdateBackup(options: UpdateOptions, backup: () => Promise<
 }
 
 async function restartActiveManagedService(expectedVersion: string): Promise<boolean> {
-  const instanceId = resolvePaperclipInstanceId();
+  const instanceId = resolveBostanInstanceId();
   const detection = await detectServiceManager({ instanceId });
   if (!detection.supported || !(await detection.manager.status()).active) return false;
   await restartManagedService({ instanceId, expectedVersion });
@@ -180,7 +180,7 @@ export async function updateCommand(options: UpdateOptions, overrides: Partial<D
     return;
   }
   if (mode === "npx") { emit(options, { mode, action: "install" }, "This is an ephemeral npx install. Run `paperclipai install`, then use `paperclipai update` from the managed shim."); return; }
-  if (mode === "source" || mode === "unknown") { emit(options, { mode, action: "manual" }, "This appears to be a source checkout. Update it with `git pull` followed by `pnpm install`; Paperclip will not mutate the repository."); return; }
+  if (mode === "source" || mode === "unknown") { emit(options, { mode, action: "manual" }, "This appears to be a source checkout. Update it with `git pull` followed by `pnpm install`; Bostan will not mutate the repository."); return; }
   if (!options.check && !options.dryRun) assertSupportedNodeVersion();
   if (!(mode === "managed" && manifest?.source === "git")) assertPublishedPackageAllowed(overrides);
   const request = resolveUpdateRequest(mode === "managed" ? manifest : null, options);

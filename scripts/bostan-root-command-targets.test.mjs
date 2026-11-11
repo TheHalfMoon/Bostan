@@ -7,7 +7,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 const readJSON=(name)=>JSON.parse(readFileSync(root+name,'utf8'));
 const pkg=readJSON('package.json');
 const db=readJSON('packages/db/package.json');
-const runner=readJSON('packages/paperclip-runner/package.json');
+const runner=readJSON('packages/bostan-runner/package.json');
 const kernel=readJSON('packages/bostan-eval-kernel/package.json');
 
 test('DB CLI operations select the Bostan database package installed by this workspace',()=>{

@@ -21,7 +21,7 @@ export type {
 } from "@bostan/runner/testing";
 
 const sourceUrl = new URL(
-  "../../../../packages/paperclip-runner/src/testing.ts",
+  "../../../../packages/bostan-runner/src/testing.ts",
   import.meta.url,
 );
 const runnerTesting = await import(sourceUrl.href) as RunnerTestingModule;
