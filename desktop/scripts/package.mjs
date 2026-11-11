@@ -7,6 +7,8 @@ import { createRequire } from "node:module";
 import { prepareRuntimeLinks } from "../app/runtime-links.mjs";
 import { resolvePnpmInvocation } from "../../server/scripts/prepare-runner-vendor.mjs";
 import { inspectLinks, verifyStage } from "../../scripts/bostan-private-staged-server-check.mjs";
+import { createPackagingStage } from "./packaging-stage.mjs";
+import { captureRuntimePayload, verifyPackagedRuntime } from "./packaging-runtime.mjs";
 
 const desktop = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repo = path.dirname(desktop);
@@ -20,8 +22,8 @@ for (const required of ["server/dist/index.js", "server/dist/build-info.json", "
   }
 }
 fs.mkdirSync(out, { recursive: true });
-const stage = fs.mkdtempSync(path.join(out, "runtime-stage-"));
-const stageIdentity = fs.statSync(stage);
+const ownedStage = createPackagingStage();
+const stage = ownedStage.directory;
 try {
   const pnpm = resolvePnpmInvocation();
   if (/[&|<>^%"\r\n]/.test(repo + stage)) throw new Error("Unsupported shell characters in build path");
@@ -78,12 +80,16 @@ try {
     electronNotices: ["LICENSE.electron.txt", "LICENSES.chromium.html"],
   }, null, 2) + "\n");
   prepareRuntimeLinks(stage);
+  const payload = await captureRuntimePayload(stage);
   // Artifact preparation is authorized; signing and publication are not.
   for (const key of ["CSC_LINK", "CSC_KEY_PASSWORD", "WIN_CSC_LINK", "WIN_CSC_KEY_PASSWORD", "CSC_NAME"]) delete process.env[key];
   process.env.CSC_IDENTITY_AUTO_DISCOVERY = "false";
   const artifacts = await build({
     projectDir: desktop, publish: "never",
-    config: { extraResources: [{ from: stage, to: "runtime" }] },
+    config: {
+      extraResources: [{ from: stage, to: "runtime" }],
+      afterPack: context => verifyPackagedRuntime(context, payload),
+    },
   });
   const checksums = [];
   for (const file of artifacts) if (fs.statSync(file).isFile()) {
@@ -94,12 +100,5 @@ try {
   fs.writeFileSync(path.join(out, "SHA256SUMS"), checksums.join("\n") + "\n");
   console.log("Bostan unsigned artifacts prepared; signing, notarization and publication remain separate gates.");
 } finally {
-  const stat = fs.lstatSync(stage);
-  // Only delete the fresh stage allocated by this invocation, after checking
-  // absolute containment and identity. Never remove a caller-supplied path.
-  if (path.dirname(stage) !== out || fs.realpathSync(stage) !== stage || stat.isSymbolicLink()
-      || stat.dev !== stageIdentity.dev || stat.ino !== stageIdentity.ino) {
-    throw new Error("Bostan stage identity changed; temporary payload retained");
-  }
-  fs.rmSync(stage, { recursive: true, force: true });
+  ownedStage.dispose();
 }

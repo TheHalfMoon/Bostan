@@ -26,7 +26,7 @@ deployment, signing or notarization has been performed.
 | Workflow publication quarantine | passed locally |
 | Complete hosted Windows server/dependency/Rust build | passed, then runtime qualification failed as described below |
 | Actual NSIS construction/install/onboarding/restart/uninstall | not yet executed |
-| macOS ARM64 DMG construction | not yet executed |
+| macOS DMG construction | CI built a candidate, then packaging cleanup failed; no accepted artifact |
 | macOS installed-app launch/data lifecycle | acceptance implementation and native evidence still required |
 | Live model execution, update/rollback, full network capture | unqualified |
 
@@ -86,3 +86,38 @@ updated main. Windows installer acceptance must check executable/registry remova
 before claiming data-retaining uninstall. Mac build-only evidence cannot satisfy
 installed macOS lifecycle acceptance. Artifacts remain unsigned and unpublished;
 OS signing/notarization and public release require explicit owner authorization.
+
+## 2026-11-11 packaging repair — native rerun pending
+
+Run `42927771728` at `b8c362f2` failed both desktop jobs. Windows still
+exceeded the 15-second ACL helper bound. Mac constructed a DMG but then rejected
+the temporary stage's identity; it also warned about an unused static
+`desktop/runtime` resource. A built DMG and a warning do not establish that its
+copied backend was complete. No installer acceptance is claimed from that run.
+
+Packaging now owns a separate canonical temporary container outside the build
+output, with a deploy-owned child that may be recreated. Cleanup checks the
+container's original identity. A dynamic resource entry replaces the unused
+static resource entry. The `afterPack` gate compares every runtime file's hash,
+portable link target and executable flag against the verified stage, rejecting
+missing, added or modified payloads before accepting an installer.
+
+Independent review found a second Windows closure defect: the actual builder
+copy routine drops empty directories after junction serialization, including
+scoped dependency parents. Generated directory markers preserve those parents
+and empty physical link targets; strict restoration checks remain intact. The
+regression uses the installed builder's own copier, removes the source stage,
+verifies the copied payload, restores scoped dependencies and loads one through
+Node resolution. It also exercises an empty link target.
+
+Local Windows tests: 19 passed, with the POSIX executable-bit case skipped on
+Windows. The final packaging-runtime rerun passed six cases with that same skip.
+Independent correctness/product/parsimony and security reviews passed after the
+directory-preservation fix. These are unit/copy-boundary checks, not an installed
+Mac or Windows application journey.
+
+The Windows timeout's cause remains unknown. Fixed enum-only phase diagnostics
+now distinguish where it stalled without exposing paths or changing the ACL,
+timeout or concise user-facing failure message. Native hosted qualification is
+still required, including an actual Mac installed-app lifecycle. Signing,
+notarization and publication remain disabled.

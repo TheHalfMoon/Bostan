@@ -8,7 +8,7 @@
   "main": "app/main.cjs",
   "scripts": {
     "start": "electron .",
-    "test": "node --test app/*.test.mjs",
+    "test": "node --test app/*.test.mjs scripts/packaging-*.test.mjs",
     "test:host": "node --test --test-concurrency=1 scripts/*-electron.test.mjs",
     "package": "node scripts/package.mjs",
     "prepack": "node ../scripts/bostan-release-disabled.mjs",
@@ -25,7 +25,6 @@
     "asar": true,
     "files": ["app/**/*", "!app/**/*.test.mjs", "package.json"],
     "directories": { "output": "dist" },
-    "extraResources": [{ "from": "runtime", "to": "runtime" }],
     "win": { "target": [{ "target": "nsis", "arch": ["x64"] }], "signAndEditExecutable": false },
     "nsis": {
       "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true,

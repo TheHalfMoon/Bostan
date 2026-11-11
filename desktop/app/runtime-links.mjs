@@ -54,6 +54,16 @@ export function prepareRuntimeLinks(root, platform = process.platform) {
     }
   }
   if (platform === "win32") {
+    // electron-builder copies files/links, dropping empty directories. Once
+    // junctions are serialized, their scope parents and even empty targets
+    // still have to survive so strict restoration can validate them.
+    const directories = new Set(links.flatMap(link => [
+      path.dirname(targetPath(root, link.path)),
+      targetPath(root, link.target, true),
+    ]));
+    for (const directory of directories) {
+      if (directory !== root) fs.writeFileSync(path.join(directory, ".bostan-runtime-directory"), "", { flag: "wx" });
+    }
     fs.writeFileSync(path.join(root, manifestName), JSON.stringify({ schema: "bostan.runtime-links.v1", links }), { flag: "wx" });
   }
   return { links: links.length };

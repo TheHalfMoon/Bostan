@@ -4,7 +4,9 @@ import { execFileSync } from "node:child_process";
 
 const windowsAclScript = `
 $ErrorActionPreference='Stop'
+[Console]::Error.WriteLine('BOSTAN_ACL_PHASE:start')
 $user=[Security.Principal.WindowsIdentity]::GetCurrent().User
+[Console]::Error.WriteLine('BOSTAN_ACL_PHASE:identity_ready')
 $acl=New-Object Security.AccessControl.DirectorySecurity
 $acl.SetOwner($user)
 $acl.SetAccessRuleProtection($true,$false)
@@ -14,7 +16,9 @@ foreach($sid in @($user.Value,'S-1-5-18','S-1-5-32-544')) {
   $rule=New-Object Security.AccessControl.FileSystemAccessRule($identity,'FullControl',$inherit,'None','Allow')
   $acl.AddAccessRule($rule)
 }
+[Console]::Error.WriteLine('BOSTAN_ACL_PHASE:policy_ready')
 [IO.Directory]::SetAccessControl($env:BOSTAN_DESKTOP_DATA_DIR,$acl)
+[Console]::Error.WriteLine('BOSTAN_ACL_PHASE:policy_written')
 $actual=[IO.Directory]::GetAccessControl($env:BOSTAN_DESKTOP_DATA_DIR)
 if(-not $actual.AreAccessRulesProtected) { throw 'ACL inheritance is not protected' }
 $rules=@($actual.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]))
@@ -23,6 +27,7 @@ if($rules.Count -ne 3) { throw 'Unexpected ACL rules' }
 foreach($rule in $rules) {
   if($rule.IsInherited -or $rule.AccessControlType -ne 'Allow' -or $rule.IdentityReference.Value -notin $allowed) { throw 'Unexpected ACL identity' }
 }
+[Console]::Error.WriteLine('BOSTAN_ACL_PHASE:verified')
 Write-Output 'BOSTAN_DESKTOP_DATA_ACL_READY'
 `;
 
@@ -44,5 +49,13 @@ export function protectDataDirectory(directory) {
       env: { SystemRoot: root, WINDIR: root, BOSTAN_DESKTOP_DATA_DIR: directory }, stdio: ["ignore", "pipe", "pipe"],
     });
     if (output.trim() !== "BOSTAN_DESKTOP_DATA_ACL_READY") throw new Error();
-  } catch { throw new Error("Bostan could not secure its data directory; startup stopped without opening the database"); }
+  } catch (cause) {
+    // Keep diagnostics bounded to fixed stage names: PowerShell errors may
+    // contain local paths. The user-facing startup message stays concise.
+    const phases = [...String(cause.stderr ?? "").matchAll(/BOSTAN_ACL_PHASE:(start|identity_ready|policy_ready|policy_written|verified)(?:\r?\n|$)/g)];
+    const error = new Error("Bostan could not secure its data directory; startup stopped without opening the database");
+    error.code = "BOSTAN_DESKTOP_DATA_SECURITY_FAILED";
+    error.details = Object.freeze({ kind: cause.code === "ETIMEDOUT" ? "timeout" : "failed", phase: phases.at(-1)?.[1] ?? "unknown" });
+    throw error;
+  }
 }

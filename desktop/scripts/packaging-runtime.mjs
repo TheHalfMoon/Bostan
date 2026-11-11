@@ -1,0 +1,58 @@
+import fs from "node:fs";
+import path from "node:path";
+import { createHash } from "node:crypto";
+
+function inside(root, file) {
+  const relative = path.relative(root, file);
+  return relative === "" || (!path.isAbsolute(relative) && relative !== ".." && !relative.startsWith(".." + path.sep));
+}
+
+async function digest(file) {
+  const hash = createHash("sha256");
+  for await (const bytes of fs.createReadStream(file)) hash.update(bytes);
+  return hash.digest("hex");
+}
+
+/** Capture the actual portable runtime after Windows link serialization. */
+export async function captureRuntimePayload(directory) {
+  const stat = fs.lstatSync(directory);
+  if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error("Unsafe packaged Bostan runtime root");
+  const root = fs.realpathSync(directory);
+  const files = [];
+  async function walk(current) {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const file = path.join(current, entry.name);
+      const relative = path.relative(root, file).split(path.sep).join("/");
+      if (entry.isSymbolicLink()) {
+        const target = fs.readlinkSync(file);
+        if (path.isAbsolute(target) || !inside(root, fs.realpathSync(file))) throw new Error("Non-portable Bostan runtime link");
+        files.push({ path: relative, kind: "link", target: target.split(path.sep).join("/") });
+      } else if (entry.isDirectory()) {
+        await walk(file);
+      } else if (entry.isFile()) {
+        files.push({ path: relative, kind: "file", sha256: await digest(file), executable: Boolean(fs.statSync(file).mode & 0o111) });
+      } else {
+        throw new Error("Unsupported Bostan runtime payload entry");
+      }
+    }
+  }
+  await walk(root);
+  for (const required of ["package.json", "dist/index.js", "ui-dist/index.html"]) {
+    if (!files.some(file => file.path === required && file.kind === "file")) throw new Error("Incomplete packaged Bostan runtime");
+  }
+  return files;
+}
+
+export function packagedRuntimePath(context) {
+  const resources = context.electronPlatformName === "darwin"
+    ? path.join(context.appOutDir, context.packager.appInfo.productFilename + ".app", "Contents", "Resources")
+    : path.join(context.appOutDir, "resources");
+  return path.join(resources, "runtime");
+}
+
+/** Fail packaging before accepting an installer if any runtime byte, link or
+ * executable bit was lost/changed, or if an unexpected payload was added. */
+export async function verifyPackagedRuntime(context, expected) {
+  const actual = await captureRuntimePayload(packagedRuntimePath(context));
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error("Packaged Bostan runtime differs from the verified stage");
+}
