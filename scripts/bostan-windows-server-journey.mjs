@@ -189,18 +189,12 @@ function cleanup() {
       else if (entry.name === "postmaster.pid") markersFound.push(full);
     }
   })(home, 0);
-  for (const marker of markersFound) {
-    try {
-      execFileSync(pgCtl, ["-D", path.dirname(marker), "-m", "fast", "-w", "-t", "40", "stop"], { windowsHide: true, stdio: "ignore" });
-      stage("embedded PostgreSQL stopped with pg_ctl");
-    } catch {
-      stage("pg_ctl stop FAILED; temp home retained");
-      return false;
-    }
-  }
+  // Stop only the HTTP server PID first, not its process tree: PostgreSQL is a
+  // child process and must remain alive for pg_ctl to stop it cleanly. Leaving
+  // the server running can race pg_ctl with its embedded database supervisor.
   if (exited === null) {
-    try { execFileSync("taskkill", ["/PID", String(server.pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" }); } catch {}
-    stage("server process tree stopped");
+    try { execFileSync("taskkill", ["/PID", String(server.pid), "/F"], { windowsHide: true, stdio: "ignore" }); } catch {}
+    stage("server process stop requested");
   }
   try {
     process.kill(server.pid, 0);
@@ -208,6 +202,36 @@ function cleanup() {
     return false;
   } catch (error) {
     if (error.code !== "ESRCH") return false;
+  }
+  for (const marker of markersFound) {
+    // The server may already have stopped its embedded cluster during exit.
+    // A stale pre-exit marker snapshot is not evidence that pg_ctl must run:
+    // pg_ctl returns nonzero when the cluster has already shut down. This
+    // shortcut is never a success receipt by itself; the independent native
+    // process-tree scan below must still prove three clean snapshots.
+    if (!fs.existsSync(marker)) {
+      stage("PostgreSQL PID marker absent after server exit; verifying process tree");
+      continue;
+    }
+    try {
+      execFileSync(pgCtl, ["-D", path.dirname(marker), "-m", "fast", "-w", "-t", "40", "stop"], { windowsHide: true, stdio: "ignore" });
+      stage("embedded PostgreSQL stopped with pg_ctl");
+    } catch {
+      // A forced server exit may have already stopped PostgreSQL while its
+      // postmaster.pid is still present. pg_ctl status exits 3 specifically
+      // when the server is not running. Never infer this from a stale marker
+      // or from pg_ctl stop alone; the independent process scan remains mandatory.
+      const status = spawnSync(pgCtl, ["-D", path.dirname(marker), "status"], {
+        windowsHide: true, stdio: "ignore", timeout: 15000,
+      });
+      if (status.status === 3 && !status.error && !status.signal) {
+        stage("pg_ctl reports cluster stopped; verifying process tree");
+        continue;
+      }
+      stage(status.error || status.signal ? "pg_ctl status probe FAILED; temp home retained" :
+        "pg_ctl stop FAILED; cluster still active or status indeterminate; temp home retained");
+      return false;
+    }
   }
   try {
     const scan = spawnSync(resolvePrivateWindowsPowerShellBinary(), [

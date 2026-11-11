@@ -61,3 +61,27 @@ test("synthetic server refuses inherited provider keys, DB, config and Node prel
   assert.equal(env.BOSTAN_OFFLINE, "1");
   assert.match(env.BETTER_AUTH_SECRET, /^[a-f0-9]{64}$/);
 });
+
+test("already-stopped PostgreSQL never bypasses the independent orphan proof", () => {
+  const source = fs.readFileSync(new URL("./bostan-windows-server-journey.mjs", import.meta.url), "utf8");
+  const markerCheck = source.indexOf("if (!fs.existsSync(marker))");
+  const stop = source.indexOf("execFileSync(pgCtl,", markerCheck);
+  const scan = source.indexOf("evaluateWindowsPgOrphanCheck({", stop);
+  const cleanup = source.indexOf("fs.rmSync(home, { recursive: true, force: true });", scan);
+  assert.ok(markerCheck > 0 && stop > markerCheck && scan > stop && cleanup > scan);
+  assert.match(source.slice(markerCheck, stop), /continue;/);
+  assert.match(source.slice(scan, cleanup), /noOrphanPostgresProcessVerified/);
+  assert.match(source.slice(scan, cleanup), /return false;/);
+});
+
+test("failed pg_ctl stop requires status=3 and independent orphan proof before cleanup", () => {
+  const source = fs.readFileSync(new URL("./bostan-windows-server-journey.mjs", import.meta.url), "utf8");
+  const stop = source.indexOf('execFileSync(pgCtl, ["-D"');
+  const status = source.indexOf('spawnSync(pgCtl, ["-D"', stop);
+  const stopped = source.indexOf('status.status === 3 && !status.error && !status.signal', status);
+  const scan = source.indexOf("evaluateWindowsPgOrphanCheck({", stopped);
+  const remove = source.indexOf("fs.rmSync(home, { recursive: true, force: true });", scan);
+  assert.ok(stop >= 0 && status > stop && stopped > status && scan > stopped && remove > scan);
+  assert.match(source.slice(stopped, scan), /return false;/);
+  assert.match(source.slice(scan, remove), /noOrphanPostgresProcessVerified/);
+});
