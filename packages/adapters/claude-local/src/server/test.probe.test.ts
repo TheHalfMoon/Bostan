@@ -690,6 +690,6 @@ describe("claude CLI local hello probe hardening", () => {
 
     const targetCheck = result.checks.find((check) => check.code === "claude_environment_target");
     expect(targetCheck).toBeTruthy();
-    expect(targetCheck?.message).toContain("Paperclip host");
+    expect(targetCheck?.message).toContain("Bostan host");
   });
 });

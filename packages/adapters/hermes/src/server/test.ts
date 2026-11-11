@@ -121,7 +121,7 @@ function checkModel(
     return {
       level: "info",
       message: "No model specified — Hermes will use its configured default model",
-      hint: "Set a model explicitly in Paperclip only if you want to override your local Hermes configuration.",
+      hint: "Set a model explicitly in Bostan only if you want to override your local Hermes configuration.",
       code: "hermes_configured_default_model",
     };
   }
@@ -283,7 +283,7 @@ async function checkProviderConsistency(
     return {
       level: "info",
       message: `Hermes config uses unsupported adapter provider "${unsupportedProvider}" for model "${model}" — deferring to Hermes auto-detection`,
-      hint: "Paperclip will avoid model-name provider inference here and let Hermes resolve the provider from ~/.hermes/config.yaml at runtime.",
+      hint: "Bostan will avoid model-name provider inference here and let Hermes resolve the provider from ~/.hermes/config.yaml at runtime.",
       code: "hermes_provider_unsupported",
     };
   }
@@ -294,7 +294,7 @@ async function checkProviderConsistency(
     return {
       level: "info",
       message: `Hermes config provides runtime settings for model "${model}" without an explicit adapter provider — deferring to Hermes auto-detection`,
-      hint: "Paperclip will avoid model-name provider inference here and let Hermes resolve the provider from ~/.hermes/config.yaml at runtime.",
+      hint: "Bostan will avoid model-name provider inference here and let Hermes resolve the provider from ~/.hermes/config.yaml at runtime.",
       code: "hermes_provider_runtime_config",
     };
   }
