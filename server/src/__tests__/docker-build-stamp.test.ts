@@ -91,7 +91,7 @@ describe("Docker Rust dependency cache", () => {
     const dependencies = stageBody(dockerfile, "runner-deps");
     expect(chef).toContain("FROM rust-toolchain AS rust-chef");
     expect(chef).toMatch(/cargo install cargo-chef --version \d+\.\d+\.\d+ --locked/);
-    expect(planner).toContain("COPY packages/paperclip-runner/runner ./runner");
+    expect(planner).toContain("COPY packages/bostan-runner/runner ./runner");
     expect(planner).toContain("cargo chef prepare --recipe-path /tmp/runner-recipe.json");
     expect(dependencies).toContain("FROM rust-chef AS runner-deps");
     expect(dependencies).toContain("COPY --from=runner-plan /tmp/runner-recipe.json /tmp/runner-recipe.json");
@@ -103,9 +103,9 @@ describe("Docker Rust dependency cache", () => {
     const native = stageBody(dockerfile, "runner-build");
     expect(native).toContain("FROM runner-deps AS runner-build");
     for (const source of ["runner", "protocol"]) {
-      expect(native.indexOf(`COPY packages/paperclip-runner/${source} ./${source}`))
+      expect(native.indexOf(`COPY packages/bostan-runner/${source} ./${source}`))
         .toBeLessThan(native.indexOf("cargo build --release"));
-      expect(native).toContain(`COPY packages/paperclip-runner/${source} ./${source}`);
+      expect(native).toContain(`COPY packages/bostan-runner/${source} ./${source}`);
     }
     expect(native).toContain("cargo build --release --manifest-path runner/Cargo.toml --locked -p paperclip-runner-core --bin paperclip-runnerd");
     expect(stageBody(dockerfile, "build")).toContain("FROM runner-build AS build");

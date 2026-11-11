@@ -2,10 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import * as p from "@clack/prompts";
 import pc from "picocolors";
-import type { PaperclipConfig } from "./config/schema.js";
+import type { BostanConfig } from "./config/schema.js";
 import { openUrl } from "./client/board-auth.js";
 import { installCommand, runCommandWithDiagnostics, smokePayload } from "./commands/install.js";
-import { resolvePaperclipInstanceId } from "./config/home.js";
+import { resolveBostanInstanceId } from "./config/home.js";
 import { readRuntimeInfo, type PaperclipRuntimeInfo } from "./runtime-info.js";
 import {
   readInstallManifest,
@@ -29,8 +29,8 @@ export type OnboardServiceOptions = {
 
 type EnsureShimResult = { ok: boolean; installedNow: boolean; reason?: string };
 type OnboardServiceDashboardConfig = {
-  auth: Pick<PaperclipConfig["auth"], "baseUrlMode" | "publicBaseUrl">;
-  server: Pick<PaperclipConfig["server"], "host" | "port">;
+  auth: Pick<BostanConfig["auth"], "baseUrlMode" | "publicBaseUrl">;
+  server: Pick<BostanConfig["server"], "host" | "port">;
 };
 
 type OnboardServiceDashboardDependencies = {
@@ -48,7 +48,7 @@ function envDisablesBrowser(value = process.env.PAPERCLIP_NO_BROWSER): boolean {
 }
 
 async function waitUntilDashboardReady(timeoutMs = 60_000): Promise<PaperclipRuntimeInfo | null> {
-  const instanceId = resolvePaperclipInstanceId();
+  const instanceId = resolveBostanInstanceId();
   const detection = await detectServiceManager({ instanceId });
   if (!detection.supported) return null;
   const deadline = Date.now() + timeoutMs;
@@ -98,7 +98,7 @@ export async function handoffToOnboardedService(
   const deps = { ...defaultDashboardDependencies, ...dependencies };
   const runtime = await deps.waitUntilReady();
   const dashboardUrl = resolveOnboardServiceDashboardUrl(config, runtime);
-  deps.info(`Paperclip dashboard: ${pc.cyan(dashboardUrl)}`);
+  deps.info(`Bostan dashboard: ${pc.cyan(dashboardUrl)}`);
 
   if (!runtime) {
     deps.warn(
@@ -111,7 +111,7 @@ export async function handoffToOnboardedService(
   if (!deps.isInteractive() || envDisablesBrowser()) return;
 
   if (await deps.openDashboard(dashboardUrl)) {
-    deps.success("Sent the Paperclip dashboard to your browser.");
+    deps.success("Sent the Bostan dashboard to your browser.");
   } else {
     deps.warn(`Could not open a browser automatically. Open ${dashboardUrl} manually.`);
   }
@@ -206,14 +206,14 @@ const defaultDependencies: OnboardServiceDependencies = {
   ensureServiceShim: () => ensureServiceShim(),
   confirm: async () => {
     const answer = await p.confirm({
-      message: "Install Paperclip as a background service?",
+      message: "Install Bostan as a background service?",
       initialValue: true,
     });
     return !p.isCancel(answer) && answer === true;
   },
   confirmLinger: async () => {
     const answer = await p.confirm({
-      message: "Allow Paperclip to keep running after logout? This may request system authorization.",
+      message: "Allow Bostan to keep running after logout? This may request system authorization.",
       initialValue: false,
     });
     return !p.isCancel(answer) && answer === true;
@@ -240,7 +240,7 @@ export async function handleOnboardService(
     return false;
   }
 
-  const instanceId = resolvePaperclipInstanceId();
+  const instanceId = resolveBostanInstanceId();
   const detection = await deps.detect(instanceId);
   if (!detection.supported) {
     if (explicitlyRequested) deps.warn(detection.reason);

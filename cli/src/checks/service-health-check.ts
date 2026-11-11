@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { PaperclipConfig } from "../config/schema.js";
-import { resolvePaperclipInstanceId } from "../config/home.js";
+import type { BostanConfig } from "../config/schema.js";
+import { resolveBostanInstanceId } from "../config/home.js";
 import { readInstallManifest, resolveInstallStorePaths } from "../install-store.js";
 import {
   detectServiceManager,
@@ -15,11 +15,11 @@ import type { CheckResult } from "./index.js";
 type HealthResult = { ok: boolean; version: string | null; error?: string };
 type ServiceCheckDependencies = {
   detect: (instanceId: string) => Promise<ServiceManagerDetection>;
-  probe: (config: PaperclipConfig) => Promise<HealthResult>;
+  probe: (config: BostanConfig) => Promise<HealthResult>;
   shimPresent: (executablePath: string) => Promise<boolean>;
 };
 
-async function probeHealth(config: PaperclipConfig): Promise<HealthResult> {
+async function probeHealth(config: BostanConfig): Promise<HealthResult> {
   try {
     const response = await fetch(buildLocalHealthUrl(config.server.host, config.server.port), {
       signal: AbortSignal.timeout(2_000),
@@ -41,7 +41,7 @@ async function probeHealth(config: PaperclipConfig): Promise<HealthResult> {
 }
 
 export async function serviceHealthChecks(
-  config: PaperclipConfig,
+  config: BostanConfig,
   dependencies: Partial<ServiceCheckDependencies> = {},
 ): Promise<CheckResult[]> {
   if (process.env.PAPERCLIP_SERVICE_MANAGED === "1") return [];
@@ -52,7 +52,7 @@ export async function serviceHealthChecks(
     shimPresent: (executablePath) => isExecutableFile(executablePath),
     ...dependencies,
   };
-  const instanceId = resolvePaperclipInstanceId();
+  const instanceId = resolveBostanInstanceId();
   const detection = await deps.detect(instanceId);
   if (!detection.supported) {
     return [{ name: "Background service", status: "pass", message: detection.reason }];
@@ -110,7 +110,7 @@ export async function serviceHealthChecks(
           ? {
               name: "Service runtime",
               status: "fail",
-              message: `${status.serviceName} is inactive but the configured port is serving another Paperclip process`,
+              message: `${status.serviceName} is inactive but the configured port is serving another Bostan process`,
               repairHint: "Run `paperclipai service start`, or stop the conflicting foreground process first",
             }
           : {

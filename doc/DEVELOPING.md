@@ -786,12 +786,12 @@ the suite on the fresh path.
 
 #### Reused Runner build in the server build
 
-The server build vendors `packages/paperclip-runner/dist`, so its
+The server build vendors `packages/bostan-runner/dist`, so its
 `prepare:runner-vendor` step has to make sure that directory is a current
 build. It used to run the Runner's full `build` every time. Now the Runner's
 `build` brackets itself with `scripts/record-build-inputs.mjs`: `--begin`, its
 first step, forgets the previous stamp and records a digest of the build's
-inputs (every file under `packages/paperclip-runner` except `dist`,
+inputs (every file under `packages/bostan-runner` except `dist`,
 `dist-browser`, `runner/target`, `node_modules` and dot-directories; every
 file under `packages/bostan-eval-kernel` except `dist` and `node_modules`;
 every file under the root `patches` directory, which the acpx profile check
@@ -799,7 +799,7 @@ hashes and the provider entrypoint bundler copies into `dist`; and the root
 `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` and
 `tsconfig.base.json`). `--finish`, its last step, recomputes the digest and
 writes the stamp
-`packages/paperclip-runner/node_modules/.cache/paperclip-runner-build-inputs.json`
+`packages/bostan-runner/node_modules/.cache/paperclip-runner-build-inputs.json`
 only if the inputs are still the ones the build began with, together with the
 path and size of every file under `dist`. An edit that lands while the build
 runs leaves no stamp, so the next consumer rebuilds.

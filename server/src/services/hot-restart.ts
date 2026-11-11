@@ -3,9 +3,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { readLinuxProcessStartedAt, type LinuxProcessStartOptions } from "../vendor/paperclip-runner/index.js";
 import {
-  resolvePaperclipHomeDir,
-  resolvePaperclipInstanceId,
-  resolvePaperclipInstanceRoot,
+  resolveBostanHomeDir,
+  resolveBostanInstanceId,
+  resolveBostanInstanceRoot,
 } from "../home-paths.js";
 
 export const HOT_RESTART_INTENT_FILENAME = "hot-restart-intent.json";
@@ -78,11 +78,11 @@ export type HotRestartReport = {
 };
 
 function resolveHotRestartPath(filename: string, homeDir?: string) {
-  return path.join(resolvePaperclipInstanceRoot({ homeDir }), filename);
+  return path.join(resolveBostanInstanceRoot({ homeDir }), filename);
 }
 
 function resolveLegacyHotRestartPath(filename: string, homeDir?: string) {
-  return path.join(resolvePaperclipHomeDir(homeDir), filename);
+  return path.join(resolveBostanHomeDir(homeDir), filename);
 }
 
 export function resolveHotRestartIntentPath(homeDir?: string) {
@@ -472,7 +472,7 @@ export async function readHotRestartIntent(homeDir?: string) {
   if (!instanceIntent) {
     // The home-root marker predates instances. Only the default instance may
     // consume it without an instance-root request to correlate against.
-    return resolvePaperclipInstanceId() === "default" ? legacyIntent : null;
+    return resolveBostanInstanceId() === "default" ? legacyIntent : null;
   }
   if (!legacyIntent || !isSameHotRestartRequest(instanceIntent, legacyIntent)) {
     return instanceIntent;

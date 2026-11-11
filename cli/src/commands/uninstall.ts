@@ -9,7 +9,7 @@ import {
   resolveInstallStorePaths,
   withInstallStoreLock,
 } from "../install-store.js";
-import { resolvePaperclipInstanceId } from "../config/home.js";
+import { resolveBostanInstanceId } from "../config/home.js";
 import { detectServiceManager, launchdServiceName, systemdServiceName } from "../services/service-manager.js";
 
 type UninstallDependencies = {
@@ -39,7 +39,7 @@ function otherServiceDefinitions(platform: NodeJS.Platform, userHomeDir: string,
 export async function uninstallCommand(
   dependencies: Partial<UninstallDependencies> = {},
 ): Promise<void> {
-  const instanceId = resolvePaperclipInstanceId();
+  const instanceId = resolveBostanInstanceId();
   const detect = dependencies.detectServiceManager ?? detectServiceManager;
   const platform = dependencies.platform ?? process.platform;
   const userHomeDir = dependencies.userHomeDir ?? os.homedir();
@@ -83,8 +83,8 @@ export async function uninstallCommand(
   }, paths, { initialize: !hadStore });
 
   if (!shimRemoved) {
-    console.log(pc.yellow(`Left ${paths.shimPath} unchanged because it is not a Paperclip-managed shim.`));
+    console.log(pc.yellow(`Left ${paths.shimPath} unchanged because it is not a Bostan-managed shim.`));
   }
-  console.log(pc.green("Removed the managed Paperclip CLI install."));
+  console.log(pc.green("Removed the managed Bostan CLI install."));
   console.log(pc.dim(`User data was left untouched under ${paths.paperclipHome}.`));
 }

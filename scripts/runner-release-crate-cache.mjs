@@ -29,7 +29,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const RUNNER_PACKAGE = "packages/paperclip-runner";
+export const RUNNER_PACKAGE = "packages/bostan-runner";
 const RELEASE_DIR = `${RUNNER_PACKAGE}/runner/target/release`;
 
 // Everything cargo writes for the crate's release lib and bin units:

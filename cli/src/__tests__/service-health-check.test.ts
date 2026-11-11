@@ -11,12 +11,12 @@ import {
   renderSystemdUnit,
 } from "../services/service-manager.js";
 import { resolveRestartExpectedVersion, withHotRestartLock } from "../commands/service.js";
-import type { PaperclipConfig } from "../config/schema.js";
+import type { BostanConfig } from "../config/schema.js";
 import { buildLocalHealthUrl } from "../utils/health-url.js";
 
 const config = {
   server: { host: "127.0.0.1", port: 3100 },
-} as PaperclipConfig;
+} as BostanConfig;
 
 let previousPaperclipHome: string | undefined;
 let previousServiceManaged: string | undefined;
@@ -144,7 +144,7 @@ describe("service health doctor checks", () => {
       expect.objectContaining({
         name: "Service runtime",
         status: "fail",
-        message: expect.stringContaining("another Paperclip process"),
+        message: expect.stringContaining("another Bostan process"),
       }),
     );
   });
@@ -231,7 +231,7 @@ describe("service runtime shim awareness", () => {
     expect(healthResult?.status).toBe("warn");
     expect(healthResult?.message).toContain("but not from ing.paperclip.paperclipai");
     const runtime = results.find((r) => r.name === "Service runtime");
-    expect(runtime?.message).toContain("serving another Paperclip process");
+    expect(runtime?.message).toContain("serving another Bostan process");
   });
 });
 

@@ -1159,8 +1159,8 @@ describe("InstanceExperimentalSettings — operator-hidden cards", () => {
       managedKeys: { enablePaperclipNotebook: { managed: true, managedBy: "paperclip-cloud" } },
     });
     expect(container.textContent).toContain("Experimental features");
-    expect(container.textContent).not.toContain("Paperclip Notebook");
-    expect(container.querySelector('button[aria-label="Toggle Paperclip Notebook experimental setting"]')).toBeNull();
+    expect(container.textContent).not.toContain("Bostan Notebook");
+    expect(container.querySelector('button[aria-label="Toggle Bostan Notebook experimental setting"]')).toBeNull();
     expect(mockInstanceSettingsApi.updateExperimental).not.toHaveBeenCalled();
   });
 

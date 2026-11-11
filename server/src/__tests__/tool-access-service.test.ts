@@ -12440,7 +12440,7 @@ describeEmbeddedPostgres("tool access service", () => {
     expect(connectRes.body).toMatchObject({
       code: "oauth_redirect_origin_unsupported",
       error:
-        "This Paperclip needs a browser-reachable HTTPS address (or loopback HTTP) before browser sign-in can start.",
+        "This Bostan needs a browser-reachable HTTPS address (or loopback HTTP) before browser sign-in can start.",
     });
   });
 

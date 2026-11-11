@@ -25,7 +25,7 @@ COPY packages/google-sheets-mcp-server/package.json packages/google-sheets-mcp-s
 COPY packages/kv-demo-mcp-server/package.json packages/kv-demo-mcp-server/
 COPY packages/mcp-server/package.json packages/mcp-server/
 COPY packages/bostan-eval-kernel/package.json packages/bostan-eval-kernel/
-COPY packages/paperclip-runner/package.json packages/paperclip-runner/
+COPY packages/bostan-runner/package.json packages/bostan-runner/
 COPY packages/skills-catalog/package.json packages/skills-catalog/
 COPY packages/tailscale-https-broker/package.json packages/tailscale-https-broker/
 COPY packages/teams-catalog/package.json packages/teams-catalog/
@@ -48,8 +48,8 @@ COPY packages/plugins/plugin-llm-wiki/package.json packages/plugins/plugin-llm-w
 COPY packages/plugins/plugin-workspace-diff/package.json packages/plugins/plugin-workspace-diff/
 COPY patches/ patches/
 COPY scripts/link-plugin-dev-sdk.mjs scripts/
-COPY packages/paperclip-runner/scripts/install-copilot-assets.mjs packages/paperclip-runner/scripts/materialize-copilot-binary.mjs packages/paperclip-runner/scripts/copilot-inner-distribution.mjs packages/paperclip-runner/scripts/
-COPY packages/paperclip-runner/src/drivers/acpx/copilot-installation.ts packages/paperclip-runner/src/drivers/acpx/
+COPY packages/bostan-runner/scripts/install-copilot-assets.mjs packages/bostan-runner/scripts/materialize-copilot-binary.mjs packages/bostan-runner/scripts/copilot-inner-distribution.mjs packages/bostan-runner/scripts/
+COPY packages/bostan-runner/src/drivers/acpx/copilot-installation.ts packages/bostan-runner/src/drivers/acpx/
 COPY server/scripts/install-copilot-assets.mjs server/scripts/
 COPY server/src/services/copilot-connection-probe.ts server/src/services/
 
@@ -91,7 +91,7 @@ RUN set -eux; \
     rm /tmp/rustup-init
 # Install the package-owned compiler before any application source enters the
 # stage. rustup-init above installs rustup itself, not the selected compiler.
-COPY packages/paperclip-runner/rust-toolchain.toml /tmp/runner-toolchain/rust-toolchain.toml
+COPY packages/bostan-runner/rust-toolchain.toml /tmp/runner-toolchain/rust-toolchain.toml
 RUN cd /tmp/runner-toolchain && rustup show
 
 # Pin the recipe generator and its dependency lockfile. It is a build-only tool
@@ -100,14 +100,14 @@ FROM rust-toolchain AS rust-chef
 RUN cd /tmp/runner-toolchain && cargo install cargo-chef --version 0.1.73 --locked
 
 FROM rust-chef AS runner-plan
-WORKDIR /app/packages/paperclip-runner
-COPY packages/paperclip-runner/rust-toolchain.toml ./
-COPY packages/paperclip-runner/runner ./runner
+WORKDIR /app/packages/bostan-runner
+COPY packages/bostan-runner/rust-toolchain.toml ./
+COPY packages/bostan-runner/runner ./runner
 RUN cd runner && cargo chef prepare --recipe-path /tmp/runner-recipe.json
 
 FROM rust-chef AS runner-deps
-WORKDIR /app/packages/paperclip-runner/runner
-COPY packages/paperclip-runner/rust-toolchain.toml ../
+WORKDIR /app/packages/bostan-runner/runner
+COPY packages/bostan-runner/rust-toolchain.toml ../
 # The recipe changes only when dependency manifests, the lockfile, or target
 # metadata change. Source edits can reuse this compiled dependency layer.
 COPY --from=runner-plan /tmp/runner-recipe.json /tmp/runner-recipe.json
@@ -115,13 +115,13 @@ RUN cargo chef cook --release --locked --package paperclip-runner-core --bin pap
   && find . -mindepth 1 -maxdepth 1 ! -name target -exec rm -rf {} +
 
 FROM runner-deps AS runner-build
-WORKDIR /app/packages/paperclip-runner
+WORKDIR /app/packages/bostan-runner
 # Rust embeds protocol schemas and fixtures with include_str!. Keep those
 # alongside the complete Cargo workspace so every compile-time input keys
 # this layer. Ordinary server/UI edits can then reuse the native build.
-COPY packages/paperclip-runner/rust-toolchain.toml ./
-COPY packages/paperclip-runner/runner ./runner
-COPY packages/paperclip-runner/protocol ./protocol
+COPY packages/bostan-runner/rust-toolchain.toml ./
+COPY packages/bostan-runner/runner ./runner
+COPY packages/bostan-runner/protocol ./protocol
 # Cargo fingerprints source mtimes. Normalize them here and after the full
 # source copy below so a fresh checkout cannot invalidate unchanged inputs.
 RUN find runner protocol -type f -exec touch -d @0 {} + \
@@ -132,8 +132,8 @@ FROM runner-build AS build
 WORKDIR /app
 COPY --from=deps /app /app
 COPY . .
-RUN find packages/paperclip-runner/runner packages/paperclip-runner/protocol -type f -exec touch -d @0 {} + \
-  && touch -d @0 packages/paperclip-runner/rust-toolchain.toml
+RUN find packages/bostan-runner/runner packages/bostan-runner/protocol -type f -exec touch -d @0 {} + \
+  && touch -d @0 packages/bostan-runner/rust-toolchain.toml
 # Both the browser bundle and server stamp need the source commit. Declare it
 # after the stable dependency layers, before either application build.
 ARG PAPERCLIP_BUILD_COMMIT=""
@@ -150,7 +150,7 @@ RUN pnpm --filter @bostan/server build
 RUN test -f server/dist/index.js || (echo "ERROR: server build output missing" && exit 1)
 RUN pnpm --filter @bostan/server build:runtime \
   && test -f server/dist-runtime/index.mjs || (echo "ERROR: server runtime bundle missing" && exit 1)
-RUN rm -rf packages/paperclip-runner/runner/target
+RUN rm -rf packages/bostan-runner/runner/target
 
 # Remote OpenCode and ACPX runs require a controller-owned provider pack to
 # verify the sandbox installation or stage matching assets. Ship it in the
@@ -162,7 +162,7 @@ FROM build AS runner-provider-pack
 # Never invent a source revision to make an unqualified pack look verified.
 RUN mkdir -p /provider-pack /provider-pack-transport \
   && if [ -n "${PAPERCLIP_BUILD_COMMIT}" ]; then \
-    PAPERCLIP_RUNNER_SOURCE_REVISION="${PAPERCLIP_BUILD_COMMIT}" node packages/paperclip-runner/scripts/build-provider-pack.mjs /provider-pack \
+    PAPERCLIP_RUNNER_SOURCE_REVISION="${PAPERCLIP_BUILD_COMMIT}" node packages/bostan-runner/scripts/build-provider-pack.mjs /provider-pack \
       && node scripts/create-provider-pack-archive.mjs /provider-pack \
       && mv /provider-pack.archives /provider-pack.archive.json /provider-pack-transport/; \
   else \

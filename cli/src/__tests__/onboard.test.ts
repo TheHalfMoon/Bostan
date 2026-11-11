@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { onboard } from "../commands/onboard.js";
-import type { PaperclipConfig } from "../config/schema.js";
+import type { BostanConfig } from "../config/schema.js";
 
 const runCommandMock = vi.hoisted(() => vi.fn());
 
@@ -20,7 +20,7 @@ function createExistingConfigFixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "paperclip-onboard-"));
   const runtimeRoot = path.join(root, "runtime");
   const configPath = path.join(root, ".paperclip", "config.json");
-  const config: PaperclipConfig = {
+  const config: BostanConfig = {
     $meta: {
       version: 1,
       updatedAt: "2026-03-29T00:00:00.000Z",
@@ -224,7 +224,7 @@ describe("onboard", () => {
 
     await onboard({ config: configPath, yes: true, invokedByRun: true });
 
-    const raw = JSON.parse(fs.readFileSync(configPath, "utf8")) as PaperclipConfig;
+    const raw = JSON.parse(fs.readFileSync(configPath, "utf8")) as BostanConfig;
     expect(raw.server.deploymentMode).toBe("local_trusted");
     expect(raw.server.exposure).toBe("private");
     expect(raw.server.bind).toBe("loopback");
@@ -241,7 +241,7 @@ describe("onboard", () => {
 
     const instanceRoot = path.join(home, "instances", "default");
     const configPath = path.join(instanceRoot, "config.json");
-    const raw = JSON.parse(fs.readFileSync(configPath, "utf8")) as PaperclipConfig;
+    const raw = JSON.parse(fs.readFileSync(configPath, "utf8")) as BostanConfig;
 
     expect(raw.database.embeddedPostgresDataDir).toBe(path.join(instanceRoot, "db"));
     expect(raw.database.backup.dir).toBe(path.join(instanceRoot, "data", "backups"));
@@ -260,7 +260,7 @@ describe("onboard", () => {
 
     await onboard({ config: configPath, yes: true, invokedByRun: true, bind: "tailnet" });
 
-    const raw = JSON.parse(fs.readFileSync(configPath, "utf8")) as PaperclipConfig;
+    const raw = JSON.parse(fs.readFileSync(configPath, "utf8")) as BostanConfig;
     expect(raw.server.deploymentMode).toBe("authenticated");
     expect(raw.server.exposure).toBe("private");
     expect(raw.server.bind).toBe("tailnet");
@@ -278,7 +278,7 @@ describe("onboard", () => {
       process.env.PATH = ORIGINAL_PATH;
     }
 
-    const raw = JSON.parse(fs.readFileSync(configPath, "utf8")) as PaperclipConfig;
+    const raw = JSON.parse(fs.readFileSync(configPath, "utf8")) as BostanConfig;
     expect(raw.server.deploymentMode).toBe("authenticated");
     expect(raw.server.exposure).toBe("private");
     expect(raw.server.bind).toBe("tailnet");
@@ -291,7 +291,7 @@ describe("onboard", () => {
 
     await onboard({ config: configPath, yes: true, invokedByRun: true });
 
-    const raw = JSON.parse(fs.readFileSync(configPath, "utf8")) as PaperclipConfig;
+    const raw = JSON.parse(fs.readFileSync(configPath, "utf8")) as BostanConfig;
     expect(raw.server.deploymentMode).toBe("local_trusted");
     expect(raw.server.exposure).toBe("private");
     expect(raw.server.bind).toBe("loopback");

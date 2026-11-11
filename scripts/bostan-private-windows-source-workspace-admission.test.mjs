@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { checkPrivateWindowsSourceWorkspaceDependencies as check } from './bostan-private-windows-source-workspace-admission.mjs';
 
-const scopes = ['server', 'packages/adapter-utils', 'packages/paperclip-runner'];
+const scopes = ['server', 'packages/adapter-utils', 'packages/bostan-runner'];
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), 'bostan-source-qa-deps-'));
   t.after(() => rm(root, { recursive: true, force: true }));

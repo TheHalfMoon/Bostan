@@ -226,7 +226,7 @@ const EXACT_ACTIONS: Record<string, ExactAction> = {
   decide_approval: { action: "update", running: "Deciding an approval", completed: "Decided an approval" },
   comment_on_approval: { action: "post", running: "Commenting on an approval", completed: "Commented on an approval" },
   schedule_wake: { action: "create", running: "Scheduling a wake-up", completed: "Scheduled a wake-up", family: "wait" },
-  generic_api_request: { action: "request", running: "Calling the Paperclip API", completed: "Called the Paperclip API" },
+  generic_api_request: { action: "request", running: "Calling the Bostan API", completed: "Called the Bostan API" },
 };
 
 const ACTION_PREFIXES: Record<Action, readonly string[]> = {
@@ -351,7 +351,7 @@ function defaultSummaryGroup(action: Action): ToolSummaryGroup {
 }
 
 function paperclipSummaryGroup(action: Action): ToolSummaryGroup {
-  if (action === "read" || action === "list") return group("paperclip_read", "Paperclip read", "Paperclip reads");
+  if (action === "read" || action === "list") return group("paperclip_read", "Bostan read", "Bostan reads");
   return group("task_operation", "task operation", "task operations");
 }
 
@@ -396,12 +396,13 @@ export function toolActivityPresentation(input: ToolActivityPresentationInput): 
       : actionCopy(action, exact ? undefined : object);
   const semanticFamily = exact?.family ?? actionFamily(action);
   const family = transport === "mcp" ? "mcp" : semanticFamily;
+  const isBostanNamespace = ["paperclip", "bostan"].includes(namespace.toLowerCase());
   const sourceLabel = namespace
-    ? humanizeToolName(namespace)
+    ? (isBostanNamespace ? "Bostan" : humanizeToolName(namespace))
     : transport === "mcp"
       ? "MCP"
       : undefined;
-  const summaryGroup = namespace.toLowerCase() === "paperclip"
+  const summaryGroup = isBostanNamespace
     ? paperclipSummaryGroup(action)
     : exact?.group ?? defaultSummaryGroup(action);
 

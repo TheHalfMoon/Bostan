@@ -24,6 +24,14 @@ import {
 } from "./tool-taxonomy";
 
 describe("tool activity vocabulary", () => {
+  it.each(["mcp.paperclip.search_tasks", "mcp__bostan__search_tasks"])(
+    "brands %s without rewriting its technical identity", (name) => {
+      expect(toolActivityPresentation({ name })).toMatchObject({
+        sourceLabel: "Bostan",
+        technicalName: name,
+      });
+    },
+  );
   it("maps Claude, Codex, and Pi built-ins to action-specific copy and icons", () => {
     expect(toolTaxonomy("Bash")).toEqual({ family: "terminal", icon: Terminal, verbLabel: "Running a command" });
     expect(toolTaxonomy("exec_command")).toEqual({ family: "terminal", icon: Terminal, verbLabel: "Running a command" });
@@ -50,7 +58,7 @@ describe("tool activity vocabulary", () => {
       icon: McpIcon,
       runningLabel: "Searching tasks",
       completedLabel: "Searched tasks",
-      sourceLabel: "Paperclip",
+      sourceLabel: "Bostan",
       confidence: "exact",
     });
   });
@@ -91,7 +99,7 @@ describe("tool activity vocabulary", () => {
     }
   });
 
-  it("gives anticipated provider tools and Paperclip operations purpose-specific labels", () => {
+  it("gives anticipated provider tools and Bostan operations purpose-specific labels", () => {
     const anticipated = [
       "ToolSearch", "NotebookRead", "NotebookEdit", "TaskOutput", "TaskStop", "SendMessage",
       "EnterPlanMode", "ExitPlanMode", "LSP", "TodoWrite", "ReportFindings", "Skill",

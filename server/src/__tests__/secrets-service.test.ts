@@ -2091,7 +2091,7 @@ describeEmbeddedPostgres("secretService", () => {
       }),
     ).rejects.toMatchObject({
       status: 500,
-      message: "Secret create failed and Paperclip could not roll back the local secret reservation.",
+      message: "Secret create failed and Bostan could not roll back the local secret reservation.",
       details: {
         code: "secret_create_rollback_failed",
         provider: "aws_secrets_manager",
@@ -2143,7 +2143,7 @@ describeEmbeddedPostgres("secretService", () => {
       }),
     ).rejects.toMatchObject({
       status: 500,
-      message: "Secret create failed and Paperclip could not roll back the local secret reservation.",
+      message: "Secret create failed and Bostan could not roll back the local secret reservation.",
       details: {
         code: "secret_create_rollback_failed",
         provider: "aws_secrets_manager",
@@ -3063,7 +3063,7 @@ describeEmbeddedPostgres("secretService", () => {
       }),
     ).rejects.toMatchObject({
       status: 500,
-      message: "Secret create failed and Paperclip could not clean up the remote provider secret.",
+      message: "Secret create failed and Bostan could not clean up the remote provider secret.",
       details: {
         code: "secret_create_provider_cleanup_failed",
         provider: "aws_secrets_manager",
@@ -3115,7 +3115,7 @@ describeEmbeddedPostgres("secretService", () => {
       }),
     ).rejects.toMatchObject({
       status: 500,
-      message: "Secret create failed and Paperclip could not roll back the local secret reservation.",
+      message: "Secret create failed and Bostan could not roll back the local secret reservation.",
       details: {
         code: "secret_create_rollback_failed",
         provider: "aws_secrets_manager",
@@ -3450,7 +3450,7 @@ describeEmbeddedPostgres("secretService", () => {
       }),
     ).rejects.toMatchObject({
       status: 500,
-      message: "Secret create failed and Paperclip could not roll back the local secret reservation.",
+      message: "Secret create failed and Bostan could not roll back the local secret reservation.",
       details: {
         code: "secret_create_rollback_failed",
         provider: "aws_secrets_manager",

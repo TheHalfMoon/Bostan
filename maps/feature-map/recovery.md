@@ -173,7 +173,7 @@ historical retained sandbox or behavior during a live provider outage.
 For completion recovery, restart after a native completion proposal is appended
 but before its session checkpoint. Verify that the original result is finalized
 after provider termination, with no new provider turn or repeated external action.
-The [runtime regressions](../../packages/paperclip-runner/src/native-session-runtime.test.ts)
+The [runtime regressions](../../packages/bostan-runner/src/native-session-runtime.test.ts)
 exercise the real Codex driver with a simulated transport, including a still-active
 provider and invalid, conflicting, duplicate, or stale proposals. This does not
 qualify a hosted sandbox restart.

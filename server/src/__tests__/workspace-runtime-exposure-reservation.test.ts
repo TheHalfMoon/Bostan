@@ -99,7 +99,7 @@ let NEXT_HMR_PORT: number;
  * The real, unredirected Paperclip home directory. `beforeEach` later points
  * `PAPERCLIP_HOME` at a throwaway temp dir for the suite under test, so this
  * must be read before that happens. Mirrors the default in
- * `resolvePaperclipHomeDir`.
+ * `resolveBostanHomeDir`.
  */
 const REAL_PAPERCLIP_HOME = process.env.PAPERCLIP_TEST_HOST_HOME?.trim()
   || process.env.PAPERCLIP_HOME?.trim()

@@ -39,7 +39,7 @@ const reconcilePaperclipCloudConnectorEnrollmentStatus: typeof reconcileEnrollme
   reconcileEnrollmentStatus(withBostanBroker(env), request);
 
 
-describe("Paperclip Cloud self-host enrollment", () => {
+describe("Bostan Cloud self-host enrollment", () => {
   let root = "";
   let previousHome: string | undefined;
   let previousInstance: string | undefined;

@@ -148,7 +148,7 @@ import {
   ExternalLink,
   FlaskConical,
   MoreHorizontal,
-  Paperclip,
+  Paperclip as AttachmentIcon,
   Pause,
   Pencil,
   Pin,
@@ -259,6 +259,9 @@ function buildTree(entries: CompanySkillFileInventoryEntry[]) {
 }
 
 function sourceMeta(sourceBadge: CompanySkillSourceBadge, sourceLabel: string | null) {
+  if (sourceBadge === "paperclip" || sourceBadge === "catalog") {
+    sourceLabel = sourceLabel?.replace(/^Paperclip(?= |$)/, "Bostan") ?? null;
+  }
   const normalizedLabel = sourceLabel?.toLowerCase() ?? "";
   const isSkillsShManaged =
     normalizedLabel.includes("skills.sh") || normalizedLabel.includes("vercel-labs/skills");
@@ -275,7 +278,7 @@ function sourceMeta(sourceBadge: CompanySkillSourceBadge, sourceLabel: string | 
     case "local":
       return { icon: Folder, label: sourceLabel ?? "Folder", managedLabel: "Folder managed" };
     case "paperclip":
-      return { icon: Paperclip, label: !sourceLabel || sourceLabel === "Paperclip" ? "Bostan" : sourceLabel === "Paperclip catalog" ? "Bostan catalog" : sourceLabel === "Paperclip managed" ? "Bostan managed" : sourceLabel, managedLabel: "Bostan managed" };
+      return { icon: AttachmentIcon, label: !sourceLabel || sourceLabel === "Bostan" ? "Bostan" : sourceLabel === "Bostan catalog" ? "Bostan catalog" : sourceLabel === "Bostan managed" ? "Bostan managed" : sourceLabel, managedLabel: "Bostan managed" };
     default:
       return { icon: Boxes, label: sourceLabel ?? "Catalog", managedLabel: "Catalog managed" };
   }

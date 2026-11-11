@@ -18,7 +18,7 @@ export async function museReceiverAssets(assetVersion: 1 | 2 | 3 | 4 | 5 | 6 | 7
 export function musePublicOrigin(value?:string) {
   const origin=value??process.env.PAPERCLIP_PUBLIC_URL??process.env.PAPERCLIP_AUTH_PUBLIC_BASE_URL??process.env.PAPERCLIP_MANAGED_RUNTIME_PUBLIC_URL;
   try {const parsed=new URL(origin??"");if(parsed.protocol!=="https:"||parsed.username||parsed.password||parsed.pathname!=="/"||parsed.search||parsed.hash)throw new Error();return parsed.origin;}
-  catch {throw unprocessable("Configure a stable public HTTPS Paperclip hostname before connecting Muse.");}
+  catch {throw unprocessable("Configure a stable public HTTPS Bostan hostname before connecting Muse.");}
 }
 export interface MuseDelegationScope { companyId:string;companyName:string;agentId:string;agentName:string; }
 export async function buildMuseSetupInstruction(origin:string|undefined,ticket:string,bindingId:string,scope:MuseDelegationScope) {

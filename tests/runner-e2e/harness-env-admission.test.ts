@@ -1,8 +1,8 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { runnerMatrix } from "./catalog.js";
-import { QUALIFIED_ACPX_PROFILES } from "../../packages/paperclip-runner/src/drivers/acpx/qualified-profiles.js";
+import { QUALIFIED_ACPX_PROFILES } from "../../packages/bostan-runner/src/drivers/acpx/qualified-profiles.js";
 
-const profilesModule = "../../packages/paperclip-runner/src/drivers/acpx/qualified-profiles.js";
+const profilesModule = "../../packages/bostan-runner/src/drivers/acpx/qualified-profiles.js";
 const copilot = runnerMatrix.find(cell => cell.suite.id === "extended-harnesses" && cell.profile.qualificationCandidate === "copilot")!;
 afterEach(() => { vi.doUnmock(profilesModule); vi.resetModules(); });
 
@@ -14,7 +14,7 @@ it("uses normal production admission for the current qualified Copilot profile",
 });
 
 it("retains exact, explicit admission when a future profile is pending", async () => {
-  const actual = await vi.importActual<typeof import("../../packages/paperclip-runner/src/drivers/acpx/qualified-profiles.js")>(profilesModule);
+  const actual = await vi.importActual<typeof import("../../packages/bostan-runner/src/drivers/acpx/qualified-profiles.js")>(profilesModule);
   vi.doMock(profilesModule, () => ({ ...actual, QUALIFIED_ACPX_PROFILES: { ...actual.QUALIFIED_ACPX_PROFILES,
     copilot: { ...actual.QUALIFIED_ACPX_PROFILES.copilot, qualificationStatus: "pending" } } }));
   vi.resetModules();

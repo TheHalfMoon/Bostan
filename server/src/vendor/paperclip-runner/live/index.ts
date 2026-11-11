@@ -1,7 +1,7 @@
 /** Source shim; server build replaces it with the runner's compiled live tree. */
 type RunnerLiveModule = typeof import("@bostan/runner/live");
 const sourceUrl = new URL(
-  "../../../../../packages/paperclip-runner/src/live/index.ts",
+  "../../../../../packages/bostan-runner/src/live/index.ts",
   import.meta.url,
 );
 const runner = (await import(sourceUrl.href)) as RunnerLiveModule;

@@ -1,8 +1,8 @@
 import { inferBindModeFromHost } from "@bostan/shared";
-import type { PaperclipConfig } from "../config/schema.js";
+import type { BostanConfig } from "../config/schema.js";
 import type { CheckResult } from "./index.js";
 
-export function deploymentAuthCheck(config: PaperclipConfig): CheckResult {
+export function deploymentAuthCheck(config: BostanConfig): CheckResult {
   const mode = config.server.deploymentMode;
   const exposure = config.server.exposure;
   const auth = config.auth;
@@ -34,7 +34,7 @@ export function deploymentAuthCheck(config: PaperclipConfig): CheckResult {
       status: "fail",
       message: "authenticated mode requires BETTER_AUTH_SECRET (or PAPERCLIP_AGENT_JWT_SECRET)",
       canRepair: false,
-      repairHint: "Set BETTER_AUTH_SECRET before starting Paperclip",
+      repairHint: "Set BETTER_AUTH_SECRET before starting Bostan",
     };
   }
 

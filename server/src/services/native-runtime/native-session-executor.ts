@@ -182,7 +182,7 @@ import { inspectRemoteWarmSessionRecovery, type RemoteWarmSessionRecovery } from
 import { emitStartupReuse, environmentStartupReuse } from "@bostan/adapter-utils/startup-reuse";
 import { persistActivity, publishActivity } from "../activity-log.js";
 import { commitNativeStatusDecision } from "./status-decision-committer.js";
-import { resolvePaperclipInstanceRoot } from "../../home-paths.js";
+import { resolveBostanInstanceRoot } from "../../home-paths.js";
 import { documentService } from "../documents.js";
 import { issueThreadInteractionService } from "../issue-thread-interactions.js";
 import { issueService } from "../issues.js";
@@ -1832,7 +1832,7 @@ function runnerdStateBase(): string {
   return (
     process.env.PAPERCLIP_RUNNER_STATE_DIR ??
     resolve(
-      resolvePaperclipInstanceRoot(),
+      resolveBostanInstanceRoot(),
       "runtime",
       "paperclip-runner",
       "durable-sessions",
@@ -6076,7 +6076,7 @@ export function verifyNativeHarnessBackup(input: {
 
 function nativeSessionCheckpointDirectory(): string {
   const directory = resolve(
-    resolvePaperclipInstanceRoot(),
+    resolveBostanInstanceRoot(),
     "runtime",
     "paperclip-runner",
     "sessions",
@@ -8924,13 +8924,13 @@ async function executePaperclipNativeSessionWithinScope(
                 opencodeEnvironment: resolveNativeProviderEnvironment(input.execution.provider, input.runnerEnvironment),
                 acpxEnvironment: resolveNativeProviderEnvironment(input.execution.provider, input.runnerEnvironment),
                 opencodeRuntimeDirectory: resolve(
-                  resolvePaperclipInstanceRoot(),
+                  resolveBostanInstanceRoot(),
                   "runtime",
                   "paperclip-runner",
                   "opencode",
                 ),
                 acpxRuntimeDirectory: resolve(
-                  resolvePaperclipInstanceRoot(),
+                  resolveBostanInstanceRoot(),
                   "runtime",
                   "paperclip-runner",
                   "acpx",
@@ -12231,7 +12231,7 @@ async function createRunnerdBackendWithinSessionClaim(
         }),
         stageAndVerify: async () => {
           if (!configuredProviderPackRoot) {
-            throw new Error("runner_remote_provider_artifact_incompatible: install the matching Paperclip package and Daytona image; the image provider pack did not match the bundled release identity");
+            throw new Error("runner_remote_provider_artifact_incompatible: install the matching Bostan package and Daytona image; the image provider pack did not match the bundled release identity");
           }
           if (!remoteCommandRunner.syncIn) {
             throw new Error(
@@ -13219,13 +13219,13 @@ async function createRunnerdBackendWithinSessionClaim(
     dynamicToolHandler: executeCurrentToolAuthority,
     acpxDynamicToolHandler: executeCurrentToolAuthority,
     opencodeRuntimeDirectory: resolve(
-      resolvePaperclipInstanceRoot(),
+      resolveBostanInstanceRoot(),
       "runtime",
       "paperclip-runner",
       "opencode",
     ),
     acpxRuntimeDirectory: resolve(
-      resolvePaperclipInstanceRoot(),
+      resolveBostanInstanceRoot(),
       "runtime",
       "paperclip-runner",
       "acpx",
@@ -13272,7 +13272,7 @@ async function createRunnerdBackendWithinSessionClaim(
               acpxRuntimeDirectory: remoteRunnerFilesystemRoot
                 ? posix.join(remoteRunnerFilesystemRoot, "acpx")
                 : resolve(
-                    resolvePaperclipInstanceRoot(),
+                    resolveBostanInstanceRoot(),
                     "runtime",
                     "paperclip-runner",
                     "acpx",
@@ -13495,7 +13495,7 @@ async function createRunnerdBackendWithinSessionClaim(
       // The launch runtime directory already ends in "acpx"; ACPX adds its
       // own namespace beneath it in resolveAcpxRuntimeRoot.
       const relativeHome = `acpx/acpx/${acpxRuntimeSessionDirectoryName(nativeSessionKey(input.execution))}/grok-home`;
-      const localHome = resolve(resolvePaperclipInstanceRoot(), "runtime", "paperclip-runner", relativeHome);
+      const localHome = resolve(resolveBostanInstanceRoot(), "runtime", "paperclip-runner", relativeHome);
       const remoteHome = remoteRunnerFilesystemRoot ? posix.join(remoteRunnerFilesystemRoot, relativeHome) : null;
       const readAuth = async (name: string): Promise<Buffer> => {
         if (!remoteHome || !remoteCommandRunner) return Buffer.from(await readLocalAiCredentialFile(join(localHome, name)));

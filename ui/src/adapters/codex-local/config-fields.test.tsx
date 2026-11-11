@@ -237,7 +237,7 @@ describe("Bostan Runner Codex configuration", () => {
   });
   it.each([
     [undefined, "Full auto (approve all)"],
-    ["approve-paperclip", "Automatic Paperclip actions"],
+    ["approve-paperclip", "Automatic Bostan actions"],
     ["approve-reads", "Allow Bostan reads"],
     ["deny-all", "Deny all"],
   ])("displays Grok's default or saved permission mode %s", async (acpxPermissionMode, label) => {

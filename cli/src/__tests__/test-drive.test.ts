@@ -19,7 +19,7 @@ import {
   type TestDriveHarness,
 } from "../commands/test-drive.js";
 import type { RunOptions, StartedServer } from "../commands/run.js";
-import type { PaperclipConfig } from "../config/schema.js";
+import type { BostanConfig } from "../config/schema.js";
 
 const ORIGINAL_ENV = { ...process.env };
 const cleanupDirectories: string[] = [];
@@ -136,7 +136,7 @@ describe("test-drive data isolation", () => {
     expect(fs.readFileSync(marker, "utf8")).toBe("keep");
   });
 
-  it("discards inherited Paperclip routing while preserving a custom key source", async () => {
+  it("discards inherited Bostan routing while preserving a custom key source", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "paperclip-test-drive-env-"));
     cleanupDirectories.push(root);
     process.env.PAPERCLIP_HOME = "/normal/home";
@@ -183,7 +183,7 @@ describe("test-drive data isolation", () => {
   it("rejects an explicitly reused PostgreSQL configuration", () => {
     const externalConfig = {
       database: { mode: "postgres" },
-    } as PaperclipConfig;
+    } as BostanConfig;
     expect(() => assertTestDriveDatabaseIsolation(
       "/tmp/reused/config.json",
       {},
@@ -194,7 +194,7 @@ describe("test-drive data isolation", () => {
   it("accepts an embedded configuration", () => {
     const embeddedConfig = {
       database: { mode: "embedded-postgres" },
-    } as PaperclipConfig;
+    } as BostanConfig;
     expect(() => assertTestDriveDatabaseIsolation(
       "/tmp/reused/config.json",
       {},

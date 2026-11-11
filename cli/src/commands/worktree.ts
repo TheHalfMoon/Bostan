@@ -69,7 +69,7 @@ import {
 import type { Command } from "commander";
 import { ensureAgentJwtSecret, ensureToolActionSigningSecret, loadPaperclipEnvFile, mergePaperclipEnvEntries, readPaperclipEnvEntries, resolvePaperclipEnvFile } from "../config/env.js";
 import { expandHomePrefix } from "../config/home.js";
-import type { PaperclipConfig } from "../config/schema.js";
+import type { BostanConfig } from "../config/schema.js";
 import { readConfig, resolveConfigPath, writeConfig } from "../config/store.js";
 import { printPaperclipCliBanner } from "../utils/banner.js";
 import { resolveRuntimeLikePath } from "../utils/path-resolver.js";
@@ -393,7 +393,7 @@ function buildS3ObjectKey(prefix: string, objectKey: string): string {
 
 const dynamicImport = new Function("specifier", "return import(specifier);") as (specifier: string) => Promise<any>;
 
-function createConfiguredStorageFromPaperclipConfig(config: PaperclipConfig): ConfiguredStorage {
+function createConfiguredStorageFromPaperclipConfig(config: BostanConfig): ConfiguredStorage {
   if (config.storage.provider === "local_disk") {
     const baseDir = expandHomePrefix(config.storage.localDisk.baseDir);
     return {
@@ -928,7 +928,7 @@ export function resolveWorktreeReseedTargetPaths(input: {
 
   if (!homeDir || !instanceId) {
     throw new Error(
-      `Target config ${input.configPath} does not look like a worktree-local Paperclip instance. Expected PAPERCLIP_HOME and PAPERCLIP_INSTANCE_ID in the adjacent .env.`,
+      `Target config ${input.configPath} does not look like a worktree-local Bostan instance. Expected PAPERCLIP_HOME and PAPERCLIP_INSTANCE_ID in the adjacent .env.`,
     );
   }
 
@@ -1038,7 +1038,7 @@ async function ensureRepairTargetWorktree(input: {
   };
 }
 
-function resolveSourceConnectionString(config: PaperclipConfig, envEntries: Record<string, string>, portOverride?: number): string {
+function resolveSourceConnectionString(config: BostanConfig, envEntries: Record<string, string>, portOverride?: number): string {
   if (config.database.mode === "postgres") {
     const connectionString = nonEmpty(envEntries.DATABASE_URL) ?? nonEmpty(config.database.connectionString);
     if (!connectionString) {
@@ -1055,7 +1055,7 @@ function resolveSourceConnectionString(config: PaperclipConfig, envEntries: Reco
 
 export function copySeededSecretsKey(input: {
   sourceConfigPath: string;
-  sourceConfig: PaperclipConfig;
+  sourceConfig: BostanConfig;
   sourceEnvEntries: Record<string, string>;
   targetKeyFilePath: string;
 }): void {
@@ -1421,7 +1421,7 @@ type WorktreeSeedValidationExpectation = {
 };
 
 export function requiresWorktreeSeedCredentialAccount(
-  deploymentMode: PaperclipConfig["server"]["deploymentMode"],
+  deploymentMode: BostanConfig["server"]["deploymentMode"],
 ): boolean {
   return deploymentMode === "authenticated";
 }
@@ -1439,7 +1439,7 @@ export function resolveWorktreeSeedMigrationRevision(
     appliedMigrationNames.size !== expectedAppliedPrefix.length ||
     expectedAppliedPrefix.some((migration) => !appliedMigrationNames.has(migration))
   ) {
-    throw new Error("Migration journal is not a prefix of this Paperclip checkout's migration journal.");
+    throw new Error("Migration journal is not a prefix of this Bostan checkout's migration journal.");
   }
 
   if (requirement === "upToDate" && migrationState.status !== "upToDate") {
@@ -1458,7 +1458,7 @@ export function resolveWorktreeSeedMigrationRevision(
 /**
  * Markerless worktrees predate the versioned seed manifest. Adopt one only
  * after proving that its configured database already has a compatible
- * migration journal and the core Paperclip tables. The physical PG_VERSION
+ * migration journal and the core Bostan tables. The physical PG_VERSION
  * check prevents this read-only probe from initializing a missing embedded
  * database and then mistaking that empty cluster for legacy evidence.
  */
@@ -1503,7 +1503,7 @@ export async function inspectLegacyWorktreeDatabase(
 async function inspectVerifiedSeedDatabase(
   connectionString: string,
   options: {
-    deploymentMode: PaperclipConfig["server"]["deploymentMode"];
+    deploymentMode: BostanConfig["server"]["deploymentMode"];
     expected?: WorktreeSeedValidationExpectation;
     migrationRequirement?: "sourcePrefix" | "upToDate";
     requiredCompanyId?: string;
@@ -1643,8 +1643,8 @@ async function inspectVerifiedSeedDatabase(
 
 async function seedWorktreeDatabase(input: {
   sourceConfigPath: string;
-  sourceConfig: PaperclipConfig;
-  targetConfig: PaperclipConfig;
+  sourceConfig: BostanConfig;
+  targetConfig: BostanConfig;
   targetPaths: WorktreeLocalPaths;
   instanceId: string;
   seedMode: WorktreeSeedMode;
@@ -2128,8 +2128,8 @@ function startWorktreeSeedAttempt(configPath: string, now = new Date()): Worktre
 async function runVerifiedWorktreeSeed(input: {
   configPath: string;
   sourceConfigPath: string;
-  sourceConfig: PaperclipConfig;
-  targetConfig: PaperclipConfig;
+  sourceConfig: BostanConfig;
+  targetConfig: BostanConfig;
   targetPaths: WorktreeLocalPaths;
   instanceId: string;
   seedMode: WorktreeSeedMode;
@@ -2597,7 +2597,7 @@ async function runWorktreeInit(opts: WorktreeInitOptions): Promise<void> {
   }
   p.outro(
     pc.green(
-      `Worktree ready. Run Paperclip inside this repo and the CLI/server will use ${paths.instanceId} automatically.`,
+      `Worktree ready. Run Bostan inside this repo and the CLI/server will use ${paths.instanceId} automatically.`,
     ),
   );
 }
@@ -3112,7 +3112,7 @@ async function openConfiguredDb(configPath: string): Promise<OpenDbHandle> {
           ? ` Pending migrations: ${migrationState.pendingMigrations.join(", ")}.`
           : "";
       throw new Error(
-        `Database for ${configPath} is not up to date.${pending} Run \`pnpm db:migrate\` (or start Paperclip once) before using worktree merge history.`,
+        `Database for ${configPath} is not up to date.${pending} Run \`pnpm db:migrate\` (or start Bostan once) before using worktree merge history.`,
       );
     }
     const db = createDb(connectionString) as ClosableDb;
@@ -3283,7 +3283,7 @@ function renderMergePlan(plan: Awaited<ReturnType<typeof collectMergePlan>>["pla
   return lines.join("\n");
 }
 
-function resolveRunningEmbeddedPostgresPid(config: PaperclipConfig): number | null {
+function resolveRunningEmbeddedPostgresPid(config: BostanConfig): number | null {
   if (config.database.mode !== "embedded-postgres") {
     return null;
   }
@@ -3698,7 +3698,7 @@ function resolveWorktreeEndpointFromSelector(
     );
   }
   if (!matched.hasPaperclipConfig && !matched.isCurrent) {
-    throw new Error(`Resolved worktree "${selector}" does not look like a Paperclip worktree.`);
+    throw new Error(`Resolved worktree "${selector}" does not look like a Bostan worktree.`);
   }
   return resolveEndpointFromChoice(matched);
 }
@@ -3715,7 +3715,7 @@ async function promptForSourceEndpoint(excludeWorktreePath?: string): Promise<Re
       hint: `${choice.worktree}${choice.isCurrent ? " (current)" : ""}`,
     }));
   if (choices.length === 0) {
-    throw new Error("No Paperclip worktrees were found. Run `paperclipai worktree:list` to inspect the repo worktrees.");
+    throw new Error("No Bostan worktrees were found. Run `paperclipai worktree:list` to inspect the repo worktrees.");
   }
   const selection = await p.select<string>({
     message: "Choose the source worktree to import from",
@@ -4142,7 +4142,7 @@ export async function worktreeMergeHistoryCommand(sourceArg: string | undefined,
       : await promptForSourceEndpoint(targetEndpoint.rootPath);
 
   if (path.resolve(sourceEndpoint.configPath) === path.resolve(targetEndpoint.configPath)) {
-    throw new Error("Source and target Paperclip configs are the same. Choose different --from/--to worktrees.");
+    throw new Error("Source and target Bostan configs are the same. Choose different --from/--to worktrees.");
   }
 
   const scopes = parseWorktreeMergeScopes(opts.scope);
@@ -4232,7 +4232,7 @@ export async function worktreeMergeHistoryCommand(sourceArg: string | undefined,
 }
 
 async function backupWorktreeReseedTarget(input: {
-  targetConfig: PaperclipConfig;
+  targetConfig: BostanConfig;
   targetPaths: WorktreeLocalPaths;
 }): Promise<string> {
   if (input.targetConfig.database.mode !== "embedded-postgres") {
@@ -4271,7 +4271,7 @@ async function runWorktreeReseed(opts: WorktreeReseedOptions): Promise<void> {
   const source = resolveWorktreeReseedSource(opts);
 
   if (path.resolve(source.configPath) === path.resolve(targetEndpoint.configPath)) {
-    throw new Error("Source and target Paperclip configs are the same. Choose different --from/--to values.");
+    throw new Error("Source and target Bostan configs are the same. Choose different --from/--to values.");
   }
   if (!existsSync(source.configPath)) {
     throw new Error(`Source config not found at ${source.configPath}.`);
@@ -4293,14 +4293,14 @@ async function runWorktreeReseed(opts: WorktreeReseedOptions): Promise<void> {
   const runningTargetPid = resolveRunningEmbeddedPostgresPid(targetConfig);
   if (runningTargetPid && !opts.allowLiveTarget) {
     throw new Error(
-      `Target worktree database appears to be running (pid ${runningTargetPid}). Stop Paperclip in ${targetEndpoint.rootPath} before reseeding, or re-run with --allow-live-target if you want to override this guard.`,
+      `Target worktree database appears to be running (pid ${runningTargetPid}). Stop Bostan in ${targetEndpoint.rootPath} before reseeding, or re-run with --allow-live-target if you want to override this guard.`,
     );
   }
 
   const confirmed = opts.yes
     ? true
     : await p.confirm({
-      message: `Overwrite the isolated Paperclip DB for ${targetEndpoint.label} from ${source.label} using ${seedMode} seed mode?`,
+      message: `Overwrite the isolated Bostan DB for ${targetEndpoint.label} from ${source.label} using ${seedMode} seed mode?`,
       initialValue: false,
     });
   if (p.isCancel(confirmed) || !confirmed) {
@@ -4400,7 +4400,7 @@ export async function worktreeRepairCommand(opts: WorktreeRepairOptions): Promis
     throw new Error(`Source config not found at ${source.configPath}.`);
   }
   if (path.resolve(source.configPath) === path.resolve(target.configPath)) {
-    throw new Error("Source and target Paperclip configs are the same. Use --from-config/--from-instance to point repair at a different source.");
+    throw new Error("Source and target Bostan configs are the same. Use --from-config/--from-instance to point repair at a different source.");
   }
 
   const targetConfig = existsSync(target.configPath) ? readConfig(target.configPath) : null;
@@ -4436,7 +4436,7 @@ export async function worktreeRepairCommand(opts: WorktreeRepairOptions): Promis
   const runningTargetPid = readRunningPostmasterPid(path.resolve(repairPaths.embeddedPostgresDataDir, "postmaster.pid"));
   if (runningTargetPid && !opts.allowLiveTarget) {
     throw new Error(
-      `Target worktree database appears to be running (pid ${runningTargetPid}). Stop Paperclip in ${target.rootPath} before repairing, or re-run with --allow-live-target if you want to override this guard.`,
+      `Target worktree database appears to be running (pid ${runningTargetPid}). Stop Bostan in ${target.rootPath} before repairing, or re-run with --allow-live-target if you want to override this guard.`,
     );
   }
   if (runningTargetPid && opts.allowLiveTarget) {
@@ -4462,11 +4462,11 @@ export async function worktreeRepairCommand(opts: WorktreeRepairOptions): Promis
 }
 
 export function registerWorktreeCommands(program: Command): void {
-  const worktree = program.command("worktree").description("Worktree-local Paperclip instance helpers");
+  const worktree = program.command("worktree").description("Worktree-local Bostan instance helpers");
 
   program
     .command("worktree:make")
-    .description("Create ~/NAME as a git worktree, then initialize an isolated Paperclip instance inside it")
+    .description("Create ~/NAME as a git worktree, then initialize an isolated Bostan instance inside it")
     .argument("<name>", "Worktree name — auto-prefixed with paperclip- if needed (created at ~/paperclip-NAME)")
     .option("--start-point <ref>", "Remote ref to base the new branch on (env: PAPERCLIP_WORKTREE_START_POINT)")
     .option("--instance <id>", "Explicit isolated instance id")
@@ -4503,7 +4503,7 @@ export function registerWorktreeCommands(program: Command): void {
 
   worktree
     .command("env")
-    .description("Print shell exports for the current worktree-local Paperclip instance")
+    .description("Print shell exports for the current worktree-local Bostan instance")
     .option("-c, --config <path>", "Path to config file")
     .option("--json", "Print JSON instead of shell exports")
     .action(worktreeEnvCommand);
@@ -4520,7 +4520,7 @@ export function registerWorktreeCommands(program: Command): void {
 
   program
     .command("worktree:list")
-    .description("List git worktrees visible from this repo and whether they look like Paperclip worktrees")
+    .description("List git worktrees visible from this repo and whether they look like Bostan worktrees")
     .option("--json", "Print JSON instead of text output")
     .action(worktreeListCommand);
 
@@ -4539,7 +4539,7 @@ export function registerWorktreeCommands(program: Command): void {
 
   worktree
     .command("reseed")
-    .description("Re-seed an existing worktree-local instance from another Paperclip instance or worktree")
+    .description("Re-seed an existing worktree-local instance from another Bostan instance or worktree")
     .option("--from <worktree>", "Source worktree path, directory name, branch name, or current")
     .option("--to <worktree>", "Target worktree path, directory name, branch name, or current (defaults to current)")
     .option("--from-config <path>", "Source config.json to seed from")
@@ -4554,7 +4554,7 @@ export function registerWorktreeCommands(program: Command): void {
 
   worktree
     .command("repair")
-    .description("Create or repair a linked worktree-local Paperclip instance without touching the primary checkout")
+    .description("Create or repair a linked worktree-local Bostan instance without touching the primary checkout")
     .option("--branch <name>", "Existing branch/worktree selector to repair, or a branch name to create under .paperclip/worktrees")
     .option("--home <path>", `Home root for worktree instances (env: PAPERCLIP_WORKTREES_DIR, default: ${DEFAULT_WORKTREE_HOME})`)
     .option("--from-config <path>", "Source config.json to seed from")

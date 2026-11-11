@@ -1974,7 +1974,7 @@ export function toolAccessService(
       const integration = vercelConnectIntegrationStatus();
       if (!integration.enabled || !integration.configured || !vercelConnect) {
         throw unprocessable(
-          "Vercel Connect setup is not available on this Paperclip instance",
+          "Vercel Connect setup is not available on this Bostan instance",
           {
             code: "vercel_connect_unavailable",
           },
@@ -2052,7 +2052,7 @@ export function toolAccessService(
           .limit(1);
         if (connectorInUse) {
           throw conflict(
-            "App-subject Vercel connectors are dedicated to one Paperclip connection. Create or attach a separate connector in Vercel.",
+            "App-subject Vercel connectors are dedicated to one Bostan connection. Create or attach a separate connector in Vercel.",
             {
               code: "vercel_connect_app_connector_in_use",
             },
@@ -2460,7 +2460,7 @@ export function toolAccessService(
         }
         if (!applicationRow) {
           throw conflict(
-            "Paperclip could not allocate a unique connection name",
+            "Bostan could not allocate a unique connection name",
             {
               code: "tool_access_name_allocation_exhausted",
             },
@@ -3563,7 +3563,7 @@ export function toolAccessService(
       throw conflict("Archived app connections cannot be reconnected");
     if (connection.credentialSource === "vercel_connect") {
       throw conflict(
-        "Manage this connector in Vercel Connect, then run a Paperclip health check to verify it.",
+        "Manage this connector in Vercel Connect, then run a Bostan health check to verify it.",
         {
           code: "vercel_connect_managed_externally",
           manageUrl: vercelConnectIntegrationStatus().manageUrl,

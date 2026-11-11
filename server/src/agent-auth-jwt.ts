@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { normalizeAgentApiKeyScope, type AgentApiKeyScope } from "@bostan/shared";
-import { resolvePaperclipInstanceId } from "./home-paths.js";
+import { resolveBostanInstanceId } from "./home-paths.js";
 
 interface JwtHeader {
   alg: string;
@@ -57,7 +57,7 @@ function jwtConfig() {
     // name) even though it deliberately shares PAPERCLIP_AGENT_JWT_SECRET with
     // the source instance. Folding this into the signing-key derivation is what
     // prevents a fork-minted token from authenticating against the live plane.
-    instanceId: resolvePaperclipInstanceId(),
+    instanceId: resolveBostanInstanceId(),
     disableLegacyFallback: parseBooleanEnv(process.env.PAPERCLIP_AGENT_JWT_DISABLE_LEGACY_FALLBACK),
   };
 }

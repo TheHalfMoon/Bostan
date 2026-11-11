@@ -4,13 +4,13 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { afterAll, describe, expect, it } from "vitest";
 import type { Db } from "@bostan/db";
 import { PaperclipRunnerToolAuthority } from "../services/native-runtime/paperclip-runner-tool-authority.js";
-import { buildNativeModelEnvelope, parseNativeExecutionInput, type NativeExecutionInput } from "../../../packages/paperclip-runner/src/contracts/native-execution.js";
-import type { PersistedNativeSession } from "../../../packages/paperclip-runner/src/contracts/native-session-backend.js";
-import { NATIVE_RUNTIME_ASSET_SCHEMA, PAPERCLIP_EXECUTION_PROMPT, PAPERCLIP_EXECUTION_PROMPT_REVISION, canonicalNativeRuntimeContextDigest, nativeRuntimePromptDigest } from "../../../packages/paperclip-runner/src/contracts/runtime-context.js";
-import { createRunnerdNativeSessionBackend } from "../../../packages/paperclip-runner/src/backends/codex-native-backend.js";
-import { resolveQualifiedAcpxProfile } from "../../../packages/paperclip-runner/src/drivers/acpx/qualified-profiles.js";
-import { FakeCodexTransport, WORKSPACE } from "../../../packages/paperclip-runner/src/drivers/codex/codex-app-server-driver.test-support.js";
-import { startOpenCodeMcpBridge } from "../../../packages/paperclip-runner/src/drivers/opencode/mcp-bridge.js";
+import { buildNativeModelEnvelope, parseNativeExecutionInput, type NativeExecutionInput } from "../../../packages/bostan-runner/src/contracts/native-execution.js";
+import type { PersistedNativeSession } from "../../../packages/bostan-runner/src/contracts/native-session-backend.js";
+import { NATIVE_RUNTIME_ASSET_SCHEMA, PAPERCLIP_EXECUTION_PROMPT, PAPERCLIP_EXECUTION_PROMPT_REVISION, canonicalNativeRuntimeContextDigest, nativeRuntimePromptDigest } from "../../../packages/bostan-runner/src/contracts/runtime-context.js";
+import { createRunnerdNativeSessionBackend } from "../../../packages/bostan-runner/src/backends/codex-native-backend.js";
+import { resolveQualifiedAcpxProfile } from "../../../packages/bostan-runner/src/drivers/acpx/qualified-profiles.js";
+import { FakeCodexTransport, WORKSPACE } from "../../../packages/bostan-runner/src/drivers/codex/codex-app-server-driver.test-support.js";
+import { startOpenCodeMcpBridge } from "../../../packages/bostan-runner/src/drivers/opencode/mcp-bridge.js";
 
 // Production catalog selection, scripted provider transport: this measures what
 // Paperclip delivers, not the vendor's private prompt, tokenizer or billing.
@@ -132,17 +132,17 @@ afterAll(() => {
   if (receipts.length !== 9 || !mcpReceipt) throw new Error("Refusing incomplete instruction measurement");
   const paths = [
     "server/src/onboarding-assets/default/AGENTS.md",
-    "packages/paperclip-runner/src/contracts/runtime-context.ts",
-    "packages/paperclip-runner/src/protocol-actions/hire-agent.ts",
-    "packages/paperclip-runner/src/protocol-actions/create-task.ts",
-    "packages/paperclip-runner/src/protocol-actions/set-dependencies.ts",
-    "packages/paperclip-runner/src/catalog/semantic-action-catalog.ts",
-    "packages/paperclip-runner/generated/semantic-action-catalog.json",
-    "packages/paperclip-runner/generated/capability/semantic-tool-contracts.json",
-    "packages/paperclip-runner/protocol/fixtures/evals/native-execution-seeded.json",
-    "packages/paperclip-runner/protocol/manifest.json",
-    "packages/paperclip-runner/src/backends/codex-native-backend.ts",
-    "packages/paperclip-runner/src/drivers/opencode/mcp-bridge.ts",
+    "packages/bostan-runner/src/contracts/runtime-context.ts",
+    "packages/bostan-runner/src/protocol-actions/hire-agent.ts",
+    "packages/bostan-runner/src/protocol-actions/create-task.ts",
+    "packages/bostan-runner/src/protocol-actions/set-dependencies.ts",
+    "packages/bostan-runner/src/catalog/semantic-action-catalog.ts",
+    "packages/bostan-runner/generated/semantic-action-catalog.json",
+    "packages/bostan-runner/generated/capability/semantic-tool-contracts.json",
+    "packages/bostan-runner/protocol/fixtures/evals/native-execution-seeded.json",
+    "packages/bostan-runner/protocol/manifest.json",
+    "packages/bostan-runner/src/backends/codex-native-backend.ts",
+    "packages/bostan-runner/src/drivers/opencode/mcp-bridge.ts",
     "server/src/services/native-runtime/paperclip-runner-tool-authority.ts",
     "server/src/services/connection-tool-definitions.ts",
     "packages/shared/src/connection-intent-guidance.ts",

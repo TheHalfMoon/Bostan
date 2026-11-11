@@ -1,5 +1,5 @@
 import { installedDaytonaPluginKeys } from "./installed-daytona-plugin.js";
-import { QUALIFIED_ACPX_PROFILES } from "../../packages/paperclip-runner/src/drivers/acpx/qualified-profiles.js";
+import { QUALIFIED_ACPX_PROFILES } from "../../packages/bostan-runner/src/drivers/acpx/qualified-profiles.js";
 import { assertInstalledCliSelection, installedCliKeys, usesInstalledCli } from "./installed-cli.js";
 import path from "node:path";
 import { chatNeedsApiTools, isManagedHiringCase } from "./chat-cases.js";
@@ -86,7 +86,7 @@ export function resolvePaperclipRunnerBinaryForHarness(
   return path.join(
     repositoryRoot,
     "packages",
-    "paperclip-runner",
+    "bostan-runner",
     "runner",
     "target",
     "debug",

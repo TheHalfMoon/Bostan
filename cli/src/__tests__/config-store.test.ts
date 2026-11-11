@@ -7,7 +7,7 @@ import {
   readConfig,
   writeConfig,
 } from "../config/store.js";
-import { paperclipConfigSchema, type PaperclipConfig } from "../config/schema.js";
+import { bostanConfigSchema, type BostanConfig } from "../config/schema.js";
 
 const roots: string[] = [];
 
@@ -24,8 +24,8 @@ function createConfigPath(): string {
   return path.join(root, "config.json");
 }
 
-function defaultConfig(): PaperclipConfig {
-  return paperclipConfigSchema.parse({
+function defaultConfig(): BostanConfig {
+  return bostanConfigSchema.parse({
     $meta: {
       version: 1,
       updatedAt: "2026-08-06T00:00:00.000Z",
@@ -60,7 +60,7 @@ describe("config store", () => {
     const { topLevelExtension: _topLevelExtension, ...knownConfig } = source;
     const { serverExtension: _serverExtension, ...knownServer } = source.server;
     const { driverExtension: _driverExtension, ...knownLocalDisk } = source.storage.localDisk;
-    const update: PaperclipConfig = {
+    const update: BostanConfig = {
       ...knownConfig,
       server: {
         ...knownServer,
@@ -119,7 +119,7 @@ describe("config store", () => {
     const backupPath = backupInvalidConfig(configPath);
     expect(backupPath).toBe(`${configPath}.invalid-2`);
     expect(fs.readFileSync(backupPath)).toEqual(invalidBytes);
-    expect(open).toHaveBeenCalledWith(backupPath, "r");
+    expect(open).toHaveBeenCalledWith(backupPath, "r+");
     expect(open).toHaveBeenCalledWith(path.dirname(configPath), "r");
     expect(sync).toHaveBeenCalled();
     expect(() => writeConfig(defaultConfig(), configPath)).toThrow(/Refusing to overwrite invalid config/);

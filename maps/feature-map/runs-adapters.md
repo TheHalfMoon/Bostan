@@ -74,7 +74,7 @@ Choose Codex as the harness; the UI displays its name/icon for both runners.
 Advanced identifies the automatic default and offers Paperclip Runner or Legacy.
 New Codex agents default to the native runner on supported macOS or GNU/Linux
 targets; the [shared selection contract](../../packages/shared/src/agent-runner.ts)
-and [runtime prerequisites](../../packages/paperclip-runner/README.md) define the
+and [runtime prerequisites](../../packages/bostan-runner/README.md) define the
 platform/libc boundary. Windows and Alpine/musl remain Legacy. Claude follows
 its qualified rollout described above. Disabled adapters, external overrides, and selected-target
 qualification also affect availability.
@@ -184,7 +184,7 @@ revised-source live onboarding and follow-up proof.
 - Use [recovery](./recovery.md) for interrupted runs and [execution environments](./execution-environments.md) for local/SSH/sandbox differences.
 
 Native setup retirement joins owned startup before cleanup can be confirmed.
-[Transport ownership controls](../../packages/paperclip-runner/src/live/runnerd-codex-transport.test.ts)
+[Transport ownership controls](../../packages/bostan-runner/src/live/runnerd-codex-transport.test.ts)
 hold preparation or registration without launching a provider, then check bounded
 close, rejected duplicate requests, no later launch and retention of unconfirmed
 state. Readiness observes shutdown; resumed startup cannot reactivate ingress

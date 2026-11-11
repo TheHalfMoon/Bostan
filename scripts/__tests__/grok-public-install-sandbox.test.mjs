@@ -10,7 +10,7 @@ import { isWorkspacePackage, parseWorkspaceEntries } from '../build-standalone-p
 import { GROK_PUBLIC_INSTALL_IMAGE, GROK_PUBLIC_INSTALL_LIFECYCLE, assertInstalledCodexPlatformProvenance, assertInstalledNativeConsumerContinuity, assertNoBundledCodexPayloads, grokConsumerDockerArgs, installedClaudeProbeSource, installedCodexProbeSource, installedDaemonProbeSource, macNodeHeadersDirectory, macPublicInstallLifecycleProfile, macInstalledStartupProbeSource, runMacInitialInstallWithDiagnostics } from '../grok-public-install-sandbox.mjs';
 import { verifyPiPackagedDaemon } from '../pi-public-install-probe.mjs';
 import { publicInstallClosure } from '../public-install-closure.mjs';
-import { runnerBinaryTarget } from '../../packages/paperclip-runner/src/live/runner-binary.ts';
+import { runnerBinaryTarget } from '../../packages/bostan-runner/src/live/runner-binary.ts';
 
 const paths = { assets: '/private/staging/assets', consumer: '/private/staging/consumer', cache: '/private/staging/cache', uid: 1001, gid: 1001 };
 const values = (args, flag) => args.flatMap((value, index) => value === flag ? [args[index + 1]] : []);
@@ -240,7 +240,7 @@ test('the image and Grok downloads start before staging and join without weakeni
   // Exactly the pinned consumer image is pulled, for the platform the probes run on.
   const imagePull = position("prefetch('image', 'docker', ['pull', '--platform', 'linux/amd64', GROK_PUBLIC_INSTALL_IMAGE])");
   // Grok is provisioned into the prefetch directory, never straight into `native/grok`.
-  const grokProvision = position("prefetch('grok', process.execPath, [join(repo, 'packages/paperclip-runner/scripts/provision-grok.mjs'), stagedGrok])");
+  const grokProvision = position("prefetch('grok', process.execPath, [join(repo, 'packages/bostan-runner/scripts/provision-grok.mjs'), stagedGrok])");
   assert.ok(source.includes("const stagedGrok = join(prefetched, 'grok')"));
   assert.doesNotMatch(source, /provision-grok\.mjs'\), prerequisite\]/);
   // Both downloads start before any package is staged and before the first sandbox runs.

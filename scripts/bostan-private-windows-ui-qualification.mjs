@@ -83,8 +83,8 @@ function run(command){
 // ./ui export. A UI-only install can leave both absent; refuse to misclassify
 // those missing build inputs as product TypeScript defects.
 for(const [pkgPath,expected] of [
-  ['packages/paperclip-runner/node_modules/ajv/dist/2020.js','Runner AJV 2020'],
-  ['packages/paperclip-runner/node_modules/json-schema-to-ts/package.json','Runner json-schema-to-ts'],
+  ['packages/bostan-runner/node_modules/ajv/dist/2020.js','Runner AJV 2020'],
+  ['packages/bostan-runner/node_modules/json-schema-to-ts/package.json','Runner json-schema-to-ts'],
 ]){
   if(!existsSync(join(root,pkgPath))){
     console.error('Windows UI QA missing required build dependency: '+expected+

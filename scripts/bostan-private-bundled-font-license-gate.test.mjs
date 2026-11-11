@@ -35,7 +35,7 @@ test('removing original MIT attribution or bundled font notices fails the audit'
     ['packages/shared/src/cliplab/LICENSE','Jérémy Perret'],
     ['ui/public/fonts/NOTICE.md','Bostan bundles Inter'],
     ['ui/public/fonts/Inter-OFL.txt','Copyright (c) 2016 The Inter Project Authors'],
-    ['packages/paperclip-runner/devtools/issue-thread/src/fonts/NOTICE.md','Bitstream Vera Fonts license'],
+    ['packages/bostan-runner/devtools/issue-thread/src/fonts/NOTICE.md','Bitstream Vera Fonts license'],
   ]){
     assert.throws(()=>verifyBundledFontNotices({
       readText:source=>source===relative?readText(source).replace(marker,''):readText(source),

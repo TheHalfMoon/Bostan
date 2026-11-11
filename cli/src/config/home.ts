@@ -7,33 +7,33 @@ import {
   resolveDefaultSecretsKeyFilePath as resolveSharedDefaultSecretsKeyFilePath,
   resolveDefaultStorageDir as resolveSharedDefaultStorageDir,
   resolveHomeAwarePath,
-  resolvePaperclipConfigPathForInstance,
-  resolvePaperclipHomeDir,
-  resolvePaperclipInstanceId,
-  resolvePaperclipInstanceRoot as resolveSharedPaperclipInstanceRoot,
+  resolveBostanConfigPathForInstance,
+  resolveBostanHomeDir,
+  resolveBostanInstanceId,
+  resolveBostanInstanceRoot as resolveSharedBostanInstanceRoot,
 } from "@bostan/shared/home-paths";
 
 export {
   expandHomePrefix,
   resolveHomeAwarePath,
-  resolvePaperclipHomeDir,
-  resolvePaperclipInstanceId,
+  resolveBostanHomeDir,
+  resolveBostanInstanceId,
 };
 
-export function resolvePaperclipInstanceRoot(instanceId?: string): string {
-  return resolveSharedPaperclipInstanceRoot({ instanceId });
+export function resolveBostanInstanceRoot(instanceId?: string): string {
+  return resolveSharedBostanInstanceRoot({ instanceId });
 }
 
 export function resolveDefaultConfigPath(instanceId?: string): string {
-  return resolvePaperclipConfigPathForInstance({ instanceId });
+  return resolveBostanConfigPathForInstance({ instanceId });
 }
 
 export function resolveDefaultContextPath(): string {
-  return path.resolve(resolvePaperclipHomeDir(), "context.json");
+  return path.resolve(resolveBostanHomeDir(), "context.json");
 }
 
 export function resolveDefaultCliAuthPath(): string {
-  return path.resolve(resolvePaperclipHomeDir(), "auth.json");
+  return path.resolve(resolveBostanHomeDir(), "auth.json");
 }
 
 export function resolveDefaultEmbeddedPostgresDir(instanceId?: string): string {
@@ -57,10 +57,10 @@ export function resolveDefaultBackupDir(instanceId?: string): string {
 }
 
 export function describeLocalInstancePaths(instanceId?: string) {
-  const resolvedInstanceId = resolvePaperclipInstanceId(instanceId);
-  const instanceRoot = resolvePaperclipInstanceRoot(resolvedInstanceId);
+  const resolvedInstanceId = resolveBostanInstanceId(instanceId);
+  const instanceRoot = resolveBostanInstanceRoot(resolvedInstanceId);
   return {
-    homeDir: resolvePaperclipHomeDir(),
+    homeDir: resolveBostanHomeDir(),
     instanceId: resolvedInstanceId,
     instanceRoot,
     configPath: resolveDefaultConfigPath(resolvedInstanceId),
@@ -71,3 +71,10 @@ export function describeLocalInstancePaths(instanceId?: string) {
     storageDir: resolveDefaultStorageDir(resolvedInstanceId),
   };
 }
+
+/** Compatibility exports; keep existing CLI consumers on the same instance. */
+export {
+  resolveBostanHomeDir as resolvePaperclipHomeDir,
+  resolveBostanInstanceId as resolvePaperclipInstanceId,
+  resolveBostanInstanceRoot as resolvePaperclipInstanceRoot,
+};

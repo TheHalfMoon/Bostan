@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { config as loadDotenv } from "dotenv";
-import { resolvePaperclipEnvPath } from "./paths.js";
+import { resolveBostanEnvPath } from "./paths.js";
 import { maybeRepairLegacyWorktreeConfigAndEnvFiles } from "./worktree-config.js";
 import { shouldLoadWorkingDirectoryEnv } from "./env-file-policy.js";
 import { applyEmptyWorktreeSigningSecrets } from "./dev-runner-worktree.js";
@@ -33,7 +33,7 @@ import {
   resolveHomeAwarePath,
 } from "./home-paths.js";
 
-const PAPERCLIP_ENV_FILE_PATH = resolvePaperclipEnvPath();
+const PAPERCLIP_ENV_FILE_PATH = resolveBostanEnvPath();
 if (existsSync(PAPERCLIP_ENV_FILE_PATH)) {
   loadDotenv({ path: PAPERCLIP_ENV_FILE_PATH, override: false, quiet: true });
 }

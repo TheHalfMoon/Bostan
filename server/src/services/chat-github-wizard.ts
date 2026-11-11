@@ -254,12 +254,12 @@ export function githubChatWizardService(
         endpointId: id,
         state: "enrollment",
         message:
-          "Use Paperclip Cloud to receive GitHub events for this local instance.",
+          "Use Bostan Cloud to receive GitHub events for this local instance.",
       } satisfies GitHubAppWizardState;
     }
     if (!(await cloud.githubAppsAvailable()))
       throw conflict(
-        "GitHub App setup is not enabled on your Paperclip Cloud connector yet.",
+        "GitHub App setup is not enabled on your Bostan Cloud connector yet.",
       );
     const trustedOrigin = origin();
     const session = await db.transaction(async (tx) => {
@@ -405,7 +405,7 @@ export function githubChatWizardService(
   ) {
     const cloud = connector();
     if (!cloud || !session.handoff)
-      throw conflict("Restore Paperclip Cloud enrollment");
+      throw conflict("Restore Bostan Cloud enrollment");
     const material = await cloud.claimGitHubApp({
       subject: session.userId,
       companyId: session.companyId,
@@ -502,7 +502,7 @@ export function githubChatWizardService(
   async function restartRegistration(id: string, userId: string, registrationId: string) {
     const bot = await endpoint(id, userId);
     const cloud = connector();
-    if (!cloud) throw conflict("Restore Paperclip Cloud enrollment before continuing");
+    if (!cloud) throw conflict("Restore Bostan Cloud enrollment before continuing");
     const trustedOrigin = origin();
     const created = await db.transaction(async (tx) => {
       const [locked] = await tx.select().from(chatEndpoints)
@@ -589,7 +589,7 @@ export function githubChatWizardService(
       throw forbidden("The configuring member must recover this registration");
     if (!cloud)
       throw conflict(
-        "Restore Paperclip Cloud enrollment before reconnecting this App",
+        "Restore Bostan Cloud enrollment before reconnecting this App",
       );
     const binding = { subject: userId, companyId: bot.companyId };
     const state = await cloud.githubApp({
@@ -704,7 +704,7 @@ export function githubChatWizardService(
           endpointId: id,
           state: "enrollment",
           message:
-            "Restore this instance's Paperclip Cloud enrollment to resume.",
+            "Restore this instance's Bostan Cloud enrollment to resume.",
         };
       const [connection] = await db
         .select({ refs: toolConnections.credentialSecretRefs })
@@ -1139,7 +1139,7 @@ export function githubChatWizardService(
     const challenge = createHash("sha256").update(verifier).digest("base64url");
     if (session.handoff?.cloudId) {
       const cloud = connector();
-      if (!cloud) throw conflict("Restore Paperclip Cloud enrollment");
+      if (!cloud) throw conflict("Restore Bostan Cloud enrollment");
       const result = await cloud.githubApp({
         subject: userId,
         companyId: bot.companyId,
@@ -1338,7 +1338,7 @@ export function githubChatWizardService(
     if (!session?.handoff || !claimId)
       throw forbidden("GitHub return did not match this instance");
     const cloud = connector();
-    if (!cloud) throw conflict("Restore Paperclip Cloud enrollment");
+    if (!cloud) throw conflict("Restore Bostan Cloud enrollment");
     const opened = await cloud.claimGitHubApp({
       subject: session.userId,
       companyId: session.companyId,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { validatePrpStructuredRunResult } from "../../packages/paperclip-runner/src/protocol/replay-contract.js";
-import { normalizePrpResultSignals } from "../../packages/paperclip-runner/src/protocol/result-normalization.js";
+import { validatePrpStructuredRunResult } from "../../packages/bostan-runner/src/protocol/replay-contract.js";
+import { normalizePrpResultSignals } from "../../packages/bostan-runner/src/protocol/result-normalization.js";
 import { narratives } from "./narratives.js";
 import { observe } from "./observe.js";
 const result = {

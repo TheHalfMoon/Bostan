@@ -24,7 +24,7 @@ import {
   recordWorkspaceConfigFreshnessOperation,
   prepareProjectRepositoryWorkspaces,
 } from "./workspaces.js";
-import { resolvePaperclipInstanceRoot } from "../../home-paths.js";
+import { resolveBostanInstanceRoot } from "../../home-paths.js";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { CONTROLLER_PROVISION_COPY_ONLY, workspaceRequiresCopyOnlyProvisioning } from "../workspace-host-provision.js";
@@ -271,7 +271,7 @@ async function prepareHeartbeatWorkspaceLocked(db: Db, input: HeartbeatWorkspace
       if (isDotRun) {
         // This is private controller storage, never a provider filesystem.
         // External providers receive workspace.access=none and cwd=null.
-        const cwd = path.resolve(resolvePaperclipInstanceRoot(), "runtime", "paperclip-runner", (persistedNativeExecutionInput?.provider.kind ?? mergedConfig.provider) === "muse" ? "muse-controllers" : "dot-controllers", agent.companyId, run.id);
+        const cwd = path.resolve(resolveBostanInstanceRoot(), "runtime", "paperclip-runner", (persistedNativeExecutionInput?.provider.kind ?? mergedConfig.provider) === "muse" ? "muse-controllers" : "dot-controllers", agent.companyId, run.id);
         await fs.mkdir(cwd, { recursive: true, mode: 0o700 });
         return { cwd, source: "agent_home" as const, projectId: null, workspaceId: null, repoUrl: null, repoRef: null,
           workspaceHints: [], warnings: [], baseCwdFallback: false, materializationFailures: [], additionalWorkspaces: [], referencedProjectFailures: [] };

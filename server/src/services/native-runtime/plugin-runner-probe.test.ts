@@ -8,7 +8,7 @@ import WebSocket from "ws";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { RunnerProcessHandle, RunnerProcessLaunchSpec } from "../../vendor/paperclip-runner/index.js";
 import * as runnerRuntime from "../../vendor/paperclip-runner/index.js";
-const { spawnRunner } = await import(new URL("../../../../packages/paperclip-runner/src/control-plane/durable-prp-control-plane.ts", import.meta.url).href) as {
+const { spawnRunner } = await import(new URL("../../../../packages/bostan-runner/src/control-plane/durable-prp-control-plane.ts", import.meta.url).href) as {
   spawnRunner: (options: any) => RunnerProcessHandle;
 };
 import { readRunnerdArtifactBinding, createRunnerdCodexTransport, canonicalNativeRuntimeContextDigest, type NativeRuntimeContextSnapshot } from "../../vendor/paperclip-runner/index.js";
@@ -37,7 +37,7 @@ vi.mock("../../realtime/runner-prp-outbound.js", async importOriginal => {
 
 describe("plugin Runner setup", () => {
   beforeAll(() => {
-    execFileSync("cargo", ["build", "--release", "--locked", "--manifest-path", "packages/paperclip-runner/runner/Cargo.toml",
+    execFileSync("cargo", ["build", "--release", "--locked", "--manifest-path", "packages/bostan-runner/runner/Cargo.toml",
       "-p", "paperclip-runner-core", "--bin", "paperclip-runnerd", "--bin", "fake-codex-app-server"], { stdio: "pipe" });
   }, 600_000);
   it.each([
@@ -84,8 +84,8 @@ describe("plugin Runner setup", () => {
     await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
     const port = (server.address() as { port: number }).port;
     await new Promise<void>(resolve => server.close(() => resolve()));
-    const runnerBinary = resolve("packages/paperclip-runner/runner/target/release/paperclip-runnerd");
-    const fakeCodex = resolve("packages/paperclip-runner/runner/target/release/fake-codex-app-server");
+    const runnerBinary = resolve("packages/bostan-runner/runner/target/release/paperclip-runnerd");
+    const fakeCodex = resolve("packages/bostan-runner/runner/target/release/fake-codex-app-server");
     const codexCommand = join(root, "codex");
     await writeFile(codexCommand, `#!/bin/sh\nexec '${fakeCodex.replace(/'/g, "'\\''")}' "$@" --state-file '${join(root, "fake-state.json")}' ${mode === "wrong-model" ? "--returned-model wrong-model" : ""}\n`);
     await chmod(codexCommand, 0o700);

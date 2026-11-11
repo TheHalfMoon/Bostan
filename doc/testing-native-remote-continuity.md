@@ -18,7 +18,7 @@ It does not qualify a live model or a sandbox provider API.
 
 Use a disposable Linux container with Node.js, `sh`, `tar`, `base64`, `ps`, and
 `setsid`. Build `paperclip-runnerd` and `fake-codex-app-server` from the checkout's
-`packages/paperclip-runner/runner/Cargo.toml` for that container's architecture.
+`packages/bostan-runner/runner/Cargo.toml` for that container's architecture.
 Keep the Linux runner binary on the host as well: the product hashes and stages
 that artifact. Put the fake provider at `/opt/continuity/fake-codex-app-server`
 inside the container. Do not put credentials in this container.

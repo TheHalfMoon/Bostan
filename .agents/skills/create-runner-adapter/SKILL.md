@@ -24,7 +24,7 @@ Source links identify code to inspect, not evidence that a new integration passe
 
 If this skill was installed separately, locate the target checkout from the
 current workspace or `git rev-parse --show-toplevel`. Verify it contains
-`packages/paperclip-runner` and `tests/runner-e2e`; resolve `doc/` paths there.
+`packages/bostan-runner` and `tests/runner-e2e`; resolve `doc/` paths there.
 Follow that checkout's `AGENTS.md` and scoped rules before editing.
 
 ## Work sequence

@@ -55,7 +55,7 @@ import {
 import {
   resolveDefaultAgentWorkspaceDir,
   resolveManagedProjectWorkspaceDir,
-  resolvePaperclipInstanceRoot,
+  resolveBostanInstanceRoot,
 } from "../../home-paths.js";
 import {
   formatManagedGitWorktreeBranchInspection,
@@ -3366,7 +3366,7 @@ export function createHeartbeatWorkspaceResolver(db: Db) {
       workspace,
       boundProjectWorkspace,
       candidateBaseCwds,
-      managedSourceRoot: resolvePaperclipInstanceRoot(),
+      managedSourceRoot: resolveBostanInstanceRoot(),
       materializeOriginalRepository: workspace.repoUrl && workspace.projectId ? async () => {
         const original = await ensureManagedProjectWorkspace({
           companyId: agent.companyId,

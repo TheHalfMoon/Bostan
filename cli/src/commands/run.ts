@@ -9,12 +9,12 @@ import { onboard } from "./onboard.js";
 import { doctor } from "./doctor.js";
 import { loadPaperclipEnvFile } from "../config/env.js";
 import { configExists, resolveConfigPath } from "../config/store.js";
-import type { PaperclipConfig } from "../config/schema.js";
+import type { BostanConfig } from "../config/schema.js";
 import { readConfig } from "../config/store.js";
 import {
   describeLocalInstancePaths,
-  resolvePaperclipHomeDir,
-  resolvePaperclipInstanceId,
+  resolveBostanHomeDir,
+  resolveBostanInstanceId,
 } from "../config/home.js";
 import { assertForegroundRunAllowed } from "../services/service-manager.js";
 import { removeRuntimeInfoForPid, writeRuntimeInfo } from "../runtime-info.js";
@@ -47,13 +47,13 @@ export interface StartedServer {
 }
 
 export async function runCommand(opts: RunOptions): Promise<void> {
-  const instanceId = resolvePaperclipInstanceId(opts.instance);
+  const instanceId = resolveBostanInstanceId(opts.instance);
   process.env.PAPERCLIP_INSTANCE_ID = instanceId;
   if (!opts.skipServiceManagerCheck) {
     await assertForegroundRunAllowed(instanceId, opts.force);
   }
 
-  const homeDir = resolvePaperclipHomeDir();
+  const homeDir = resolveBostanHomeDir();
   fs.mkdirSync(homeDir, { recursive: true });
 
   const paths = describeLocalInstancePaths(instanceId);
@@ -109,7 +109,7 @@ export async function runCommand(opts: RunOptions): Promise<void> {
     process.exit(1);
   }
 
-  p.log.step("Starting Paperclip server...");
+  p.log.step("Starting Bostan server...");
   const startedServer = await importServerEntry();
   writeRuntimeInfo({
     schemaVersion: 1,
@@ -142,7 +142,7 @@ export async function runCommand(opts: RunOptions): Promise<void> {
 }
 
 function resolveBootstrapInviteBaseUrl(
-  config: PaperclipConfig,
+  config: BostanConfig,
   startedServer: StartedServer,
 ): string {
   const explicitBaseUrl =
@@ -208,13 +208,13 @@ function ensureDevWorkspaceBuildDeps(projectRoot: string): void {
 
   if (result.error) {
     throw new Error(
-      `Failed to prepare workspace build artifacts before starting the Paperclip dev server.\n${formatError(result.error)}`,
+      `Failed to prepare workspace build artifacts before starting the Bostan dev server.\n${formatError(result.error)}`,
     );
   }
 
   if ((result.status ?? 1) !== 0) {
     throw new Error(
-      "Failed to prepare workspace build artifacts before starting the Paperclip dev server.",
+      "Failed to prepare workspace build artifacts before starting the Bostan dev server.",
     );
   }
 }
@@ -239,26 +239,26 @@ async function importServerEntry(): Promise<StartedServer> {
     const missingServerEntrypoint = !missingSpecifier || missingSpecifier === "@bostan/server";
     if (isModuleNotFoundError(err) && missingServerEntrypoint) {
       throw new Error(
-        `Could not locate a Paperclip server entrypoint.\n` +
+        `Could not locate a Bostan server entrypoint.\n` +
           `Tried: ${devEntry}, @bostan/server\n` +
           `${formatError(err)}`,
       );
     }
     throw new Error(
-      `Paperclip server failed to start.\n` +
+      `Bostan server failed to start.\n` +
         `${formatError(err)}`,
     );
   }
 }
 
-function shouldGenerateBootstrapInviteAfterStart(config: PaperclipConfig): boolean {
+function shouldGenerateBootstrapInviteAfterStart(config: BostanConfig): boolean {
   return config.server.deploymentMode === "authenticated" && config.database.mode === "embedded-postgres";
 }
 
 async function startServerFromModule(mod: unknown, label: string): Promise<StartedServer> {
   const startServer = (mod as { startServer?: () => Promise<StartedServer> }).startServer;
   if (typeof startServer !== "function") {
-    throw new Error(`Paperclip server entrypoint did not export startServer(): ${label}`);
+    throw new Error(`Bostan server entrypoint did not export startServer(): ${label}`);
   }
   return await startServer();
 }

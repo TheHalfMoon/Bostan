@@ -2541,7 +2541,7 @@ export {
 } from "./routine-variables.js";
 
 export {
-  paperclipConfigSchema,
+  bostanConfigSchema,
   configMetaSchema,
   llmConfigSchema,
   databaseBackupConfigSchema,
@@ -2556,12 +2556,12 @@ export {
   secretsLocalEncryptedConfigSchema,
   telemetryConfigSchema,
   updatesConfigSchema,
-  mergePaperclipConfig,
-  findPaperclipConfigKeyWarnings,
+  mergeBostanConfig,
+  findBostanConfigKeyWarnings,
   type ConfigKeyWarning,
   type TelemetryConfig,
   type UpdatesConfig,
-  type PaperclipConfig,
+  type BostanConfig,
   type LlmConfig,
   type DatabaseBackupConfig,
   type DatabaseConfig,
@@ -2842,3 +2842,11 @@ export * from "./prompt-injection-prevention.js";
 
 export * from "./workspace-provider.js";
 export * from "./workflows.js";
+
+/** Compatibility exports for callers built against the previous API spelling. */
+export {
+  bostanConfigSchema as paperclipConfigSchema,
+  mergeBostanConfig as mergePaperclipConfig,
+  findBostanConfigKeyWarnings as findPaperclipConfigKeyWarnings,
+  type BostanConfig as PaperclipConfig,
+} from "./config-schema.js";

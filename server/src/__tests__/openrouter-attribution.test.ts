@@ -11,8 +11,8 @@ describe("Paperclip OpenRouter connection attribution", () => {
   // until a Pi profile requalification moves it to the Bostan policy. Until then it
   // must not drift, and its destination matching must agree with the control plane.
   it("keeps the standalone Runner policy frozen at its qualified profile pin", async () => {
-    const runnerUrl = new URL("../../../packages/paperclip-runner/src/drivers/openrouter-attribution.ts", import.meta.url);
-    const profile = JSON.parse(await readFile(new URL("../../../packages/paperclip-runner/test-fixtures/pi-acp/profile-v28-identity.json", import.meta.url), "utf8"));
+    const runnerUrl = new URL("../../../packages/bostan-runner/src/drivers/openrouter-attribution.ts", import.meta.url);
+    const profile = JSON.parse(await readFile(new URL("../../../packages/bostan-runner/test-fixtures/pi-acp/profile-v28-identity.json", import.meta.url), "utf8"));
     expect(createHash("sha256").update(await readFile(runnerUrl)).digest("hex")).toBe(profile.declaration.openRouterAttributionSourceSha256);
     const runner = await import(runnerUrl.href) as typeof import("@bostan/shared/openrouter-attribution");
     for (const url of ["https://openrouter.ai/api/v1", "https://eu.openrouter.ai/api/v1", "https://us.openrouter.ai/api/v1",

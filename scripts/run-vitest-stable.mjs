@@ -97,7 +97,7 @@ const nativeRunnerSuites = [
 // workflows inherit the caller's GITHUB_WORKFLOW), the last Verify Paperclip
 // Runner vitest shard runs the native-runner group instead, because those
 // lanes restore the shared release-runner-v2 Rust cache (see
-// packages/paperclip-runner/scripts/run-pr-vitest-lane.mjs). Every other
+// packages/bostan-runner/scripts/run-pr-vitest-lane.mjs). Every other
 // caller of the same group keeps the suite in the server shards, so a renamed or
 // unknown workflow degrades to today's slower-but-covered behavior rather
 // than dropping the suite.

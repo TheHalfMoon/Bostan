@@ -2,8 +2,8 @@ import path from "node:path";
 import {
   DEFAULT_PAPERCLIP_INSTANCE_ID,
   expandHomePrefix,
-  resolvePaperclipConfigPathForInstance,
-  resolvePaperclipInstanceId,
+  resolveBostanConfigPathForInstance,
+  resolveBostanInstanceId,
 } from "../packages/shared/src/home-paths.ts";
 
 export interface AppliedDevRunnerOptions {
@@ -57,11 +57,11 @@ export function applyDevRunnerOptions(
 
   env.PAPERCLIP_HOME = dataDir;
   if (!hasExplicitConfig) {
-    const instanceId = resolvePaperclipInstanceId(
+    const instanceId = resolveBostanInstanceId(
       env.PAPERCLIP_INSTANCE_ID ?? DEFAULT_PAPERCLIP_INSTANCE_ID,
     );
     env.PAPERCLIP_INSTANCE_ID = instanceId;
-    env.PAPERCLIP_CONFIG = resolvePaperclipConfigPathForInstance({
+    env.PAPERCLIP_CONFIG = resolveBostanConfigPathForInstance({
       homeDir: dataDir,
       instanceId,
     });

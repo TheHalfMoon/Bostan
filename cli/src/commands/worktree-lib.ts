@@ -1,6 +1,6 @@
 import { randomInt } from "node:crypto";
 import path from "node:path";
-import type { PaperclipConfig } from "../config/schema.js";
+import type { BostanConfig } from "../config/schema.js";
 import { expandHomePrefix } from "../config/home.js";
 
 export const DEFAULT_WORKTREE_HOME = "~/.paperclip-worktrees";
@@ -237,12 +237,12 @@ export function rewriteLocalUrlPort(rawUrl: string | undefined, port: number): s
 }
 
 export function buildWorktreeConfig(input: {
-  sourceConfig: PaperclipConfig | null;
+  sourceConfig: BostanConfig | null;
   paths: WorktreeLocalPaths;
   serverPort: number;
   databasePort: number;
   now?: Date;
-}): PaperclipConfig {
+}): BostanConfig {
   const { sourceConfig, paths, serverPort, databasePort } = input;
   const nowIso = (input.now ?? new Date()).toISOString();
 

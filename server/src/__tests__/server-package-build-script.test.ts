@@ -68,7 +68,7 @@ describe("server package build script", () => {
       "pnpm --filter @bostan/runner build",
     );
     expect(packageJson.scripts?.build.startsWith("pnpm run prepare:runner-vendor && ")).toBe(true);
-    expect(copierSource).toContain('["packages/paperclip-runner/dist","server/dist/vendor/paperclip-runner"]');
+    expect(copierSource).toContain('["packages/bostan-runner/dist","server/dist/vendor/paperclip-runner"]');
   });
 
   it("brackets the Runner's build with its input recording", () => {
@@ -79,7 +79,7 @@ describe("server package build script", () => {
     // first step reads anything (--begin) and compared again at the end
     // (--finish). Nothing else in the chain may touch the stamp.
     const runner = JSON.parse(readFileSync(new URL(
-      "../../../packages/paperclip-runner/package.json", import.meta.url,
+      "../../../packages/bostan-runner/package.json", import.meta.url,
     ), "utf8")) as { scripts: Record<string, string> };
     const steps = runner.scripts.build.split(" && ");
     expect(steps.at(0)).toBe("node scripts/record-build-inputs.mjs --begin");
@@ -98,11 +98,11 @@ describe("server package build script", () => {
       write("server/package.json", JSON.stringify({ name: "@bostan/server" }));
       for (const dir of ["server/src/onboarding-assets", "server/src/built-ins", "server/src/services/scripts"]) write(`${dir}/.keep`, "");
       for (const name of ["install-copilot-assets.mjs", "materialize-copilot-binary.mjs", "copilot-inner-distribution.mjs"]) {
-        write(`packages/paperclip-runner/scripts/${name}`, "");
+        write(`packages/bostan-runner/scripts/${name}`, "");
       }
       const relative = "remote-provider-packs/linux-x64/provider-pack.json";
       const destination = path.join(root, "server/dist/vendor/paperclip-runner", relative);
-      write(`packages/paperclip-runner/dist/${relative}`, "qualified image identity", 0o444);
+      write(`packages/bostan-runner/dist/${relative}`, "qualified image identity", 0o444);
       write(`server/dist/vendor/paperclip-runner/${relative}`, "previous image identity", 0o444);
       copyServerBuildAssets(root);
       expect(readFileSync(destination, "utf8")).toBe("qualified image identity");
@@ -116,7 +116,7 @@ describe("server package build script", () => {
       scripts?: Record<string, string>;
     };
 
-    // See scripts/verify-runner-vendor-dependencies.mjs: packages/paperclip-runner
+    // See scripts/verify-runner-vendor-dependencies.mjs: packages/bostan-runner
     // is vendored with a raw copy of its compiled dist/, so every runtime
     // dependency it imports must also be a direct dependency of server. This
     // check derives that requirement from an esbuild scan of the vendored
@@ -136,7 +136,7 @@ describe("server package build script", () => {
     // generate-replay-goldens.mjs already does, not through a `check:*`
     // wrapper that rebuilds first for standalone use.
     const runner = JSON.parse(readFileSync(new URL(
-      "../../../packages/paperclip-runner/package.json", import.meta.url,
+      "../../../packages/bostan-runner/package.json", import.meta.url,
     ), "utf8")) as { scripts: Record<string, string> };
     const steps = runner.scripts.build.split(" && ");
     const wrapped = steps
@@ -160,7 +160,7 @@ describe("server package build script", () => {
   it("ships the pinned OpenCode dependency resolved by the vendored Runner", () => {
     const server = JSON.parse(readFileSync(packageJsonPath, "utf8"));
     const runner = JSON.parse(readFileSync(new URL(
-      "../../../packages/paperclip-runner/package.json", import.meta.url,
+      "../../../packages/bostan-runner/package.json", import.meta.url,
     ), "utf8"));
     // createRequire resolution is dynamic and is not covered by the import scan.
     expect(server.dependencies["opencode-ai"]).toBe("1.18.34");
@@ -171,7 +171,7 @@ describe("server package build script", () => {
     const shim = readFileSync(runnerShimPath, "utf8");
 
     expect(shim).toContain(
-      '"../../../../packages/paperclip-runner/src/index.ts"',
+      '"../../../../packages/bostan-runner/src/index.ts"',
     );
     expect(shim).not.toContain(
       'export * from "@bostan/runner"',

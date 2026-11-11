@@ -356,7 +356,7 @@ test("only the master Rust lane writes the crate, after a lookup, with the reade
   // The saved artifacts come from the readers' exact command, on a crate
   // cleaned of the test-profile variants the lane's checks built.
   const build = step(body, BUILD_STEP);
-  assert.match(build, /working-directory: packages\/paperclip-runner\n/);
+  assert.match(build, /working-directory: packages\/bostan-runner\n/);
   assert.match(build, /set -euo pipefail\n\s+cargo clean --release --manifest-path runner\/Cargo\.toml -p paperclip-runner-core\n\s+pnpm build:binary\n/);
   const runnerScripts = JSON.parse(readFileSync(path.join(repoRoot, RUNNER_PACKAGE, "package.json"), "utf8")).scripts;
   assert.match(runnerScripts["build:binary"], /^cargo build --release --manifest-path runner\/Cargo\.toml --locked -p paperclip-runner-core --bin paperclip-runnerd && /);

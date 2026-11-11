@@ -60,9 +60,9 @@ import { findUIAdapter } from "../adapters/registry";
 import { useLiveRunTranscripts } from "./transcript/useLiveRunTranscripts";
 import { useSecondTick } from "../hooks/useSecondTick";
 import {
-  usePaperclipIssueRuntime,
-  type PaperclipIssueRuntimeReassignment,
-} from "../hooks/usePaperclipIssueRuntime";
+  useBostanIssueRuntime,
+  type BostanIssueRuntimeReassignment,
+} from "../hooks/useBostanIssueRuntime";
 import { useOptionalToastActions } from "../context/ToastContext";
 import { copyTextToClipboard } from "../lib/clipboard";
 import {
@@ -245,7 +245,7 @@ import {
   Hammer,
   Loader2,
   MoreHorizontal,
-  Paperclip,
+  Paperclip as AttachmentIcon,
   PauseCircle,
   Search,
   Square,
@@ -1023,7 +1023,7 @@ function toValidIsoString(
 
 function parseReassignment(
   target: string,
-): PaperclipIssueRuntimeReassignment | null {
+): BostanIssueRuntimeReassignment | null {
   if (!target || target === "__none__") {
     return { assigneeAgentId: null, assigneeUserId: null };
   }
@@ -3668,7 +3668,7 @@ function SystemNoticeCommentContent({
               {copiedLink ? (
                 <Check className="h-3.5 w-3.5" />
               ) : (
-                <Paperclip className="h-3.5 w-3.5" />
+                <AttachmentIcon className="h-3.5 w-3.5" />
               )}
             </button>
           ) : null}
@@ -5399,7 +5399,7 @@ const IssueChatComposer = forwardRef<
         >
           <div className="flex max-w-md items-center gap-3 rounded-md bg-background/80 px-3 py-2 text-left shadow-sm ring-1 ring-border/60">
             <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-              <Paperclip className="h-4 w-4" />
+              <AttachmentIcon className="h-4 w-4" />
             </span>
             <div className="min-w-0">
               <div className="text-sm font-medium text-foreground">
@@ -6139,7 +6139,7 @@ export function IssueChatThread({
     },
     [onAdd, issueAssigneeAgentId],
   );
-  const runtime = usePaperclipIssueRuntime({
+  const runtime = useBostanIssueRuntime({
     messages,
     isRunning,
     onSend: ({ body, reopen, reassignment, attachmentIds }) =>

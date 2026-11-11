@@ -285,7 +285,7 @@ it("wires exact-session recovery and guarded selected identity into heartbeat pe
 const embeddedSupport = await getEmbeddedPostgresTestSupport();
 const recoveryFakeCodex = resolve(
   import.meta.dirname,
-  "../../../../packages/paperclip-runner/test/fixtures/fake-final-burst-codex-app-server.mjs",
+  "../../../../packages/bostan-runner/test/fixtures/fake-final-burst-codex-app-server.mjs",
 );
 
 (embeddedSupport.supported && existsSync(defaultCapabilityRunnerdBinary())
@@ -551,7 +551,7 @@ const recoveryFakeCodex = resolve(
     // The production resolver prefers installed Codex over PATH. Explicitly
     // bind this disposable fixture so it can never invoke a real provider.
     const codexCommandResolver = await vi.importActual<{ resolveCodexCommand: () => string }>(
-      "../../../../packages/paperclip-runner/src/drivers/codex/codex-command.js",
+      "../../../../packages/bostan-runner/src/drivers/codex/codex-command.js",
     );
     const resolveFixtureCodex = vi.spyOn(codexCommandResolver, "resolveCodexCommand")
       .mockReturnValue(join(bin, "codex"));

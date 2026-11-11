@@ -12,7 +12,7 @@ const fixture = path.join(repoRoot, "scripts/mcp-fixtures/servers/acp-echo-agent
 const roots: string[] = [];
 const now = new Date("2026-07-15T20:00:00.000Z");
 // Exercise both pinned dependency patches through the same real ACP child.
-const runnerRequire = createRequire(path.join(repoRoot, "packages/paperclip-runner/package.json"));
+const runnerRequire = createRequire(path.join(repoRoot, "packages/bostan-runner/package.json"));
 const runnerAcpx = await import(runnerRequire.resolve("acpx/runtime"));
 
 afterEach(async () => {

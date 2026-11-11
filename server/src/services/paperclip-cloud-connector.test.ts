@@ -54,7 +54,7 @@ function config() {
   };
 }
 
-describe("Paperclip Cloud connector", () => {
+describe("Bostan Cloud connector", () => {
   it("accepts actual partial Workspace consent inside an envelope bound to the full requested profile", async () => {
     const keys = config();
     const scopes = ["https://www.googleapis.com/auth/documents"];
@@ -120,7 +120,7 @@ describe("Paperclip Cloud connector", () => {
       status: originRejectionContract.status,
     }))).toMatchObject({
       code: "CONNECTOR_REQUEST_FAILED", status: 400,
-      message: "Paperclip Cloud connector rejected the request (operation=session, status=400, reason=RETURN_ORIGIN_NOT_ENROLLED)",
+      message: "Bostan Cloud connector rejected the request (operation=session, status=400, reason=RETURN_ORIGIN_NOT_ENROLLED)",
     });
   });
 
@@ -132,7 +132,7 @@ describe("Paperclip Cloud connector", () => {
     expect(error).toBeInstanceOf(PaperclipCloudConnectorError);
     expect(error).toMatchObject({
       code: "CONNECTOR_REQUEST_FAILED", status: 400,
-      message: "Paperclip Cloud connector rejected the request (operation=session, status=400, reason=RETURN_ORIGIN_NOT_ENROLLED)",
+      message: "Bostan Cloud connector rejected the request (operation=session, status=400, reason=RETURN_ORIGIN_NOT_ENROLLED)",
     });
     expect(JSON.stringify(error)).not.toMatch(/DO_NOT_REPORT|private-state|access-secret|private\.example/);
   });
@@ -146,7 +146,7 @@ describe("Paperclip Cloud connector", () => {
     const error = await rejection(new Response(body, { status: 409 }));
     expect(error).toMatchObject({
       code: "REAUTHORIZATION_REQUIRED", status: 409,
-      message: "Paperclip Cloud connector rejected the request (operation=session, status=409, reason=UNKNOWN_BROKER_ERROR)",
+      message: "Bostan Cloud connector rejected the request (operation=session, status=409, reason=UNKNOWN_BROKER_ERROR)",
     });
   });
 

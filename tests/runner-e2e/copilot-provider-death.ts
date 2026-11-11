@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { COPILOT_LAUNCH_ARGUMENTS } from "../../packages/paperclip-runner/src/drivers/acpx/copilot-profile.js";
+import { COPILOT_LAUNCH_ARGUMENTS } from "../../packages/bostan-runner/src/drivers/acpx/copilot-profile.js";
 import { isValidNativePrpEnvelope } from "./native-event-envelope.js";
 import { copilotEditOriginForPermission, readCopilotToolEvidence } from "./copilot-evidence.js";
 import { readCopilotContextRead } from "./copilot-context-evidence.js";

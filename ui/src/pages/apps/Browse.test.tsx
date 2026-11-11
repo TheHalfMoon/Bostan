@@ -95,7 +95,7 @@ vi.mock("@/lib/router", () => ({
 vi.mock("@/context/CompanyContext", () => ({
   useCompany: () => ({
     selectedCompanyId: "company-1",
-    selectedCompany: { id: "company-1", name: "Paperclip" },
+    selectedCompany: { id: "company-1", name: "Bostan" },
   }),
 }));
 
@@ -211,7 +211,7 @@ describe("Connectors landing page", () => {
           tagline: "Search and draft email.",
           availability: {
             available: false,
-            reason: "Gmail is not available on this Paperclip instance yet.",
+            reason: "Gmail is not available on this Bostan instance yet.",
           },
         }),
       ],
@@ -283,7 +283,7 @@ describe("Connectors landing page", () => {
     expect(chatSetupMock).not.toHaveBeenCalled();
   });
 
-  it("keeps assistant setup in the Paperclip catalog when filtering connection sources", async () => {
+  it("keeps assistant setup in the Bostan catalog when filtering connection sources", async () => {
     await renderBrowse(false);
     const assistantButton = () => container.querySelector('[aria-label="Set up Assistant Connection (MCP)"]');
     expect(assistantButton()).not.toBeNull();
@@ -297,7 +297,7 @@ describe("Connectors landing page", () => {
     expect(container.textContent).not.toContain("No connectors match");
   });
 
-  const assistantGrant = { id: "grant", companyId: "company-1", companyName: "Paperclip", clientName: "Claude", scopes: ["paperclip:read"], createdAt: "2026-10-06T00:00:00Z", revokedAt: null };
+  const assistantGrant = { id: "grant", companyId: "company-1", companyName: "Bostan", clientName: "Claude", scopes: ["paperclip:read"], createdAt: "2026-10-06T00:00:00Z", revokedAt: null };
 
   it("shows active assistant grants in Installed and removes them after revocation", async () => {
     assistantConnectionsMock.mockResolvedValue([assistantGrant]);
@@ -980,7 +980,7 @@ describe("Connectors landing page", () => {
 
   it("keeps Notebook removal available while hiding reconnect and new-account controls", async () => {
     listGalleryMock.mockResolvedValue({ apps: [getAppStoreDefinition("paperclip-notebook")] });
-    listApplicationsMock.mockResolvedValue({ applications: [application({ id: "notebook-app", name: "Paperclip Notebook",
+    listApplicationsMock.mockResolvedValue({ applications: [application({ id: "notebook-app", name: "Bostan Notebook",
       applicationKey: "app-gallery:paperclip-notebook:one", metadata: { sourceTemplateKey: "paperclip-notebook" } })] });
     listConnectionsMock.mockResolvedValue({ connections: [connection({ id: "saved-notebook", applicationId: "notebook-app",
       name: "Notebook account", config: { sourceTemplateKey: "paperclip-notebook" }, healthStatus: "error", requiresReauthorization: true })] });

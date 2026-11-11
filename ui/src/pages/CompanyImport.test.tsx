@@ -102,7 +102,7 @@ vi.mock("../context/BreadcrumbContext", () => ({
 vi.mock("../context/CompanyContext", () => ({
   useCompany: () => ({
     selectedCompanyId: "company-1",
-    selectedCompany: { id: "company-1", name: "Paperclip" },
+    selectedCompany: { id: "company-1", name: "Bostan" },
     setSelectedCompanyId: mockSetSelectedCompanyId,
   }),
   useOptionalCompany: mockOptionalCompany,

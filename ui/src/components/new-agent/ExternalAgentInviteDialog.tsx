@@ -224,7 +224,7 @@ function MuseInvitationController({ companyId, companyName, onClose, onBack, ini
   const operatorRequired = error instanceof ApiError && (error.status === 401 || error.status === 403)
     && !invitation;
   const missingPublicOrigin = !!invitation && muse.state.isSuccess && !muse.state.data.publicOrigin;
-  const errorMessage = missingPublicOrigin ? "This instance has no public HTTPS URL for Muse. Ask your instance administrator to configure a stable public HTTPS address, then refresh setup. Muse cannot connect through a local-only address." : operatorRequired ? "Use an authenticated Paperclip instance with a public HTTPS URL and a company operator account. Local trusted access alone cannot connect Muse." : error?.message;
+  const errorMessage = missingPublicOrigin ? "This instance has no public HTTPS URL for Muse. Ask your instance administrator to configure a stable public HTTPS address, then refresh setup. Muse cannot connect through a local-only address." : operatorRequired ? "Use an authenticated Bostan instance with a public HTTPS URL and a company operator account. Local trusted access alone cannot connect Muse." : error?.message;
   return <ExternalAgentInviteContent preset="muse" companyName={companyName} prompt={muse.pairing?.setupInstruction ?? ""}
     connection={{ phase: "waiting" }} museConnection={invitation && !missingPublicOrigin && (muse.state.data || muse.state.isError) ? connection : undefined} busy={busy} error={identity.failed ? "Unable to confirm your account. Refresh to resume Muse setup." : errorMessage}
     approvalHref={pendingApproval && invitation?.approvalId ? `/approvals/${invitation.approvalId}` : undefined}
