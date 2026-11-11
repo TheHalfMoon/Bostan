@@ -122,7 +122,7 @@
   ],
   "devDependencies": {
     "@opentelemetry/context-async-hooks": "2.10.0",
-    "@opentelemetry/sdk-trace": "2.10.0",
+    "@opentelemetry/sdk-trace": "3.1.0",
     "@bostan/connector-broker": "workspace:*",
     "@bostan/runner": "workspace:*",
     "@types/compression": "^1.8.1",
