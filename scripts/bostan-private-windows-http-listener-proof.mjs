@@ -6,13 +6,13 @@
 import {spawnSync} from 'node:child_process';
 import {resolvePrivateWindowsPowerShellBinary} from './bostan-private-windows-powershell-binary.mjs';
 
-const refused = () => { throw Error('Private Windows QA HTTP listener ownership unverified'); };
+const refused = (reason = 'invalid_input') => { throw Error(`Private Windows QA HTTP listener ownership unverified [${reason}]`); };
 
 export function inspectPrivateWindowsHttpListeners(port) {
   if (process.platform !== 'win32' || !Number.isSafeInteger(port) ||
       port < 1024 || port > 65535) refused();
   let binary;
-  try { binary = resolvePrivateWindowsPowerShellBinary(); } catch { refused(); }
+  try { binary = resolvePrivateWindowsPowerShellBinary(); } catch { refused('powershell_unavailable'); }
   // The only interpolated value is a validated integer. Read-only OS query;
   // no process termination, configuration changes, or user data access.
   const script = [
@@ -26,8 +26,8 @@ export function inspectPrivateWindowsHttpListeners(port) {
     env:{SystemRoot:process.env.SystemRoot||'',WINDIR:process.env.WINDIR||''},
   });
   if (result.status !== 0 || result.signal || result.error ||
-      typeof result.stdout !== 'string' || result.stderr?.trim()) refused();
-  try { return JSON.parse(result.stdout); } catch { refused(); }
+      typeof result.stdout !== 'string' || result.stderr?.trim()) refused('query_failed');
+  try { return JSON.parse(result.stdout); } catch { refused('invalid_query_output'); }
 }
 
 /** Two independent OS snapshots must bind the sole IPv4 loopback listener to
@@ -43,19 +43,19 @@ export async function proveOwnedWindowsHttpListener({
       typeof childAlive !== 'function' || typeof inspect !== 'function' ||
       typeof pause !== 'function') refused();
   for (let sample=0; sample<2; sample++) {
-    if (childAlive() !== true) refused();
+    if (childAlive() !== true) refused('child_exited');
     let rows;
-    try { rows = await inspect(port); } catch { refused(); }
-    if (!Array.isArray(rows) || rows.length !== 1) refused();
+    try { rows = await inspect(port); } catch { refused('inspection_failed'); }
+    if (!Array.isArray(rows) || rows.length !== 1) refused('listener_count');
     const row = rows[0];
     if (!row || typeof row !== 'object' || Array.isArray(row) ||
         row.LocalAddress !== '127.0.0.1' || row.LocalPort !== port ||
-        row.OwningProcess !== expectedPid) refused();
-    if (childAlive() !== true) refused();
+        row.OwningProcess !== expectedPid) refused('listener_mismatch');
+    if (childAlive() !== true) refused('child_exited');
     if (sample === 0) {
-      try { await pause(125); } catch { refused(); }
+      try { await pause(125); } catch { refused('sampling_failed'); }
     }
   }
-  if (childAlive() !== true) refused();
+  if (childAlive() !== true) refused('child_exited');
   return true;
 }
