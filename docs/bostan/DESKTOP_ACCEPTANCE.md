@@ -27,7 +27,7 @@ deployment, signing or notarization has been performed.
 | Complete hosted Windows server/dependency/Rust build | passed, then runtime qualification failed as described below |
 | Actual NSIS construction/install/onboarding/restart/uninstall | not yet executed |
 | macOS DMG construction | CI built a candidate, then packaging cleanup failed; no accepted artifact |
-| macOS installed-app launch/data lifecycle | acceptance implementation and native evidence still required |
+| macOS installed-app launch/data lifecycle | guarded DMG install/onboarding/restart/uninstall journey implemented; native evidence pending |
 | Live model execution, update/rollback, full network capture | unqualified |
 
 The native host fixtures prove compiled workspace exports, an actual embedded
@@ -142,3 +142,23 @@ from the app's explicit file allowlist. A minimal zero-network workspace deploy
 fixture passed for both internal and external stages on Windows; this does not
 reproduce or close the macOS-specific failure. Full native CI must validate the
 actual production deploy and packaged payload.
+
+## 2026-11-11 installed macOS qualification implementation
+
+The macOS desktop job now mounts the generated DMG read-only, verifies its
+checksum, copies its application to the disposable runner's per-user
+Applications directory, detaches the DMG, and launches that installed copy.
+It drives the same real onboarding and persistent-session/agent checks as
+Windows, proves PostgreSQL stops after each close, then removes only the owned
+application bundle and verifies application data survives. Cleanup checks
+canonical paths, directory identities and a test-created data marker. Existing
+installations, data (including dangling links), non-hosted runners and operator
+machines are refused. Failed runs retain evidence rather than deleting state.
+
+The platform-independent UI journey is shared with Windows; existing assertions
+remain and both API response statuses plus reopened-page errors are checked.
+These tests defer provider setup, so neither success nor implementation proves
+real model execution, full network silence, OS trust, or update/rollback.
+Local Windows desktop tests: 21 PASS / 1 POSIX-only SKIP, including both
+operator-environment refusal guards. Workflow quarantine PASS. Actual installed
+Windows/macOS execution remains pending hosted CI.

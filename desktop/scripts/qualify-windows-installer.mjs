@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { randomBytes } from "node:crypto";
+import { qualifyInstalledApp } from "./installed-app-journey.mjs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { resolvePrivateWindowsPowerShellBinary } from "../../scripts/bostan-private-windows-powershell-binary.mjs";
@@ -19,7 +19,7 @@ const out = path.join(repo, "desktop/dist");
 const installers = fs.readdirSync(out).filter(name => name.endsWith(".exe"));
 assert.equal(installers.length, 1, "Expected exactly one prepared Windows installer");
 const appData = path.join(process.env.APPDATA, "Bostan");
-assert.equal(fs.existsSync(appData), false, "Never qualify against pre-existing Bostan data");
+assert.equal(fs.lstatSync(appData, { throwIfNoEntry: false }), undefined, "Never qualify against pre-existing Bostan data");
 const scanner = resolvePrivateWindowsPowerShellBinary();
 function uninstallRegistrations() {
   return Number(execFileSync(scanner, ["-NoProfile", "-NonInteractive", "-Command", "@(Get-ChildItem -LiteralPath 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall' -ErrorAction SilentlyContinue | Get-ItemProperty | Where-Object DisplayName -eq 'Bostan').Count"], {
@@ -62,51 +62,11 @@ try {
     await page.waitForURL(url => url.protocol === "http:" && url.hostname === "127.0.0.1", { timeout: 180000 });
     return page;
   }
-  const page = await launch();
-  let jsErrors = 0;
-  let externalRequests = 0;
-  page.on("pageerror", () => jsErrors++);
-  page.on("request", request => {
-    const url = new URL(request.url());
-    if (["http:", "https:"].includes(url.protocol) && url.hostname !== "127.0.0.1") externalRequests++;
+  await qualifyInstalledApp({
+    launch,
+    close: async () => { await application.close(); application = null; },
+    afterClose: noPostgres,
   });
-  await page.getByRole("heading", { name: "Finish setting up Bostan" }).waitFor();
-  await page.getByRole("link", { name: "Sign in / Create account" }).click();
-  await page.getByRole("button", { name: "Create one", exact: true }).click();
-  await page.getByLabel("Name", { exact: true }).fill("Desktop QA");
-  await page.getByLabel("Email", { exact: true }).fill(`desktop-${randomBytes(6).toString("hex")}@example.test`);
-  await page.getByLabel("Password", { exact: true }).fill(randomBytes(24).toString("hex"));
-  await page.getByRole("button", { name: "Create Account", exact: true }).click();
-  await page.getByRole("button", { name: "Claim this instance", exact: true }).click();
-  await page.getByText("Step 1 of 4").waitFor();
-  await page.locator("input:visible").first().fill("Bostan Desktop QA");
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await page.getByText("Step 2 of 4").waitFor();
-  await page.locator("#onboarding-agent-name").fill("Desktop QA Worker");
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await page.getByText("Step 3 of 4").waitFor();
-  await page.getByRole("button", { name: "Set up AI later", exact: true }).click();
-  await page.waitForURL(url => url.pathname.endsWith("/agents"));
-  const base = new URL(page.url()).origin;
-  const companies = await (await page.request.get(base + "/api/companies")).json();
-  const company = companies.find(item => item.name === "Bostan Desktop QA");
-  assert.ok(company?.id);
-  const agents = await (await page.request.get(`${base}/api/companies/${company.id}/agents`)).json();
-  const agent = agents.find(item => item.name === "Desktop QA Worker");
-  assert.equal(agent?.pauseReason, "setup");
-  assert.equal(agent?.lifecycleState, "paused");
-  assert.equal(jsErrors, 0); assert.equal(externalRequests, 0);
-  await application.close(); application = null;
-  noPostgres();
-
-  const reopened = await launch();
-  await reopened.getByText("Bostan Desktop QA", { exact: true }).first().waitFor();
-  const reopenedBase = new URL(reopened.url()).origin;
-  const persisted = await reopened.request.get(`${reopenedBase}/api/companies/${company.id}/agents`);
-  assert.equal(persisted.status(), 200, "Session did not survive application restart");
-  assert.equal((await persisted.json()).filter(item => item.id === agent.id).length, 1);
-  await application.close(); application = null;
-  noPostgres();
   const sentinel = path.join(appData, "data/installer-data-preservation-qa");
   fs.writeFileSync(sentinel, "preserved");
   const uninstaller = fs.readdirSync(install).find(name => /^Uninstall.*\.exe$/i.test(name));
