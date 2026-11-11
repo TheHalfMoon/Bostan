@@ -230,9 +230,9 @@ export async function resolveRemotePaperclipRunnerBinary(input: {
     : defaultCapabilityRunnerdBinary(platform, architecture));
   let bytes: Buffer;
   try { bytes = readFileSync(binary); }
-  catch (cause) { throw new Error(`runner_remote_artifact_unavailable: install the Paperclip release containing the ${platform}-${architecture} daemon or configure PAPERCLIP_RUNNER_REMOTE_BINARY_PATH`, { cause }); }
+  catch (cause) { throw new Error(`runner_remote_artifact_unavailable: install the Bostan release containing the ${platform}-${architecture} daemon or configure PAPERCLIP_RUNNER_REMOTE_BINARY_PATH`, { cause }); }
   if (runnerBinaryTarget(bytes) !== `${platform}-${architecture}`) {
-    throw new Error(`runner_remote_artifact_platform_mismatch: the selected daemon does not match ${platform}-${architecture}; install the matching Paperclip release or configure PAPERCLIP_RUNNER_REMOTE_BINARY_PATH`);
+    throw new Error(`runner_remote_artifact_platform_mismatch: the selected daemon does not match ${platform}-${architecture}; install the matching Bostan release or configure PAPERCLIP_RUNNER_REMOTE_BINARY_PATH`);
   }
   return binary;
 }

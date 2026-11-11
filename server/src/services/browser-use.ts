@@ -208,7 +208,7 @@ export function browserUseService(
   async function assertBinding(binding: Binding, approved = false) {
     if (!binding.issueId || !binding.agentId || !binding.runId)
       throw forbidden(
-        "Browser tasks require an active Paperclip task and agent run. Use browser_profiles for a connection test.",
+        "Browser tasks require an active Bostan task and agent run. Use browser_profiles for a connection test.",
       );
     const [issue] = await db
       .select()
@@ -1290,7 +1290,7 @@ export function browserUseService(
         if (confirmed.status !== "stopped")
           throw new BrowserUseError(
             502,
-            "Browser shutdown is not confirmed. Paperclip will retry.",
+            "Browser shutdown is not confirmed. Bostan will retry.",
           );
         await db
           .update(browsers)
@@ -1469,7 +1469,7 @@ export function browserUseService(
         .limit(1);
       if (pending)
         throw conflict(
-          "Browser access is disabled. Shutdown is still pending; retry removal after the browsers stop. Paperclip retains the key only for cleanup until then.",
+          "Browser access is disabled. Shutdown is still pending; retry removal after the browsers stop. Bostan retains the key only for cleanup until then.",
         );
     },
     async availableProfiles(

@@ -12231,7 +12231,7 @@ async function createRunnerdBackendWithinSessionClaim(
         }),
         stageAndVerify: async () => {
           if (!configuredProviderPackRoot) {
-            throw new Error("runner_remote_provider_artifact_incompatible: install the matching Paperclip package and Daytona image; the image provider pack did not match the bundled release identity");
+            throw new Error("runner_remote_provider_artifact_incompatible: install the matching Bostan package and Daytona image; the image provider pack did not match the bundled release identity");
           }
           if (!remoteCommandRunner.syncIn) {
             throw new Error(

@@ -538,7 +538,7 @@ export function createChatConfiguration(db: Db, options: ChatConfigurationOption
     }
     if (!getWebhookPublicBaseUrl() && endpoint.provider !== "discord" && endpoint.provider !== "imessage-photon" && !(endpoint.provider === "github" && endpoint.setup.github?.cloudRegistrationId)) {
       throw unprocessable(
-        `A public HTTPS Paperclip URL is required before connecting ${PROVIDER_LABELS[endpoint.provider]}`,
+        `A public HTTPS Bostan URL is required before connecting ${PROVIDER_LABELS[endpoint.provider]}`,
       );
     }
     if (
@@ -569,7 +569,7 @@ export function createChatConfiguration(db: Db, options: ChatConfigurationOption
         );
       }
       if (!endpoint.setup.webhookVerifiedAt) {
-        throw conflict("Paperclip has not received a verified Slack callback yet", {
+        throw conflict("Bostan has not received a verified Slack callback yet", {
           code: "chat_webhook_not_verified",
         });
       }

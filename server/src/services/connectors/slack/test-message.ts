@@ -33,7 +33,7 @@ export function slackTestMessageService(db: Db, options: Options) {
         eq(companyMemberships.companyId, endpoint.companyId), eq(companyMemberships.principalType, "user"),
         eq(companyMemberships.principalId, actor.userId), eq(companyMemberships.status, "active"), ne(companyMemberships.membershipRole, "viewer"),
       ));
-      if (!membership) throw forbidden("An active Paperclip account is required");
+      if (!membership) throw forbidden("An active Bostan account is required");
       const actionKey = `slack_test_message:${actor.userId}:${input.requestId}`;
       const [previous] = await db.select().from(chatActions).where(and(eq(chatActions.endpointId, endpointId), eq(chatActions.companyId, endpoint.companyId), eq(chatActions.providerActionId, actionKey)));
       if (previous) {

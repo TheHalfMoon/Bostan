@@ -11814,7 +11814,7 @@ describeEmbeddedPostgres("chat channel control-plane integration", () => {
 
     const [reply] = await db.select().from(chatActions).where(and(eq(chatActions.endpointId, endpoint.id), eq(chatActions.kind, "github_review_publication")));
     await db.update(chatActions).set({ status: "processing" }).where(eq(chatActions.id, reply.id));
-    await expect(service.test(endpoint.id)).rejects.toThrow("Wait for the Paperclip agent to reply");
+    await expect(service.test(endpoint.id)).rejects.toThrow("Wait for the Bostan agent to reply");
     await db.update(chatActions).set({ status: "processed" }).where(eq(chatActions.id, reply.id));
     const activated = await service.test(endpoint.id);
     expect(activated).toMatchObject({

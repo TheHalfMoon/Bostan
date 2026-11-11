@@ -191,7 +191,7 @@ export function validatePaperclipRunnerGrokConfig(config: Record<string, unknown
       || config.allowUnmeteredProvider !== true || (config.lifecycleMode && config.lifecycleMode !== "per_turn")
       || optionalString(config.model) || config.dotWorkspaceAccess === true || config.dotAttachmentAccess === true
       || optionalString(config.cwd) || optionalString(config.command)) {
-    throw new PaperclipRunnerProviderProfileError("paperclip_runner_grok_config_invalid", "Grok Bot requires a bound per-turn work session and an explicit acknowledgement of unreported provider spending. Paperclip workspace, shell and third-party app tools are unavailable.");
+    throw new PaperclipRunnerProviderProfileError("paperclip_runner_grok_config_invalid", "Grok Bot requires a bound per-turn work session and an explicit acknowledgement of unreported provider spending. Bostan workspace, shell and third-party app tools are unavailable.");
   }
   return bindingId;
 }

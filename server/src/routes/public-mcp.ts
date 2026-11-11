@@ -211,7 +211,7 @@ export function publicMcpManagementRoutes(oauth: PublicMcpOAuth, agentOAuth?: Pu
   };
   const sameOrigin: RequestHandler = (req, _res, next) => {
     const origin = req.headers.origin ?? (req.headers.referer ? new URL(req.headers.referer).origin : "");
-    if (origin !== oauth.config.origin && origin !== oauth.config.authorizationOrigin) throw new McpOAuthError("access_denied", "Connection changes require the Paperclip browser origin.", 403);
+    if (origin !== oauth.config.origin && origin !== oauth.config.authorizationOrigin) throw new McpOAuthError("access_denied", "Connection changes require the Bostan browser origin.", 403);
     next();
   };
   router.use(["/mcp", "/dot-mcp"], (_req, res, next) => { res.setHeader("Cache-Control", "no-store"); next(); });

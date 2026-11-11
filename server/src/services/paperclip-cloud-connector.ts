@@ -225,7 +225,7 @@ export function paperclipCloudConnectorConfigFromEnv(
   const hasActiveLocalIdentity = localIdentity?.status === "active" && localStatus?.configured === true;
   if (!hasManagedIdentityOverride && !hasActiveLocalIdentity && legacyConfigured) {
     throw new PaperclipCloudConnectorError(
-      "Paperclip ID connector settings use an incompatible legacy protocol; enroll this instance with Paperclip Cloud",
+      "Bostan ID connector settings use an incompatible legacy protocol; enroll this instance with Bostan Cloud",
       "CONNECTOR_MIGRATION_REQUIRED",
     );
   }
@@ -241,24 +241,24 @@ export function paperclipCloudConnectorConfigFromEnv(
   const baseUrl = approvedBroker;
   const values = [instanceId, signPrivateKey, sealPrivateKey, environment];
   if (values.some((value) => !value)) {
-    throw new PaperclipCloudConnectorError("Paperclip Cloud connector configuration is incomplete", "CONNECTOR_CONFIG_INCOMPLETE");
+    throw new PaperclipCloudConnectorError("Bostan Cloud connector configuration is incomplete", "CONNECTOR_CONFIG_INCOMPLETE");
   }
   if (environment !== "development" && environment !== "test" && environment !== "staging" && environment !== "production") {
-    throw new PaperclipCloudConnectorError("Paperclip Cloud connector environment is invalid", "CONNECTOR_CONFIG_INVALID");
+    throw new PaperclipCloudConnectorError("Bostan Cloud connector environment is invalid", "CONNECTOR_CONFIG_INVALID");
   }
   const parsedBaseUrl = new URL(baseUrl);
   if (parsedBaseUrl.protocol !== "https:" && !(parsedBaseUrl.protocol === "http:" && isLoopback(parsedBaseUrl.hostname))) {
-    throw new PaperclipCloudConnectorError("Paperclip Cloud connector URL must use HTTPS", "CONNECTOR_CONFIG_INVALID");
+    throw new PaperclipCloudConnectorError("Bostan Cloud connector URL must use HTTPS", "CONNECTOR_CONFIG_INVALID");
   }
   if (parsedBaseUrl.username || parsedBaseUrl.password || parsedBaseUrl.search || parsedBaseUrl.hash) {
-    throw new PaperclipCloudConnectorError("Paperclip Cloud connector URL is invalid", "CONNECTOR_CONFIG_INVALID");
+    throw new PaperclipCloudConnectorError("Bostan Cloud connector URL is invalid", "CONNECTOR_CONFIG_INVALID");
   }
   const brokerHost = parsedBaseUrl.hostname.toLowerCase();
   if ((brokerHost === "my.paperclip.app" && environment !== "production")
     || (brokerHost === "test.paperclip.app" && environment !== "test")
     || (brokerHost === "my-staging.paperclip.app" && environment !== "staging")) {
     throw new PaperclipCloudConnectorError(
-      "Paperclip Cloud connector broker and environment do not match",
+      "Bostan Cloud connector broker and environment do not match",
       "CONNECTOR_CONFIG_INVALID",
     );
   }
@@ -329,13 +329,13 @@ export function createPaperclipCloudConnector(input: {
         signal: AbortSignal.timeout(15_000),
       });
     } catch {
-      throw new PaperclipCloudConnectorError("Paperclip Cloud connector is unavailable", "CONNECTOR_UNAVAILABLE");
+      throw new PaperclipCloudConnectorError("Bostan Cloud connector is unavailable", "CONNECTOR_UNAVAILABLE");
     }
     if (operation === "revoke" && response.status === 204) return {};
     if (!response.ok) {
       const reason = await readBrokerRejectionReason(response);
       throw new PaperclipCloudConnectorError(
-        `Paperclip Cloud connector rejected the request (operation=${operation}, status=${response.status}, reason=${reason})`,
+        `Bostan Cloud connector rejected the request (operation=${operation}, status=${response.status}, reason=${reason})`,
         response.status === 409 ? "REAUTHORIZATION_REQUIRED" : "CONNECTOR_REQUEST_FAILED",
         response.status,
       );
@@ -343,7 +343,7 @@ export function createPaperclipCloudConnector(input: {
     try {
       return await response.json() as ConnectorResponse;
     } catch {
-      throw new PaperclipCloudConnectorError("Paperclip Cloud connector returned an invalid response", "CONNECTOR_BAD_RESPONSE");
+      throw new PaperclipCloudConnectorError("Bostan Cloud connector returned an invalid response", "CONNECTOR_BAD_RESPONSE");
     }
   }
 
@@ -373,13 +373,13 @@ export function createPaperclipCloudConnector(input: {
       || credentials.companyId !== companyId
       || credentials.provider !== definition.provider
     ) {
-      throw new PaperclipCloudConnectorError("Paperclip Cloud credential binding did not match", "CONNECTOR_BINDING_MISMATCH");
+      throw new PaperclipCloudConnectorError("Bostan Cloud credential binding did not match", "CONNECTOR_BINDING_MISMATCH");
     }
     if (credentials.profile !== profile) {
-      throw new PaperclipCloudConnectorError("Paperclip Cloud connector profile binding did not match", "CONNECTOR_BINDING_MISMATCH");
+      throw new PaperclipCloudConnectorError("Bostan Cloud connector profile binding did not match", "CONNECTOR_BINDING_MISMATCH");
     }
     if (!(profile === "workspace.all" ? isGoogleWorkspaceScopeGrant(credentials.scopes) : sameStringSet(credentials.scopes, definition.scopes))) {
-      throw new PaperclipCloudConnectorError("Paperclip Cloud scope grant did not match", "REAUTHORIZATION_REQUIRED");
+      throw new PaperclipCloudConnectorError("Bostan Cloud scope grant did not match", "REAUTHORIZATION_REQUIRED");
     }
     return credentials;
   }
@@ -415,7 +415,7 @@ export function createPaperclipCloudConnector(input: {
       if (response.status === "active" && response.active === true) return "active";
       if (response.status === "suspended" && response.active === false) return "suspended";
       if (response.status === "removed" && response.active === false) return "removed";
-      throw new PaperclipCloudConnectorError("Paperclip Cloud connector returned an invalid instance status", "CONNECTOR_BAD_RESPONSE");
+      throw new PaperclipCloudConnectorError("Bostan Cloud connector returned an invalid instance status", "CONNECTOR_BAD_RESPONSE");
     },
     async getCapabilities(): Promise<PaperclipCloudConnectorProfileId[]> {
       let response: ConnectorResponse;
@@ -443,13 +443,13 @@ export function createPaperclipCloudConnector(input: {
       const profile = values.profile ?? "gmail.draft";
       const response = await call("session", { ...values, profile });
       if (typeof response.confirmationUrl !== "string" || typeof response.expiresAt !== "string") {
-        throw new PaperclipCloudConnectorError("Paperclip Cloud connector returned an invalid session", "CONNECTOR_BAD_RESPONSE");
+        throw new PaperclipCloudConnectorError("Bostan Cloud connector returned an invalid session", "CONNECTOR_BAD_RESPONSE");
       }
       let confirmationUrl: URL;
       try {
         confirmationUrl = new URL(response.confirmationUrl);
       } catch {
-        throw new PaperclipCloudConnectorError("Paperclip Cloud connector returned an invalid confirmation URL", "CONNECTOR_BAD_RESPONSE");
+        throw new PaperclipCloudConnectorError("Bostan Cloud connector returned an invalid confirmation URL", "CONNECTOR_BAD_RESPONSE");
       }
       const expectedBroker = new URL(config.baseUrl);
       if (
@@ -459,17 +459,17 @@ export function createPaperclipCloudConnector(input: {
         || confirmationUrl.password
         || confirmationUrl.hash
       ) {
-        throw new PaperclipCloudConnectorError("Paperclip Cloud connector returned an invalid confirmation URL", "CONNECTOR_BAD_RESPONSE");
+        throw new PaperclipCloudConnectorError("Bostan Cloud connector returned an invalid confirmation URL", "CONNECTOR_BAD_RESPONSE");
       }
       let authorizationUrl: URL | undefined;
       if (response.authorizationUrl !== undefined) {
         if (typeof response.authorizationUrl !== "string") {
-          throw new PaperclipCloudConnectorError("Paperclip Cloud connector returned an invalid provider URL", "CONNECTOR_BAD_RESPONSE");
+          throw new PaperclipCloudConnectorError("Bostan Cloud connector returned an invalid provider URL", "CONNECTOR_BAD_RESPONSE");
         }
         try {
           authorizationUrl = new URL(response.authorizationUrl);
         } catch {
-          throw new PaperclipCloudConnectorError("Paperclip Cloud connector returned an invalid provider URL", "CONNECTOR_BAD_RESPONSE");
+          throw new PaperclipCloudConnectorError("Bostan Cloud connector returned an invalid provider URL", "CONNECTOR_BAD_RESPONSE");
         }
         if (
           authorizationUrl.protocol !== "https:"
@@ -478,7 +478,7 @@ export function createPaperclipCloudConnector(input: {
           || authorizationUrl.hash
           || !isExpectedProviderAuthorizationUrl(profile, authorizationUrl)
         ) {
-          throw new PaperclipCloudConnectorError("Paperclip Cloud connector returned an invalid provider URL", "CONNECTOR_BAD_RESPONSE");
+          throw new PaperclipCloudConnectorError("Bostan Cloud connector returned an invalid provider URL", "CONNECTOR_BAD_RESPONSE");
         }
       }
       const handoff = parseCloudHandoff(response.handoff);
@@ -535,12 +535,12 @@ export function createPaperclipCloudConnector(input: {
       const response = await call("event-lease", values);
       if (Array.isArray(response.events) && response.events.length === 0) return null;
       if (typeof response.leaseId !== "string") {
-        throw new PaperclipCloudConnectorError("Paperclip Cloud connector returned an invalid event lease", "CONNECTOR_BAD_RESPONSE");
+        throw new PaperclipCloudConnectorError("Bostan Cloud connector returned an invalid event lease", "CONNECTOR_BAD_RESPONSE");
       }
       const envelope = parseEnvelope(response.sealed, "events", "github", "github.code");
       const opened = unsealEvents(envelope, sealKey, config.instanceId, config.environment);
       if (opened.leaseId !== response.leaseId) {
-        throw new PaperclipCloudConnectorError("Paperclip Cloud connector event lease did not match", "CONNECTOR_BINDING_MISMATCH");
+        throw new PaperclipCloudConnectorError("Bostan Cloud connector event lease did not match", "CONNECTOR_BINDING_MISMATCH");
       }
       const events: SealedConnectorEvents["events"] = [];
       const failedEventIds: string[] = [];
@@ -566,7 +566,7 @@ export function createPaperclipCloudConnector(input: {
       const response = await call("event-ack", values, { field: "acknowledgement", value: acknowledgement });
       const acknowledged = response.acknowledged;
       if (typeof acknowledged !== "number" || !Number.isSafeInteger(acknowledged) || acknowledged < 0) {
-        throw new PaperclipCloudConnectorError("Paperclip Cloud connector returned an invalid acknowledgement", "CONNECTOR_BAD_RESPONSE");
+        throw new PaperclipCloudConnectorError("Bostan Cloud connector returned an invalid acknowledgement", "CONNECTOR_BAD_RESPONSE");
       }
       return acknowledged;
     },
@@ -576,7 +576,7 @@ export function createPaperclipCloudConnector(input: {
 function parseCloudHandoff(value: unknown): { kind: "paperclip_cloud"; session: string } | undefined {
   if (value === undefined) return undefined;
   if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new PaperclipCloudConnectorError("Paperclip Cloud connector returned an invalid handoff", "CONNECTOR_BAD_RESPONSE");
+    throw new PaperclipCloudConnectorError("Bostan Cloud connector returned an invalid handoff", "CONNECTOR_BAD_RESPONSE");
   }
   const record = value as Record<string, unknown>;
   const session = record.session;
@@ -587,7 +587,7 @@ function parseCloudHandoff(value: unknown): { kind: "paperclip_cloud"; session: 
     || session.length > 512
     || !/^[A-Za-z0-9_-]+$/.test(session)
   ) {
-    throw new PaperclipCloudConnectorError("Paperclip Cloud connector returned an invalid handoff", "CONNECTOR_BAD_RESPONSE");
+    throw new PaperclipCloudConnectorError("Bostan Cloud connector returned an invalid handoff", "CONNECTOR_BAD_RESPONSE");
   }
   return { kind: "paperclip_cloud", session };
 }
@@ -679,7 +679,7 @@ function privateKey(value: string, curve: "ed25519" | "x25519"): KeyObject {
     if (parsed.asymmetricKeyType !== curve) throw new Error("wrong key type");
     return parsed;
   } catch {
-    throw new PaperclipCloudConnectorError(`Paperclip Cloud ${curve} private key is invalid`, "CONNECTOR_CONFIG_INVALID");
+    throw new PaperclipCloudConnectorError(`Bostan Cloud ${curve} private key is invalid`, "CONNECTOR_CONFIG_INVALID");
   }
 }
 
@@ -805,7 +805,7 @@ function decryptEnvelope(
 }
 
 function badEnvelope() {
-  return new PaperclipCloudConnectorError("Paperclip Cloud connector returned an invalid sealed credential", "CONNECTOR_BAD_RESPONSE");
+  return new PaperclipCloudConnectorError("Bostan Cloud connector returned an invalid sealed credential", "CONNECTOR_BAD_RESPONSE");
 }
 
 function sealPurpose(

@@ -295,7 +295,7 @@ export function githubChatManagementService(db: Db, fetchImpl = fetch) {
         .for("update");
       if (prior?.status === "linked" && prior.paperclipUserId !== userId)
         throw conflict(
-          "This GitHub account is already linked to another Paperclip member",
+          "This GitHub account is already linked to another Bostan member",
         );
       if (verified.grantId) {
       const [grant] = await tx

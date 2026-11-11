@@ -3292,7 +3292,7 @@ export function createToolGatewayService(
       if (!session.agentId) {
         throw new ToolGatewayHttpError(
           403,
-          "Paperclip self tools require an agent-scoped gateway session",
+          "Bostan self tools require an agent-scoped gateway session",
           "agent_context_required",
         );
       }
@@ -3325,7 +3325,7 @@ export function createToolGatewayService(
       if (!session.agentId) {
         throw new ToolGatewayHttpError(
           403,
-          "Paperclip self tools require an agent-scoped gateway session",
+          "Bostan self tools require an agent-scoped gateway session",
           "agent_context_required",
         );
       }
@@ -3909,7 +3909,7 @@ export function createToolGatewayService(
         .where(eq(connectionGrants.id, grant.id));
       throw new ToolGatewayHttpError(
         409,
-        "Legacy authorization must be reconnected through Paperclip Cloud",
+        "Legacy authorization must be reconnected through Bostan Cloud",
         "connector_reauthorization_required",
         {
           connectionId: connection.id,
