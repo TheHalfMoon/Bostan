@@ -30,7 +30,7 @@ foreach($rule in $rules) {
   if($rule.IsInherited -or $rule.AccessControlType -ne 'Allow' -or $rule.IdentityReference.Value -notin $allowed) { throw 'Unexpected ACL identity' }
 }
 [Console]::Error.WriteLine('BOSTAN_ACL_PHASE:verified')
-Write-Output 'BOSTAN_DESKTOP_DATA_ACL_READY'
+[Console]::Out.WriteLine('BOSTAN_DESKTOP_DATA_ACL_READY')
 `;
 
 export function protectDataDirectory(directory) {

@@ -162,3 +162,22 @@ real model execution, full network silence, OS trust, or update/rollback.
 Local Windows desktop tests: 21 PASS / 1 POSIX-only SKIP, including both
 operator-environment refusal guards. Workflow quarantine PASS. Actual installed
 Windows/macOS execution remains pending hosted CI.
+
+## 2026-11-11 ACL completion diagnostic
+
+Run `42971413083` at `ccc2b4ff` failed the Windows ACL helper again under the
+unchanged 15-second bound, but reached `verified`. Direct constructors therefore
+allowed policy construction, application and verification to complete. The
+remaining `Write-Output` statement still invoked command discovery after that
+marker; it now uses `[Console]::Out.WriteLine` as well. Native success is still
+required; reaching the marker alone is not startup or installed-app acceptance.
+
+The same run's macOS job completed production staging and reached afterPack,
+where exact runtime equality failed. The stage-placement change therefore
+advanced past the previous pnpm failure, but no installer was accepted. The
+comparison remains strict; bounded build diagnostics now identify missing,
+unexpected or changed relative package paths and the differing field names,
+without printing payload contents, link destinations or absolute local paths.
+The native Windows compiled-server lane still reports the separately owned
+PostgreSQL chmod blocker, and server-4 reported one login-cleanup assertion
+failure. Those are preserved as distinct qualification failures.

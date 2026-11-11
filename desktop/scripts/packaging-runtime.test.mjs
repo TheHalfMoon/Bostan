@@ -49,10 +49,15 @@ test("refuses same-size runtime byte substitution and unexpected payload files",
   const expected = await captureRuntimePayload(stage);
   const entry = path.join(runtime, "dist/index.js");
   fs.writeFileSync(entry, "export const value = 2;\n");
-  await assert.rejects(verifyPackagedRuntime(context, expected), /differs/);
+  await assert.rejects(verifyPackagedRuntime(context, expected), error => {
+    assert.match(error.message, /"path":"dist\/index.js","kind":"changed","fields":\["sha256"\]/);
+    assert.doesNotMatch(error.message, /export const value/);
+    assert.equal(error.message.includes(runtime), false);
+    return true;
+  });
   fs.copyFileSync(path.join(stage, "dist/index.js"), entry);
   fs.writeFileSync(path.join(runtime, "unexpected.js"), "unrecorded code");
-  await assert.rejects(verifyPackagedRuntime(context, expected), /differs/);
+  await assert.rejects(verifyPackagedRuntime(context, expected), /"unexpected":1/);
 });
 
 test("refuses a runtime link escaping the payload", async t => {

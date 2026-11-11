@@ -54,5 +54,23 @@ export function packagedRuntimePath(context) {
  * executable bit was lost/changed, or if an unexpected payload was added. */
 export async function verifyPackagedRuntime(context, expected) {
   const actual = await captureRuntimePayload(packagedRuntimePath(context));
-  if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error("Packaged Bostan runtime differs from the verified stage");
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    const expectedByPath = new Map(expected.map(entry => [entry.path, entry]));
+    const actualByPath = new Map(actual.map(entry => [entry.path, entry]));
+    const counts = { missing: 0, unexpected: 0, changed: 0 };
+    const sample = [];
+    for (const file of new Set([...expectedByPath.keys(), ...actualByPath.keys()])) {
+      const before = expectedByPath.get(file), after = actualByPath.get(file);
+      const kind = !after ? "missing" : !before ? "unexpected" : JSON.stringify(before) !== JSON.stringify(after) ? "changed" : null;
+      if (!kind) continue;
+      counts[kind]++;
+      if (sample.length < 8) sample.push({
+        path: file.slice(0, 200), kind,
+        fields: kind === "changed" ? ["kind", "sha256", "executable", "target"].filter(key => before[key] !== after[key]) : [],
+      });
+    }
+    // Build diagnostics contain only bounded relative package paths and field
+    // names, never file contents, link destinations or local absolute paths.
+    throw new Error(`Packaged Bostan runtime differs from the verified stage: ${JSON.stringify({ counts, sample })}`);
+  }
 }
