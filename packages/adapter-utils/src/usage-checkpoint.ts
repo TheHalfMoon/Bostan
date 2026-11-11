@@ -29,7 +29,7 @@ function project(value: unknown, depth = 0, field = ""): unknown {
 /** Bound strings before buffering whole JSON lines. Provider records can carry
  * many MiB of conversation text alongside a small usage object. Preserve JSON
  * escapes across chunks so discarded text cannot corrupt the accounting fields. */
-function createStringCompactor() {
+export function createStringCompactor() {
   let inString = false, length = 0, escapeRemaining = 0;
   let escapeCode = false, keepEscape = false;
   return (chunk: string) => {

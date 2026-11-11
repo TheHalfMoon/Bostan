@@ -53,7 +53,7 @@ import {
   readPaperclipIssueWorkModeFromContext,
   resolveLegacyPaperclipDesiredSkillNames,
 } from "@bostan/adapter-utils/server-utils";
-import { isOpenCodeUnknownSessionError, parseOpenCodeJsonl, createOpenCodeJsonlParser } from "./parse.js";
+import { isOpenCodeUnknownSessionError, parseOpenCodeJsonl, createOpenCodeJsonlParser, createOpenCodeTurnObserver } from "./parse.js";
 import {
   ensureOpenCodeModelConfiguredAndAvailable,
   isTruthyEnvFlag,
@@ -656,6 +656,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       }
 
       const consumeAccounting = createOpenCodeJsonlParser();
+      const turnObserver = createOpenCodeTurnObserver();
       let hasAccounting = false;
       const accountingLog = createUsageCheckpointLog(onLog, ctx.onUsage ?? (async () => {}), stdout => {
         hasAccounting = true;
@@ -678,7 +679,10 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         graceSec,
         onSpawn,
         onRuntimeProgress: ctx.onRuntimeProgress,
-        onLog: accountingLog,
+        onLog: async (stream, chunk) => {
+          if (stream === "stdout") turnObserver.write(chunk);
+          await accountingLog(stream, chunk);
+        },
         runLogTail: paperclipBridge?.runLogTail,
         settleRunDisposition: paperclipBridge?.settleRunDisposition,
       });
@@ -697,6 +701,24 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         parsed.usageReported = retained.usageReported;
         parsed.usageComplete = retained.usageComplete;
         parsed.costUsd = retained.costUsd;
+      }
+      // Completion observation may reject an otherwise-clean exit, but must
+      // never replace an already-known transport failure or timeout.
+      if (proc.exitCode === 0 && !proc.signal && !proc.timedOut && !proc.errorCode) {
+        try {
+          const turn = turnObserver.finish();
+          if (turn.observed && !parsed.errorMessage && turn.stepLimitExceeded) {
+            parsed.errorCode = "opencode_step_limit_exceeded";
+            parsed.errorMessage = "OpenCode reached the configured maximum agent steps before completing its turn.";
+          } else if (turn.observed && !turn.stepLimitExceeded && parsed.errorCode === "opencode_step_limit_exceeded") {
+            parsed.errorCode = null; parsed.errorMessage = null;
+          }
+        } catch {
+          if (!parsed.errorMessage) {
+            parsed.errorCode = "opencode_output_observation_failed";
+            parsed.errorMessage = "OpenCode completion observation failed; turn outcome is unverified";
+          }
+        }
       }
       return { proc, rawStderr: proc.stderr, parsed };
     };
@@ -769,9 +791,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         usageBasis: "per_run",
         errorMessage: (synthesizedExitCode ?? 0) === 0 ? null : fallbackErrorMessage,
         // Forward the transport-level error code from the run-disposition seam.
-        // A lost duplex control channel surfaces the typed `duplex_channel_lost`
-        // code; every other result carries no code here.
-        errorCode: attempt.proc.errorCode ?? null,
+        // Transport failures retain priority over provider completion failures.
+        errorCode: attempt.proc.errorCode ?? attempt.parsed.errorCode ?? null,
         usage: attempt.parsed.usageReported ? attempt.parsed.usage : undefined,
         sessionId: resolvedSessionId,
         sessionParams: resolvedSessionParams,
