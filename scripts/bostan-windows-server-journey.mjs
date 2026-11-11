@@ -217,7 +217,19 @@ function cleanup() {
       execFileSync(pgCtl, ["-D", path.dirname(marker), "-m", "fast", "-w", "-t", "40", "stop"], { windowsHide: true, stdio: "ignore" });
       stage("embedded PostgreSQL stopped with pg_ctl");
     } catch {
-      stage("pg_ctl stop FAILED; temp home retained");
+      // A forced server exit may have already stopped PostgreSQL while its
+      // postmaster.pid is still present. pg_ctl status exits 3 specifically
+      // when the server is not running. Never infer this from a stale marker
+      // or from pg_ctl stop alone; the independent process scan remains mandatory.
+      const status = spawnSync(pgCtl, ["-D", path.dirname(marker), "status"], {
+        windowsHide: true, stdio: "ignore", timeout: 15000,
+      });
+      if (status.status === 3 && !status.error && !status.signal) {
+        stage("pg_ctl reports cluster stopped; verifying process tree");
+        continue;
+      }
+      stage(status.error || status.signal ? "pg_ctl status probe FAILED; temp home retained" :
+        "pg_ctl stop FAILED; cluster still active or status indeterminate; temp home retained");
       return false;
     }
   }
