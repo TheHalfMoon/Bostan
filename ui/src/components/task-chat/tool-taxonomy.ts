@@ -396,12 +396,13 @@ export function toolActivityPresentation(input: ToolActivityPresentationInput): 
       : actionCopy(action, exact ? undefined : object);
   const semanticFamily = exact?.family ?? actionFamily(action);
   const family = transport === "mcp" ? "mcp" : semanticFamily;
+  const isBostanNamespace = ["paperclip", "bostan"].includes(namespace.toLowerCase());
   const sourceLabel = namespace
-    ? humanizeToolName(namespace)
+    ? (isBostanNamespace ? "Bostan" : humanizeToolName(namespace))
     : transport === "mcp"
       ? "MCP"
       : undefined;
-  const summaryGroup = namespace.toLowerCase() === "paperclip"
+  const summaryGroup = isBostanNamespace
     ? paperclipSummaryGroup(action)
     : exact?.group ?? defaultSummaryGroup(action);
 

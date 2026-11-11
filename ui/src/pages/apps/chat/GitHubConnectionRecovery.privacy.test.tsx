@@ -50,7 +50,7 @@ describe("Bostan GitHub recovery never echoes private keys or provider errors", 
       expect(html).toContain("saved in Bostan");
       expect(html).not.toContain(marker);
       expect(html).not.toContain("bad.invalid");
-      expect(html).not.toContain("saved in Bostan");
+      expect(html).not.toContain("saved in Paperclip");
     },
   );
 
