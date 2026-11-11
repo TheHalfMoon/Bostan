@@ -71,6 +71,15 @@ test('netstat fallback never accepts wildcard, IPv6, duplicate or malformed owne
   for(const address of ['0.0.0.0','[::]','[::1]'])
     assert.notEqual(parseNetstat(make(address),43123)[0].LocalAddress,'127.0.0.1');
   assert.equal(parseNetstat(make('127.0.0.1')+make('127.0.0.1'),43123).length,2);
-  for(const text of [make('127.0.0.1','0'),make('127.0.0.1','secret'),make('127.0.0.1','4567','ESTABLISHED')])
+  for(const text of [make('127.0.0.1','0'),make('127.0.0.1','secret')])
     assert.throws(()=>parseNetstat(text,43123),/invalid_query_output/);
+});
+
+test('netstat ignores established and closing connections sharing the listener port',()=>{
+  const make=(state,pid='4567')=>
+    ' TCP 127.0.0.1:43123 127.0.0.1:51234 '+state+' '+pid+'\r\n';
+  const listening=' TCP 127.0.0.1:43123 0.0.0.0:0 LISTENING 4567\r\n';
+  assert.deepEqual(parseNetstat(make('ESTABLISHED','9999')+listening+make('TIME_WAIT','0'),43123),[row]);
+  assert.deepEqual(parseNetstat(make('ESTABLISHED'),43123),[]);
+  assert.equal(parseNetstat(listening+listening,43123).length,2);
 });
