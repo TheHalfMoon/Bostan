@@ -8,6 +8,24 @@ import {resolvePrivateWindowsPowerShellBinary} from './bostan-private-windows-po
 
 const refused = (reason = 'invalid_input') => { throw Error(`Private Windows QA HTTP listener ownership unverified [${reason}]`); };
 
+/** Strictly parse netstat TCP listener records without trusting unrelated output. */
+export function parsePrivateWindowsNetstatListeners(output, port) {
+  if (typeof output !== 'string' || !Number.isSafeInteger(port) || port < 1024 || port > 65535) refused('invalid_query_output');
+  const rows = [];
+  for (const line of output.split(/\r?\n/)) {
+    const fields = line.trim().split(/\s+/);
+    if (fields[0]?.toUpperCase() !== 'TCP') continue;
+    const match = /^(.+):(\d+)$/.exec(fields[1] || '');
+    if (!match || Number(match[2]) !== port) continue;
+    if (fields.length !== 5 || fields[3]?.toUpperCase() !== 'LISTENING' ||
+        !/^\d+$/.test(fields[4])) refused('invalid_query_output');
+    const pid = Number(fields[4]);
+    if (!Number.isSafeInteger(pid) || pid <= 0) refused('invalid_query_output');
+    rows.push({LocalAddress:match[1],LocalPort:port,OwningProcess:pid});
+  }
+  return rows;
+}
+
 export function inspectPrivateWindowsHttpListeners(port) {
   if (process.platform !== 'win32' || !Number.isSafeInteger(port) ||
       port < 1024 || port > 65535) refused();
@@ -29,9 +47,21 @@ export function inspectPrivateWindowsHttpListeners(port) {
     env:{SystemRoot:process.env.SystemRoot||'',WINDIR:process.env.WINDIR||'',
       PSModulePath:(process.env.SystemRoot||'')+'\\System32\\WindowsPowerShell\\v1.0\\Modules'},
   });
-  if (result.status !== 0 || result.signal || result.error ||
-      typeof result.stdout !== 'string' || result.stderr?.trim()) refused('query_failed');
-  try { return JSON.parse(result.stdout); } catch { refused('invalid_query_output'); }
+  if (result.status === 0 && !result.signal && !result.error &&
+      typeof result.stdout === 'string' && !result.stderr?.trim()) {
+    try { return JSON.parse(result.stdout); } catch { refused('invalid_query_output'); }
+  }
+  // Read-only fallback for restricted Windows accounts where NetTCPIP fails.
+  // Do not execute a shell or search PATH for an executable.
+  const root = process.env.SystemRoot || process.env.WINDIR;
+  if (!root || !/^[A-Za-z]:\\Windows$/i.test(root)) refused('query_failed');
+  const fallback = spawnSync(root + '\\System32\\netstat.exe', ['-ano','-p','tcp'], {
+    windowsHide:true, encoding:'utf8', timeout:8000, maxBuffer:1024*1024,
+    env:{SystemRoot:root,WINDIR:root},
+  });
+  if (fallback.status !== 0 || fallback.signal || fallback.error ||
+      typeof fallback.stdout !== 'string' || fallback.stderr?.trim()) refused('query_failed');
+  return parsePrivateWindowsNetstatListeners(fallback.stdout, port);
 }
 
 /** Two independent OS snapshots must bind the sole IPv4 loopback listener to
