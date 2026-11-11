@@ -17,8 +17,9 @@ require separate explicit authorization. No paid providers or real user data.
   Linux lanes passed but Windows failed. Do not assume its chmod correction has
   completed compiled-server acceptance. #540 is its unmerged parent.
 - #547 was merged after all 15 jobs passed on its reviewed exact head, producing
-  main commit `7524763280232f9f15f4b0677568a593433cd426`. Post-merge main CI is
-  pending. Only merge reviewed exact heads after all required checks pass.
+  main commit `7524763280232f9f15f4b0677568a593433cd426`. Post-merge main CI
+  `43030026976` is pending. Only merge reviewed exact heads after all required
+  checks pass.
 
 ## Active integration
 
@@ -36,7 +37,7 @@ require separate explicit authorization. No paid providers or real user data.
 - Replacement run `42970150963` completed successfully: all 15 jobs passed on
   `6284604dbdf68b05c757f21a8a238d13113fdda1`; #547 was then merged.
 - PR #548, current branch `work/bostan-adapter-copy`, was rebased onto the
-  resulting main and needs final exact-head CI after retargeting to main.
+  resulting main and retargeted to main. Final exact-head CI remains required.
   It changes provider diagnostics and permission/schema descriptions, plus their
   existing assertions. AST comparison confirms only Paperclip/Bostan literal and
   template text changed across 21 TypeScript files; control flow, identifiers,
