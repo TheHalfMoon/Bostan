@@ -43,3 +43,11 @@ test('reject invalid ports and unowned PID before inspecting',async()=>{
 test('never treat a healthy HTTP endpoint as listener ownership evidence',async()=>{
   await assert.rejects(prove({...params,inspect:async()=>[{LocalAddress:'127.0.0.1',LocalPort:port,OwningProcess:pid+999}]}),refused);
 });
+
+test('bounded failure categories preserve fail-closed behavior without leaking inspector details',async()=>{
+  await assert.rejects(prove({...params,inspect:async()=>{throw Error('secret path and token');}}),error=>
+    error.message.endsWith('[inspection_failed]') && !error.message.includes('secret'));
+  await assert.rejects(prove({...params,inspect:async()=>[]}),/\[listener_count\]/);
+  await assert.rejects(prove({...params,inspect:async()=>[{...row,OwningProcess:pid+1}]}),/\[listener_mismatch\]/);
+  await assert.rejects(prove({...params,childAlive:()=>false}),/\[child_exited\]/);
+});
