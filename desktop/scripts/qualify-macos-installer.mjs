@@ -6,6 +6,7 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { qualifyInstalledApp } from "./installed-app-journey.mjs";
+import { installedAppPhase } from "./installed-app-phase.mjs";
 
 // Mount/copy/remove only on a disposable hosted runner, never an operator Mac.
 if (process.platform !== "darwin" || process.env.CI !== "true"
@@ -47,6 +48,7 @@ const tempIdentity = fs.lstatSync(temp);
 const mount = path.join(temp, "image"); fs.mkdirSync(mount);
 let mounted = false;
 let application;
+let forcedStop = false;
 let installedIdentity;
 let dataIdentity;
 let clean = false;
@@ -55,6 +57,16 @@ for (const key of Object.keys(env)) if (/^(?:ELECTRON_RUN_AS_NODE|NODE_OPTIONS|D
 const startedAt = Date.now();
 function phase(name) {
   console.log("BOSTAN_MACOS_INSTALLER_PHASE " + JSON.stringify({ phase: name, elapsedMs: Date.now() - startedAt }));
+}
+function appPhase(name, work, timeoutMs = 180000) {
+  return installedAppPhase(application, name, work, { timeoutMs, onForcedStop: () => { forcedStop = true; phase("forced_stop_failure"); } });
+}
+async function closeApplication() {
+  if (!application || forcedStop) return;
+  phase("close_begin");
+  await appPhase("close", () => application.close(), 90000);
+  application = null;
+  phase("close_complete");
 }
 function assertOwnedDirectory(directory, parent, identity) {
   const actual = fs.lstatSync(directory);
@@ -82,8 +94,9 @@ try {
     assertOwnedDirectory(installedApp, applications, installedIdentity);
     phase("launch_begin");
     application = await _electron.launch({ executablePath: executable, env, timeout: 180000 });
+    forcedStop = false;
     phase("electron_connected");
-    const actual = await application.evaluate(({ app }) => app.getPath("userData"));
+    const actual = await appPhase("data_path", () => application.evaluate(({ app }) => app.getPath("userData")));
     assert.equal(path.resolve(actual), appData);
     phase("data_path_verified");
     if (!dataIdentity) {
@@ -94,7 +107,9 @@ try {
       assertOwnedDirectory(appData, path.dirname(appData), dataIdentity);
       assert.equal(fs.readFileSync(path.join(appData, ".bostan-installer-qa-owned"), "utf8"), "disposable-ci");
     }
-    const page = await application.firstWindow();
+    const page = await appPhase("first_window", () => application.firstWindow({ timeout: 180000 }));
+    page.setDefaultTimeout(30000);
+    page.setDefaultNavigationTimeout(180000);
     phase("first_window");
     await page.waitForURL(url => url.protocol === "http:" && url.hostname === "127.0.0.1", { timeout: 180000 });
     phase("backend_page_ready");
@@ -102,7 +117,7 @@ try {
   }
   await qualifyInstalledApp({
     launch,
-    close: async () => { phase("close_begin"); await application.close(); application = null; phase("close_complete"); },
+    close: closeApplication,
     afterClose: noPostgres,
   });
   phase("onboarding_restart_complete");
@@ -115,9 +130,13 @@ try {
   noPostgres();
   clean = true;
 } finally {
-  if (application) { phase("failure_close_begin"); await application.close(); phase("failure_close_complete"); }
-  if (mounted) execFileSync("/usr/bin/hdiutil", ["detach", mount], { stdio: "pipe", timeout: 60000 });
-  noPostgres();
+  try {
+    if (application && !forcedStop) { phase("failure_close_begin"); await closeApplication(); phase("failure_close_complete"); }
+  } finally {
+    try {
+      if (mounted) execFileSync("/usr/bin/hdiutil", ["detach", mount], { stdio: "pipe", timeout: 60000 });
+    } finally { noPostgres(); }
+  }
   if (clean) {
     assertOwnedDirectory(appData, path.dirname(appData), dataIdentity);
     assert.equal(fs.readFileSync(path.join(appData, ".bostan-installer-qa-owned"), "utf8"), "disposable-ci");

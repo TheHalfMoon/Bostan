@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { qualifyInstalledApp } from "./installed-app-journey.mjs";
+import { installedAppPhase } from "./installed-app-phase.mjs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { resolvePrivateWindowsPowerShellBinary } from "../../scripts/bostan-private-windows-powershell-binary.mjs";
@@ -36,20 +37,50 @@ function noPostgres() {
 noPostgres();
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-installed-qa-"));
 const install = path.join(temp, "application");
+const installerPhaseLog = path.join(temp, "installer-phases.log");
+fs.writeFileSync(installerPhaseLog, "", { flag: "wx", mode: 0o600 });
+function installerPhases() {
+  const stat = fs.lstatSync(installerPhaseLog);
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 2048) return ["unavailable"];
+  const descriptor = fs.openSync(installerPhaseLog, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0));
+  try {
+    if (!fs.fstatSync(descriptor).isFile()) return ["unavailable"];
+    const bytes = Buffer.alloc(2049);
+    const count = fs.readSync(descriptor, bytes, 0, bytes.length, 0);
+    if (count > 2048) return ["unavailable"];
+    const values = bytes.subarray(0, count).toString("utf8").split(/\r?\n/).filter(Boolean);
+    return values.every(value => ["pre_init", "multiuser_ready", "install_complete"].includes(value)) ? values : ["unavailable"];
+  } finally { fs.closeSync(descriptor); }
+}
 let application;
+let forcedStop = false;
 let ownedData = false;
 let clean = false;
 const env = { ...process.env };
 for (const key of Object.keys(env)) if (/^(?:ELECTRON_RUN_AS_NODE|NODE_OPTIONS|DATABASE_|PAPERCLIP_|BOSTAN_|OPENAI_|ANTHROPIC_|OPENROUTER_|GEMINI_|GOOGLE_|SENTRY_|OTEL_)/i.test(key)) delete env[key];
+function appPhase(name, work, timeoutMs = 180000) {
+  return installedAppPhase(application, name, work, { timeoutMs, onForcedStop: () => { forcedStop = true; console.log("BOSTAN_WINDOWS_INSTALLER_PHASE forced_stop_failure"); } });
+}
+async function closeApplication() {
+  if (!application || forcedStop) return;
+  await appPhase("close", () => application.close(), 90000);
+  application = null;
+}
 try {
   console.log("BOSTAN_WINDOWS_INSTALLER_PHASE install_begin");
   try {
-    execFileSync(path.join(out, installers[0]), ["/S", "/D=" + install], { windowsHide: true, timeout: 120000, stdio: "pipe" });
+    execFileSync(path.join(out, installers[0]), ["/S", "/D=" + install], {
+      windowsHide: true, timeout: 120000, stdio: "pipe",
+      env: { ...process.env, BOSTAN_INSTALLER_QA_LOG: installerPhaseLog },
+    });
   } catch (error) {
     // Fixed, bounded facts distinguish extraction progress from a pre-install hang.
     // Never walk links, print paths, or replace the original installer failure.
-    const snapshot = { installerFailed: true, installedExecutable: false, entries: 0, scanCapped: false, scanFailed: false };
+    const snapshot = { installerFailed: true, installedExecutable: false, installDirectoryPresent: false,
+      phases: [], entries: 0, scanCapped: false, scanFailed: false };
     try {
+      snapshot.phases = installerPhases();
+      snapshot.installDirectoryPresent = fs.lstatSync(install, { throwIfNoEntry: false })?.isDirectory() === true;
       snapshot.installedExecutable = fs.lstatSync(path.join(install, "Bostan.exe"), { throwIfNoEntry: false })?.isFile() === true;
       const pending = [install];
       while (pending.length && snapshot.entries < 4096) {
@@ -69,6 +100,7 @@ try {
     throw error;
   }
   console.log("BOSTAN_WINDOWS_INSTALLER_PHASE install_complete");
+  console.log("BOSTAN_WINDOWS_NSIS_PHASES " + JSON.stringify(installerPhases()));
   const executable = path.join(install, "Bostan.exe");
   assert.equal(fs.existsSync(executable), true, "Installer did not create the application executable");
   assert.equal(uninstallRegistrations(), 1, "Installer registration is missing or ambiguous");
@@ -80,17 +112,20 @@ try {
 
   async function launch() {
     application = await _electron.launch({ executablePath: executable, env, timeout: 180000 });
-    const actual = await application.evaluate(({ app }) => app.getPath("userData"));
+    forcedStop = false;
+    const actual = await appPhase("data_path", () => application.evaluate(({ app }) => app.getPath("userData")));
     assert.equal(path.resolve(actual).toLowerCase(), path.resolve(appData).toLowerCase());
     fs.writeFileSync(path.join(appData, ".bostan-installer-qa-owned"), "disposable-ci", { flag: ownedData ? "w" : "wx" });
     ownedData = true;
-    const page = await application.firstWindow();
+    const page = await appPhase("first_window", () => application.firstWindow({ timeout: 180000 }));
+    page.setDefaultTimeout(30000);
+    page.setDefaultNavigationTimeout(180000);
     await page.waitForURL(url => url.protocol === "http:" && url.hostname === "127.0.0.1", { timeout: 180000 });
     return page;
   }
   await qualifyInstalledApp({
     launch,
-    close: async () => { await application.close(); application = null; },
+    close: closeApplication,
     afterClose: noPostgres,
   });
   const sentinel = path.join(appData, "data/installer-data-preservation-qa");
@@ -109,8 +144,8 @@ try {
   clean = true;
   console.log("BOSTAN_INSTALLED_WINDOWS_ONBOARDING_RESTART_UNINSTALL_PASS (synthetic account and deferred agent; no real model execution)");
 } finally {
-  if (application) await application.close();
-  noPostgres();
+  try { if (application && !forcedStop) await closeApplication(); }
+  finally { noPostgres(); }
   if (clean && ownedData && !fs.lstatSync(appData).isSymbolicLink()
       && fs.readFileSync(path.join(appData, ".bostan-installer-qa-owned"), "utf8") === "disposable-ci") {
     fs.rmSync(appData, { recursive: true, force: true });
