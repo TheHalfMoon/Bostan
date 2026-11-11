@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { PaperclipCloudOAuthHandoffPage, ManagedOAuthHandoffState } from "./PaperclipCloudOAuthHandoff";
+import { BostanCloudOAuthHandoffPage, ManagedOAuthHandoffState } from "./BostanCloudOAuthHandoff";
 import { prepareOAuthNavigation } from "@/lib/oauthHandoff";
 
 vi.mock("@/lib/oauthHandoff", () => ({
@@ -44,7 +44,7 @@ it("sanitizes real callback failures rather than reflecting provider exception m
     new Error("OAuth error: access_token=secret-token, state=secret-csrf"),
   );
   await act(async () => {
-    root.render(<PaperclipCloudOAuthHandoffPage />);
+    root.render(<BostanCloudOAuthHandoffPage />);
     await new Promise(resolve => setTimeout(resolve, 30));
   });
   expect(host.textContent).toContain("Sign-in couldn’t continue");

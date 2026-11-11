@@ -192,7 +192,7 @@ function oauthCallbackErrorMessage(outcome: string | null, code: string | null):
     return "Authorization was cancelled or declined. Your saved connection was not changed.";
   }
   if (code === "github_installation_required") {
-    return "GitHub access is required. Install Paperclip and grant at least one repository, then try again.";
+    return "GitHub access is required. Install Bostan and grant at least one repository, then try again.";
   }
   return "Authorization did not complete. Your saved connection is still here, so you can try again.";
 }
@@ -2514,7 +2514,7 @@ function StandardConnectionSetupFlow({
         <div className="mx-auto max-w-xl rounded-xl border border-border bg-card p-6">
           <h2 className="text-lg font-semibold text-foreground">{entry.name} sign-in is unavailable</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            This instance is connected to Paperclip, but {entry.name} sign-in is not currently available. Try again shortly or contact your instance administrator.
+            This instance is connected to Bostan, but {entry.name} sign-in is not currently available. Try again shortly or contact your instance administrator.
           </p>
           {customOAuthMethod ? (
             <Button type="button" variant="link" className="mt-4 h-auto p-0 text-xs" onClick={() => setConnectionMethodKey(customOAuthMethod.key)}>
@@ -2538,10 +2538,10 @@ function StandardConnectionSetupFlow({
               </div>
               <div className="min-w-0">
                 <h2 className="text-lg font-semibold text-foreground">
-                  Connect with Paperclip
+                  Connect with Bostan
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  You must connect this instance to Paperclip to connect to {entry.name} (you only need to do this once).
+                  You must connect this instance to Bostan to connect to {entry.name} (you only need to do this once).
                 </p>
               </div>
             </div>
@@ -2554,7 +2554,7 @@ function StandardConnectionSetupFlow({
 
             {connectorEnrollmentQuery.isError || connectorEnrollmentError ? (
               <InlineBanner tone="danger" className="mt-4">
-                {connectorEnrollmentError ?? "Paperclip couldn’t check Cloud registration. Try again."}
+                {connectorEnrollmentError ?? "Bostan couldn’t check Cloud registration. Try again."}
               </InlineBanner>
             ) : null}
 
@@ -2586,7 +2586,7 @@ function StandardConnectionSetupFlow({
                 {startConnectorEnrollment.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {connectorEnrollmentQuery.data?.status === "pending"
                   ? "Continue"
-                  : "Connect with Paperclip"}
+                  : "Connect with Bostan"}
               </Button>
             </div>
           </div>
@@ -2895,7 +2895,7 @@ export function OAuthConnectStateScreen({
             {recoveryActions.installationUrl ? (
               <Button type="button" variant="outline" asChild>
                 <a href={recoveryActions.installationUrl} target="_blank" rel="noreferrer">
-                  Install Paperclip on GitHub
+                  Install Bostan on GitHub
                   <ArrowUpRight className="ml-1.5 h-3.5 w-3.5" />
                 </a>
               </Button>

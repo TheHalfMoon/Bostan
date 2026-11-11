@@ -27,7 +27,7 @@ vi.mock("@/api/access", () => ({
 vi.mock("@/context/CompanyContext", () => ({
   useCompany: () => ({
     selectedCompanyId: "company-1",
-    selectedCompany: { id: "company-1", name: "Paperclip", issuePrefix: "PAP" },
+    selectedCompany: { id: "company-1", name: "Bostan", issuePrefix: "PAP" },
   }),
 }));
 
@@ -67,7 +67,7 @@ describe("InvitesSection", () => {
       acceptedAt: isActive ? null : "2026-04-11T00:00:00.000Z",
       createdAt: `2026-04-${String(inviteNumber).padStart(2, "0")}T00:00:00.000Z`,
       updatedAt: `2026-04-${String(inviteNumber).padStart(2, "0")}T00:00:00.000Z`,
-      companyName: "Paperclip",
+      companyName: "Bostan",
       humanRole: isActive ? "operator" : "viewer",
       inviteMessage: null,
       state: isActive ? "active" : "accepted",
@@ -155,7 +155,7 @@ describe("InvitesSection", () => {
 
     expect(container.textContent).toContain("Choose a role");
     expect(container.textContent).toContain("Each invite link is single-use.");
-    expect(container.textContent).not.toContain("Paperclip domain");
+    expect(container.textContent).not.toContain("Bostan domain");
     expect(container.textContent).toContain("Can create agents, invite users, assign tasks, and approve join requests.");
     expect(container.textContent).toContain("Everything in Admin, plus managing members.");
     expect(container.textContent).not.toContain("permission grants");

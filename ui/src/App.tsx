@@ -46,7 +46,7 @@ const BoardClaimPage = lazy(() => import("./pages/BoardClaim").then((module) => 
 const CliAuthPage = lazy(() => import("./pages/CliAuth").then((module) => ({ default: module.CliAuthPage })));
 const InviteLandingPage = lazy(() => import("./pages/InviteLanding").then((module) => ({ default: module.InviteLandingPage })));
 const ChatIdentityConfirm = lazy(() => import("./pages/apps/chat/ChatIdentityConfirm").then((module) => ({ default: module.ChatIdentityConfirm })));
-const PaperclipCloudOAuthHandoffPage = lazy(() => import("./pages/apps/PaperclipCloudOAuthHandoff").then((module) => ({ default: module.PaperclipCloudOAuthHandoffPage })));
+const BostanCloudOAuthHandoffPage = lazy(() => import("./pages/apps/BostanCloudOAuthHandoff").then((module) => ({ default: module.BostanCloudOAuthHandoffPage })));
 const McpConnectPage = lazy(() => import("./pages/McpConnect").then((module) => ({ default: module.McpConnectPage })));
 const McpDevicePage = lazy(() => import("./pages/McpConnect").then((module) => ({ default: module.McpDevicePage })));
 const AssistantConnectionsPage = lazy(() => import("./pages/McpConnect").then((module) => ({ default: module.AssistantConnectionsPage })));
@@ -771,7 +771,7 @@ export function App() {
   return (
     <>
       <Suspense fallback={<BostanLoading />}><Routes>
-        <Route path="oauth-handoff" element={<PaperclipCloudOAuthHandoffPage />} />
+        <Route path="oauth-handoff" element={<BostanCloudOAuthHandoffPage />} />
         <Route path="auth" element={<AuthPage />} />
         <Route path="board-claim/:token" element={<BoardClaimPage />} />
         <Route path="mcp-connect/:id" element={<McpConnectPage />} />

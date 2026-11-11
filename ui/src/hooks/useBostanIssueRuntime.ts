@@ -6,22 +6,22 @@ import {
   type ExternalStoreAdapter,
 } from "@assistant-ui/react";
 
-export interface PaperclipIssueRuntimeReassignment {
+export interface BostanIssueRuntimeReassignment {
   assigneeAgentId: string | null;
   assigneeUserId: string | null;
 }
 
-export interface PaperclipIssueRuntimeSendOptions {
+export interface BostanIssueRuntimeSendOptions {
   body: string;
   reopen?: boolean;
-  reassignment?: PaperclipIssueRuntimeReassignment;
+  reassignment?: BostanIssueRuntimeReassignment;
   attachmentIds?: string[];
 }
 
-interface UsePaperclipIssueRuntimeOptions {
+interface UseBostanIssueRuntimeOptions {
   messages: readonly ThreadMessage[];
   isRunning: boolean;
-  onSend: (options: PaperclipIssueRuntimeSendOptions) => Promise<void>;
+  onSend: (options: BostanIssueRuntimeSendOptions) => Promise<void>;
   onCancel?: (() => Promise<void>) | undefined;
 }
 
@@ -44,12 +44,12 @@ function readTextContent(message: AppendMessage) {
     .trim();
 }
 
-export function usePaperclipIssueRuntime({
+export function useBostanIssueRuntime({
   messages,
   isRunning,
   onSend,
   onCancel,
-}: UsePaperclipIssueRuntimeOptions) {
+}: UseBostanIssueRuntimeOptions) {
   const onSendRef = useRef(onSend);
   const onCancelRef = useRef(onCancel);
   onSendRef.current = onSend;

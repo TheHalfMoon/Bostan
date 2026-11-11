@@ -12,18 +12,21 @@ import {
 
 describe("successful run handoff UI helpers", () => {
   it("matches both required and escalated production comments", () => {
+    expect(isSuccessfulRunHandoffComment("Paperclip needs a disposition before this issue can continue.")).toBe(true);
+    expect(isSuccessfulRunHandoffComment("Paperclip could not resolve this issue's missing disposition automatically. The source assignment is unchanged and a board decision is required.")).toBe(true);
+    expect(isSuccessfulRunHandoffEscalationComment("Paperclip exhausted the bounded successful-run handoff correction for this issue")).toBe(true);
     expect(isSuccessfulRunHandoffComment(SUCCESSFUL_RUN_HANDOFF_REQUIRED_NOTICE_BODY)).toBe(true);
     expect(isSuccessfulRunHandoffComment("## This issue still needs a next step\n\n- Source run: abc")).toBe(true);
     expect(isSuccessfulRunHandoffComment("## Successful run missing issue disposition\n\n- Source run: abc")).toBe(true);
     expect(isSuccessfulRunHandoffComment(SUCCESSFUL_RUN_HANDOFF_EXHAUSTED_NOTICE_BODY)).toBe(true);
     expect(
       isSuccessfulRunHandoffComment(
-        "Paperclip exhausted the bounded successful-run handoff correction for this issue, but it still has no clear next-step disposition.",
+        "Bostan exhausted the bounded successful-run handoff correction for this issue, but it still has no clear next-step disposition.",
       ),
     ).toBe(true);
     expect(
       isSuccessfulRunHandoffEscalationComment(
-        "Paperclip exhausted the bounded successful-run handoff correction for this issue, but it still has no clear next-step disposition.",
+        "Bostan exhausted the bounded successful-run handoff correction for this issue, but it still has no clear next-step disposition.",
       ),
     ).toBe(true);
     expect(isSuccessfulRunHandoffComment("Ordinary issue comment")).toBe(false);

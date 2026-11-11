@@ -48,7 +48,7 @@ vi.mock("@/lib/router", () => ({
 vi.mock("@/context/CompanyContext", () => ({
   useCompany: () => ({
     selectedCompanyId: "company-1",
-    selectedCompany: { id: "company-1", name: "Paperclip" },
+    selectedCompany: { id: "company-1", name: "Bostan" },
   }),
 }));
 
@@ -207,7 +207,7 @@ describe("Connections table (M1b / PAP-13254 door 2)", () => {
     });
     await renderApps();
     expect(container.textContent).not.toContain("Enable configured broker sign-in");
-    expect(container.textContent).not.toContain("Paperclip Cloud");
+    expect(container.textContent).not.toContain("Bostan Cloud");
     expect(startCloudConnectorEnrollmentMock).not.toHaveBeenCalled();
   });
 

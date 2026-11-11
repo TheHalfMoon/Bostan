@@ -422,7 +422,7 @@ function buildWorkspaceValidationAction(
     actualHeadSha: "bbbbbbbbbbbb33334444",
     ancestryVerdict: "diverged",
     plainLanguageReason:
-      'The recorded branch "PAP-522-recorded" is not an ancestor of the checked-out branch "nleach/PAP-1405-live", so Paperclip cannot prove a forward-only reconciliation.',
+      'The recorded branch "PAP-522-recorded" is not an ancestor of the checked-out branch "nleach/PAP-1405-live", so Bostan cannot prove a forward-only reconciliation.',
     ...overrides.provenance,
   };
   return buildAction({

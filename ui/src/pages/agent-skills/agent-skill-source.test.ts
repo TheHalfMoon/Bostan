@@ -6,9 +6,16 @@ function source(overrides: Parameters<typeof buildAgentSkillSourceMeta>[0]) {
 }
 
 describe("buildAgentSkillSourceMeta", () => {
+  it.each([
+    ["Paperclip", "Bostan"],
+    ["Paperclip catalog", "Bostan catalog"],
+    ["Paperclip managed", "Bostan managed"],
+  ])("displays legacy native label %s as %s", (sourceLabel, expected) => {
+    expect(source({ sourceBadge: "paperclip", sourceLabel, sourceLocator: null, sourceType: "catalog" })).toBe(expected);
+  });
   it("labels native Bostan-managed sources without changing source badge compatibility", () => {
-    for (const label of [null, "Paperclip", "Paperclip catalog", "Paperclip managed"]) {
-      const expected = label === "Paperclip" ? "Bostan" : label === "Paperclip catalog" ? "Bostan catalog" : "Bostan managed";
+    for (const label of [null, "Bostan", "Bostan catalog", "Bostan managed"]) {
+      const expected = label === "Bostan" ? "Bostan" : label === "Bostan catalog" ? "Bostan catalog" : "Bostan managed";
       expect(source({ sourceBadge: "paperclip", sourceLabel: label, sourceLocator: null, sourceType: "catalog" })).toBe(expected);
     }
     expect(source({ sourceBadge: "paperclip", sourceLabel: "Custom partner", sourceLocator: null, sourceType: "catalog" })).toBe("Custom partner");
@@ -35,10 +42,10 @@ describe("buildAgentSkillSourceMeta", () => {
   it("keeps human-readable project scan labels for local skills", () => {
     expect(source({
       sourceBadge: "local",
-      sourceLabel: "Paperclip App / Engineering workspace",
+      sourceLabel: "Bostan App / Engineering workspace",
       sourceLocator: null,
       sourceType: "local_path",
-    })).toBe("Paperclip App / Engineering workspace");
+    })).toBe("Bostan App / Engineering workspace");
   });
 
   it("does not surface long filesystem labels for catalog skills", () => {

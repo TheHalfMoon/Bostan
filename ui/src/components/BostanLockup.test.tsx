@@ -10,7 +10,7 @@ describe("BostanLockup", () => {
     expect(html).toContain('aria-label="Bostan"');
     expect(html).toContain(">B</span>");
     expect(html).toContain(">Bostan</span>");
-    expect(html).not.toContain("Paperclip");
+    expect(html).not.toContain("Bostan");
   });
 
   it("preserves caller sizing and accessibility attributes", () => {

@@ -56,8 +56,8 @@ export function ManagedOAuthHandoffState({
   );
 }
 
-/** Fixed tenant landing used only after Paperclip Cloud refreshes login. */
-export function PaperclipCloudOAuthHandoffPage() {
+/** Fixed tenant landing used only after Bostan Cloud refreshes login. */
+export function BostanCloudOAuthHandoffPage() {
   const [phase, setPhase] = useState<ManagedOAuthHandoffPhase>("loading");
   const [error, setError] = useState<string | null>(null);
 

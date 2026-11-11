@@ -30,7 +30,7 @@ import { AgentSkillReleasePicker, releaseShortLabel } from "./AgentSkillReleaseP
 const MATERIALIZATION_NOTE =
   "Enabled skills are materialized into the stable Bostan-managed prompt bundle on the agent's next run.";
 
-/** Company skill key of the Paperclip core skill that carries beta releases. */
+/** Company skill key of the Bostan core skill that carries beta releases. */
 const PAPERCLIP_CORE_SKILL_KEY = "paperclipai/paperclip/paperclip";
 
 /** Build the desired-skill sync payload, carrying any active version pins. */

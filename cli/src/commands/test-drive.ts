@@ -90,7 +90,7 @@ const NON_PAPERCLIP_ISOLATED_ENV_KEYS = [
 
 function requiredApiResult<T>(value: T | null, action: string): T {
   if (value === null) {
-    throw new Error(`Paperclip returned no result while ${action}.`);
+    throw new Error(`Bostan returned no result while ${action}.`);
   }
   return value;
 }
@@ -163,7 +163,7 @@ export async function resolveTestDriveServerPort(preferredPort = 3100, available
 /**
  * Establish isolation before the CLI's normal config and .env loading hook.
  * The selected credential source is preserved in case its name happens to use
- * a PAPERCLIP_ prefix; all other Paperclip routing/configuration is discarded.
+ * a PAPERCLIP_ prefix; all other Bostan routing/configuration is discarded.
  */
 export async function prepareTestDriveEnvironment(
   options: Pick<TestDriveOptions, "dataDir" | "apiKeyEnv">,
@@ -321,7 +321,7 @@ export async function reconcileTestDriveWorktreeExecution(
   );
   if (!worktreeExecutionArmed(verified, instanceId)) {
     throw new Error(
-      `Could not arm “Run tasks in this worktree” for Paperclip instance ${instanceId}. ` +
+      `Could not arm “Run tasks in this worktree” for Bostan instance ${instanceId}. ` +
         "Check that PAPERCLIP_IN_WORKTREE=true and retry the command.",
     );
   }
@@ -435,7 +435,7 @@ export async function testDriveCommand(
   ];
 
   p.log.message(pc.dim(`Data directory: ${dataDir}`));
-  p.log.message(pc.dim("The data directory is retained when Paperclip exits."));
+  p.log.message(pc.dim("The data directory is retained when Bostan exits."));
   if (options.apiKey !== undefined) {
     p.log.warn("A key passed with --api-key may be visible in process arguments and shell history.");
   }
@@ -474,14 +474,14 @@ export async function testDriveCommand(
 
         const url = dashboardUrl(server);
         if (options.browser === false) {
-          p.log.success(`Paperclip is ready at ${pc.cyan(url)}.`);
+          p.log.success(`Bostan is ready at ${pc.cyan(url)}.`);
           return;
         }
         const opened = await dependencies.openBrowser(url);
         if (opened) {
-          p.log.success(`Paperclip is ready and opened at ${pc.cyan(url)}.`);
+          p.log.success(`Bostan is ready and opened at ${pc.cyan(url)}.`);
         } else {
-          p.log.warn(`Paperclip is ready, but the browser could not be opened. Visit ${url}.`);
+          p.log.warn(`Bostan is ready, but the browser could not be opened. Visit ${url}.`);
         }
       },
     });
@@ -493,8 +493,8 @@ export async function testDriveCommand(
 export function registerTestDriveCommand(program: Command): void {
   program
     .command("test-drive")
-    .description("Start an isolated, initialized Paperclip instance for manual testing")
-    .option("-d, --data-dir <path>", "Paperclip data directory to create or reuse")
+    .description("Start an isolated, initialized Bostan instance for manual testing")
+    .option("-d, --data-dir <path>", "Bostan data directory to create or reuse")
     .option("--company-name <name>", "Initial company name", "Test Company")
     .option("--agent-name <name>", "Initial CEO agent name", "CEO")
     .addOption(
