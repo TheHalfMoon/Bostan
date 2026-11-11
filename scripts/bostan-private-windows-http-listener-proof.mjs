@@ -17,8 +17,8 @@ export function parsePrivateWindowsNetstatListeners(output, port) {
     if (fields[0]?.toUpperCase() !== 'TCP') continue;
     const match = /^(.+):(\d+)$/.exec(fields[1] || '');
     if (!match || Number(match[2]) !== port) continue;
-    if (fields.length !== 5 || fields[3]?.toUpperCase() !== 'LISTENING' ||
-        !/^\d+$/.test(fields[4])) refused('invalid_query_output');
+    if (fields[3]?.toUpperCase() !== 'LISTENING') continue;
+    if (fields.length !== 5 || !/^\d+$/.test(fields[4])) refused('invalid_query_output');
     const pid = Number(fields[4]);
     if (!Number.isSafeInteger(pid) || pid <= 0) refused('invalid_query_output');
     rows.push({LocalAddress:match[1],LocalPort:port,OwningProcess:pid});
