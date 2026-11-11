@@ -10,7 +10,7 @@ diff --git a/dist/index.js b/dist/index.js
  // The default configuration options for the class
  const defaults = {
      databaseDir: path.join(process.cwd(), 'data', 'db'),
-@@ -42,6 +42,10 @@
+@@ -42,5 +42,8 @@
  const BIN_PERMISSIONS = 0b101101101;
  const ensureBinIsExecutable = (filePath) => __awaiter(void 0, void 0, void 0, function* () {
 +    // Windows does not use POSIX executable mode bits. The packaged .exe can
