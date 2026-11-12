@@ -136,7 +136,7 @@ async function stageGrokProjectAssets(input: {
       rulesFilePath = input.instructionsFilePath;
       await input.onLog(
         "stdout",
-        `[paperclip] Grok workspace already contains ${instructionsTarget}; using --rules @${input.instructionsFilePath} instead of overwriting it.\n`,
+        `[bostan] Grok workspace already contains ${instructionsTarget}; using --rules @${input.instructionsFilePath} instead of overwriting it.\n`,
       );
     }
   } else {
@@ -167,7 +167,7 @@ async function stageGrokProjectAssets(input: {
       if (await pathExists(target)) {
         await input.onLog(
           "stdout",
-          `[paperclip] Grok skill target already exists at ${target}; leaving it unchanged.\n`,
+          `[bostan] Grok skill target already exists at ${target}; leaving it unchanged.\n`,
         );
         continue;
       }
@@ -407,7 +407,7 @@ async function executeTurn(ctx: AdapterExecutionContext): Promise<AdapterExecuti
     if (executionTargetIsRemote) {
       await onLog(
         "stdout",
-        `[paperclip] Syncing Grok workspace to ${describeAdapterExecutionTarget(executionTarget)}.\n`,
+        `[bostan] Syncing Grok workspace to ${describeAdapterExecutionTarget(executionTarget)}.\n`,
       );
       // Stage only the credential file the remote lane needs into a curated
       // temp dir and ship THAT as the `home` asset, the same curated-snapshot
@@ -510,16 +510,16 @@ async function executeTurn(ctx: AdapterExecutionContext): Promise<AdapterExecuti
       adapterExecutionTargetSessionMatches(runtimeRemoteExecution, runtimeExecutionTarget);
     const sessionId = canResumeSession ? runtimeSessionId : null;
     if (missingManagedSession) {
-      await onLog("stdout", "[paperclip] Selected Grok session history is unavailable. Starting a fresh session with the task handoff instead of remote subscription recovery.\n");
+      await onLog("stdout", "[bostan] Selected Grok session history is unavailable. Starting a fresh session with the task handoff instead of remote subscription recovery.\n");
     } else if (executionTargetIsRemote && runtimeSessionId && !canResumeSession) {
       await onLog(
         "stdout",
-        `[paperclip] Grok session "${runtimeSessionId}" does not match the current remote execution identity and will not be resumed in "${effectiveExecutionCwd}". Starting a fresh remote session.\n`,
+        `[bostan] Grok session "${runtimeSessionId}" does not match the current remote execution identity and will not be resumed in "${effectiveExecutionCwd}". Starting a fresh remote session.\n`,
       );
     } else if (runtimeSessionId && !canResumeSession) {
       await onLog(
         "stdout",
-        `[paperclip] Grok session "${runtimeSessionId}" was saved for cwd "${runtimeSessionCwd}" and will not be resumed in "${effectiveExecutionCwd}".\n`,
+        `[bostan] Grok session "${runtimeSessionId}" was saved for cwd "${runtimeSessionCwd}" and will not be resumed in "${effectiveExecutionCwd}".\n`,
       );
     }
 
@@ -721,7 +721,7 @@ async function executeTurn(ctx: AdapterExecutionContext): Promise<AdapterExecuti
     ) {
       await onLog(
         "stdout",
-        `[paperclip] Grok resume session "${sessionId}" is unavailable; retrying with a fresh session.\n`,
+        `[bostan] Grok resume session "${sessionId}" is unavailable; retrying with a fresh session.\n`,
       );
       const retry = await runAttempt(null);
       return toResult(retry, true, true);
@@ -743,7 +743,7 @@ async function executeTurn(ctx: AdapterExecutionContext): Promise<AdapterExecuti
             await providerStop.collectBeforeRestore();
           } catch {
             collectionFailed = true;
-            await onLog("stderr", `[paperclip] ${collectionFailureMessage}\n`).catch(() => undefined);
+            await onLog("stderr", `[bostan] ${collectionFailureMessage}\n`).catch(() => undefined);
           }
         }
         if (!collectionFailed) return result;
@@ -764,7 +764,7 @@ async function executeTurn(ctx: AdapterExecutionContext): Promise<AdapterExecuti
       await fs.rm(stagedGrokHomeDir, { recursive: true, force: true }).catch(async (error) => {
         await onLog(
           "stderr",
-          `[paperclip] Failed to remove staged Grok home "${stagedGrokHomeDir}": ${
+          `[bostan] Failed to remove staged Grok home "${stagedGrokHomeDir}": ${
             error instanceof Error ? error.message : String(error)
           }\n`,
         );

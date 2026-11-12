@@ -1,7 +1,20 @@
 import { describe, expect, it } from "vitest";
+import { createRequire } from "node:module";
 import { parseHermesStdoutLine } from "./parse-stdout.js";
 
 const TS = "2026-06-29T12:00:00.000Z";
+const packagedParser = createRequire(import.meta.url)("../../ui-parser.cjs");
+
+describe("Bostan diagnostic identity compatibility", () => {
+  it.each(["bostan", "paperclip"])("keeps %s diagnostics out of assistant output", (brand) => {
+    expect(parseHermesStdoutLine(`[${brand}] managed diagnostic`, TS)).toEqual([
+      { kind: "system", ts: TS, text: `[${brand}] managed diagnostic` },
+    ]);
+    expect(packagedParser.parseStdoutLine(`[${brand}] managed diagnostic`, TS)).toEqual([
+      { kind: "system", ts: TS, text: `[${brand}] managed diagnostic` },
+    ]);
+  });
+});
 
 describe("parseHermesStdoutLine — ANSI stripping", () => {
   it("strips 24-bit foreground + background color CSI sequences", () => {

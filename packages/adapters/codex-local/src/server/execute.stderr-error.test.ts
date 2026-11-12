@@ -23,7 +23,7 @@ const {
 vi.mock("./acp.js", () => ({
   createCodexAcpExecutor: () => vi.fn(),
   formatCodexAcpFallbackMessage: (reason: string) =>
-    `[paperclip] Codex ACP default unavailable; falling back to Codex CLI. ${reason} Set engine=acp to require ACP or engine=cli to silence this fallback.\n`,
+    `[bostan] Codex ACP default unavailable; falling back to Codex CLI. ${reason} Set engine=acp to require ACP or engine=cli to silence this fallback.\n`,
   resolveCodexExecutionEngineForRun: async () => ({ engine: "cli", explicit: true }),
 }));
 
@@ -136,10 +136,10 @@ describe("codex_local stderr fallback error derivation", () => {
     expect(result.errorMessage).not.toContain("YOLO mode");
   });
 
-  it("skips adapter-injected [paperclip] diagnostic lines when picking the fallback error", async () => {
+  it("skips adapter-injected [bostan] diagnostic lines when picking the fallback error", async () => {
     mockFailedProcess(
       [
-        "[paperclip] Codex ACP default unavailable; falling back to Codex CLI. Set engine=acp to require ACP or engine=cli to silence this fallback.",
+        "[bostan] Codex ACP default unavailable; falling back to Codex CLI. Set engine=acp to require ACP or engine=cli to silence this fallback.",
         YOLO_WARNING,
         "Error: stream disconnected before completion",
       ].join("\n"),
@@ -168,15 +168,19 @@ describe("codex_local stderr fallback error derivation", () => {
 });
 
 describe("firstMeaningfulStderrLine", () => {
+  it.each(["bostan", "paperclip"])("retains real errors after %s diagnostics", (brand) => {
+    expect(firstMeaningfulStderrLine(`[${brand}] managed diagnostic\nError: real provider failure`)).toBe("Error: real provider failure");
+    expect(firstMeaningfulStderrLine(`[${brand}-other] real error\nError: later`)).toBe(`[${brand}-other] real error`);
+  });
   it("returns the first line that is not a known benign warning", () => {
     expect(firstMeaningfulStderrLine(`${YOLO_WARNING}\nError: boom`)).toBe("Error: boom");
-    expect(firstMeaningfulStderrLine("[paperclip] Confining Codex with workspace scope.\nError: boom")).toBe(
+    expect(firstMeaningfulStderrLine("[bostan] Confining Codex with workspace scope.\nError: boom")).toBe(
       "Error: boom",
     );
   });
 
   it("keeps the first non-empty line when all lines are benign", () => {
-    expect(firstMeaningfulStderrLine(`${YOLO_WARNING}\n[paperclip] note\n`)).toBe(YOLO_WARNING);
+    expect(firstMeaningfulStderrLine(`${YOLO_WARNING}\n[bostan] note\n`)).toBe(YOLO_WARNING);
   });
 
   it("returns an empty string for blank input", () => {

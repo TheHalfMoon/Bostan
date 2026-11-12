@@ -167,8 +167,8 @@ async function prepareGeminiRemoteManagedHome(
     createWorkspaceRestoreTeardown({
       stagedRuntime,
       onLog,
-      startMessage: "[paperclip] Restoring workspace changes from the sandbox.\n",
-      failurePrefix: "[paperclip] Gemini ACP teardown workspace restore failed",
+      startMessage: "[bostan] Restoring workspace changes from the sandbox.\n",
+      failurePrefix: "[bostan] Gemini ACP teardown workspace restore failed",
     });
   const geminiSkillsHome = resolveGeminiSkillsHome(input.config);
   const stagedRuntime = await input.stage(

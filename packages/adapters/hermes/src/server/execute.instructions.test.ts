@@ -166,6 +166,16 @@ console.log("Fixture completed\\nsession_id: ${SESSION_ID}");
     expect(invocation.systemPrompt).toContain(INSTRUCTIONS);
   });
 
+  it.each(["bostan", "paperclip"])("excludes %s diagnostics from the actual subprocess response", async (brand) => {
+    const ctx = context();
+    const result = await execute({ ...ctx, config: { ...ctx.config, env: {
+      CAPTURE_PATH: capturePath, FIXTURE_STDOUT: `[${brand}] managed diagnostic\nActual assistant result`,
+    } } });
+    expect(result.exitCode).toBe(0);
+    expect(result.summary).toContain("Actual assistant result");
+    expect(result.summary).not.toContain("managed diagnostic");
+  });
+
   it("surfaces a missing session without automatically restarting work", async () => {
     const ctx = context();
     const result = await execute({ ...ctx, runtime: { ...ctx.runtime, sessionParams: { sessionId: "missing-session" } } });

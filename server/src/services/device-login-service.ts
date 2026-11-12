@@ -1566,7 +1566,7 @@ export function createWorkerBoundLoginPtyOpener(
     const driverKey =
       readLeaseMetaString(metadata.provider) ?? readLeaseMetaString(metadata.driver);
     if (!binding.providerLeaseId || !pluginId || !driverKey) {
-      log("[paperclip] Device login: the lease carries no sandbox worker binding.");
+      log("[bostan] Device login: the lease carries no sandbox worker binding.");
       throw new Error(CODEX_LOGIN_PTY_BIND_FAILED);
     }
     // Resolve the closed command key from the trusted adapter type. An unmapped
@@ -1575,7 +1575,7 @@ export function createWorkerBoundLoginPtyOpener(
     try {
       loginCommandKey = resolveLoginCommandKey(binding.adapterType);
     } catch {
-      log("[paperclip] Device login: the adapter type has no login command key.");
+      log("[bostan] Device login: the adapter type has no login command key.");
       throw new Error(CODEX_LOGIN_PTY_BIND_FAILED);
     }
     // Validate the server-controlled session home shape before the worker RPC.
