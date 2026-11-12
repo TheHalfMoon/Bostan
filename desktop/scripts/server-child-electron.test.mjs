@@ -58,6 +58,8 @@ test("actual Electron Node child honors compiled exports and drains startup befo
     clearTimeout(timer);
     assert.equal(code, 0, output);
     assert.match(output, /CHILD_EXIT=0/);
+    const phases = output.split(/\r?\n/).filter(line => line.startsWith('{"type":"startup-phase"')).map(line => JSON.parse(line).phase);
+    assert.deepEqual(phases, ["utility_bootstrap", "importing_server", "starting_server", "ready"]);
     assert.equal(fs.readFileSync(path.join(root, "stopped"), "utf8"), "clean");
     assert.equal(fs.readFileSync(path.join(root, "subprocess"), "utf8"), "compiled 24.22.2");
   } finally { fs.rmSync(root, { recursive: true, force: true }); }

@@ -1,9 +1,11 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { registerHooks } from "node:module";
+import diagnostics from "./startup-diagnostics.cjs";
 
 // Only Electron's private utility-process channel may control this backend.
 if (!process.parentPort) throw new Error("Bostan desktop backend requires its application host");
+process.parentPort.postMessage({ type: "startup-phase", phase: "utility_bootstrap" });
 
 // Internal Node subprocesses use Electron's embedded Node rather than requiring
 // a developer Node installation. This is set after utility-process bootstrap.
@@ -40,15 +42,18 @@ process.parentPort.on("message", ({ data }) => {
 
 startup = (async () => {
   const entry = path.join(process.env.BOSTAN_DESKTOP_SERVER_ROOT, "dist/index.js");
+  process.parentPort.postMessage({ type: "startup-phase", phase: "importing_server" });
   const { startServer } = await import(pathToFileURL(entry).href);
+  process.parentPort.postMessage({ type: "startup-phase", phase: "starting_server" });
   runtime = await startServer();
+  process.parentPort.postMessage({ type: "startup-phase", phase: "ready" });
   if (!stopping) process.parentPort.postMessage({ type: "ready", port: runtime.listenPort });
 })();
 try {
   await startup;
 } catch (error) {
   // Raw backend stacks may include secrets, database URLs and host paths.
-  const code = typeof error?.code === "string" && /^ERR_[A-Z_]+$/.test(error.code) ? error.code : "STARTUP_FAILED";
+  const code = diagnostics.startupCode(error?.code);
   process.parentPort.postMessage({ type: "startup-failed", code });
   process.exit(1);
 }

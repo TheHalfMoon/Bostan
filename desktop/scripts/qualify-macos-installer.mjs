@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { qualifyInstalledApp } from "./installed-app-journey.mjs";
-import { installedAppPhase } from "./installed-app-phase.mjs";
+import { installedAppPhase, observeInstalledAppStartup } from "./installed-app-phase.mjs";
 
 // Mount/copy/remove only on a disposable hosted runner, never an operator Mac.
 if (process.platform !== "darwin" || process.env.CI !== "true"
@@ -48,6 +48,7 @@ const tempIdentity = fs.lstatSync(temp);
 const mount = path.join(temp, "image"); fs.mkdirSync(mount);
 let mounted = false;
 let application;
+let stopStartupObserver = () => {};
 let forcedStop = false;
 let installedIdentity;
 let dataIdentity;
@@ -62,6 +63,7 @@ function appPhase(name, work, timeoutMs = 180000) {
   return installedAppPhase(application, name, work, { timeoutMs, onForcedStop: () => { forcedStop = true; phase("forced_stop_failure"); } });
 }
 async function closeApplication() {
+  stopStartupObserver();
   if (!application || forcedStop) return;
   phase("close_begin");
   await appPhase("close", () => application.close(), 90000);
@@ -94,6 +96,7 @@ try {
     assertOwnedDirectory(installedApp, applications, installedIdentity);
     phase("launch_begin");
     application = await _electron.launch({ executablePath: executable, env, timeout: 180000 });
+    stopStartupObserver = observeInstalledAppStartup(application, line => console.log(line));
     forcedStop = false;
     phase("electron_connected");
     const actual = await appPhase("data_path", () => application.evaluate(({ app }) => app.getPath("userData")));
@@ -113,6 +116,7 @@ try {
     phase("first_window");
     await page.waitForURL(url => url.protocol === "http:" && url.hostname === "127.0.0.1", { timeout: 180000 });
     phase("backend_page_ready");
+    stopStartupObserver();
     return page;
   }
   await qualifyInstalledApp({

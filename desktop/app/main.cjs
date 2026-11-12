@@ -1,6 +1,7 @@
 const { app, BrowserWindow, dialog, utilityProcess, Menu, shell } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
+const diagnostics = require("./startup-diagnostics.cjs");
 
 app.setName("Bostan");
 if (!app.requestSingleInstanceLock()) app.quit();
@@ -51,17 +52,20 @@ else {
     window.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
     window.webContents.session.setPermissionCheckHandler(() => false);
     await window.loadFile(path.join(__dirname, "starting.html"));
+    console.info(diagnostics.startupPhaseLine("window_loaded"));
     if (quitting) return;
     const dataDir = path.join(app.getPath("userData"), "data");
     protectDataDirectory(dataDir);
+    console.info(diagnostics.startupPhaseLine("data_protected"));
     const runtimeRoot = app.isPackaged ? path.join(process.resourcesPath, "runtime") : path.resolve(__dirname, "../../server");
     if (app.isPackaged && process.platform === "win32") {
       const { restoreRuntimeLinks } = await import("./runtime-links.mjs");
       restoreRuntimeLinks(runtimeRoot);
     }
     if (!fs.existsSync(path.join(runtimeRoot, "dist/index.js")) || !fs.existsSync(path.join(runtimeRoot, "ui-dist/index.html"))) {
-      throw new Error("Bostan compiled server or interface is missing. Reinstall the application.");
+      throw Object.assign(new Error("Bostan compiled server or interface is missing. Reinstall the application."), { code: "RUNTIME_MISSING" });
     }
+    console.info(diagnostics.startupPhaseLine("runtime_valid"));
     const port = await freePort();
     if (quitting) return;
     child = utilityProcess.fork(path.join(__dirname, "server-child.mjs"), [], {
@@ -69,9 +73,11 @@ else {
       env: { ...desktopEnvironment({ dataDir, port }), BOSTAN_DESKTOP_SERVER_ROOT: runtimeRoot },
       stdio: "ignore", serviceName: "Bostan local server",
     });
+    console.info(diagnostics.startupPhaseLine("child_spawned"));
     child.once("exit", () => {
       exited = true;
       if (!quitting && !stopping) {
+        console.error(diagnostics.startupFailureLine("BACKEND_EXITED"));
         dialog.showErrorBox("Bostan stopped", "The local backend stopped unexpectedly. Your data is retained. Reopen Bostan to recover.");
         app.quit();
       }
@@ -84,15 +90,18 @@ else {
       }
     });
     const actualPort = await new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error("Bostan startup did not complete. Your data is retained.")), 180_000);
+      const timer = setTimeout(() => reject(Object.assign(new Error("Bostan startup did not complete. Your data is retained."), { code: "STARTUP_TIMEOUT" })), 180_000);
       child.on("message", message => {
-        if (message?.type === "ready" && Number.isSafeInteger(message.port) && message.port > 0 && message.port <= 65535) {
+        if (message?.type === "startup-phase") {
+          const line = diagnostics.startupPhaseLine(message.phase);
+          if (line) console.info(line);
+        } else if (message?.type === "ready" && Number.isSafeInteger(message.port) && message.port > 0 && message.port <= 65535) {
           clearTimeout(timer); resolve(message.port);
         } else if (message?.type === "startup-failed") {
-          clearTimeout(timer); reject(new Error("Bostan could not initialize its local backend. Your data is retained."));
+          clearTimeout(timer); reject(Object.assign(new Error("Bostan could not initialize its local backend. Your data is retained."), { code: diagnostics.startupCode(message.code) }));
         }
       });
-      child.once("exit", () => { clearTimeout(timer); reject(new Error("Bostan backend exited during startup.")); });
+      child.once("exit", () => { clearTimeout(timer); reject(Object.assign(new Error("Bostan backend exited during startup."), { code: "BACKEND_EXITED" })); });
     });
     origin = `http://127.0.0.1:${actualPort}`;
     await window.loadURL(origin);
@@ -117,6 +126,7 @@ else {
   });
 
   app.whenReady().then(start).catch(error => {
+    console.error(diagnostics.startupFailureLine(error?.code));
     dialog.showErrorBox("Bostan could not start", error.message);
     app.quit();
   });

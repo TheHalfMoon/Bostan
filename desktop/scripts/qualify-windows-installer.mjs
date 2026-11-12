@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { qualifyInstalledApp } from "./installed-app-journey.mjs";
-import { installedAppPhase } from "./installed-app-phase.mjs";
+import { installedAppPhase, observeInstalledAppStartup } from "./installed-app-phase.mjs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { resolvePrivateWindowsPowerShellBinary } from "../../scripts/bostan-private-windows-powershell-binary.mjs";
@@ -53,6 +53,7 @@ function installerPhases() {
   } finally { fs.closeSync(descriptor); }
 }
 let application;
+let stopStartupObserver = () => {};
 let forcedStop = false;
 let ownedData = false;
 let clean = false;
@@ -62,6 +63,7 @@ function appPhase(name, work, timeoutMs = 180000) {
   return installedAppPhase(application, name, work, { timeoutMs, onForcedStop: () => { forcedStop = true; console.log("BOSTAN_WINDOWS_INSTALLER_PHASE forced_stop_failure"); } });
 }
 async function closeApplication() {
+  stopStartupObserver();
   if (!application || forcedStop) return;
   await appPhase("close", () => application.close(), 90000);
   application = null;
@@ -112,6 +114,7 @@ try {
 
   async function launch() {
     application = await _electron.launch({ executablePath: executable, env, timeout: 180000 });
+    stopStartupObserver = observeInstalledAppStartup(application, line => console.log(line));
     forcedStop = false;
     const actual = await appPhase("data_path", () => application.evaluate(({ app }) => app.getPath("userData")));
     assert.equal(path.resolve(actual).toLowerCase(), path.resolve(appData).toLowerCase());
@@ -121,6 +124,7 @@ try {
     page.setDefaultTimeout(30000);
     page.setDefaultNavigationTimeout(180000);
     await page.waitForURL(url => url.protocol === "http:" && url.hostname === "127.0.0.1", { timeout: 180000 });
+    stopStartupObserver();
     return page;
   }
   await qualifyInstalledApp({

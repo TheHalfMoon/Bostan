@@ -1,8 +1,26 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { once } from "node:events";
+import { once, EventEmitter } from "node:events";
 import { test } from "node:test";
-import { installedAppPhase } from "./installed-app-phase.mjs";
+import { installedAppPhase, observeInstalledAppStartup } from "./installed-app-phase.mjs";
+
+test("startup observer reconstructs bounded fixed receipts and discards private or oversized output", () => {
+  const stdout = new EventEmitter();
+  const stderr = new EventEmitter();
+  const lines = [];
+  const dispose = observeInstalledAppStartup({ process: () => ({ stdout, stderr }) }, line => lines.push(line));
+  stdout.emit("data", Buffer.from("BOSTAN_DESKTOP_STARTUP_PHASE import"));
+  stdout.emit("data", Buffer.from("ing_server\r\nhttps://user:secret@example.test\n"));
+  stderr.emit("data", Buffer.from("x".repeat(300) + "BOSTAN_DESKTOP_STARTUP_FAILURE EPERM\n"));
+  stderr.emit("data", Buffer.from("BOSTAN_DESKTOP_STARTUP_FAILURE ERR_MODULE_NOT_FOUND\n"));
+  stdout.emit("data", Buffer.from("BOSTAN_DESKTOP_STARTUP_PHASE ready private\n"));
+  assert.deepEqual(lines, ["BOSTAN_DESKTOP_STARTUP_PHASE importing_server", "BOSTAN_DESKTOP_STARTUP_FAILURE ERR_MODULE_NOT_FOUND"]);
+  dispose(); dispose();
+  assert.equal(stdout.listenerCount("data"), 0);
+  assert.equal(stderr.listenerCount("data"), 0);
+  stdout.emit("data", Buffer.from("BOSTAN_DESKTOP_STARTUP_PHASE ready\n"));
+  assert.equal(lines.length, 2);
+});
 
 test("a stalled installed-app phase fails and stops only its actual owned child", async () => {
   const child = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { stdio: "ignore", windowsHide: true });
