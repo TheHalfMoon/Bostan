@@ -37,13 +37,13 @@ test("arbitrary dependency errors and forged multiline receipts disclose no raw 
   }
 });
 
-test("startup site accepts canonical filesystem paths without disclosing unrelated frames", { skip: process.platform === "win32" }, () => {
+test("startup site accepts canonical filesystem paths without disclosing unrelated frames", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-startup-site-"));
   try {
     const canonical = path.join(root, "canonical");
     const alias = path.join(root, "alias");
     fs.mkdirSync(canonical);
-    fs.symlinkSync(canonical, alias, "dir");
+    fs.symlinkSync(canonical, alias, process.platform === "win32" ? "junction" : "dir");
     const stack = `Error: private\n    at privateFunction (${pathToFileURL(path.join(canonical, "dist/index.js")).href}:71:9)`;
     assert.equal(diagnostics.startupFailureSite({ stack }, alias), "BOSTAN_DESKTOP_STARTUP_SITE server:71:9");
     assert.equal(diagnostics.startupFailureSite({ stack }, path.join(root, "unrelated")), null);
