@@ -1026,7 +1026,7 @@ export async function startSandboxCallbackBridgeWorker(input: {
         } catch (error) {
           lastWriteError = error instanceof Error ? error.message : String(error);
           console.warn(
-            `[paperclip] sandbox callback bridge failed to write response for ${response.id} (attempt ${attempt}/${MAX_BACKSTOP_WRITE_ATTEMPTS}): ${lastWriteError}`,
+            `[bostan] sandbox callback bridge failed to write response for ${response.id} (attempt ${attempt}/${MAX_BACKSTOP_WRITE_ATTEMPTS}): ${lastWriteError}`,
           );
           if (attempt < MAX_BACKSTOP_WRITE_ATTEMPTS) {
             await new Promise((resolve) => setTimeout(resolve, BACKSTOP_WRITE_RETRY_MS));
@@ -1157,7 +1157,7 @@ export async function startSandboxCallbackBridgeWorker(input: {
         };
       } catch (error) {
         console.warn(
-          `[paperclip] sandbox callback bridge handler failed for ${request.id}: ${error instanceof Error ? error.message : String(error)}`,
+          `[bostan] sandbox callback bridge handler failed for ${request.id}: ${error instanceof Error ? error.message : String(error)}`,
         );
         // Tell a worker abort apart from a normal handler failure. The recovery
         // path aborts `guard.controller` when the per-iteration timeout or the
@@ -1255,7 +1255,7 @@ export async function startSandboxCallbackBridgeWorker(input: {
         return;
       } catch (error) {
         console.warn(
-          `[paperclip] sandbox callback bridge failed to write 504 backstop for ${requestId} (attempt ${attempt}/${MAX_BACKSTOP_WRITE_ATTEMPTS}): ${error instanceof Error ? error.message : String(error)}`,
+          `[bostan] sandbox callback bridge failed to write 504 backstop for ${requestId} (attempt ${attempt}/${MAX_BACKSTOP_WRITE_ATTEMPTS}): ${error instanceof Error ? error.message : String(error)}`,
         );
         if (attempt < MAX_BACKSTOP_WRITE_ATTEMPTS) {
           await new Promise((resolve) => setTimeout(resolve, BACKSTOP_WRITE_RETRY_MS));
@@ -1383,7 +1383,7 @@ export async function startSandboxCallbackBridgeWorker(input: {
         // can still read it and deliver a terminal 503. A remove here drops the
         // request and strands the caller until its own deadline.
         console.warn(
-          `[paperclip] sandbox callback bridge could not read pending request ${requestId}: ${error instanceof Error ? error.message : String(error)}`,
+          `[bostan] sandbox callback bridge could not read pending request ${requestId}: ${error instanceof Error ? error.message : String(error)}`,
         );
         continue;
       }
@@ -1417,7 +1417,7 @@ export async function startSandboxCallbackBridgeWorker(input: {
         } catch (error) {
           lastWriteError = error instanceof Error ? error.message : String(error);
           console.warn(
-            `[paperclip] sandbox callback bridge failed to write recovery 503 for ${requestId} (attempt ${attempt}/${MAX_BACKSTOP_WRITE_ATTEMPTS}): ${lastWriteError}`,
+            `[bostan] sandbox callback bridge failed to write recovery 503 for ${requestId} (attempt ${attempt}/${MAX_BACKSTOP_WRITE_ATTEMPTS}): ${lastWriteError}`,
           );
           if (attempt < MAX_BACKSTOP_WRITE_ATTEMPTS) {
             await new Promise((resolve) => setTimeout(resolve, BACKSTOP_WRITE_RETRY_MS));
@@ -1431,7 +1431,7 @@ export async function startSandboxCallbackBridgeWorker(input: {
       } else {
         // Every 503 write failed. Keep the request file for a later recovery pass.
         console.warn(
-          `[paperclip] sandbox callback bridge kept queued request ${requestId} after every recovery 503 write failed: ${lastWriteError}`,
+          `[bostan] sandbox callback bridge kept queued request ${requestId} after every recovery 503 write failed: ${lastWriteError}`,
         );
       }
     }
@@ -1453,7 +1453,7 @@ export async function startSandboxCallbackBridgeWorker(input: {
         // now on the trace; swallow it here so the worker recovery continues.
       }
     }
-    console.warn(`[paperclip] ${error.message}`);
+    console.warn(`[bostan] ${error.message}`);
   };
 
   // The timestamp of the last successful loop iteration. The watchdog compares
@@ -1473,7 +1473,7 @@ export async function startSandboxCallbackBridgeWorker(input: {
       await failPendingRequests(message, { abandonInFlight: true });
     } catch (error) {
       console.warn(
-        `[paperclip] sandbox callback bridge watchdog failed to abort queued requests: ${error instanceof Error ? error.message : String(error)}`,
+        `[bostan] sandbox callback bridge watchdog failed to abort queued requests: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   };
@@ -1538,7 +1538,7 @@ export async function startSandboxCallbackBridgeWorker(input: {
             // only warn, so a flapping channel does not spam failed spans.
             await surfaceRunError(new Error(message));
           } else {
-            console.warn(`[paperclip] ${message}`);
+            console.warn(`[bostan] ${message}`);
           }
           const backoffMs = Math.min(
             pollIntervalMs * 2 ** consecutivePollFailures,
@@ -1602,7 +1602,7 @@ export async function startSandboxCallbackBridgeWorker(input: {
               await failPendingRequests(message, { abandonInFlight: true });
             } catch (failPendingError) {
               console.warn(
-                `[paperclip] sandbox callback bridge failed to abort queued requests after a request failure: ${failPendingError instanceof Error ? failPendingError.message : String(failPendingError)}`,
+                `[bostan] sandbox callback bridge failed to abort queued requests after a request failure: ${failPendingError instanceof Error ? failPendingError.message : String(failPendingError)}`,
               );
             }
           } finally {
@@ -1621,7 +1621,7 @@ export async function startSandboxCallbackBridgeWorker(input: {
         await failPendingRequests(message, { abandonInFlight: true });
       } catch (failPendingError) {
         console.warn(
-          `[paperclip] sandbox callback bridge failed to abort queued requests after worker failure: ${failPendingError instanceof Error ? failPendingError.message : String(failPendingError)}`,
+          `[bostan] sandbox callback bridge failed to abort queued requests after worker failure: ${failPendingError instanceof Error ? failPendingError.message : String(failPendingError)}`,
         );
       }
     } finally {

@@ -1188,7 +1188,7 @@ function makeTransferProgress(
         await emitRuntimeStatus(
           runtimeStatus.sink,
           runtimeStatus.phase,
-          line.replace(/^\[paperclip\]\s*/, "").trim(),
+          line.replace(/^\[(?:bostan|paperclip)\]\s*/, "").trim(),
         );
       }
     },

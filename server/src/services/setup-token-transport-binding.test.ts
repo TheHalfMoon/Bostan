@@ -695,19 +695,19 @@ describe("worker-bound live pseudo-terminal opener", () => {
 // application binding forwards each line verbatim, so a captured line must be a
 // member of this set.
 const DIAGNOSTIC_ALLOWLIST = new Set<string>([
-  "[paperclip] Setup-token login: the process stop step errored.",
-  "[paperclip] Setup-token login: the driver dispose step errored.",
-  "[paperclip] Setup-token login: the code input step errored.",
-  "[paperclip] Setup-token login: sent the browser code to the prompt.",
-  "[paperclip] Setup-token login: delivered the credential to the sink.",
-  "[paperclip] Setup-token login: the credential delivery step errored.",
-  "[paperclip] Setup-token login cancelled before start.",
-  "[paperclip] Setup-token login timed out; stopping the process.",
-  "[paperclip] Setup-token login cancelled; stopping the process.",
-  "[paperclip] Setup-token login command ended with a non-zero exit code.",
-  "[paperclip] Setup-token login: the credential did not land; treating the run as a failure.",
-  "[paperclip] Setup-token login: surfaced the sign-in prompt.",
-  "[paperclip] Setup-token login command ended successfully.",
+  "[bostan] Setup-token login: the process stop step errored.",
+  "[bostan] Setup-token login: the driver dispose step errored.",
+  "[bostan] Setup-token login: the code input step errored.",
+  "[bostan] Setup-token login: sent the browser code to the prompt.",
+  "[bostan] Setup-token login: delivered the credential to the sink.",
+  "[bostan] Setup-token login: the credential delivery step errored.",
+  "[bostan] Setup-token login cancelled before start.",
+  "[bostan] Setup-token login timed out; stopping the process.",
+  "[bostan] Setup-token login cancelled; stopping the process.",
+  "[bostan] Setup-token login command ended with a non-zero exit code.",
+  "[bostan] Setup-token login: the credential did not land; treating the run as a failure.",
+  "[bostan] Setup-token login: surfaced the sign-in prompt.",
+  "[bostan] Setup-token login command ended successfully.",
 ]);
 
 // Synthetic sentinels. No real secret is present. The tests assert that no
@@ -875,14 +875,14 @@ describe("setup-token production transport binding diagnostics", () => {
     });
 
     // The run reached the success lines, so the capture is not empty.
-    expect(captured).toContain("[paperclip] Setup-token login: surfaced the sign-in prompt.");
+    expect(captured).toContain("[bostan] Setup-token login: surfaced the sign-in prompt.");
     expect(captured).toContain(
-      "[paperclip] Setup-token login: delivered the credential to the sink.",
+      "[bostan] Setup-token login: delivered the credential to the sink.",
     );
-    expect(captured).toContain("[paperclip] Setup-token login command ended successfully.");
+    expect(captured).toContain("[bostan] Setup-token login command ended successfully.");
     // The runner sent the browser code, so the code-input path ran. The code
     // still never reaches a log line.
-    expect(captured).toContain("[paperclip] Setup-token login: sent the browser code to the prompt.");
+    expect(captured).toContain("[bostan] Setup-token login: sent the browser code to the prompt.");
     expectSafeDiagnostics(captured);
   });
 
@@ -894,7 +894,7 @@ describe("setup-token production transport binding diagnostics", () => {
     });
 
     expect(captured).toContain(
-      "[paperclip] Setup-token login command ended with a non-zero exit code.",
+      "[bostan] Setup-token login command ended with a non-zero exit code.",
     );
     expectSafeDiagnostics(captured);
   });

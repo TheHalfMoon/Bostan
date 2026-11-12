@@ -392,7 +392,7 @@ describe("claude remote execution", () => {
       timedOut: false,
       stdout: "not a Claude JSON result\n",
       stderr:
-        "[paperclip] The sandbox duplex control channel was lost (provider_exit) before the run completed.\n",
+        "[bostan] The sandbox duplex control channel was lost (provider_exit) before the run completed.\n",
       pid: 123,
       startedAt: new Date().toISOString(),
       errorCode: "duplex_channel_lost",

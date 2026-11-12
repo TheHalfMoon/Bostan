@@ -7639,7 +7639,7 @@ export async function executePaperclipNativeSession(input: {
   if (input.observability) {
     const preconfiguredCodex = input.observability.kind === "codex" && "homeMode" in input.execution && input.execution.homeMode === "preconfigured";
     if (preconfiguredCodex) {
-      await input.onLog?.("stderr", "[paperclip] Company observability is unavailable for a caller-owned Codex home.\n");
+      await input.onLog?.("stderr", "[bostan] Company observability is unavailable for a caller-owned Codex home.\n");
       input = { ...input, observability: undefined };
     } else {
       const environment = { ...resolveNativeProviderEnvironment(input.execution.provider, input.runnerEnvironment) };
