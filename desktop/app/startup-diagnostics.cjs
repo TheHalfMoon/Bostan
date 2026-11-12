@@ -30,7 +30,7 @@ function startupFailureSite(error, runtimeRoot) {
       if (realRoot !== runtimeRoot) roots.push(realRoot);
     } catch { /* Missing runtime roots still fail closed. */ }
     const frames = roots.map(root => {
-      const prefix = pathToFileURL(path.join(runtimeRoot, "dist") + path.sep).href;
+      const prefix = pathToFileURL(path.join(root, "dist") + path.sep).href;
       const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       return new RegExp(`^\\s+at (?:[^\\r\\n]*?\\()?${escaped}(index\\.js|config\\.js|services/decision-signing\\.js):([1-9]\\d{0,5}):([1-9]\\d{0,5})\\)?$`);
     });
