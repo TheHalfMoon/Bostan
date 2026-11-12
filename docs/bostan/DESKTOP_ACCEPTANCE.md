@@ -252,6 +252,12 @@ zero entries and no capped/failed scan. The pinned builder first extracts7z
 into its plugin temporary directory and then copies into the destination, so
 an empty destination does not distinguish slow temporary extraction from a hang.
 Do not increase the bound or change atomic extraction based on that observation.
+The next qualifier supplies a fresh caller-owned installer TEMP/TMP directory
+under its existing owned fixture and captures bounded counts/regular-file byte
+totals there after failure. Directory handles close even at the4096entry cap;
+links and file contents are excluded. Real Windows junction and cap regressions
+PASS. The full desktop suite is now33PASS/1POSIX-only skip. This improves the
+next failure's evidence and does not establish an installation fix.
 
 macOS ARM64 job130883214720 installed successfully and reached window_loaded,
 data_protected, runtime_valid, child_spawned, utility_bootstrap, importing_server

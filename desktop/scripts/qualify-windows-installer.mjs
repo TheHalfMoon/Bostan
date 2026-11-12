@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { qualifyInstalledApp } from "./installed-app-journey.mjs";
 import { installedAppPhase, observeInstalledAppStartup } from "./installed-app-phase.mjs";
+import { installerTreeSnapshot } from "./installer-tree-snapshot.mjs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { resolvePrivateWindowsPowerShellBinary } from "../../scripts/bostan-private-windows-powershell-binary.mjs";
@@ -37,6 +38,8 @@ function noPostgres() {
 noPostgres();
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-installed-qa-"));
 const install = path.join(temp, "application");
+const installerTemp = path.join(temp, "installer-temp");
+fs.mkdirSync(installerTemp);
 const installerPhaseLog = path.join(temp, "installer-phases.log");
 fs.writeFileSync(installerPhaseLog, "", { flag: "wx", mode: 0o600 });
 function installerPhases() {
@@ -73,30 +76,22 @@ try {
   try {
     execFileSync(path.join(out, installers[0]), ["/S", "/D=" + install], {
       windowsHide: true, timeout: 120000, stdio: "pipe",
-      env: { ...process.env, BOSTAN_INSTALLER_QA_LOG: installerPhaseLog },
+      env: { ...process.env, TEMP: installerTemp, TMP: installerTemp, BOSTAN_INSTALLER_QA_LOG: installerPhaseLog },
     });
   } catch (error) {
     // Fixed, bounded facts distinguish extraction progress from a pre-install hang.
     // Never walk links, print paths, or replace the original installer failure.
     const snapshot = { installerFailed: true, installedExecutable: false, installDirectoryPresent: false,
-      phases: [], entries: 0, scanCapped: false, scanFailed: false };
+      phases: [], entries: 0, scanCapped: false, scanFailed: false, temporary: null };
     try {
       snapshot.phases = installerPhases();
       snapshot.installDirectoryPresent = fs.lstatSync(install, { throwIfNoEntry: false })?.isDirectory() === true;
       snapshot.installedExecutable = fs.lstatSync(path.join(install, "Bostan.exe"), { throwIfNoEntry: false })?.isFile() === true;
-      const pending = [install];
-      while (pending.length && snapshot.entries < 4096) {
-        const directory = pending.pop();
-        const stat = fs.lstatSync(directory, { throwIfNoEntry: false });
-        if (!stat?.isDirectory() || stat.isSymbolicLink()) continue;
-        const entries = fs.readdirSync(directory, { withFileTypes: true });
-        for (const entry of entries) {
-          if (snapshot.entries === 4096) { snapshot.scanCapped = true; break; }
-          snapshot.entries++;
-          if (entry.isDirectory() && !entry.isSymbolicLink()) pending.push(path.join(directory, entry.name));
-        }
-      }
-      snapshot.scanCapped ||= pending.length > 0;
+      const target = installerTreeSnapshot(install);
+      snapshot.entries = target.entries;
+      snapshot.scanCapped = target.capped;
+      snapshot.scanFailed = target.failed;
+      snapshot.temporary = installerTreeSnapshot(installerTemp);
     } catch { snapshot.scanFailed = true; }
     console.log("BOSTAN_WINDOWS_INSTALLER_FAILURE " + JSON.stringify(snapshot));
     throw error;
