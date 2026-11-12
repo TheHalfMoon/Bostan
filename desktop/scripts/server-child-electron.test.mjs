@@ -6,7 +6,8 @@ import { spawn } from "node:child_process";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-test("actual Electron Node child honors compiled exports and drains startup before quit", { timeout: 30000 }, async () => {
+for (const failStartup of [false, true]) {
+test(`actual Electron Node child preserves compiled startup and private failure receipts (failure=${failStartup})`, { timeout: 30000 }, async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-electron-child-test-"));
   const desktop = path.resolve(import.meta.dirname, "..");
   const electronPackage = JSON.parse(fs.readFileSync(path.join(desktop, "node_modules/electron/package.json"), "utf8"));
@@ -22,6 +23,7 @@ test("actual Electron Node child honors compiled exports and drains startup befo
       import fs from 'node:fs'; import path from 'node:path'; import {fileURLToPath} from 'node:url';
       import {spawnSync} from 'node:child_process'; import {value} from '@bostan/fixture';
       export async function startServer() {
+        ${failStartup ? 'throw new Error("SYNTHETIC_PRIVATE_BACKEND_MESSAGE");' : ''}
         if(value!=='compiled')throw Error('Wrong export');
         const sub=spawnSync(process.execPath,['--input-type=module','-e',"import {value} from '@bostan/fixture'; console.log(value,process.versions.node)"],{
           cwd:path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),encoding:'utf8',timeout:5000,windowsHide:true
@@ -56,11 +58,20 @@ test("actual Electron Node child honors compiled exports and drains startup befo
     const timer = setTimeout(() => child.kill(), 20000);
     const code = await new Promise((resolve, reject) => { child.once("error", reject); child.once("exit", resolve); });
     clearTimeout(timer);
-    assert.equal(code, 0, output);
-    assert.match(output, /CHILD_EXIT=0/);
+    assert.equal(code, failStartup ? 1 : 0, output);
     const phases = output.split(/\r?\n/).filter(line => line.startsWith('{"type":"startup-phase"')).map(line => JSON.parse(line).phase);
-    assert.deepEqual(phases, ["utility_bootstrap", "importing_server", "starting_server", "ready"]);
-    assert.equal(fs.readFileSync(path.join(root, "stopped"), "utf8"), "clean");
-    assert.equal(fs.readFileSync(path.join(root, "subprocess"), "utf8"), "compiled 24.22.2");
+    assert.deepEqual(phases, failStartup ? ["utility_bootstrap", "importing_server", "starting_server"] : ["utility_bootstrap", "importing_server", "starting_server", "ready"]);
+    if (failStartup) {
+      const failure = output.split(/\r?\n/).filter(line => line.startsWith('{"type":"startup-failed"')).map(line => JSON.parse(line));
+      assert.equal(failure.length, 1);
+      assert.equal(failure[0].code, "STARTUP_FAILED");
+      assert.match(failure[0].site, /^BOSTAN_DESKTOP_STARTUP_SITE server:[1-9]\d*:[1-9]\d*$/);
+      assert.equal(output.includes("SYNTHETIC_PRIVATE_BACKEND_MESSAGE"), false);
+    } else {
+      assert.match(output, /CHILD_EXIT=0/);
+      assert.equal(fs.readFileSync(path.join(root, "stopped"), "utf8"), "clean");
+      assert.equal(fs.readFileSync(path.join(root, "subprocess"), "utf8"), "compiled 24.22.2");
+    }
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+}

@@ -237,3 +237,45 @@ The complete macOS log for run 43083446721 distinguishes installation from backe
 The application now emits only fixed startup phase and allowlisted error-code receipts; raw backend errors remain hidden. Installed QA observes complete allowlisted lines from its captured child, reconstructs fragmented lines within 256 characters, and discards arbitrary or oversized output. Observers detach after page readiness or before close. Output emitted before observation attaches may be absent; receipts are diagnostic evidence only and cannot relax any lifecycle assertion. The existing forced-close bounds still mark failure. The desktop suite passes 30 tests with one POSIX-only skip on Windows; actual installed acceptance remains pending.
 
 Main 65cd014a26e79aff3dd889681b81594d6e0aecc7 passed all 15 post-merge jobs in run 43125236342. Its ancestry was reconciled into the desktop candidate without changing the existing candidate tree. Desktop run 43095845484 remained queued with no jobs at the time of this update; its queue cause is unknown.
+
+## Installed failure sites and artifact retention, 2026-11-12
+
+Exact head4754f8f23846a4bda29e6233ed5713fd25d91e8a completed run43127504784:
+all15 non-desktop jobs PASS, including compiled Windows authentication/onboarding
+and shutdown; both installed-desktop jobs FAIL. This candidate is not qualified
+for landing or release.
+
+Windows job130883214883 passed its native builder and runtime comparison, then
+failed installation at120seconds. Its snapshot reports pre_init and
+multiuser_ready, an existing but empty installation directory, no executable,
+zero entries and no capped/failed scan. The pinned builder first extracts7z
+into its plugin temporary directory and then copies into the destination, so
+an empty destination does not distinguish slow temporary extraction from a hang.
+Do not increase the bound or change atomic extraction based on that observation.
+
+macOS ARM64 job130883214720 installed successfully and reached window_loaded,
+data_protected, runtime_valid, child_spawned, utility_bootstrap, importing_server
+and starting_server. It emitted STARTUP_FAILED116milliseconds after starting_server,
+without a more specific allowlisted code. The UI wait failed after180seconds;
+close then failed under its90second bound and forced only the owned child to stop.
+This ended the run at00:53:04UTC instead of the former hour-long cancellation;
+forced exit remains failed qualification, not clean shutdown.
+
+The next diagnostic maps only error frames inside three known compiled startup
+modules to fixed module IDs plus bounded numeric line/column positions. No raw
+message, stack, function name or path is emitted. Actual Electron success and
+private-error fixtures both PASS, including non-disclosure of the synthetic raw
+message. Desktop suite31PASS/1POSIX-only skip; workflow admission/quarantine23PASS.
+Fresh independent correctness/parsimony/product and security reviews PASS;
+terminal CR/LF receipt rejection was tightened and its focused tests rerun.
+An isolated native Windows source bootstrap probe also loaded desktop signing,
+config and embedded-postgres under the actual desktop environment policy; that
+does not reproduce or close the macOS compiled startup failure. Its initial
+fixture loader registration failed before executing the probe and was corrected
+to use the existing tsx CLI. No user data or operator credentials were used.
+
+CI now retains the existing fixed installer/checksum/SBOM/license file list when
+packaging succeeds even if subsequent installed QA fails. Artifact names include
+the job status, retention remains7days and canceled/incomplete builds are excluded.
+No synthetic database, auth state or runtime logs are added to artifacts. Job
+failure remains failure; these are unsigned engineering candidates, not releases.

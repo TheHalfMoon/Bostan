@@ -98,6 +98,7 @@ else {
         } else if (message?.type === "ready" && Number.isSafeInteger(message.port) && message.port > 0 && message.port <= 65535) {
           clearTimeout(timer); resolve(message.port);
         } else if (message?.type === "startup-failed") {
+          if (diagnostics.isStartupSiteLine(message.site)) console.error(message.site);
           clearTimeout(timer); reject(Object.assign(new Error("Bostan could not initialize its local backend. Your data is retained."), { code: diagnostics.startupCode(message.code) }));
         }
       });
