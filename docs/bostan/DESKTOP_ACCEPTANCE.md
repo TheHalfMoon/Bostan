@@ -305,3 +305,16 @@ full sandbox isolation or network-capture acceptance. The earlier persisted
 text-task/restart journey remains separate. Do not combine separate successful
 journeys into an unexecuted integrated product claim. All fixtures and receipts
 remain retained outside the repository; issue34 records the acceptance scope.
+
+## Qualified source refresh, 2026-11-12
+
+Source PRs554,553and555 each passed all15 exact-head jobs in runs43128725833,
+43127773331and43129732958 respectively, received independent review and landed.
+Main69be0668505cb89892d649e033b0ba2dcadc2f9c is incorporated without conflicts.
+Of85source-refresh files,84are byte-identical to main; only pnpm-lock.yaml differs
+because it retains the already qualified embedded PostgreSQL Windows patch hash
+and preexisting Smithy deprecation/OpenCode CPU metadata. Independent mechanical
+integration review confirmed that this merge introduces only the reviewed Acorn
+edges and preserves the compiled patch closure. Local desktop33PASS/1skip and
+actual Electron2PASS after integration. Main's final post-merge run43133641601
+and the new desktop exact-head native run remain required.
