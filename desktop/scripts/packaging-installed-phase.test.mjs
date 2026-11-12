@@ -75,3 +75,14 @@ test("invalid bounds and missing process ownership refuse before executing work"
   await assert.rejects(installedAppPhase({ process: () => null }, "invalid", work, { timeoutMs: 0 }), /Invalid/);
   assert.equal(called, false);
 });
+
+test("already exited owned process rejects before qualification work", async () => {
+  const child = spawn(process.execPath, ["-e", "process.exit(0)"], { stdio: "ignore", windowsHide: true });
+  await once(child, "exit");
+  let ran = false;
+  await assert.rejects(installedAppPhase({ process: () => child }, "already_exited", () => { ran = true; }),
+    /process exited during phase: already_exited/);
+  assert.equal(ran, false);
+  assert.equal(child.listenerCount("exit"), 0);
+  assert.equal(child.listenerCount("error"), 0);
+});

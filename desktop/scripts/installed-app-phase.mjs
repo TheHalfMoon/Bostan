@@ -33,6 +33,10 @@ export async function installedAppPhase(application, phase, operation, { timeout
   if (!child || !Number.isSafeInteger(child.pid) || child.pid <= 0 || typeof child.kill !== "function") {
     throw new Error("Installed application process ownership unavailable");
   }
+  // Never run qualification work after the owned process has already terminated.
+  if (child.exitCode != null || child.signalCode != null) {
+    throw new Error(`Installed application process exited during phase: ${phase}`);
+  }
   let timer;
   let onExit;
   let onError;
