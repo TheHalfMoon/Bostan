@@ -40,12 +40,20 @@ export async function installedAppPhase(application, phase, operation, { timeout
   let timer;
   let onExit;
   let onError;
+  let childFailed = false;
   try {
     return await Promise.race([
-      Promise.resolve().then(operation),
+      Promise.resolve().then(() => {
+        // An exit/error can arrive while listeners are installed, before the
+        // operation microtask starts. Never run work on a failed child.
+        if (childFailed || child.exitCode != null || child.signalCode != null) {
+          throw new Error(`Installed application process exited during phase: ${phase}`);
+        }
+        return operation();
+      }),
       new Promise((_, reject) => {
-        onExit = () => reject(new Error(`Installed application process exited during phase: ${phase}`));
-        onError = () => reject(new Error(`Installed application process failed during phase: ${phase}`));
+        onExit = () => { childFailed = true; reject(new Error(`Installed application process exited during phase: ${phase}`)); };
+        onError = () => { childFailed = true; reject(new Error(`Installed application process failed during phase: ${phase}`)); };
         child.once("exit", onExit);
         child.once("error", onError);
         if (child.exitCode !== null || child.signalCode !== null) onExit();

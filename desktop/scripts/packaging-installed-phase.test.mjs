@@ -86,3 +86,24 @@ test("already exited owned process rejects before qualification work", async () 
   assert.equal(child.listenerCount("exit"), 0);
   assert.equal(child.listenerCount("error"), 0);
 });
+
+test("synchronous child failure during observer setup never starts qualification work", async () => {
+  const child = new EventEmitter();
+  child.pid = 424242;
+  child.exitCode = null;
+  child.signalCode = null;
+  child.kill = () => { throw new Error("must not kill synthetic process"); };
+  const originalOnce = child.once.bind(child);
+  child.once = (event, listener) => {
+    originalOnce(event, listener);
+    if (event === "error") child.emit("error", new Error("private failure details"));
+    return child;
+  };
+  let called = false;
+  await assert.rejects(installedAppPhase({ process: () => child }, "synthetic_error", () => {
+    called = true;
+  }, { timeoutMs: 1000 }), /process failed during phase: synthetic_error/);
+  assert.equal(called, false);
+  assert.equal(child.listenerCount("error"), 0);
+  assert.equal(child.listenerCount("exit"), 0);
+});
