@@ -70,7 +70,7 @@ export const runTranscriptFixtureEntries: TranscriptEntry[] = [
     kind: "tool_result",
     ts: "2026-03-11T15:21:19.034Z",
     toolUseId: "item_1",
-    content: "command: sed -n '1,220p' doc/GOAL.md\nstatus: completed\nexit_code: 0\n\n# Bostan\n\nPaperclip is the backbone of the autonomous economy.",
+    content: "command: sed -n '1,220p' doc/GOAL.md\nstatus: completed\nexit_code: 0\n\n# Bostan\n\nBostan is the backbone of the autonomous economy.",
     isError: false,
   },
   {
