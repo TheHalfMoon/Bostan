@@ -57,10 +57,53 @@ test("a completed installed-app phase cancels its timer without stopping the chi
   } finally { child.kill("SIGKILL"); await exited; }
 });
 
+test("installed-app phase fails immediately on owned process exit and removes observers", async () => {
+  const child = spawn(process.execPath, ["-e", "process.exit(7)"], { stdio: "ignore", windowsHide: true });
+  const started = Date.now();
+  await assert.rejects(installedAppPhase({ process: () => child }, "first_window", () => new Promise(() => {}), {
+    timeoutMs: 5000,
+  }), /process exited during phase: first_window/);
+  assert.ok(Date.now() - started < 4000, "Exited child must not wait for the phase timeout");
+  assert.equal(child.listenerCount("exit"), 0);
+  assert.equal(child.listenerCount("error"), 0);
+});
+
 test("invalid bounds and missing process ownership refuse before executing work", async () => {
   let called = false;
   const work = () => { called = true; };
   await assert.rejects(installedAppPhase({ process: () => null }, "missing", work), /ownership unavailable/);
   await assert.rejects(installedAppPhase({ process: () => null }, "invalid", work, { timeoutMs: 0 }), /Invalid/);
   assert.equal(called, false);
+});
+
+test("already exited owned process rejects before qualification work", async () => {
+  const child = spawn(process.execPath, ["-e", "process.exit(0)"], { stdio: "ignore", windowsHide: true });
+  await once(child, "exit");
+  let ran = false;
+  await assert.rejects(installedAppPhase({ process: () => child }, "already_exited", () => { ran = true; }),
+    /process exited during phase: already_exited/);
+  assert.equal(ran, false);
+  assert.equal(child.listenerCount("exit"), 0);
+  assert.equal(child.listenerCount("error"), 0);
+});
+
+test("synchronous child failure during observer setup never starts qualification work", async () => {
+  const child = new EventEmitter();
+  child.pid = 424242;
+  child.exitCode = null;
+  child.signalCode = null;
+  child.kill = () => { throw new Error("must not kill synthetic process"); };
+  const originalOnce = child.once.bind(child);
+  child.once = (event, listener) => {
+    originalOnce(event, listener);
+    if (event === "error") child.emit("error", new Error("private failure details"));
+    return child;
+  };
+  let called = false;
+  await assert.rejects(installedAppPhase({ process: () => child }, "synthetic_error", () => {
+    called = true;
+  }, { timeoutMs: 1000 }), /process failed during phase: synthetic_error/);
+  assert.equal(called, false);
+  assert.equal(child.listenerCount("error"), 0);
+  assert.equal(child.listenerCount("exit"), 0);
 });

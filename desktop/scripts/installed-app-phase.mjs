@@ -33,10 +33,31 @@ export async function installedAppPhase(application, phase, operation, { timeout
   if (!child || !Number.isSafeInteger(child.pid) || child.pid <= 0 || typeof child.kill !== "function") {
     throw new Error("Installed application process ownership unavailable");
   }
+  // Never run qualification work after the owned process has already terminated.
+  if (child.exitCode != null || child.signalCode != null) {
+    throw new Error(`Installed application process exited during phase: ${phase}`);
+  }
   let timer;
+  let onExit;
+  let onError;
+  let childFailed = false;
   try {
     return await Promise.race([
-      Promise.resolve().then(operation),
+      Promise.resolve().then(() => {
+        // An exit/error can arrive while listeners are installed, before the
+        // operation microtask starts. Never run work on a failed child.
+        if (childFailed || child.exitCode != null || child.signalCode != null) {
+          throw new Error(`Installed application process exited during phase: ${phase}`);
+        }
+        return operation();
+      }),
+      new Promise((_, reject) => {
+        onExit = () => { childFailed = true; reject(new Error(`Installed application process exited during phase: ${phase}`)); };
+        onError = () => { childFailed = true; reject(new Error(`Installed application process failed during phase: ${phase}`)); };
+        child.once("exit", onExit);
+        child.once("error", onError);
+        if (child.exitCode !== null || child.signalCode !== null) onExit();
+      }),
       new Promise((_, reject) => {
         timer = setTimeout(() => {
           try { onForcedStop(); } catch { /* Optional diagnostics cannot prevent owned-process termination. */ }
@@ -47,5 +68,7 @@ export async function installedAppPhase(application, phase, operation, { timeout
     ]);
   } finally {
     clearTimeout(timer);
+    if (onExit) child.off("exit", onExit);
+    if (onError) child.off("error", onError);
   }
 }
