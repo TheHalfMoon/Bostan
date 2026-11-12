@@ -38,7 +38,7 @@
     "@bostan/shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0"
+    "@types/node": "^24.19.2"
   },
   "engines": {
     "node": ">=24.11.0"

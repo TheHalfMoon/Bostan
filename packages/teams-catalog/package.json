@@ -34,7 +34,7 @@
     "validate": "node ../../server/node_modules/tsx/dist/cli.mjs scripts/validate-catalog.ts"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0"
+    "@types/node": "^24.19.2"
   },
   "engines": {
     "node": ">=24.11.0"
