@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { describeToolInput, summarizeToolInput } from "./transcriptPresentation";
+import { describeToolInput, summarizeToolInput, shouldHideNiceModeStderr } from "./transcriptPresentation";
+
+describe("resume diagnostic identity compatibility", () => {
+  it.each(["bostan", "paperclip"])("hides only the benign %s resume notice", (brand) => {
+    expect(shouldHideNiceModeStderr(`  [${brand}] Skipping saved session resume for task X`)).toBe(true);
+    expect(shouldHideNiceModeStderr(`[${brand}] Real provider failure`)).toBe(false);
+    expect(shouldHideNiceModeStderr(`[${brand}-other] Skipping saved session resume`)).toBe(false);
+  });
+});
 
 describe("summarizeToolInput", () => {
   it("prefers human descriptions over raw commands when both exist", () => {

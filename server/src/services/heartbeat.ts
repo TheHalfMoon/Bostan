@@ -635,7 +635,7 @@ function readNonEmptyString(value: unknown): string | null {
 export function formatRuntimeWorkspaceWarningLog(warning: string) {
   return {
     stream: "stdout" as const,
-    chunk: `[paperclip] ${warning}\n`,
+    chunk: `[bostan] ${warning}\n`,
   };
 }
 
@@ -3167,7 +3167,7 @@ export function heartbeatService(
         if (runScopedMentionedSkillKeys.length > 0) {
           await onLog(
             "stdout",
-            `[paperclip] Enabled run-scoped skills from issue mentions: ${runScopedMentionedSkillKeys.join(", ")}\n`,
+            `[bostan] Enabled run-scoped skills from issue mentions: ${runScopedMentionedSkillKeys.join(", ")}\n`,
           );
         }
         for (const warning of runtimeWorkspaceWarnings) {

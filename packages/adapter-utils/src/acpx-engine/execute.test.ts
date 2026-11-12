@@ -763,7 +763,7 @@ describe("shared ACPX engine runtime behavior", () => {
     });
     expect(logs).toContainEqual({
       stream: "stderr",
-      text: "[paperclip] Ignoring invalid user CODEX_CONFIG while applying runtime Codex settings; expected a JSON object.\n",
+      text: "[bostan] Ignoring invalid user CODEX_CONFIG while applying runtime Codex settings; expected a JSON object.\n",
     });
   });
 
@@ -3278,7 +3278,7 @@ describe("gemini ACP flag selection", () => {
     );
     expect(startLine).toBeTruthy();
     expect(startLine!.text).toContain(
-      `[paperclip] Adapter execution timeout: timeoutSec=${DEFAULT_REMOTE_SANDBOX_ADAPTER_TIMEOUT_SEC} ` +
+      `[bostan] Adapter execution timeout: timeoutSec=${DEFAULT_REMOTE_SANDBOX_ADAPTER_TIMEOUT_SEC} ` +
         "(sandbox default; set adapterConfig.timeoutSec to override).",
     );
   });
@@ -3673,7 +3673,7 @@ describe("ACP activity diagnostics", () => {
     // The host only observes the request; ACPX's permission mode decides it.
     expect(permissionDecisions).toEqual([undefined]);
     expect(logs.join("")).toContain(
-      "[paperclip] A pending tool call (kind other) had no update for 6s; ending the turn. Its permission request did not reach Paperclip.",
+      "[bostan] A pending tool call (kind other) had no update for 6s; ending the turn. Its permission request did not reach Paperclip.",
     );
     const diagnostics = Object.fromEntries(Object.entries(result.resultJson ?? {}).filter(([key]) => key.startsWith("acp")));
     expect(JSON.stringify(diagnostics)).not.toContain("private");
@@ -4595,7 +4595,7 @@ describe("ACPX engine remote managed-home seam (PR 2: per-adapter home seed)", (
       (entry) => entry.stream === "stderr" && entry.text.includes("proj-x"),
     );
     expect(failureLine?.text).toBe(
-      "[paperclip] Referenced project proj-x failed to stage; the run continues without it: extract failed: boom\n",
+      "[bostan] Referenced project proj-x failed to stage; the run continues without it: extract failed: boom\n",
     );
   });
 });

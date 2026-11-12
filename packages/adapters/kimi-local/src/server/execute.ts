@@ -345,7 +345,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       localSkillsDir = await buildKimiSkillsDir(config);
       await onLog(
         "stdout",
-        `[paperclip] Syncing workspace and Kimi runtime assets to ${describeAdapterExecutionTarget(executionTarget)}.\n`,
+        `[bostan] Syncing workspace and Kimi runtime assets to ${describeAdapterExecutionTarget(executionTarget)}.\n`,
       );
       const preparedExecutionTargetRuntime = await prepareAdapterExecutionTargetRuntime({
         runId,
@@ -429,7 +429,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     localSkillsDir = await buildKimiSkillsDir(config);
     await onLog(
       "stderr",
-      `[paperclip] Prepared ${desiredKimiSkillNames.length} Kimi skill(s) for --skills-dir delivery.\n`,
+      `[bostan] Prepared ${desiredKimiSkillNames.length} Kimi skill(s) for --skills-dir delivery.\n`,
     );
   }
 
@@ -445,12 +445,12 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   if (executionTargetIsRemote && runtimeSessionId && !canResumeSession) {
     await onLog(
       "stdout",
-      `[paperclip] Kimi session "${runtimeSessionId}" does not match the current remote execution identity and will not be resumed in "${effectiveExecutionCwd}". Starting a fresh remote session.\n`,
+      `[bostan] Kimi session "${runtimeSessionId}" does not match the current remote execution identity and will not be resumed in "${effectiveExecutionCwd}". Starting a fresh remote session.\n`,
     );
   } else if (runtimeSessionId && !canResumeSession) {
     await onLog(
       "stdout",
-      `[paperclip] Kimi session "${runtimeSessionId}" was saved for cwd "${runtimeSessionCwd}" and will not be resumed in "${effectiveExecutionCwd}".\n`,
+      `[bostan] Kimi session "${runtimeSessionId}" was saved for cwd "${runtimeSessionCwd}" and will not be resumed in "${effectiveExecutionCwd}".\n`,
     );
   }
 
@@ -470,7 +470,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       const reason = err instanceof Error ? err.message : String(err);
       await onLog(
         "stdout",
-        `[paperclip] Warning: could not read agent instructions file "${instructionsFilePath}": ${reason}\n`,
+        `[bostan] Warning: could not read agent instructions file "${instructionsFilePath}": ${reason}\n`,
       );
     }
   }
@@ -751,7 +751,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     ) {
       await onLog(
         "stdout",
-        `[paperclip] Kimi resume session "${sessionId}" is unavailable; retrying with a fresh session.\n`,
+        `[bostan] Kimi resume session "${sessionId}" is unavailable; retrying with a fresh session.\n`,
       );
       const retry = await runAttempt(null);
       return toResult(retry, true, true);

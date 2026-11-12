@@ -1197,7 +1197,7 @@ describe("sandbox managed runtime", () => {
         checkWorkingTreeClean: true,
       });
       expect(warnSpy).toHaveBeenCalledWith(
-        "[paperclip] Workspace restore preserved local working tree changes after clean sandbox restore.",
+        "[bostan] Workspace restore preserved local working tree changes after clean sandbox restore.",
       );
     } finally {
       warnSpy.mockRestore();
@@ -3700,11 +3700,11 @@ describe("sandbox managed runtime outbound coordinator", () => {
     const diagnostics = lines.filter((line) => line.includes("Workspace restore diagnostic:"));
     expect(diagnostics).toHaveLength(3);
     expect(diagnostics).toEqual(expect.arrayContaining([
-      '[paperclip] Workspace restore diagnostic: {"phase":"workspace","step":"workspace_transfer","errorCode":"EACCES"}\n',
-      sharedError ? '[paperclip] Workspace restore diagnostic: {"phase":"asset","step":"asset_restore","errorCode":"EACCES"}\n'
-        : '[paperclip] Workspace restore diagnostic: {"phase":"asset","step":"asset_restore","errorCode":"unknown","httpStatus":404}\n',
-      sharedError ? '[paperclip] Workspace restore diagnostic: {"phase":"asset","step":"asset_restore","errorCode":"EACCES"}\n'
-        : '[paperclip] Workspace restore diagnostic: {"phase":"asset","step":"asset_restore","errorCode":"unknown"}\n',
+      '[bostan] Workspace restore diagnostic: {"phase":"workspace","step":"workspace_transfer","errorCode":"EACCES"}\n',
+      sharedError ? '[bostan] Workspace restore diagnostic: {"phase":"asset","step":"asset_restore","errorCode":"EACCES"}\n'
+        : '[bostan] Workspace restore diagnostic: {"phase":"asset","step":"asset_restore","errorCode":"unknown","httpStatus":404}\n',
+      sharedError ? '[bostan] Workspace restore diagnostic: {"phase":"asset","step":"asset_restore","errorCode":"EACCES"}\n'
+        : '[bostan] Workspace restore diagnostic: {"phase":"asset","step":"asset_restore","errorCode":"unknown"}\n',
     ]));
     expect(diagnostics.join("")).not.toContain("private");
     expect(getWorkspaceRestoreDiagnostic(workspaceError)).toEqual({ phase: "workspace", step: "workspace_transfer", errorCode: "EACCES" });

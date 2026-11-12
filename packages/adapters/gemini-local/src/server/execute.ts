@@ -157,7 +157,7 @@ async function ensureGeminiSkillsInjected(
   } catch (err) {
     await onLog(
       "stderr",
-      `[paperclip] Failed to prepare Gemini skills directory ${skillsHome}: ${err instanceof Error ? err.message : String(err)}\n`,
+      `[bostan] Failed to prepare Gemini skills directory ${skillsHome}: ${err instanceof Error ? err.message : String(err)}\n`,
     );
     return;
   }
@@ -168,7 +168,7 @@ async function ensureGeminiSkillsInjected(
   for (const skillName of removedSkills) {
     await onLog(
       "stderr",
-      `[paperclip] Removed maintainer-only Gemini skill "${skillName}" from ${skillsHome}\n`,
+      `[bostan] Removed maintainer-only Gemini skill "${skillName}" from ${skillsHome}\n`,
     );
   }
 
@@ -180,12 +180,12 @@ async function ensureGeminiSkillsInjected(
       if (result === "skipped") continue;
       await onLog(
         "stderr",
-        `[paperclip] ${result === "repaired" ? "Repaired" : "Linked"} Gemini skill: ${entry.key}\n`,
+        `[bostan] ${result === "repaired" ? "Repaired" : "Linked"} Gemini skill: ${entry.key}\n`,
       );
     } catch (err) {
       await onLog(
         "stderr",
-        `[paperclip] Failed to link Gemini skill "${entry.key}": ${err instanceof Error ? err.message : String(err)}\n`,
+        `[bostan] Failed to link Gemini skill "${entry.key}": ${err instanceof Error ? err.message : String(err)}\n`,
       );
     }
   }
@@ -367,7 +367,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       localSkillsDir = await buildGeminiSkillsDir(config);
       await onLog(
         "stdout",
-        `[paperclip] Syncing workspace and Gemini runtime assets to ${describeAdapterExecutionTarget(executionTarget)}.\n`,
+        `[bostan] Syncing workspace and Gemini runtime assets to ${describeAdapterExecutionTarget(executionTarget)}.\n`,
       );
       const preparedExecutionTargetRuntime = await prepareAdapterExecutionTargetRuntime({
         runId,
@@ -498,12 +498,12 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   if (executionTargetIsRemote && runtimeSessionId && !canResumeSession) {
     await onLog(
       "stdout",
-      `[paperclip] Gemini session "${runtimeSessionId}" does not match the current remote execution identity and will not be resumed in "${effectiveExecutionCwd}". Starting a fresh remote session.\n`,
+      `[bostan] Gemini session "${runtimeSessionId}" does not match the current remote execution identity and will not be resumed in "${effectiveExecutionCwd}". Starting a fresh remote session.\n`,
     );
   } else if (runtimeSessionId && !canResumeSession) {
     await onLog(
       "stdout",
-      `[paperclip] Gemini session "${runtimeSessionId}" was saved for cwd "${runtimeSessionCwd}" and will not be resumed in "${effectiveExecutionCwd}".\n`,
+      `[bostan] Gemini session "${runtimeSessionId}" was saved for cwd "${runtimeSessionCwd}" and will not be resumed in "${effectiveExecutionCwd}".\n`,
     );
   }
 
@@ -521,7 +521,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       const reason = err instanceof Error ? err.message : String(err);
       await onLog(
         "stdout",
-        `[paperclip] Warning: could not read agent instructions file "${instructionsFilePath}": ${reason}\n`,
+        `[bostan] Warning: could not read agent instructions file "${instructionsFilePath}": ${reason}\n`,
       );
     }
   }
@@ -799,7 +799,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     ) {
       await onLog(
         "stdout",
-        `[paperclip] Gemini resume session "${sessionId}" is unavailable; retrying with a fresh session.\n`,
+        `[bostan] Gemini resume session "${sessionId}" is unavailable; retrying with a fresh session.\n`,
       );
       const retry = await runAttempt(null);
       return toResult(retry, true, true);

@@ -86,7 +86,7 @@ export async function createNativeGitHubAccess(input: {
       cleanupGitHubOperationLaunchers(location),
     ]);
     if (results.some(result => result.status === "rejected")) {
-      await input.onLog?.("stderr", "[paperclip] GitHub session cleanup incomplete.\n").catch(() => undefined);
+      await input.onLog?.("stderr", "[bostan] GitHub session cleanup incomplete.\n").catch(() => undefined);
     }
   })();
   try {
@@ -117,7 +117,7 @@ export async function createNativeGitHubAccess(input: {
       // the supervisor retries transport setup on the next run.
       ready = false;
       await new Promise<void>(resolve => server.close(() => resolve()));
-      await input.onLog?.("stderr", "[paperclip] GitHub runtime transport unavailable; continuing without managed GitHub access.\n").catch(() => undefined);
+      await input.onLog?.("stderr", "[bostan] GitHub runtime transport unavailable; continuing without managed GitHub access.\n").catch(() => undefined);
     }
     const env = await prepareGitHubOperationLaunchers({
       ...location, cwd: input.cwd,

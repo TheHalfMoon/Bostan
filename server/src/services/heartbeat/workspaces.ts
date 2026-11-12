@@ -2598,7 +2598,7 @@ export function buildWorkspaceConfigFreshnessOperation(
       previousWorkspaceId: input.previousWorkspaceId,
       activeWorkspaceId: input.activeWorkspaceId,
     },
-    system: `[paperclip] ${workspaceConfigFreshnessActionLabel(input.decision.action)} after config freshness check${categorySummary}: ${reasonSummary}\n`,
+    system: `[bostan] ${workspaceConfigFreshnessActionLabel(input.decision.action)} after config freshness check${categorySummary}: ${reasonSummary}\n`,
   };
 }
 

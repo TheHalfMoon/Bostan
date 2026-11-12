@@ -148,7 +148,7 @@ export async function startHeartbeatRuntimeServices(db: Db, input: RuntimeServic
     } catch (err) {
       await onLog(
         "stderr",
-        `[paperclip] Failed to post workspace-ready comment: ${err instanceof Error ? err.message : String(err)}\n`,
+        `[bostan] Failed to post workspace-ready comment: ${err instanceof Error ? err.message : String(err)}\n`,
       );
     }
   }
@@ -206,7 +206,7 @@ export async function recordHeartbeatAdapterRuntimeServices(db: Db, input: Runti
       } catch (err) {
         await onLog(
           "stderr",
-          `[paperclip] Failed to post adapter-managed runtime comment: ${err instanceof Error ? err.message : String(err)}\n`,
+          `[bostan] Failed to post adapter-managed runtime comment: ${err instanceof Error ? err.message : String(err)}\n`,
         );
       }
     }

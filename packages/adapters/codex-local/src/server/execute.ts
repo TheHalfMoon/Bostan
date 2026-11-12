@@ -153,12 +153,12 @@ function firstNonEmptyLine(text: string): string {
 // Benign stderr lines that never explain a nonzero exit and must not be
 // surfaced as the run error: Codex always prints the YOLO approvals warning
 // because this adapter passes the approvals-bypass flag itself, and
-// "[paperclip] ..." lines are diagnostics the adapter injected (e.g. ACP
+// "[bostan] ..." and legacy "[paperclip] ..." lines are adapter diagnostics (e.g. ACP
 // fallback notes). Keep this list conservative so real errors are never
 // skipped.
 const BENIGN_CODEX_STDERR_LINE_RES: readonly RegExp[] = [
   /^YOLO mode is enabled\b/i,
-  /^\[paperclip\]/,
+  /^\[(?:bostan|paperclip)\]/,
 ];
 
 function isBenignCodexStderrLine(line: string): boolean {
@@ -274,7 +274,7 @@ async function pruneBrokenUnavailablePaperclipSkillSymlinks(
     await fs.unlink(target).catch(() => {});
     await onLog(
       "stdout",
-      `[paperclip] Removed stale Codex skill "${entry.name}" from ${skillsHome}\n`,
+      `[bostan] Removed stale Codex skill "${entry.name}" from ${skillsHome}\n`,
     );
   }
 }
@@ -552,7 +552,7 @@ export async function ensureCodexSkillsInjected(
           }
           await onLog(
             "stdout",
-            `[paperclip] Repaired Codex skill "${entry.runtimeName}" into ${skillsHome}\n`,
+            `[bostan] Repaired Codex skill "${entry.runtimeName}" into ${skillsHome}\n`,
           );
           continue;
         }
@@ -563,12 +563,12 @@ export async function ensureCodexSkillsInjected(
 
       await onLog(
         "stdout",
-        `[paperclip] ${result === "repaired" ? "Repaired" : "Injected"} Codex skill "${entry.runtimeName}" into ${skillsHome}\n`,
+        `[bostan] ${result === "repaired" ? "Repaired" : "Injected"} Codex skill "${entry.runtimeName}" into ${skillsHome}\n`,
       );
     } catch (err) {
       await onLog(
         "stderr",
-        `[paperclip] Failed to inject Codex skill "${entry.key}" into ${skillsHome}: ${err instanceof Error ? err.message : String(err)}\n`,
+        `[bostan] Failed to inject Codex skill "${entry.key}" into ${skillsHome}: ${err instanceof Error ? err.message : String(err)}\n`,
       );
     }
   }
@@ -726,7 +726,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       // run: log and fall through to seed from the unrefreshed shared credential.
       await onLog(
         "stderr",
-        `[paperclip] Codex auth cache: vend skipped after an error; using the shared credential as-is.\n`,
+        `[bostan] Codex auth cache: vend skipped after an error; using the shared credential as-is.\n`,
       );
       void error;
     });
@@ -796,12 +796,12 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
             launch: ctx.observability, sourceProfile: selectedCodexProfile(buildCodexExecArgs(config).args) });
         } catch {
           observabilityPreparationFailed = true;
-          await onLog("stderr", "[paperclip] Company observability configuration could not be prepared; execution continues with export disabled.\n");
+          await onLog("stderr", "[bostan] Company observability configuration could not be prepared; execution continues with export disabled.\n");
         }
-      } else await onLog("stderr", "[paperclip] Company observability is unavailable for a caller-owned Codex home.\n");
+      } else await onLog("stderr", "[bostan] Company observability is unavailable for a caller-owned Codex home.\n");
     }
     for (const note of preparedRuntimeConfig.notes) {
-      await onLog("stdout", `[paperclip] ${note}\n`);
+      await onLog("stdout", `[bostan] ${note}\n`);
     }
     const paperclipBaseEnv = buildPaperclipEnv(agent, ctx.agentIdentity);
     const runtimeMcpGateways = (ctx.runtimeMcp?.getServers() ?? []).map((server) => ({
@@ -821,11 +821,11 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     if (managedMcpGateways.length > 0) {
       await onLog(
         "stdout",
-        `[paperclip] Wrote ${managedMcpGateways.length} managed MCP gateway(s) into Codex config "${managedMcp.configPath}".\n`,
+        `[bostan] Wrote ${managedMcpGateways.length} managed MCP gateway(s) into Codex config "${managedMcp.configPath}".\n`,
       );
     }
     for (const warning of managedMcp.warnings) {
-      await onLog("stderr", `[paperclip] ${warning}\n`);
+      await onLog("stderr", `[bostan] ${warning}\n`);
     }
     // Inject skills into the same CODEX_HOME that Codex will actually run with
     // (managed home in the default case, or an explicit override from adapter config).
@@ -850,7 +850,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       ? await (async () => {
           await onLog(
             "stdout",
-            `[paperclip] Syncing ${targetWorkspaceRealization?.mode === "in_place" ? "CODEX_HOME" : "workspace and CODEX_HOME"} to ${describeAdapterExecutionTarget(executionTarget)}.\n`,
+            `[bostan] Syncing ${targetWorkspaceRealization?.mode === "in_place" ? "CODEX_HOME" : "workspace and CODEX_HOME"} to ${describeAdapterExecutionTarget(executionTarget)}.\n`,
           );
           // Stage only the files Codex actually needs into a curated temp dir and
           // ship THAT as the `home` asset, instead of the whole managed
@@ -1085,7 +1085,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         .join(" and ");
       await onLog(
         "stdout",
-        `[paperclip] Confining Codex with ${scopes} scope.\n`,
+        `[bostan] Confining Codex with ${scopes} scope.\n`,
       );
     }
     const runtimeEnv = Object.fromEntries(
@@ -1117,7 +1117,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       if (!qualified) {
         await observabilityProfile.cleanup();
         observabilityProfile = null;
-        await onLog("stderr", "[paperclip] Company observability was not applied: this Codex executable is not the qualified 0.160.0 release.\n");
+        await onLog("stderr", "[bostan] Company observability was not applied: this Codex executable is not the qualified 0.160.0 release.\n");
       }
     }
     const loggedEnv = buildInvocationEnvForLogs(env, {
@@ -1130,12 +1130,12 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     if (monitorResolution.mode === "disabled") {
       await onLog(
         "stdout",
-        `[paperclip] Codex output inactivity monitor is DISABLED via adapterConfig.outputInactivityTimeoutMs=null. Hung codex runs will only be detected by the platform-level silent-run safety net.\n`,
+        `[bostan] Codex output inactivity monitor is DISABLED via adapterConfig.outputInactivityTimeoutMs=null. Hung codex runs will only be detected by the platform-level silent-run safety net.\n`,
       );
     } else if (monitorResolution.mode === "default" && "reason" in monitorResolution) {
       await onLog(
         "stdout",
-        `[paperclip] Ignoring non-positive adapterConfig.outputInactivityTimeoutMs; falling back to default ${monitorResolution.timeoutMs}ms.\n`,
+        `[bostan] Ignoring non-positive adapterConfig.outputInactivityTimeoutMs; falling back to default ${monitorResolution.timeoutMs}ms.\n`,
       );
     }
     const runtimeSessionParams = parseObject(runtime.sessionParams);
@@ -1153,12 +1153,12 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     if (executionTargetIsRemote && runtimeSessionId && !canResumeSession) {
       await onLog(
         "stdout",
-        `[paperclip] Codex session "${runtimeSessionId}" does not match the current remote execution identity and will not be resumed in "${effectiveExecutionCwd}". Starting a fresh remote session.\n`,
+        `[bostan] Codex session "${runtimeSessionId}" does not match the current remote execution identity and will not be resumed in "${effectiveExecutionCwd}". Starting a fresh remote session.\n`,
       );
     } else if (runtimeSessionId && !canResumeSession) {
       await onLog(
         "stdout",
-        `[paperclip] Codex session "${runtimeSessionId}" was saved for cwd "${runtimeSessionCwd}" and will not be resumed in "${effectiveExecutionCwd}".\n`,
+        `[bostan] Codex session "${runtimeSessionId}" was saved for cwd "${runtimeSessionCwd}" and will not be resumed in "${effectiveExecutionCwd}".\n`,
       );
     }
     const instructionsFilePath = asString(config.instructionsFilePath, "").trim();
@@ -1175,7 +1175,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         const reason = err instanceof Error ? err.message : String(err);
         await onLog(
           "stdout",
-          `[paperclip] Warning: could not read agent instructions file "${instructionsFilePath}": ${reason}\n`,
+          `[bostan] Warning: could not read agent instructions file "${instructionsFilePath}": ${reason}\n`,
         );
       }
     }
@@ -1354,7 +1354,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
                 const elapsedSec = Math.round(monitorElapsedMs / 1000);
                 const timeoutSecLabel = Math.round(monitorResolution.timeoutMs / 1000);
                 const logLine =
-                  `[paperclip] adapter.invoke ${message}; ` +
+                  `[bostan] adapter.invoke ${message}; ` +
                   `timeoutMs=${monitorResolution.timeoutMs} elapsedSinceLastEventMs=${monitorElapsedMs} ` +
                   `outputChunkCount=${state.outputChunkCount} outputBytes=${state.outputBytes} ` +
                   `parsedEvents=${state.parsedEventCount} processActivityCount=${state.processActivityCount} ` +
@@ -1667,7 +1667,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       ) {
         await onLog(
           "stdout",
-          `[paperclip] Codex resume session "${sessionId}" is unavailable; retrying with a fresh session.\n`,
+          `[bostan] Codex resume session "${sessionId}" is unavailable; retrying with a fresh session.\n`,
         );
         const retry = await runAttempt(null);
         const retryResult = toResult(retry, true, true);
@@ -1696,14 +1696,14 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
           try {
             await onLog(
               "stdout",
-              `[paperclip] Restoring workspace changes from ${describeAdapterExecutionTarget(executionTarget)}.\n`,
+              `[bostan] Restoring workspace changes from ${describeAdapterExecutionTarget(executionTarget)}.\n`,
             );
             await restoreRemoteWorkspace();
           } catch (error) {
             await Promise.resolve(
               onLog(
                 "stderr",
-                `[paperclip] Failed to restore workspace changes from ${describeAdapterExecutionTarget(
+                `[bostan] Failed to restore workspace changes from ${describeAdapterExecutionTarget(
                   executionTarget,
                 )}: ${error instanceof Error ? error.message : String(error)}\n`,
               ),
@@ -1724,7 +1724,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       await fs.rm(stagedCodexHomeDir, { recursive: true, force: true }).catch(async (error) => {
         await onLog(
           "stderr",
-          `[paperclip] Failed to remove staged Codex home "${stagedCodexHomeDir}": ${
+          `[bostan] Failed to remove staged Codex home "${stagedCodexHomeDir}": ${
             error instanceof Error ? error.message : String(error)
           }\n`,
         );

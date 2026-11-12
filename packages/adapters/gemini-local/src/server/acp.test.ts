@@ -674,8 +674,8 @@ describe("gemini_local ACP lane", () => {
     expect(result.exitCode).toBe(0);
     expect(mockCreateWorkspaceRestoreTeardown).toHaveBeenCalledWith(
       expect.objectContaining({
-        startMessage: "[paperclip] Restoring workspace changes from the sandbox.\n",
-        failurePrefix: "[paperclip] Gemini ACP teardown workspace restore failed",
+        startMessage: "[bostan] Restoring workspace changes from the sandbox.\n",
+        failurePrefix: "[bostan] Gemini ACP teardown workspace restore failed",
       }),
     );
   });
