@@ -318,3 +318,19 @@ integration review confirmed that this merge introduces only the reviewed Acorn
 edges and preserves the compiled patch closure. Local desktop33PASS/1skip and
 actual Electron2PASS after integration. Main's final post-merge run43133641601
 and the new desktop exact-head native run remain required.
+Main69be subsequently passed all15 post-merge jobs in run43133641601.
+
+Run43133992901 at977e4e78 failed the macOS host's new private-error fixture
+before packaging: the expected startup location was null. Its fixture used
+the macOS temporary-directory alias while imported module stacks resolve the
+physical/private path. The fixture now allocates under realpath(os.tmpdir()),
+as the other owned macOS fixtures do. This preserves the strict source-location
+allowlist and assertions; actual native rerun is still required. This fixture
+failure is separate from the installed backend failure at4754f8f and does not
+establish a fix for it.
+The same977e4e78run completed15non-desktopPASS/2desktopFAIL. Its retained
+Windows candidate is artifact13908702639 (559,477,027bytes). Windows again timed
+out at120seconds, but the owned temporary-tree snapshot found4096entries and
+868,883,083regular-file bytes before its cap. This establishes substantial
+temporary extraction activity, not completion or a proven remaining duration.
+No full installation or clean installed shutdown was accepted.

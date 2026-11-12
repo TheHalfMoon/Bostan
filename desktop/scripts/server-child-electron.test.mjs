@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 for (const failStartup of [false, true]) {
 test(`actual Electron Node child preserves compiled startup and private failure receipts (failure=${failStartup})`, { timeout: 30000 }, async () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-electron-child-test-"));
+  const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "bostan-electron-child-test-"));
   const desktop = path.resolve(import.meta.dirname, "..");
   const electronPackage = JSON.parse(fs.readFileSync(path.join(desktop, "node_modules/electron/package.json"), "utf8"));
   const binary = path.join(desktop, "node_modules/electron/dist", fs.readFileSync(path.join(desktop, "node_modules/electron/path.txt"), "utf8").trim());
