@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import path from "node:path";
+import fs from "node:fs";
+import os from "node:os";
 import { pathToFileURL } from "node:url";
 import diagnostics from "./startup-diagnostics.cjs";
 
@@ -32,5 +34,21 @@ test("arbitrary dependency errors and forged multiline receipts disclose no raw 
     assert.equal(diagnostics.startupFailureLine(value).includes(value), false);
     assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_PHASE " + value), false);
     assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_FAILURE " + value), false);
+  }
+});
+
+test("startup site accepts canonical filesystem paths without disclosing unrelated frames", { skip: process.platform === "win32" }, () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-startup-site-"));
+  try {
+    const canonical = path.join(root, "canonical");
+    const alias = path.join(root, "alias");
+    fs.mkdirSync(canonical);
+    fs.symlinkSync(canonical, alias, "dir");
+    const stack = `Error: private\n    at privateFunction (${pathToFileURL(path.join(canonical, "dist/index.js")).href}:71:9)`;
+    assert.equal(diagnostics.startupFailureSite({ stack }, alias), "BOSTAN_DESKTOP_STARTUP_SITE server:71:9");
+    assert.equal(diagnostics.startupFailureSite({ stack }, path.join(root, "unrelated")), null);
+    assert.equal(diagnostics.startupFailureSite({ stack: stack.replace("index.js", "secret.js") }, alias), null);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
   }
 });
