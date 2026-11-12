@@ -57,6 +57,17 @@ test("a completed installed-app phase cancels its timer without stopping the chi
   } finally { child.kill("SIGKILL"); await exited; }
 });
 
+test("installed-app phase fails immediately on owned process exit and removes observers", async () => {
+  const child = spawn(process.execPath, ["-e", "process.exit(7)"], { stdio: "ignore", windowsHide: true });
+  const started = Date.now();
+  await assert.rejects(installedAppPhase({ process: () => child }, "first_window", () => new Promise(() => {}), {
+    timeoutMs: 5000,
+  }), /process exited during phase: first_window/);
+  assert.ok(Date.now() - started < 4000, "Exited child must not wait for the phase timeout");
+  assert.equal(child.listenerCount("exit"), 0);
+  assert.equal(child.listenerCount("error"), 0);
+});
+
 test("invalid bounds and missing process ownership refuse before executing work", async () => {
   let called = false;
   const work = () => { called = true; };

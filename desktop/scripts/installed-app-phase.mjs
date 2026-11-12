@@ -34,9 +34,18 @@ export async function installedAppPhase(application, phase, operation, { timeout
     throw new Error("Installed application process ownership unavailable");
   }
   let timer;
+  let onExit;
+  let onError;
   try {
     return await Promise.race([
       Promise.resolve().then(operation),
+      new Promise((_, reject) => {
+        onExit = () => reject(new Error(`Installed application process exited during phase: ${phase}`));
+        onError = () => reject(new Error(`Installed application process failed during phase: ${phase}`));
+        child.once("exit", onExit);
+        child.once("error", onError);
+        if (child.exitCode !== null || child.signalCode !== null) onExit();
+      }),
       new Promise((_, reject) => {
         timer = setTimeout(() => {
           try { onForcedStop(); } catch { /* Optional diagnostics cannot prevent owned-process termination. */ }
@@ -47,5 +56,7 @@ export async function installedAppPhase(application, phase, operation, { timeout
     ]);
   } finally {
     clearTimeout(timer);
+    if (onExit) child.off("exit", onExit);
+    if (onError) child.off("error", onError);
   }
 }
