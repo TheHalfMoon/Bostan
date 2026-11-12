@@ -533,6 +533,16 @@ export async function testEnvironment(
     await preparedRuntimeConfig.cleanup();
   }
 
+  // Catalog discovery is advisory once configured-model validation accepts the
+  // model and it answers the actual hello request (availability may be best-effort).
+  // Retain the failed discovery observation; other failures keep their severity.
+  if (checks.some(check => check.code === "opencode_model_configured" && check.level === "info")
+      && checks.some(check => check.code === "opencode_hello_probe_passed" && check.level === "info")) {
+    for (const check of checks) {
+      if (check.code === "opencode_models_discovery_failed" && check.level === "error") check.level = "warn";
+    }
+  }
+
   return {
     adapterType: ctx.adapterType,
     status: summarizeStatus(checks),

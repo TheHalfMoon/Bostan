@@ -3,6 +3,7 @@ import fs from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
 import childProcess, { execFileSync } from "node:child_process";
 import { prepareAdapterExecutionTargetRuntime } from "@bostan/adapter-utils/execution-target";
 import { captureDirectorySnapshot } from "@bostan/adapter-utils/workspace-restore-merge";
@@ -28,6 +29,21 @@ describe("stable live agent directory observation", () => {
       cwd: root, env: { TSX_DISABLE_CACHE: "1", HOME: root, TMPDIR: root }, encoding: "utf8", timeout: 10_000, maxBuffer: 64 * 1024,
     }));
   }
+  it.runIf(process.platform === "win32")("observes a real Windows working-copy path beyond MAX_PATH without crashing the server process", () => {
+    let deep = root;
+    while (deep.length < 280) deep = join(deep, "nested-working-copy-segment");
+    fs.mkdirSync(deep, { recursive: true });
+    fs.writeFileSync(join(deep, "AGENTS.md"), "Deep synthetic instructions\n");
+    const loader = createRequire(import.meta.url).resolve("tsx");
+    const source = new URL("../services/agent-directory-probe.ts", import.meta.url).href;
+    const program = `import { observeLocalAgentDirectory } from ${JSON.stringify(source)}; process.stdout.write(JSON.stringify(await observeLocalAgentDirectory(${JSON.stringify(deep)})));`;
+    // The outer process uses a short cwd and isolates the original fatal pipe
+    // error. The actual observation child must safely use the long directory.
+    const observed = JSON.parse(execFileSync(process.execPath, ["--import", pathToFileURL(loader).href, "--input-type=module", "--eval", program], {
+      cwd: root, env: { TSX_DISABLE_CACHE: "1", HOME: root, TMPDIR: root }, encoding: "utf8", timeout: 15_000, maxBuffer: 64 * 1024,
+    }));
+    expect(observed).toEqual(probeAgentDirectory(deep));
+  });
   it("runs a self-contained live probe after the production tsx transform", () => {
     const { probe } = productionPrograms();
     const observe = () => JSON.parse(execFileSync(process.execPath, ["-e", probe, root], {

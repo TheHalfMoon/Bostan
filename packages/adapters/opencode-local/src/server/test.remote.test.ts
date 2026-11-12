@@ -96,6 +96,37 @@ describe("opencode remote environment diagnostics", () => {
     await Promise.all(configHomes.splice(0).map(dir => rm(dir, { recursive: true, force: true })));
   });
 
+  it.each(["passed", "auth_required", "timed_out", "unexpected_output"])(
+    "retains catalog failure as a warning only after configured-model validation and a real hello (%s)", async outcome => {
+      vi.mocked(ensureOpenCodeModelConfiguredAndAvailable).mockResolvedValueOnce([{ id: "local/fixture", label: "Fixture" }]);
+      const successfulProbe = await runAdapterExecutionTargetProcess.getMockImplementation()!();
+      runAdapterExecutionTargetProcess.mockResolvedValueOnce(outcome === "passed" ? successfulProbe : {
+        ...successfulProbe, exitCode: outcome === "unexpected_output" ? 0 : 1,
+        stdout: outcome === "unexpected_output" ? JSON.stringify({ type: "text", part: { text: "Something else" } }) : "",
+        stderr: outcome === "auth_required" ? "invalid API key" : "",
+        timedOut: outcome === "timed_out",
+      });
+      const result = await testEnvironment({ companyId: "synthetic", adapterType: "opencode_local",
+        config: { cwd: configHome, model: "local/fixture", env: { XDG_CONFIG_HOME: configHome } } });
+      expect(discoverOpenCodeModels).toHaveBeenCalledOnce();
+      expect(ensureOpenCodeModelConfiguredAndAvailable).toHaveBeenCalledOnce();
+      expect(runAdapterExecutionTargetProcess).toHaveBeenCalledOnce();
+      expect(result.status).toBe(outcome === "passed" ? "warn" : "fail");
+      expect(result.checks).toContainEqual(expect.objectContaining({ code: "opencode_models_discovery_failed",
+        level: outcome === "passed" ? "warn" : "error", message: "catalog should not be needed" }));
+      expect(result.checks).toContainEqual(expect.objectContaining({ code: `opencode_hello_probe_${outcome}` }));
+    },
+  );
+
+  it("keeps catalog and configured-model rejection fatal without invoking the model", async () => {
+    const result = await testEnvironment({ companyId: "synthetic", adapterType: "opencode_local",
+      config: { cwd: configHome, model: "local/missing", env: { XDG_CONFIG_HOME: configHome } } });
+    expect(result.status).toBe("fail");
+    expect(result.checks).toContainEqual(expect.objectContaining({ code: "opencode_models_discovery_failed", level: "error" }));
+    expect(result.checks).toContainEqual(expect.objectContaining({ code: "opencode_model_invalid", level: "error" }));
+    expect(runAdapterExecutionTargetProcess).not.toHaveBeenCalled();
+  });
+
   it.each(["passed", "auth_required", "model_unavailable", "timed_out"])(
     "validates a native model with the real probe path and no catalog scan (%s)", async outcome => {
       const successfulProbe = await runAdapterExecutionTargetProcess.getMockImplementation()!();
