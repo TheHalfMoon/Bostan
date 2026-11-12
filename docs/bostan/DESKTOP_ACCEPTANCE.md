@@ -279,3 +279,23 @@ packaging succeeds even if subsequent installed QA fails. Artifact names include
 the job status, retention remains7days and canceled/incomplete builds are excluded.
 No synthetic database, auth state or runtime logs are added to artifacts. Job
 failure remains failure; these are unsigned engineering candidates, not releases.
+
+## Genuine local tool checks, 2026-11-12
+
+At clean source27afdcfa67c74f96376e00598befbbd496ab412d, the actual legacy
+OpenCode2.2.5 adapter and local Qwen2.5 1.5B (8192context/256output) passed three
+owned-fixture checks: read an unknown random49-character marker (19,196ms),
+read and write a matching54-byte regular output file then return DONE (21,812ms),
+and deny a read of a separate owned canary outside the permitted path (17,584ms).
+Completed tool events, actual file bytes and denied tool error were checked;
+the canary never appeared in output. Read/edit permissions admitted only the
+explicit synthetic input/output paths. The loopback proxy forwarded genuine
+model responses. Test-owned aliases were unloaded after each run; final model
+inventory had no loaded model.
+
+These are direct-adapter tool/filesystem-artifact/permission checks, not Bostan
+API artifact registration, a persisted assigned task with tools, installed app,
+full sandbox isolation or network-capture acceptance. The earlier persisted
+text-task/restart journey remains separate. Do not combine separate successful
+journeys into an unexecuted integrated product claim. All fixtures and receipts
+remain retained outside the repository; issue34 records the acceptance scope.
