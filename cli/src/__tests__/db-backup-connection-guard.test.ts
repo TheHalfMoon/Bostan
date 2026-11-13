@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { test } from "node:test";
+import { test } from "vitest";
 import { dbBackupCommand } from "../commands/db-backup.js";
 
 // Regression: an external DB without a connection URL must never silently
 // produce a successful backup of the unrelated embedded instance.
+// This file runs in the workspace Vitest suite, so register with Vitest.
 test("db:backup fails closed for an external database without a URL", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "bostan-backup-guard-"));
   const config = path.join(dir, "config.json");
