@@ -53,6 +53,14 @@ test("db:backup connection resolution respects explicit targets and embedded por
       value: "postgres://override.invalid/override",
       source: "DATABASE_URL",
     });
+    process.env.DATABASE_URL = "  \t  ";
+    write({ mode: "postgres", connectionString: "postgres://synthetic.invalid/synthetic" });
+    assert.deepEqual(resolveConnectionString(config), {
+      value: "postgres://synthetic.invalid/synthetic",
+      source: "config.database.connectionString",
+    });
+    write({ mode: "postgres", connectionString: "  " });
+    assert.throws(() => resolveConnectionString(config), /Postgres backup requires a configured database connection string/);
     delete process.env.DATABASE_URL;
     write({ mode: "postgres", connectionString: "  " });
     assert.throws(() => resolveConnectionString(config), /Postgres backup requires a configured database connection string/);
