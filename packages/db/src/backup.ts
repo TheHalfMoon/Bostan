@@ -48,6 +48,10 @@ function resolveConnectionString(config: PartialConfig | null): string {
     if (trimmed) return trimmed;
   }
 
+  if (config?.database?.mode === "postgres") {
+    throw new Error("Postgres backup requires a configured database connection string or DATABASE_URL.");
+  }
+
   const port = resolveEmbeddedPort(config);
   return `postgres://paperclip:paperclip@127.0.0.1:${port}/paperclip`;
 }
@@ -80,7 +84,7 @@ async function main() {
       connectionString,
       backupDir,
       retention: { dailyDays: retentionDays, weeklyWeeks: 4, monthlyMonths: 1 },
-      filenamePrefix: "paperclip",
+      filenamePrefix: "bostan",
     });
 
     console.log(`Backup saved: ${formatDatabaseBackupResult(result)}`);
