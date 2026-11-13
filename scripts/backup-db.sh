@@ -9,11 +9,11 @@ set -euo pipefail
 #   pnpm db:backup
 #
 # The embedded PostgreSQL must be running (start with: pnpm dev).
-# The paperclipai workspace command is a legacy internal pnpm alias; it invokes
-# Bostan's db:backup handler and must not install or update an upstream package.
+# Run the repository-local TypeScript CLI directly; never resolve a package
+# named paperclipai from npm or a globally installed executable.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$PROJECT_ROOT"
-exec pnpm paperclipai db:backup "$@"
+exec pnpm --filter bostan exec tsx src/index.ts db:backup "$@"
