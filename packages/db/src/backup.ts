@@ -26,6 +26,18 @@ function readConfig(configPath: string): PartialConfig | null {
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       throw new Error("Invalid backup configuration root");
     }
+    if ("database" in parsed) {
+      const database = parsed.database;
+      if (!database || typeof database !== "object" || Array.isArray(database)) {
+        throw new Error("Invalid database configuration");
+      }
+      if ("mode" in database && database.mode !== "postgres" && database.mode !== "embedded-postgres") {
+        throw new Error("Invalid database mode");
+      }
+      if (database.mode === "postgres" && "connectionString" in database && typeof database.connectionString !== "string") {
+        throw new Error("Invalid external database connection string");
+      }
+    }
     return parsed as PartialConfig;
   } catch {
     throw new Error("Cannot read Bostan database backup configuration; refusing an ambiguous backup target.");
