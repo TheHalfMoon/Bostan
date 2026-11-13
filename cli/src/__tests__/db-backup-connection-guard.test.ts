@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { chmodSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "vitest";
@@ -72,6 +73,29 @@ test("db:backup connection resolution respects explicit targets and embedded por
   } finally {
     if (previousUrl === undefined) delete process.env.DATABASE_URL;
     else process.env.DATABASE_URL = previousUrl;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test.skipIf(process.platform === "win32")("backup wrapper routes to local CLI without invoking upstream packages", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "bostan-wrapper-"));
+  const fakePnpm = path.join(dir, "pnpm");
+  const repoRoot = path.resolve(import.meta.dirname, "../../..");
+  try {
+    writeFileSync(fakePnpm, "#!/bin/sh\nprintf '%s\\n' \"$PWD\" \"$@\"\n");
+    chmodSync(fakePnpm, 0o755);
+    const result = spawnSync("bash", [path.join(repoRoot, "scripts/backup-db.sh"), "--json", "--dir", "synthetic backup"], {
+      cwd: dir,
+      env: { ...process.env, PATH: dir + path.delimiter + (process.env.PATH ?? "") },
+      encoding: "utf8",
+      timeout: 10000,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(result.stdout.trim().split("\n"), [
+      repoRoot, "--dir", "cli", "exec", "tsx", "src/index.ts",
+      "db:backup", "--json", "--dir", "synthetic backup",
+    ]);
+  } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
