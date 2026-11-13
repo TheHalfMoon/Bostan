@@ -99,3 +99,29 @@ test.skipIf(process.platform === "win32")("backup wrapper routes to local CLI wi
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("db:backup refuses malformed and invalid configuration before opening a database", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "bostan-invalid-backup-config-"));
+  const config = path.join(dir, "config.json");
+  const previousUrl = process.env.DATABASE_URL;
+  try {
+    delete process.env.DATABASE_URL;
+    for (const contents of [
+      "{broken-json",
+      "null",
+      "[]",
+      JSON.stringify({ database: { mode: "unknown" } }),
+      JSON.stringify({ database: { mode: "postgres", connectionString: 42 } }),
+    ]) {
+      writeFileSync(config, contents);
+      await assert.rejects(
+        dbBackupCommand({ config, dir: path.join(dir, "backups") }),
+        /Failed to parse JSON|Invalid config/,
+      );
+    }
+  } finally {
+    if (previousUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = previousUrl;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
