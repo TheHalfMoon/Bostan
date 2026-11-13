@@ -25,7 +25,7 @@ function readConfig(configPath: string): PartialConfig | null {
     const parsed = JSON.parse(readFileSync(configPath, "utf8"));
     return typeof parsed === "object" && parsed ? (parsed as PartialConfig) : null;
   } catch {
-    return null;
+    throw new Error("Cannot read Bostan database backup configuration; refusing an ambiguous backup target.");
   }
 }
 
@@ -69,17 +69,17 @@ function resolveRetentionDays(config: PartialConfig | null): number {
 }
 
 async function main() {
-  const configPath = resolveBostanConfigPathForInstance();
-  const config = readConfig(configPath);
-  const connectionString = resolveConnectionString(config);
-  const backupDir = resolveBackupDir(config);
-  const retentionDays = resolveRetentionDays(config);
-
-  console.log(`Config path: ${configPath}`);
-  console.log(`Backing up database to: ${backupDir}`);
-  console.log(`Retention window: ${retentionDays} day(s)`);
-
   try {
+    const configPath = resolveBostanConfigPathForInstance();
+    const config = readConfig(configPath);
+    const connectionString = resolveConnectionString(config);
+    const backupDir = resolveBackupDir(config);
+    const retentionDays = resolveRetentionDays(config);
+
+    console.log(`Config path: ${configPath}`);
+    console.log(`Backing up database to: ${backupDir}`);
+    console.log(`Retention window: ${retentionDays} day(s)`);
+
     const result = await runDatabaseBackup({
       connectionString,
       backupDir,
