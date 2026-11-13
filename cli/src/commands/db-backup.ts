@@ -27,6 +27,12 @@ function resolveConnectionString(configPath?: string): { value: string; source: 
     return { value: config.database.connectionString.trim(), source: "config.database.connectionString" };
   }
 
+  // An explicitly configured external database must never silently fall back to
+  // the embedded instance: doing so can produce a successful but wrong backup.
+  if (config?.database.mode === "postgres") {
+    throw new Error("Postgres backup requires a configured database connection string or DATABASE_URL.");
+  }
+
   const port = config?.database.embeddedPostgresPort ?? 54329;
   return {
     value: `postgres://paperclip:paperclip@127.0.0.1:${port}/paperclip`,
@@ -48,7 +54,7 @@ function resolveBackupDir(raw: string): string {
 
 export async function dbBackupCommand(opts: DbBackupOptions): Promise<void> {
   printPaperclipCliBanner();
-  p.intro(pc.bgCyan(pc.black(" paperclip db:backup ")));
+  p.intro(pc.bgCyan(pc.black(" bostan db:backup ")));
 
   const configPath = resolveConfigPath(opts.config);
   const config = readConfig(opts.config);
@@ -60,7 +66,7 @@ export async function dbBackupCommand(opts: DbBackupOptions): Promise<void> {
     opts.retentionDays,
     config?.database.backup.retentionDays ?? 30,
   );
-  const filenamePrefix = opts.filenamePrefix?.trim() || "paperclip";
+  const filenamePrefix = opts.filenamePrefix?.trim() || "bostan";
 
   p.log.message(pc.dim(`Config: ${configPath}`));
   p.log.message(pc.dim(`Connection source: ${connection.source}`));
