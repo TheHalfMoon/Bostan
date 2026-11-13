@@ -23,7 +23,10 @@ function readConfig(configPath: string): PartialConfig | null {
   if (!existsSync(configPath)) return null;
   try {
     const parsed = JSON.parse(readFileSync(configPath, "utf8"));
-    return typeof parsed === "object" && parsed ? (parsed as PartialConfig) : null;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("Invalid backup configuration root");
+    }
+    return parsed as PartialConfig;
   } catch {
     throw new Error("Cannot read Bostan database backup configuration; refusing an ambiguous backup target.");
   }
