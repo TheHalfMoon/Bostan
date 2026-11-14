@@ -388,3 +388,41 @@ the final probe passed. Desktop40PASS/1POSIX-only skip; actual Electron3PASS,
 including a private PostgreSQL failure. Frozen lockfile admission passed; pnpm's
 importer ordering rewrite was removed, leaving only five patch-hash substitutions
 to qnghxpkspwbdn5p6zijivt4cai. No version or runtime payload files were removed.
+
+## Failed candidate evidence and next diagnosis, 2026-11-14
+
+Run43540750436 at9b25054d completed15non-desktopPASS/2desktopFAIL. macOS now
+reports POSTGRES_LIBRARY_MISSING at server:420:31. The exact retained DMG, SBOM
+and license inventory pass SHA256 verification. Read-only HFS inspection shows
+the nested embedded-postgres copy and hoisted native package; its old guessed
+sibling library directory is absent. The reviewed resolver repair and its actual
+Node lookup regression are recorded in
+doc/plans/2026-11-14-postgres-native-resolution.md and source draft PR562.
+Installed startup is still unverified after this repair.
+
+Windows still times out120seconds with solid compression. Its failure snapshot
+found4096temporary entries and1,127,536,832regular bytes before the cap. No
+successful installation, extraction speed improvement or clean shutdown follows.
+An actual embedded Node probe also rejects a whole-runtime ASAR entry with
+MODULE_NOT_FOUND; docs/adr/0002-keep-provider-runtime-outside-asar.md records why
+this apparent file-count shortcut was rejected. The shell's existing ASAR stays.
+
+After a failed Windows installer check, CI now retains its artifact first and
+then runs a separate diagnostic, bounded to300seconds overall. The pinned
+builder7za identifies the EXE's embedded7z directly (verified on the earlier
+exact candidate); inventory must also contain the exact application/runtime
+markers before extraction. Wrong layouts are refused. Inventory and extraction
+timings are separate fixed numeric fields; no raw paths, listing or child output
+are published. The fresh owned stage is identity-checked and removed. This guard
+does not claim hostile-archive containment. The hosted-only diagnostic verifies
+installer/SBOM/license bytes before allocating the full payload.
+
+The original120second installer check, its failed outcome and all installed-app
+assertions remain intact. A longer archive-only diagnostic is not an acceptance
+retry. A real tiny marker archive completes; an unrelated35file archive is
+refused, and both stages clean up. Operator refusal and missing-tool/privacy/
+cleanup tests pass. The first operator-test revision passed a URL as a CLI
+argument and failed before the guard; fileURLToPath corrected that fixture.
+Independent correctness/parsimony/product and security reviews pass. Full
+payload timing is pending. Candidate dba0ca81 had no started jobs at inspection
+and is superseded by this combined diagnostic candidate, not accepted as passing.

@@ -219,6 +219,7 @@ jobs:
       - id: package
         run: npm --prefix desktop run package
       - if: runner.os == 'Windows'
+        id: windows_installer
         run: ./scripts/bostan-ci-windows-user.ps1 -Mode Installer
       - if: runner.os == 'macOS'
         run: node desktop/scripts/qualify-macos-installer.mjs
@@ -238,3 +239,9 @@ jobs:
             desktop/dist/SHA256SUMS
             desktop/dist/bostan-sbom.cdx.json
             desktop/dist/bostan-license-inventory.json
+      # Failure-only measurement; does not replace the120second installer gate.
+      - if: ${{ !cancelled() && steps.package.outcome == 'success' && steps.windows_installer.outcome == 'failure' }}
+        timeout-minutes: 6
+        run: node desktop/scripts/diagnose-windows-extraction.mjs
+        env:
+          BOSTAN_DESKTOP_EXTRACTION_DIAGNOSTIC: "1"
