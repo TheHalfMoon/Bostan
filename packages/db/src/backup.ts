@@ -37,6 +37,9 @@ function readConfig(configPath: string): PartialConfig | null {
       if (database.mode === "postgres" && "connectionString" in database && typeof database.connectionString !== "string") {
         throw new Error("Invalid external database connection string");
       }
+      if ("embeddedPostgresPort" in database && (typeof database.embeddedPostgresPort !== "number" || !Number.isInteger(database.embeddedPostgresPort) || database.embeddedPostgresPort < 1 || database.embeddedPostgresPort > 65535)) {
+        throw new Error("Invalid embedded PostgreSQL port");
+      }
     }
     return parsed as PartialConfig;
   } catch {
