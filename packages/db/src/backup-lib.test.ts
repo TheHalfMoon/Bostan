@@ -84,22 +84,22 @@ describe("restore error redaction", () => {
     const previous = process.env.PAPERCLIP_PSQL_PATH;
     process.env.PAPERCLIP_PSQL_PATH = path.join(dir, "missing-psql-executable");
     try {
-      await expect(runDatabaseRestore({
-        connectionString: "postgres://synthetic:synthetic@127.0.0.1:1/synthetic",
-        backupFile,
-      })).rejects.toThrow("restore command failed");
+      let failure: unknown;
       try {
         await runDatabaseRestore({
           connectionString: "postgres://synthetic:synthetic@127.0.0.1:1/synthetic",
           backupFile,
         });
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        expect(message).toContain("output omitted");
-        expect(message).not.toContain(secret);
-        expect(message).not.toContain(dir);
-        expect(message).not.toContain("ENOENT");
+        failure = error;
       }
+      expect(failure).toBeInstanceOf(Error);
+      const message = (failure as Error).message;
+      expect(message).toContain("restore command failed");
+      expect(message).toContain("output omitted");
+      expect(message).not.toContain(secret);
+      expect(message).not.toContain(dir);
+      expect(message).not.toContain("ENOENT");
     } finally {
       if (previous === undefined) delete process.env.PAPERCLIP_PSQL_PATH;
       else process.env.PAPERCLIP_PSQL_PATH = previous;
