@@ -218,6 +218,16 @@
   --color-ok-bg: var(--bostan-ok-bg);
   --color-bad: var(--bostan-bad-text);
   --color-bad-bg: var(--bostan-bad-bg);
+  --color-ok-strong: var(--bostan-ok-strong);
+  --color-warn-strong: var(--bostan-warn-strong);
+  --color-info-line: var(--bostan-info-line);
+  --color-ok-line: var(--bostan-ok-line);
+  --color-warn-line: var(--bostan-warn-line);
+  --color-bad-line: var(--bostan-bad-line);
+  --color-unknown: var(--bostan-unknown-text);
+  --color-unknown-bg: var(--bostan-unknown-bg);
+  --color-unknown-strong: var(--bostan-unknown-strong);
+  --color-unknown-line: var(--bostan-unknown-line);
   /* Multiplicative radius ladder (modern shadcn/Tailwind v4 mapping):
      sm/md/lg/xl/2xl/3xl/4xl = 0.6/0.8/1.0/1.4/1.8/2.2/2.6 x the single
      --radius knob (base anchor 0.5rem = 8px; rounded-lg IS the anchor).
@@ -272,6 +282,16 @@
   --bostan-bad-text: #7E241E;
   --bostan-danger: #A3322A;
   --bostan-on-danger: #FFFFFF;
+  --bostan-ok-strong: #2F5A46;
+  --bostan-warn-strong: #7A5E10;
+  --bostan-unknown-bg: #EFEDF3;
+  --bostan-unknown-text: #3C355A;
+  --bostan-unknown-strong: #4E4670;
+  --bostan-info-line: #C9D7E3;
+  --bostan-ok-line: #BFD6C8;
+  --bostan-warn-line: #DCCF9F;
+  --bostan-bad-line: #E5C2BC;
+  --bostan-unknown-line: #D3CEDF;
   /* Theme-independent brand colours. */
   --bostan-slate: #7F9EB7;
   --bostan-slate-700: #3D5D75;
@@ -680,6 +700,16 @@
   --bostan-bad-text: #F0A39A;
   --bostan-danger: #F0A39A;
   --bostan-on-danger: #141513;
+  --bostan-ok-strong: #6FAF8C;
+  --bostan-warn-strong: #D9B85A;
+  --bostan-unknown-bg: #2A2737;
+  --bostan-unknown-text: #CFC8EC;
+  --bostan-unknown-strong: #A79CD6;
+  --bostan-info-line: #3A4B59;
+  --bostan-ok-line: #2E4A3B;
+  --bostan-warn-line: #574A22;
+  --bostan-bad-line: #5A302B;
+  --bostan-unknown-line: #403A55;
   --artifact-shadow-sheet: drop-shadow(0 3.406px 10px rgba(26, 26, 26, 0.18));
   --artifact-shadow-print: 0 3.406px 20px rgba(26, 26, 26, 0.18);
   --artifact-tile-hover: #202020;

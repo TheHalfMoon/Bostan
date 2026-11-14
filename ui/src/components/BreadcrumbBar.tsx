@@ -49,7 +49,8 @@ function GlobalToolbar({
       {launchers.length > 0 ? (
         <PluginLauncherOutlet placementZones={["globalToolbarButton"]} context={context} className="flex items-center gap-1" />
       ) : null}
-      <ThemeToggle />
+      {/* Desktop: the title bar carries the theme toggle. */}
+      <ThemeToggle className="md:hidden" />
     </div>
   );
 }

@@ -62,6 +62,16 @@ orange/terracotta reappears in the brand palette or logo assets.
   (`BostanTree`, `BostanMark`, `BostanAppIcon`, `BostanLockupGraphic`); files in
   `ui/src/assets/brand/` (see its README). Ink parts use `currentColor` and
   nodes use `var(--bostan-slate)`, so marks follow the theme.
+- **Execution states.** Nine states from the System board, never blurred:
+  Requested, Approved, Queued, Running, Completed, Verified, Failed, Blocked,
+  Outcome unknown. Render them with `ExecutionStateBadge` (chip or tile) and
+  map API statuses with `src/lib/execution-state.ts`. Each state has its own
+  glyph, so state never depends on colour alone. "Completed" is never
+  promoted to "Verified" from a status; pass `verified: true` only with proof.
+- **Desktop shell.** A title bar (mark, organization switcher, Ctrl/⌘ K search,
+  theme toggle) sits above the sidebar on desktop. Primary navigation is
+  grouped Command / Organization / Execution / Intelligence / Operations, and
+  every row must point at a real route.
 
 ## Principles
 

@@ -36,6 +36,17 @@ export const THEMED_TOKEN_NAMES = [
   "bad-text",
   "danger",
   "on-danger",
+  // Execution-state accents (System board): icon fills and chip borders.
+  "ok-strong",
+  "warn-strong",
+  "unknown-bg",
+  "unknown-text",
+  "unknown-strong",
+  "info-line",
+  "ok-line",
+  "warn-line",
+  "bad-line",
+  "unknown-line",
 ] as const;
 
 export type ThemedTokenName = (typeof THEMED_TOKEN_NAMES)[number];
@@ -68,6 +79,16 @@ export const bostanThemes: Record<ThemeName, Record<ThemedTokenName, string>> = 
     /** Destructive actions and Failed state (semantic, not brand). */
     danger: "#A3322A",
     "on-danger": "#FFFFFF",
+    "ok-strong": "#2F5A46",
+    "warn-strong": "#7A5E10",
+    "unknown-bg": "#EFEDF3",
+    "unknown-text": "#3C355A",
+    "unknown-strong": "#4E4670",
+    "info-line": "#C9D7E3",
+    "ok-line": "#BFD6C8",
+    "warn-line": "#DCCF9F",
+    "bad-line": "#E5C2BC",
+    "unknown-line": "#D3CEDF",
   },
   dark: {
     bg: "#141513",
@@ -93,6 +114,18 @@ export const bostanThemes: Record<ThemeName, Record<ThemedTokenName, string>> = 
     "bad-text": "#F0A39A",
     danger: "#F0A39A",
     "on-danger": "#141513",
+    // Dark execution-state accents: ok-strong, info-line and bad-line come from
+    // the dark desktop artboard; the rest are derived and contrast-tested.
+    "ok-strong": "#6FAF8C",
+    "warn-strong": "#D9B85A",
+    "unknown-bg": "#2A2737",
+    "unknown-text": "#CFC8EC",
+    "unknown-strong": "#A79CD6",
+    "info-line": "#3A4B59",
+    "ok-line": "#2E4A3B",
+    "warn-line": "#574A22",
+    "bad-line": "#5A302B",
+    "unknown-line": "#403A55",
   },
 };
 
@@ -146,6 +179,7 @@ export const TEXT_PAIRS: ReadonlyArray<readonly [ThemedTokenName, ThemedTokenNam
   ["on-danger", "danger"],
   ["danger", "bg"],
   ["danger", "card"],
+  ["unknown-text", "unknown-bg"],
 ];
 
 function channel(value: number): number {

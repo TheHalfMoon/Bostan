@@ -22,6 +22,15 @@ import {
   GanttChartSquare,
   LayoutGrid,
   Users,
+  House,
+  ShieldCheck,
+  Activity,
+  Building2,
+  UserRound,
+  Bot,
+  Workflow,
+  Wallet,
+  Lock,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -57,8 +66,11 @@ export function Sidebar({ children }: { children?: ReactNode }) {
   // one policy across static nav groups and the data-driven sections.
   const [workOpen, setWorkOpen] = useState(true);
   const [organizationOpen, setOrganizationOpen] = useState(true);
+  const [commandOpen, setCommandOpen] = useState(true);
+  const [intelligenceOpen, setIntelligenceOpen] = useState(true);
+  const [operationsOpen, setOperationsOpen] = useState(true);
   const { selectedCompanyId, selectedCompany } = useCompany();
-  const { collapsed, peeking } = useSidebar();
+  const { collapsed, peeking, isMobile } = useSidebar();
   const { enabled: streamlinedUiEnabled } = useStreamlinedUiEnabled();
   const rail = collapsed && !peeking;
   const inboxBadge = useInboxBadge(selectedCompanyId);
@@ -124,6 +136,28 @@ export function Sidebar({ children }: { children?: ReactNode }) {
     companyPrefix: selectedCompany?.issuePrefix ?? null,
   };
 
+  const newTaskTrigger = (
+    <button
+      onClick={() => openNewIssue()}
+      data-slot="icon-button"
+      aria-label={rail ? "New Task" : undefined}
+      className={cn(
+        "flex items-center gap-2.5 mx-2 rounded-lg px-2 py-1.5 pointer-coarse:py-1 text-(length:--text-compact) font-medium text-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+      )}
+    >
+      <SquarePen className="h-4 w-4 shrink-0" />
+      <span className={rail ? SIDEBAR_RAIL_HIDDEN_LABEL : "truncate"}>New Task</span>
+    </button>
+  );
+  const newTaskButton = rail ? (
+    <Tooltip>
+      <TooltipTrigger asChild>{newTaskTrigger}</TooltipTrigger>
+      <TooltipContent side="right">New Task</TooltipContent>
+    </Tooltip>
+  ) : (
+    newTaskTrigger
+  );
+
   return (
     <aside
       className={cn(
@@ -138,15 +172,145 @@ export function Sidebar({ children }: { children?: ReactNode }) {
           the header's spare width goes to the workspace/organization name,
           which is the user's orientation anchor and truncates otherwise.
           Search is the first nav item below instead. */}
-      <div className="flex h-(--sz-60px) shrink-0 items-center gap-1 px-3">
-        <SidebarCompanyMenu />
-      </div>
+      {/* On desktop the streamlined shell's title bar owns the organization
+          switcher; the drawer (mobile) and legacy shell keep it here. */}
+      {streamlinedUiEnabled && !isMobile ? null : (
+        <div className="flex h-(--sz-60px) shrink-0 items-center gap-1 px-3">
+          <SidebarCompanyMenu />
+        </div>
+      )}
 
+      {streamlinedUiEnabled ? (
+      /* Bostan desktop navigation (Desktop-Home artboard): Command /
+         Organization / Execution / Intelligence / Operations. Every row is a
+         real route; design rows without a product surface yet (Knowledge)
+         are intentionally absent rather than linking nowhere. */
+      <nav className={primarySidebarStyles.nav} aria-label="Primary">
+        <div className={primarySidebarStyles.group}>
+          {newTaskButton}
+          <SidebarNavItem to="/search" label="Search" icon={Search} />
+        </div>
+
+        <SidebarSection label="Command" collapsible={{ open: commandOpen, onOpenChange: setCommandOpen }}>
+          <SidebarNavItem to="/dashboard" label="Home" icon={House} liveCount={liveRunCount} />
+          {!combinedInboxTasks ? (
+            <SidebarNavItem
+              to="/inbox"
+              label="Inbox"
+              icon={Inbox}
+              badge={inboxBadge.inbox}
+              badgeLabel="unread"
+              badgeTone={inboxBadge.failedRuns > 0 ? "danger" : "default"}
+              alert={inboxBadge.failedRuns > 0}
+            />
+          ) : null}
+          <SidebarNavItem to="/approvals" label="Approvals" icon={ShieldCheck} />
+          {agentChatEnabled ? <SidebarNavItem to="/chats" label="Chat" icon={MessageCircle} /> : null}
+          {conferenceRoomChatEnabled ? (
+            <SidebarNavItem to="/board-chat" label="Conference Room" icon={MessagesSquare} />
+          ) : null}
+          {showStatusCards ? (
+            <SidebarNavItem to="/status" label="Status" icon={LayoutGrid} textBadge="beta" />
+          ) : null}
+          <SidebarNavItem to="/activity" label="Activity" icon={Activity} />
+        </SidebarSection>
+
+        <SidebarSection label="Organization" collapsible={{ open: organizationOpen, onOpenChange: setOrganizationOpen }}>
+          <SidebarNavItem to="/companies" label="Companies" icon={Building2} />
+          <SidebarNavItem to="/company/settings/members" label="People & roles" icon={UserRound} />
+          <SidebarNavItem to="/agents" label="AI agents" icon={Bot} />
+          <SidebarNavItem to="/org" label="Structure" icon={Network} />
+          <SidebarNavItem to="/skills" label="Skills" icon={Boxes} />
+        </SidebarSection>
+
+        <SidebarSection label="Execution" collapsible={{ open: workOpen, onOpenChange: setWorkOpen }}>
+          {showGoalsLink ? (
+            <SidebarNavItem to="/goals" label="Goals" icon={Target} />
+          ) : goalsLinkPending ? (
+            <div
+              data-testid="sidebar-goals-placeholder"
+              className="h-8 pointer-coarse:h-7"
+              aria-hidden="true"
+            />
+          ) : null}
+          {combinedInboxTasks ? (
+            <SidebarNavItem
+              to="/issues"
+              label="Tasks"
+              icon={CircleCheck}
+              badge={inboxBadge.inbox}
+              badgeLabel="unread"
+              badgeTone={inboxBadge.failedRuns > 0 ? "danger" : "default"}
+              alert={inboxBadge.failedRuns > 0}
+            />
+          ) : (
+            <SidebarNavItem to="/issues" label="Tasks" icon={CircleCheck} />
+          )}
+          <SidebarNavItem to="/projects" label="Projects" icon={FolderOpen} />
+          <SidebarStarredProjects />
+          <SidebarNavItem to="/routines" label="Workflows & runs" icon={Workflow} />
+          {showCases ? (
+            <SidebarNavItem to="/cases" label="Cases" icon={Layers} textBadge="beta" />
+          ) : null}
+          {showWorkspacesLink ? (
+            <SidebarNavItem to="/workspaces" label="Workspaces" icon={GitBranch} />
+          ) : null}
+          <PluginSlotOutlet
+            errorBehavior="hidden"
+            slotTypes={["sidebar"]}
+            context={pluginContext}
+            className="flex flex-col gap-0.5"
+            itemClassName="text-(length:--text-compact) font-medium"
+            missingBehavior="placeholder"
+          />
+          <PluginLauncherOutlet
+            errorBehavior="hidden"
+            placementZones={["sidebar"]}
+            context={pluginContext}
+            className="flex flex-col gap-0.5"
+            itemClassName="text-(length:--text-compact) font-medium"
+          />
+        </SidebarSection>
+
+        <SidebarSection label="Intelligence" collapsible={{ open: intelligenceOpen, onOpenChange: setIntelligenceOpen }}>
+          {showDecisions ? (
+            <SidebarNavItem
+              to="/decisions"
+              label="Decisions"
+              icon={ListChecks}
+              badge={attentionCount}
+              badgeLabel="decisions"
+            />
+          ) : null}
+          <SidebarNavItem to="/artifacts" label="Artifacts" icon={Package} />
+        </SidebarSection>
+
+        <SidebarSection label="Operations" collapsible={{ open: operationsOpen, onOpenChange: setOperationsOpen }}>
+          <SidebarNavItem to="/activity/costs" label="Budgets & costs" icon={Wallet} />
+          <SidebarNavItem to="/apps" label="Integrations" icon={Unplug} />
+          <SidebarNavItem to="/audit" label="Security & audit" icon={Lock} />
+          <SidebarNavItem to="/company/settings" label="Settings" icon={Settings} />
+        </SidebarSection>
+
+        {children ?? <SidebarAgents streamlined />}
+
+        <SidebarRecentTasks companyId={selectedCompanyId} liveIssueIds={liveIssueIds} />
+
+        <PluginSlotOutlet
+          errorBehavior="hidden"
+          slotTypes={["sidebarPanel"]}
+          context={pluginContext}
+          className="flex flex-col gap-3"
+          itemClassName="rounded-lg border border-border p-3"
+          missingBehavior="placeholder"
+        />
+      </nav>
+      ) : (
       <nav className={primarySidebarStyles.nav}>
         <div className={primarySidebarStyles.group}>
           {/* New Task button aligned with nav items */}
           {(() => {
-            const newTaskButton = (
+            const legacyNewTaskButton = (
               <button
                 onClick={() => openNewIssue()}
                 data-slot="icon-button"
@@ -161,11 +325,11 @@ export function Sidebar({ children }: { children?: ReactNode }) {
             );
             return rail ? (
               <Tooltip>
-                <TooltipTrigger asChild>{newTaskButton}</TooltipTrigger>
+                <TooltipTrigger asChild>{legacyNewTaskButton}</TooltipTrigger>
                 <TooltipContent side="right">New Task</TooltipContent>
               </Tooltip>
             ) : (
-              newTaskButton
+              legacyNewTaskButton
             );
           })()}
           {/* Search moved out of the header so the workspace name keeps the
@@ -309,6 +473,7 @@ export function Sidebar({ children }: { children?: ReactNode }) {
           missingBehavior="placeholder"
         />
       </nav>
+      )}
     </aside>
   );
 }

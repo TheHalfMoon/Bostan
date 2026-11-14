@@ -131,6 +131,11 @@ async function flushReact() {
   flushSync(() => {});
 }
 
+const sectionLinks = (container: HTMLElement, label: string) => {
+  const section = [...container.querySelectorAll("nav > div")].find((node) => node.textContent?.startsWith(label));
+  return [...(section?.querySelectorAll("a") ?? [])].map((anchor) => anchor.textContent?.trim());
+};
+
 describe("Sidebar", () => {
   let container: HTMLDivElement;
 
@@ -245,13 +250,10 @@ describe("Sidebar", () => {
 
     const projectsLink = [...container.querySelectorAll("nav a")].find((a) => a.textContent?.trim() === "Projects");
     expect(projectsLink?.getAttribute("href")).toBe("/projects");
-    const agentLinks = [...container.querySelectorAll('a[href="/agents"]')];
-    expect(agentLinks).toHaveLength(1);
+    expect([...container.querySelectorAll('a[href="/agents"]')]).toHaveLength(1);
     expect([...container.querySelectorAll('a[href="/activity"]')]).toHaveLength(1);
-    expect(navLabels).toContain("Audit");
-    expect(navLabels).not.toContain("Settings");
-    expect(navLabels).not.toContain("Activity");
-    expect(navLabels).not.toContain("Costs");
+    expect(navLabels).toContain("AI agents");
+    expect(navLabels).toContain("Security & audit");
     expect(container.querySelector('[data-testid="sidebar-recent-tasks"]')).not.toBeNull();
 
     flushSync(() => {
@@ -265,8 +267,7 @@ describe("Sidebar", () => {
 
     const navLabels = [...container.querySelectorAll("nav a")].map((a) => a.textContent?.trim());
     expect(navLabels).toContain("Projects");
-    expect(navLabels).toContain("Agents");
-    expect(container.textContent).not.toContain("Organization");
+    expect(navLabels).toContain("AI agents");
     expect(container.textContent).not.toContain("Workspaces");
     expect([...container.querySelectorAll("nav a")].map((a) => a.textContent?.trim())).not.toContain("Goals");
     expect(container.querySelector('[data-testid="sidebar-goals-placeholder"]')).not.toBeNull();
@@ -292,7 +293,7 @@ describe("Sidebar", () => {
     // Top-level Projects link + starred children stay, per-project collapsible gone.
     expect(navLabels).toContain("Projects");
     expect(container.querySelector('[data-testid="sidebar-starred-projects"]')).not.toBeNull();
-    expect(navLabels).toContain("Agents");
+    expect(navLabels).toContain("AI agents");
 
     flushSync(() => {
       root.unmount();
@@ -335,7 +336,7 @@ describe("Sidebar", () => {
     });
   });
 
-  it("renders plugin sidebar slots in Work below Workspaces", async () => {
+  it("renders plugin sidebar slots in Execution below Workspaces", async () => {
     mockInstanceSettingsApi.getExperimental.mockResolvedValue({ enableIsolatedWorkspaces: true });
     const root = await renderSidebar();
 
@@ -344,13 +345,13 @@ describe("Sidebar", () => {
     expect(sidebarSlot?.textContent).toContain("Plugin slot outlet");
     const workSectionContainer = sidebarSlot?.parentElement?.parentElement;
     const workText = workSectionContainer?.textContent ?? "";
-    expect(workText).toContain("Work");
+    expect(sectionLinks(container, "Execution")).toContain("Workspaces");
     expect(workText).toContain("Workspaces");
     expect(workText.indexOf("Workspaces")).toBeLessThan(workText.indexOf("Plugin slot outlet"));
 
-    const primaryNavText = container.querySelector("nav > div:first-child")?.textContent ?? "";
-    expect(primaryNavText).toContain("Inbox");
-    expect(primaryNavText).not.toContain("Plugin slot outlet");
+    const commandText = [...container.querySelectorAll("nav > div")].find((node) => node.textContent?.startsWith("Command"))?.textContent ?? "";
+    expect(commandText).toContain("Inbox");
+    expect(commandText).not.toContain("Plugin slot outlet");
 
     flushSync(() => {
       root.unmount();
@@ -371,16 +372,14 @@ describe("Sidebar", () => {
   });
 
   describe("with Agent Chat on (PAP-670)", () => {
-    it("leads the Work group with a single Chat row and keeps agent names out of the primary nav", async () => {
+    it("puts a single Chat row in Command and keeps agent names out of the primary nav", async () => {
       mockInstanceSettingsApi.getExperimental.mockResolvedValue({ enableAgentChat: true });
       const root = await renderSidebar();
 
-      const chatLink = [...container.querySelectorAll("a")].find((anchor) => anchor.getAttribute("href") === "/chats");
-      expect(chatLink?.textContent).toContain("Chat");
-
-      const workSection = chatLink?.closest("div")?.parentElement?.parentElement;
-      const workText = workSection?.textContent ?? "";
-      expect(workText.indexOf("Chat")).toBeLessThan(workText.indexOf("Tasks"));
+      const chatLinks = [...container.querySelectorAll("a")].filter((anchor) => anchor.getAttribute("href") === "/chats");
+      expect(chatLinks).toHaveLength(1);
+      expect(sectionLinks(container, "Command")).toContain("Chat");
+      expect(sectionLinks(container, "Execution")).not.toContain("Chat");
 
       flushSync(() => {
         root.unmount();
@@ -480,49 +479,55 @@ describe("Sidebar", () => {
     });
   });
 
-  it("shows Status directly below Decisions in primary navigation", async () => {
+  it("shows Status in Command and Decisions in Intelligence when enabled", async () => {
     mockInstanceSettingsApi.getExperimental.mockResolvedValue({
       enableDecisions: true,
       enableStatusCards: true,
     });
     const root = await renderSidebar();
 
-    const primaryNavLinks = [...container.querySelectorAll("nav > div:first-child a")];
-    const decisionsLink = primaryNavLinks.find(
-      (anchor) => anchor.textContent?.trim() === "Decisions",
-    );
-    const statusLink = primaryNavLinks.find((anchor) => anchor.getAttribute("href") === "/status");
-
+    const statusLink = [...container.querySelectorAll("nav a")].find((anchor) => anchor.getAttribute("href") === "/status");
     expect(statusLink?.textContent).toContain("Status");
     expect(statusLink?.textContent).toContain("beta");
     expect(statusLink?.textContent).not.toContain("exp");
     expect(statusLink?.textContent).not.toContain("cards");
-    expect(primaryNavLinks.indexOf(statusLink!)).toBe(primaryNavLinks.indexOf(decisionsLink!) + 1);
+    expect(sectionLinks(container, "Command")).toContain("Statusbeta");
+    expect(sectionLinks(container, "Intelligence")[0]).toBe("Decisions");
 
     flushSync(() => {
       root.unmount();
     });
   });
 
-  it("groups and orders the streamlined Work and Org navigation", async () => {
+  it("groups navigation as Command / Organization / Execution / Intelligence / Operations", async () => {
     mockInstanceSettingsApi.getExperimental.mockResolvedValue({
       enableIsolatedWorkspaces: false,
       enableApps: true,
     });
     const root = await renderSidebar();
 
-    const sections = [...container.querySelectorAll("nav > div")];
-    const workSection = sections.find((section) => section.textContent?.startsWith("Work"));
-    const orgSection = sections.find((section) => section.textContent?.startsWith("Org"));
-    const labels = (section: Element | undefined) => [...(section?.querySelectorAll("a") ?? [])]
-      .map((anchor) => anchor.textContent?.trim());
+    const sectionOrder = [...container.querySelectorAll("nav > div")]
+      .map((node) => node.textContent ?? "")
+      .map((text) => ["Command", "Organization", "Execution", "Intelligence", "Operations"].find((label) => text.startsWith(label)))
+      .filter(Boolean);
+    expect(sectionOrder).toEqual(["Command", "Organization", "Execution", "Intelligence", "Operations"]);
+    expect(sectionLinks(container, "Command")).toEqual(["Home", "Inbox", "Approvals", "Activity"]);
+    expect(sectionLinks(container, "Organization")).toEqual(["Companies", "People & roles", "AI agents", "Structure", "Skills"]);
+    expect(sectionLinks(container, "Execution")).toEqual(["Tasks", "Projects", "Workflows & runs"]);
+    expect(sectionLinks(container, "Intelligence")).toEqual(["Artifacts"]);
+    expect(sectionLinks(container, "Operations")).toEqual(["Budgets & costs", "Integrations", "Security & audit", "Settings"]);
 
-    expect(labels(workSection)).toEqual(["Tasks", "Projects", "Routines", "Artifacts"]);
-    expect(labels(orgSection)).toEqual(["Agents", "Skills", "Connectors", "Audit"]);
-    expect(sections.indexOf(workSection!)).toBeLessThan(sections.indexOf(orgSection!));
-    expect(
-      workSection?.querySelector('a[href="/issues"] svg')?.classList.contains("lucide-circle-check"),
-    ).toBe(true);
+    const href = (label: string) =>
+      [...container.querySelectorAll("nav a")].find((anchor) => anchor.textContent?.trim() === label)?.getAttribute("href");
+    expect(href("Home")).toBe("/dashboard");
+    expect(href("Approvals")).toBe("/approvals");
+    expect(href("People & roles")).toBe("/company/settings/members");
+    expect(href("Structure")).toBe("/org");
+    expect(href("Workflows & runs")).toBe("/routines");
+    expect(href("Budgets & costs")).toBe("/activity/costs");
+    expect(href("Integrations")).toBe("/apps");
+    expect(href("Security & audit")).toBe("/audit");
+    expect(container.querySelector('a[href="/issues"] svg')?.classList.contains("lucide-circle-check")).toBe(true);
 
     flushSync(() => {
       root.unmount();
@@ -553,8 +558,7 @@ describe("Sidebar", () => {
     const link = [...container.querySelectorAll("a")].find((anchor) => anchor.textContent === "Goals");
     expect(link?.getAttribute("href")).toBe("/goals");
 
-    const navText = container.querySelector("nav")?.textContent ?? "";
-    expect(navText.indexOf("Artifacts")).toBeLessThan(navText.indexOf("Goals"));
+    expect(sectionLinks(container, "Execution")[0]).toBe("Goals");
 
     flushSync(() => {
       root.unmount();
@@ -565,10 +569,8 @@ describe("Sidebar", () => {
     mockInstanceSettingsApi.getExperimental.mockResolvedValue({ enableIsolatedWorkspaces: false });
     const root = await renderSidebar();
 
-    const sections = [...container.querySelectorAll("nav > div")];
-    const workSection = sections.find((section) => section.textContent?.startsWith("Work"));
-    expect(workSection?.textContent).toContain("Projects");
-    expect(workSection?.textContent).not.toContain("Timeline");
+    expect(sectionLinks(container, "Execution")).toContain("Projects");
+    expect(container.querySelector("nav")?.textContent).not.toContain("Timeline");
     expect(container.querySelector('a[href="/timeline"]')).toBeNull();
 
     flushSync(() => {
@@ -607,20 +609,15 @@ describe("Sidebar", () => {
     });
   });
 
-  it("always shows Connectors in the Org section", async () => {
+  it("always shows Integrations (connectors) in Operations", async () => {
     mockInstanceSettingsApi.getExperimental.mockResolvedValue({ enableApps: false });
     const root = await renderSidebar();
 
     const links = [...container.querySelectorAll("a")];
-    const link = links.find((anchor) => anchor.textContent === "Connectors");
+    const link = links.find((anchor) => anchor.textContent === "Integrations");
     expect(link?.getAttribute("href")).toBe("/apps");
     expect(link?.querySelector("svg")?.classList).toContain("lucide-unplug");
-    expect(links.findIndex((anchor) => anchor.textContent === "Connectors")).toBeGreaterThan(
-      links.findIndex((anchor) => anchor.textContent === "Skills"),
-    );
-    expect(links.findIndex((anchor) => anchor.textContent === "Connectors")).toBeLessThan(
-      links.findIndex((anchor) => anchor.textContent === "Audit"),
-    );
+    expect(sectionLinks(container, "Operations")).toContain("Integrations");
 
     flushSync(() => {
       root.unmount();
@@ -661,7 +658,8 @@ describe("Sidebar", () => {
     expect(container.querySelector('button[aria-label="Collapse sidebar"]')).toBeNull();
     expect(container.querySelector('button[aria-label="Expand sidebar"]')).toBeNull();
     expect(container.querySelector('button[aria-label="Keep sidebar expanded"]')).toBeNull();
-    expect(container.textContent).toContain("Company menu");
+    // The desktop title bar owns the organization switcher in the streamlined shell.
+    expect(container.textContent).not.toContain("Company menu");
 
     flushSync(() => {
       root.unmount();
@@ -675,6 +673,18 @@ describe("Sidebar", () => {
 
     expect(container.querySelector('button[aria-label="Collapse sidebar"]')).toBeNull();
     expect(container.querySelector('button[aria-label="Keep sidebar expanded"]')).toBeNull();
+
+    flushSync(() => {
+      root.unmount();
+    });
+  });
+
+  it("keeps the organization switcher in the mobile drawer, which has no title bar", async () => {
+    mockSidebar.isMobile = true;
+    mockInstanceSettingsApi.getExperimental.mockResolvedValue({ enableIsolatedWorkspaces: false });
+    const root = await renderSidebar();
+
+    expect(container.textContent).toContain("Company menu");
 
     flushSync(() => {
       root.unmount();

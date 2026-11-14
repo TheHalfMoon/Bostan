@@ -113,6 +113,10 @@ vi.mock("./AppConnectionSidebar", () => ({
   ),
 }));
 
+vi.mock("./TitleBar", () => ({
+  TitleBar: () => <header data-testid="app-title-bar">Title bar</header>,
+}));
+
 vi.mock("./BreadcrumbBar", () => ({
   BreadcrumbBar: () => <div>Breadcrumbs</div>,
 }));
