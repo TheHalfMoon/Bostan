@@ -334,3 +334,37 @@ out at120seconds, but the owned temporary-tree snapshot found4096entries and
 868,883,083regular-file bytes before its cap. This establishes substantial
 temporary extraction activity, not completion or a proven remaining duration.
 No full installation or clean installed shutdown was accepted.
+
+## Native installer investigation, 2026-11-14
+
+Exact head0b87cc417fb6f660f028f53b102fbf98d1d46282 finished run43161038461
+with15non-desktopPASS/2desktopFAIL. The macOS host fixture passed; the installed
+backend reported only the approved location server:420:31, the catch around
+embedded PostgreSQL initialization. This narrows the failure but does not fix it.
+Windows again exceeded the120second install deadline. Neither platform qualifies.
+
+The retained977e4e78 Windows installer was downloaded to an owned investigation
+directory and its SHA256 matched the CI manifest:
+8261bfe2ad3f2fcb0882b8160f030c889a9a3a325ffc7b95d296abc780968527.
+The builder's pinned native7za listed76,080payload entries,2,161,588,716unpacked
+bytes and66,735non-solid blocks. A bounded180second archive-only extraction
+stopped before completion with56,306entries present. The installer itself was
+not executed on the operator machine. This evidence supports changing the
+archive layout, not raising the acceptance deadline or removing runtime files.
+
+NSIS differentialPackage is now disabled so the complete7z payload uses solid
+compression. The builder retains its existing temporary extraction then copy
+installation path. A real pinned NsisTarget/7za fixture preserved all35files,
+including JavaScript, declarations, maps and a native executable fixture:35blocks
+became1block. This proves codec compatibility and byte preservation only;
+the full payload's installation time remains unverified until hosted native QA.
+
+The old manifest included an undistributed blockmap and omitted metadata hashes.
+The new producer hashes exactly shipped EXE/DMG installers plus the fixed SBOM
+and license inventory. Both native consumers verify all three before installation
+or mounting. Tests reject changed bytes, duplicate target entries, missing
+metadata, escaping/hardlinked inputs and short-read ambiguity; atomic manifest
+replacement preserves an external linked file. This is integrity within the
+trusted build workspace, not signing or release authenticity. Fresh independent
+correctness/parsimony/product and security reviews PASS; desktop39PASS/1POSIX-only
+skip. Native QA, signing, update/rollback and remaining product journeys are open.

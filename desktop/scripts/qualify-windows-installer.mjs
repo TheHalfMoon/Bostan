@@ -5,6 +5,7 @@ import path from "node:path";
 import { qualifyInstalledApp } from "./installed-app-journey.mjs";
 import { installedAppPhase, observeInstalledAppStartup } from "./installed-app-phase.mjs";
 import { installerTreeSnapshot } from "./installer-tree-snapshot.mjs";
+import { verifyCandidateInstall } from "./artifact-checksums.mjs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { resolvePrivateWindowsPowerShellBinary } from "../../scripts/bostan-private-windows-powershell-binary.mjs";
@@ -20,6 +21,7 @@ const { _electron } = createRequire(path.join(repo, "package.json"))("@playwrigh
 const out = path.join(repo, "desktop/dist");
 const installers = fs.readdirSync(out).filter(name => name.endsWith(".exe"));
 assert.equal(installers.length, 1, "Expected exactly one prepared Windows installer");
+await verifyCandidateInstall(out, installers[0]);
 const appData = path.join(process.env.APPDATA, "Bostan");
 assert.equal(fs.lstatSync(appData, { throwIfNoEntry: false }), undefined, "Never qualify against pre-existing Bostan data");
 const scanner = resolvePrivateWindowsPowerShellBinary();

@@ -2,7 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync, execFileSync } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
+import { writeCandidateChecksums } from "./artifact-checksums.mjs";
 import { createRequire } from "node:module";
 import { prepareRuntimeLinks } from "../app/runtime-links.mjs";
 import { resolvePnpmInvocation } from "../../server/scripts/prepare-runner-vendor.mjs";
@@ -93,13 +94,7 @@ try {
       afterPack: context => verifyPackagedRuntime(context, payload),
     },
   });
-  const checksums = [];
-  for (const file of artifacts) if (fs.statSync(file).isFile()) {
-    const hash = createHash("sha256");
-    for await (const bytes of fs.createReadStream(file)) hash.update(bytes);
-    checksums.push(`${hash.digest("hex")}  ${path.basename(file)}`);
-  }
-  fs.writeFileSync(path.join(out, "SHA256SUMS"), checksums.join("\n") + "\n");
+  await writeCandidateChecksums(out, artifacts);
   console.log("Bostan unsigned artifacts prepared; signing, notarization and publication remain separate gates.");
 } finally {
   ownedStage.dispose();

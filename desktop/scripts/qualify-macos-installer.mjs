@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { qualifyInstalledApp } from "./installed-app-journey.mjs";
 import { installedAppPhase, observeInstalledAppStartup } from "./installed-app-phase.mjs";
+import { verifyCandidateInstall } from "./artifact-checksums.mjs";
 
 // Mount/copy/remove only on a disposable hosted runner, never an operator Mac.
 if (process.platform !== "darwin" || process.env.CI !== "true"
@@ -20,12 +20,7 @@ const out = path.join(repo, "desktop/dist");
 const images = fs.readdirSync(out).filter(name => name.endsWith(".dmg"));
 assert.equal(images.length, 1, "Expected exactly one prepared macOS disk image");
 const image = path.join(out, images[0]);
-const checksums = fs.readFileSync(path.join(out, "SHA256SUMS"), "utf8").trim().split(/\r?\n/);
-const checksum = checksums.filter(line => line.endsWith("  " + images[0]));
-assert.equal(checksum.length, 1, "Disk image checksum is missing or ambiguous");
-const digest = createHash("sha256");
-for await (const chunk of fs.createReadStream(image)) digest.update(chunk);
-assert.equal(checksum[0], `${digest.digest("hex")}  ${images[0]}`, "Disk image bytes do not match the prepared checksum");
+await verifyCandidateInstall(out, images[0]);
 
 const appData = path.join(os.homedir(), "Library/Application Support/Bostan");
 const applications = path.join(os.homedir(), "Applications");
