@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { afterEach, describe, expect, it } from "vitest";
-import { ensureDarwinSharedLibraryAliases, ensureLinuxSharedLibraryAliases, prepareEmbeddedPostgresNativeRuntime } from "./embedded-postgres-native.js";
+import { ensureDarwinSharedLibraryAliases, ensureLinuxSharedLibraryAliases, prepareEmbeddedPostgresNativeRuntime, resolveEmbeddedPostgresNativePackageRoot } from "./embedded-postgres-native.js";
 
 const require = createRequire(import.meta.url);
 
@@ -15,6 +15,28 @@ describe("embedded Postgres native runtime", () => {
     for (const tempDir of tempDirs.splice(0)) {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
+  });
+
+  it("resolves a hoisted native package from the deployed nested dependency instead of guessing a sibling", () => {
+    const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "bostan-deployed-pg-resolution-"));
+    tempDirs.push(root);
+    const embedded = path.join(root, "node_modules/.pnpm/@bostan+db_fixture/node_modules/@bostan/db/node_modules/embedded-postgres");
+    const native = path.join(root, "native-package");
+    const hoisted = path.join(root, "node_modules/.pnpm/node_modules/@embedded-postgres/darwin-arm64");
+    fs.mkdirSync(path.join(embedded, "dist"), { recursive: true });
+    fs.mkdirSync(path.join(native, "dist"), { recursive: true });
+    fs.mkdirSync(path.join(native, "native/lib"), { recursive: true });
+    fs.writeFileSync(path.join(embedded, "dist/index.js"), "");
+    fs.writeFileSync(path.join(native, "package.json"), JSON.stringify({ name: "@embedded-postgres/darwin-arm64", exports: "./dist/index.js" }));
+    fs.writeFileSync(path.join(native, "dist/index.js"), "");
+    fs.mkdirSync(path.dirname(hoisted), { recursive: true });
+    fs.symlinkSync(native, hoisted, process.platform === "win32" ? "junction" : "dir");
+    fs.writeFileSync(path.join(native, "native/lib/libicudata.77.1.dylib"), "synthetic");
+    expect(fs.existsSync(path.join(embedded, "../@embedded-postgres/darwin-arm64/native/lib"))).toBe(false);
+    const resolved = resolveEmbeddedPostgresNativePackageRoot(path.join(embedded, "dist/index.js"), "darwin-arm64");
+    expect(resolved).toBe(native);
+    expect(fs.readFileSync(path.join(resolved!, "native/lib/libicudata.77.1.dylib"), "utf8")).toBe("synthetic");
+    expect(resolveEmbeddedPostgresNativePackageRoot(path.join(embedded, "dist/index.js"), "missing-native-fixture")).toBeNull();
   });
 
   it.runIf(process.platform !== "win32")("creates soname aliases for bundled patch-level shared libraries", async () => {
