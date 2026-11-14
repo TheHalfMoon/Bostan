@@ -151,3 +151,26 @@ test("db:backup refuses an explicitly empty destination before database access",
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("db:backup rejects unsafe filename prefixes before opening a database", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "bostan-unsafe-prefix-"));
+  const config = path.join(dir, "config.json");
+  const previousUrl = process.env.DATABASE_URL;
+  try {
+    process.env.DATABASE_URL = "postgres://synthetic.invalid/synthetic";
+    writeFileSync(config, JSON.stringify({
+      database: { mode: "postgres", connectionString: "postgres://synthetic.invalid/synthetic" },
+    }));
+    for (const filenamePrefix of ["", " ", "../escape", "sub/path", "sub\\\\path", ".", "..", "-leading", "foo bar"]) {
+      await assert.rejects(
+        dbBackupCommand({ config, dir: path.join(dir, "backups"), filenamePrefix }),
+        /Invalid backup filename prefix/,
+        filenamePrefix,
+      );
+    }
+  } finally {
+    if (previousUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = previousUrl;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
