@@ -78,17 +78,14 @@ const BACKUP_BREAKPOINT_DETECT_BYTES = 64 * 1024;
 const STATEMENT_BREAKPOINT = "-- paperclip statement breakpoint 69f6f3f1-42fd-46a6-bf17-d1d85f8f3900";
 
 function sanitizeRestoreErrorMessage(error: unknown): string {
-  if (error && typeof error === "object") {
-    const record = error as Record<string, unknown>;
-    const firstLine = typeof record.message === "string"
-      ? record.message.split(/\r?\n/, 1)[0]?.trim()
-      : "";
-    const detail = typeof record.detail === "string" ? record.detail.trim() : "";
-    const severity = typeof record.severity === "string" ? record.severity.trim() : "";
-    const message = firstLine || detail || (error instanceof Error ? error.message : String(error));
-    return severity ? `${severity}: ${message}` : message;
-  }
-  return error instanceof Error ? error.message : String(error);
+  // psql stderr can echo SQL literals, credentials, and local paths.
+  // Preserve only an allowlisted machine-readable code, not free-form text.
+  const code = error && typeof error === "object"
+    ? (error as Record<string, unknown>).code
+    : null;
+  return typeof code === "string" && /^[A-Z0-9]{1,8}$/.test(code)
+    ? `restore command failed (code ${code}; output omitted)`
+    : "restore command failed (output omitted)";
 }
 
 function timestamp(date: Date = new Date()): string {
