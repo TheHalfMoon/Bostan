@@ -71,7 +71,7 @@ export async function dbBackupCommand(opts: DbBackupOptions): Promise<void> {
     opts.retentionDays,
     config?.database.backup.retentionDays ?? 30,
   );
-  const filenamePrefix = opts.filenamePrefix?.trim() || "bostan";
+  // A prefix becomes part of a filesystem path and the retention-pruning selector.\n  // Never allow separators, traversal, or an empty explicit prefix.\n  if (opts.filenamePrefix !== undefined && !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(opts.filenamePrefix)) {\n    throw new Error("Invalid backup filename prefix. Use letters, numbers, underscores or hyphens.");\n  }\n  const filenamePrefix = opts.filenamePrefix ?? "bostan";
 
   p.log.message(pc.dim(`Config: ${configPath}`));
   p.log.message(pc.dim(`Connection source: ${connection.source}`));
