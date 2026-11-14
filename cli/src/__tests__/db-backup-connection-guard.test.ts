@@ -128,3 +128,23 @@ test("db:backup refuses malformed and invalid configuration before opening a dat
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("db:backup refuses an explicitly empty destination before database access", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "bostan-empty-backup-dir-"));
+  const config = path.join(dir, "config.json");
+  const previousUrl = process.env.DATABASE_URL;
+  try {
+    process.env.DATABASE_URL = "postgres://synthetic.invalid/synthetic";
+    writeFileSync(config, JSON.stringify({
+      database: { mode: "postgres", connectionString: "postgres://synthetic.invalid/synthetic" },
+    }));
+    await assert.rejects(
+      dbBackupCommand({ config, dir: "  \t  " }),
+      /Backup directory must not be empty/,
+    );
+  } finally {
+    if (previousUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = previousUrl;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
