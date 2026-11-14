@@ -18,13 +18,19 @@ type DbBackupOptions = {
   json?: boolean;
 };
 
-function resolveConnectionString(configPath?: string): { value: string; source: string } {
+export function resolveConnectionString(configPath?: string): { value: string; source: string } {
   const envUrl = process.env.DATABASE_URL?.trim();
   if (envUrl) return { value: envUrl, source: "DATABASE_URL" };
 
   const config = readConfig(configPath);
   if (config?.database.mode === "postgres" && config.database.connectionString?.trim()) {
     return { value: config.database.connectionString.trim(), source: "config.database.connectionString" };
+  }
+
+  // An explicitly configured external database must never silently fall back to
+  // the embedded instance: doing so can produce a successful but wrong backup.
+  if (config?.database.mode === "postgres") {
+    throw new Error("Postgres backup requires a configured database connection string or DATABASE_URL.");
   }
 
   const port = config?.database.embeddedPostgresPort ?? 54329;
@@ -48,19 +54,29 @@ function resolveBackupDir(raw: string): string {
 
 export async function dbBackupCommand(opts: DbBackupOptions): Promise<void> {
   printPaperclipCliBanner();
-  p.intro(pc.bgCyan(pc.black(" paperclip db:backup ")));
+  p.intro(pc.bgCyan(pc.black(" bostan db:backup ")));
 
   const configPath = resolveConfigPath(opts.config);
   const config = readConfig(opts.config);
   const connection = resolveConnectionString(opts.config);
   const defaultDir = resolveDefaultBackupDir(resolveBostanInstanceId());
-  const configuredDir = opts.dir?.trim() || config?.database.backup.dir || defaultDir;
+  // An explicitly supplied empty destination is an error, not permission to
+  // silently write a backup to the default directory.
+  if (opts.dir !== undefined && !opts.dir.trim()) {
+    throw new Error("Backup directory must not be empty.");
+  }
+  const configuredDir = opts.dir?.trim() ?? config?.database.backup.dir ?? defaultDir;
   const backupDir = resolveBackupDir(configuredDir);
   const retentionDays = normalizeRetentionDays(
     opts.retentionDays,
     config?.database.backup.retentionDays ?? 30,
   );
-  const filenamePrefix = opts.filenamePrefix?.trim() || "paperclip";
+  // A prefix becomes part of a filesystem path and the retention-pruning selector.
+  // Never allow separators, traversal, or an empty explicit prefix.
+  if (opts.filenamePrefix !== undefined && !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(opts.filenamePrefix)) {
+    throw new Error("Invalid backup filename prefix. Use letters, numbers, underscores or hyphens.");
+  }
+  const filenamePrefix = opts.filenamePrefix ?? "bostan";
 
   p.log.message(pc.dim(`Config: ${configPath}`));
   p.log.message(pc.dim(`Connection source: ${connection.source}`));

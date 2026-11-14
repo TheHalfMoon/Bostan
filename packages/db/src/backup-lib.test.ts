@@ -75,6 +75,38 @@ describe("createBufferedTextFileWriter", () => {
   });
 });
 
+describe("restore error redaction", () => {
+  it("omits SQL content and subprocess diagnostics when psql fails", async () => {
+    const dir = createTempDir("bostan-restore-redaction-");
+    const backupFile = path.join(dir, "synthetic.sql.gz");
+    const secret = "SYNTHETIC_SQL_SECRET_DO_NOT_LOG_7821";
+    fs.writeFileSync(backupFile, gzipSync(`SELECT '${secret}';\n`));
+    const previous = process.env.PAPERCLIP_PSQL_PATH;
+    process.env.PAPERCLIP_PSQL_PATH = path.join(dir, "missing-psql-executable");
+    try {
+      let failure: unknown;
+      try {
+        await runDatabaseRestore({
+          connectionString: "postgres://synthetic:synthetic@127.0.0.1:1/synthetic",
+          backupFile,
+        });
+      } catch (error) {
+        failure = error;
+      }
+      expect(failure).toBeInstanceOf(Error);
+      const message = (failure as Error).message;
+      expect(message).toContain("restore command failed");
+      expect(message).toContain("output omitted");
+      expect(message).not.toContain(secret);
+      expect(message).not.toContain(dir);
+      expect(message).not.toContain("ENOENT");
+    } finally {
+      if (previous === undefined) delete process.env.PAPERCLIP_PSQL_PATH;
+      else process.env.PAPERCLIP_PSQL_PATH = previous;
+    }
+  });
+});
+
 describeEmbeddedPostgres("runDatabaseBackup", () => {
   it("preserves a post-pg_dump verification error without falling back or pruning", async () => {
     const connectionString = await createTempDatabase();
