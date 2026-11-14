@@ -67,7 +67,7 @@ const DATA_DIR_OPTION_HELP =
 program.enablePositionalOptions();
 
 program
-  .name("paperclipai")
+  .name("bostan")
   .description("Bostan CLI — setup, diagnose, and configure your instance")
   .version(cliVersion);
 
