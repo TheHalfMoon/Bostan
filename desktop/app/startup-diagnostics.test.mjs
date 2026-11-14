@@ -25,6 +25,27 @@ test("startup receipts accept only fixed phases and failure codes", () => {
   assert.equal(diagnostics.startupFailureLine("ERR_MODULE_NOT_FOUND"), "BOSTAN_DESKTOP_STARTUP_FAILURE ERR_MODULE_NOT_FOUND");
   assert.equal(diagnostics.isStartupDiagnosticLine(diagnostics.startupFailureLine("EPERM")), true);
 });
+
+test("wrapped PostgreSQL initialization failures disclose only a fixed reason", () => {
+  const prefix = "Postgres init script exited with code 1. Recent embedded Postgres logs: ";
+  const cases = [
+    ["Library not loaded: /private/SECRET/lib.dylib", "POSTGRES_LIBRARY_MISSING"],
+    ["code signature invalid in /private/SECRET/lib.dylib", "POSTGRES_SIGNATURE_INVALID"],
+    ["invalid locale name: SECRET", "POSTGRES_LOCALE_INVALID"],
+    ["cannot be run as root SECRET", "POSTGRES_ROOT_REFUSED"],
+    ["Permission denied /private/SECRET", "POSTGRES_PERMISSION_DENIED"],
+    ["arbitrary private SECRET diagnostic", "POSTGRES_INIT_FAILED"],
+  ];
+  for (const [message, expected] of cases) {
+    const code = diagnostics.startupErrorCode(new Error(prefix + message));
+    assert.equal(code, expected);
+    const line = diagnostics.startupFailureLine(code);
+    assert.equal(diagnostics.isStartupDiagnosticLine(line), true);
+    assert.equal(line.includes("SECRET"), false);
+  }
+  assert.equal(diagnostics.startupErrorCode(new Error("Library not loaded: private unrelated failure")), "STARTUP_FAILED");
+  assert.equal(diagnostics.startupErrorCode(Object.assign(new Error(prefix), { code: "ENOENT" })), "ENOENT");
+});
 test("arbitrary dependency errors and forged multiline receipts disclose no raw data", () => {
   for (const value of ["https://user:secret@example.test", "C:\\private\\fixture", "ERR_PRIVATE_SECRET", "ready\nsecret"]) {
     assert.equal(diagnostics.startupPhaseLine(value), null);

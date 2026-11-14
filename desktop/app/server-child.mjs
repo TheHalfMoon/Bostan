@@ -53,7 +53,7 @@ try {
   await startup;
 } catch (error) {
   // Raw backend stacks may include secrets, database URLs and host paths.
-  const code = diagnostics.startupCode(error?.code);
+  const code = diagnostics.startupErrorCode(error);
   const site = diagnostics.startupFailureSite(error, process.env.BOSTAN_DESKTOP_SERVER_ROOT);
   process.parentPort.postMessage({ type: "startup-failed", code, site });
   process.exit(1);

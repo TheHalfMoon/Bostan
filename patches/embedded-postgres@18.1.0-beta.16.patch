@@ -28,7 +28,27 @@ diff --git a/dist/index.js b/dist/index.js
                  // Connect to stderr, as that is where the messages get sent
                  (_a = process.stdout) === null || _a === void 0 ? void 0 : _a.on('data', (chunk) => {
                      // Parse the data as a string and log it
-@@ -177,7 +177,7 @@
+@@ -141,5 +144,11 @@
+                     this.options.onLog(message);
+                 });
++                // initdb writes native loader and initialization failures to stderr.
++                // Preserve them in the caller-owned bounded startup log buffer.
++                process.stderr?.on('data', (chunk) => {
++                    this.options.onError(chunk.toString('utf-8'));
++                });
++                process.on('error', reject);
+-                process.on('exit', (code) => {
++                process.on('close', (code) => {
+                     if (code === 0) {
+                         resolve();
+@@ -147,5 +156,5 @@
+                     else {
+-                        reject(`Postgres init script exited with code ${code}. Please check the logs for extra info. The data directory might already exist.`);
++                        reject(new Error(`Postgres init script exited with code ${code}. Please check the logs for extra info. The data directory might already exist.`));
+                     }
+                 });
+             });
+@@ -177,7 +186,7 @@
                      '-p',
                      this.options.port.toString(),
                      ...this.options.postgresFlags,

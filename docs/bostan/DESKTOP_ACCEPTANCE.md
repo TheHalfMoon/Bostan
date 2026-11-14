@@ -368,3 +368,23 @@ replacement preserves an external linked file. This is integrity within the
 trusted build workspace, not signing or release authenticity. Fresh independent
 correctness/parsimony/product and security reviews PASS; desktop39PASS/1POSIX-only
 skip. Native QA, signing, update/rollback and remaining product journeys are open.
+
+The dependency's initdb wrapper discarded stderr and rejected a string on exit.
+Its patch now forwards stderr into the existing caller-owned bounded log buffer,
+rejects spawn errors, waits for stream close, and rejects an Error so Bostan's
+formatter preserves the dependency's fixed prefix. Desktop receipts classify
+only that fixed prefix into approved library/signature/locale/permission/root
+or generic initialization failure codes. Raw messages and paths stay suppressed;
+the utility process still has ignored stdio and emits only fixed IPC receipts.
+This is a diagnostic correction; the native macOS cause remains unproven.
+
+A controlled real-child probe reversed the prior patch on actual extracted
+dependency source, applied the new patch, invoked the complete initializer with
+only native binary selection/arguments replaced, and passed its actual Error
+and stderr through Bostan's actual database formatter. It classified a synthetic
+loader error without disclosing its private marker; a missing executable rejected
+with ENOENT. Initial probe revisions failed on fixture imports and were corrected;
+the final probe passed. Desktop40PASS/1POSIX-only skip; actual Electron3PASS,
+including a private PostgreSQL failure. Frozen lockfile admission passed; pnpm's
+importer ordering rewrite was removed, leaving only five patch-hash substitutions
+to qnghxpkspwbdn5p6zijivt4cai. No version or runtime payload files were removed.

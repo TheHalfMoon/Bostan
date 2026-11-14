@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-for (const failStartup of [false, true]) {
+for (const failStartup of [false, true, "postgres"]) {
 test(`actual Electron Node child preserves compiled startup and private failure receipts (failure=${failStartup})`, { timeout: 30000 }, async () => {
   const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "bostan-electron-child-test-"));
   const desktop = path.resolve(import.meta.dirname, "..");
@@ -23,7 +23,7 @@ test(`actual Electron Node child preserves compiled startup and private failure 
       import fs from 'node:fs'; import path from 'node:path'; import {fileURLToPath} from 'node:url';
       import {spawnSync} from 'node:child_process'; import {value} from '@bostan/fixture';
       export async function startServer() {
-        ${failStartup ? 'throw new Error("SYNTHETIC_PRIVATE_BACKEND_MESSAGE");' : ''}
+        ${failStartup === "postgres" ? 'throw new Error("Postgres init script exited with code 1. Recent embedded Postgres logs: Library not loaded: /private/SYNTHETIC_PRIVATE_BACKEND_MESSAGE/lib.dylib");' : failStartup ? 'throw new Error("SYNTHETIC_PRIVATE_BACKEND_MESSAGE");' : ''}
         if(value!=='compiled')throw Error('Wrong export');
         const sub=spawnSync(process.execPath,['--input-type=module','-e',"import {value} from '@bostan/fixture'; console.log(value,process.versions.node)"],{
           cwd:path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),encoding:'utf8',timeout:5000,windowsHide:true
@@ -64,7 +64,7 @@ test(`actual Electron Node child preserves compiled startup and private failure 
     if (failStartup) {
       const failure = output.split(/\r?\n/).filter(line => line.startsWith('{"type":"startup-failed"')).map(line => JSON.parse(line));
       assert.equal(failure.length, 1);
-      assert.equal(failure[0].code, "STARTUP_FAILED");
+      assert.equal(failure[0].code, failStartup === "postgres" ? "POSTGRES_LIBRARY_MISSING" : "STARTUP_FAILED");
       assert.match(failure[0].site, /^BOSTAN_DESKTOP_STARTUP_SITE server:[1-9]\d*:[1-9]\d*$/);
       assert.equal(output.includes("SYNTHETIC_PRIVATE_BACKEND_MESSAGE"), false);
     } else {
