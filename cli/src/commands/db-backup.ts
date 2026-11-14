@@ -60,7 +60,7 @@ export async function dbBackupCommand(opts: DbBackupOptions): Promise<void> {
   const config = readConfig(opts.config);
   const connection = resolveConnectionString(opts.config);
   const defaultDir = resolveDefaultBackupDir(resolveBostanInstanceId());
-  const configuredDir = opts.dir?.trim() || config?.database.backup.dir || defaultDir;
+  // An explicitly supplied empty destination is an error, not permission to\n  // silently write a backup to the default directory.\n  if (opts.dir !== undefined && !opts.dir.trim()) {\n    throw new Error("Backup directory must not be empty.");\n  }\n  const configuredDir = opts.dir?.trim() ?? config?.database.backup.dir ?? defaultDir;
   const backupDir = resolveBackupDir(configuredDir);
   const retentionDays = normalizeRetentionDays(
     opts.retentionDays,
