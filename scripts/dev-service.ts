@@ -22,7 +22,7 @@ try {
     throw new Error(`Unknown dev-service option: ${forwardedArgs[0]}`);
   }
 } catch (error) {
-  console.error(`[paperclip] ${error instanceof Error ? error.message : String(error)}`);
+  console.error(`[bostan] ${error instanceof Error ? error.message : String(error)}`);
   process.exit(1);
 }
 
@@ -33,7 +33,7 @@ const records = await listLocalServiceRegistryRecords({
 
 if (command === "list") {
   if (records.length === 0) {
-    console.log("No Paperclip dev services registered for this repo.");
+    console.log("No Bostan dev services registered for this repo.");
     process.exit(0);
   }
   for (const line of toDisplayLines(records)) {
@@ -44,7 +44,7 @@ if (command === "list") {
 
 if (command === "stop") {
   if (records.length === 0) {
-    console.log("No Paperclip dev services registered for this repo.");
+    console.log("No Bostan dev services registered for this repo.");
     process.exit(0);
   }
   for (const record of records) {
