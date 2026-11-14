@@ -83,7 +83,7 @@ function sanitizeRestoreErrorMessage(error: unknown): string {
   const code = error && typeof error === "object"
     ? (error as Record<string, unknown>).code
     : null;
-  return typeof code === "string" && /^[A-Z0-9]{1,8}$/.test(code)
+  return typeof code === "string" && /^[A-Z0-9]{5}$/.test(code)
     ? `restore command failed (code ${code}; output omitted)`
     : "restore command failed (output omitted)";
 }
