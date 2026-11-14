@@ -36,9 +36,12 @@ async function pathExists(value: string): Promise<boolean> {
   }
 }
 
-function resolveEmbeddedPostgresPackageRoot(): string | null {
+export function resolveEmbeddedPostgresNativePackageRoot(embeddedPostgresEntry: string, nativePackageName: string): string | null {
   try {
-    const entry = require.resolve("embedded-postgres");
+    // pnpm deploy can nest embedded-postgres inside an injected workspace
+    // package while hoisting its native dependency farther up node_modules.
+    // Resolve from the dependency itself, as its binary loader does.
+    const entry = createRequire(embeddedPostgresEntry).resolve(`@embedded-postgres/${nativePackageName}`);
     return path.dirname(path.dirname(entry));
   } catch {
     return null;
@@ -111,10 +114,13 @@ export async function ensureDarwinSharedLibraryAliases(libDir: string): Promise<
 
 export async function prepareEmbeddedPostgresNativeRuntime(): Promise<void> {
   const nativePackageName = resolveNativePackageName();
-  const packageRoot = resolveEmbeddedPostgresPackageRoot();
-  if (!nativePackageName || !packageRoot) return;
+  if (!nativePackageName) return;
+  let embeddedPostgresEntry: string;
+  try { embeddedPostgresEntry = require.resolve("embedded-postgres"); }
+  catch { return; }
+  const nativeRoot = resolveEmbeddedPostgresNativePackageRoot(embeddedPostgresEntry, nativePackageName);
+  if (!nativeRoot) return;
 
-  const nativeRoot = path.resolve(packageRoot, "..", "@embedded-postgres", nativePackageName);
   const libDir = path.join(nativeRoot, "native", "lib");
   if (!(await pathExists(libDir))) return;
 
