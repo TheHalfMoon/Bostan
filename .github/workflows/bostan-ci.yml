@@ -75,6 +75,7 @@ jobs:
       - run: node --test scripts/*.test.mjs
         working-directory: ui
       - run: node --test packages/db/scripts/copy-runtime-assets.test.mjs
+      - run: node --test scripts/__tests__/ensure-plugin-build-deps.test.mjs
       # bostan-local-install exercises the compiled preview CLI in cli/dist.
       - run: node scripts/build-bostan-preview.mjs
         working-directory: cli
