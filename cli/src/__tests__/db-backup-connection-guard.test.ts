@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmodSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -174,6 +174,33 @@ test("db:backup rejects unsafe filename prefixes before opening a database", asy
   } finally {
     if (previousUrl === undefined) delete process.env.DATABASE_URL;
     else process.env.DATABASE_URL = previousUrl;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// The library is also called outside the CLI. Invalid retention must fail
+// before a connection attempt, archive creation, or pruning old backups.
+test("backup library rejects invalid retention without touching a database", async () => {
+  const { runDatabaseBackup } = await import("@bostan/db");
+  const dir = mkdtempSync(path.join(tmpdir(), "bostan-invalid-retention-"));
+  try {
+    const good = { dailyDays: 7, weeklyWeeks: 4, monthlyMonths: 2 };
+    const badValues = [0, -1, 1.5, NaN, Infinity, 9007199254740992];
+    for (const field of ["dailyDays", "weeklyWeeks", "monthlyMonths"] as const) {
+      for (const value of badValues) {
+        await assert.rejects(
+          runDatabaseBackup({
+            connectionString: "postgres://synthetic.invalid/synthetic",
+            backupDir: path.join(dir, "backups"),
+            retention: { ...good, [field]: value },
+          }),
+          /Invalid backup retention policy/,
+          `${field}=${value}`,
+        );
+        assert.equal(existsSync(path.join(dir, "backups")), false);
+      }
+    }
+  } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
