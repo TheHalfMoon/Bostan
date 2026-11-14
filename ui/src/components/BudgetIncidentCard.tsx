@@ -46,7 +46,7 @@ export function BudgetIncidentCard({
   const stateLabel = incidentStateLabel(incident);
 
   return (
-    <Card className={isWarning ? "overflow-hidden border-amber-500/30 bg-amber-500/5" : "overflow-hidden border-red-500/20 bg-(image:--gradient-extract-4)"}>
+    <Card className={isWarning ? "tabular-nums overflow-hidden border-amber-500/30 bg-amber-500/5" : "tabular-nums overflow-hidden border-red-500/20 bg-(image:--gradient-extract-4)"}>
       <CardHeader className="px-5 pt-5 pb-3">
         <div className="flex items-start justify-between gap-3">
           <div>

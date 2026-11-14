@@ -7,10 +7,13 @@ import { ThemeToggle } from "./ThemeToggle";
 
 const mockToggleTheme = vi.hoisted(() => vi.fn());
 const mockTheme = vi.hoisted(() => ({ value: "dark" as "dark" | "light" }));
+const mockSetPreference = vi.hoisted(() => vi.fn());
 
 vi.mock("../context/ThemeContext", () => ({
   useTheme: () => ({
     theme: mockTheme.value,
+    preference: "system",
+    setPreference: mockSetPreference,
     toggleTheme: mockToggleTheme,
   }),
 }));
@@ -120,5 +123,25 @@ describe("ThemeToggle", () => {
     expect(button?.getAttribute("aria-label")).toBe("Switch to dark mode");
 
     await act(async () => root.unmount());
+  });
+
+  it("renders a Light / Dark / System radio group for the preference variant", async () => {
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<ThemeToggle variant="preference" />);
+    });
+    await flushReact();
+    const radios = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="radio"]'));
+    expect(radios.map((radio) => radio.getAttribute("aria-label"))).toEqual(["Light", "Dark", "System"]);
+    expect(radios.map((radio) => radio.getAttribute("aria-checked"))).toEqual(["false", "false", "true"]);
+    const group = container.querySelector('[role="radiogroup"]');
+    const labelId = group?.getAttribute("aria-labelledby");
+    expect(labelId && document.getElementById(labelId)?.textContent).toBe("Appearance");
+
+    await act(async () => {
+      radios[1]?.click();
+    });
+    expect(mockSetPreference).toHaveBeenCalledWith("dark");
+    act(() => root.unmount());
   });
 });

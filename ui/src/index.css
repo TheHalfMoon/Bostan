@@ -1,16 +1,21 @@
 @import "./motion-tokens.css";
+@import "./brand-fonts.css";
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
 /* offline-recovery:start */
 .bostan-offline {
-  --offline-background: #171716;
-  --offline-foreground: #fafafa;
-  --offline-muted: #a3a3a3;
-  --offline-control: #262626;
-  --offline-control-hover: #333333;
-  --offline-border: #404040;
-  --offline-focus: #6995ff;
+  /* Bostan dark palette (see --bostan-* tokens); duplicated literally because
+     the service worker inlines only this block. */
+  --offline-background: #141513;
+  --offline-foreground: #ECE9DE;
+  --offline-muted: #A3A196;
+  --offline-control: #222420;
+  --offline-control-hover: #2E302C;
+  --offline-border: #45483F;
+  --offline-focus: #7F9EB7;
+  --offline-mark-background: #7F9EB7;
+  --offline-mark-foreground: #F6F4EB;
   --offline-font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --offline-space: 1.5rem;
   --offline-identity-gap: calc(var(--offline-space) * 0.8);
@@ -69,10 +74,10 @@
   place-items: center;
   width: var(--offline-mark-size);
   height: var(--offline-mark-size);
-  border: var(--offline-stroke) solid var(--offline-border);
   border-radius: 1.25rem;
-  background: var(--offline-control);
-  color: var(--offline-foreground);
+  background: var(--offline-mark-background);
+  color: var(--offline-mark-foreground);
+  font-family: Georgia, "Times New Roman", serif;
   font-size: 2.5rem;
   font-weight: var(--offline-weight);
   line-height: 1;
@@ -191,6 +196,28 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  /* Bostan brand + status utilities (text-warn, bg-warn-bg, bg-sage, ...).
+     Brand colours carry a brand- prefix so they never shadow Tailwind's
+     own slate palette. */
+  --color-chrome: var(--bostan-chrome);
+  --color-surface: var(--bostan-surface);
+  --color-sage: var(--bostan-sage);
+  --color-ink-2: var(--bostan-ink-2);
+  --color-ink-3: var(--bostan-ink-3);
+  --color-line-strong: var(--bostan-line-strong);
+  --color-accent-text: var(--bostan-accent-text);
+  --color-brand-slate: var(--bostan-slate);
+  --color-brand-slate-700: var(--bostan-slate-700);
+  --color-brand-eucalyptus: var(--bostan-eucalyptus);
+  --color-brand-cream: var(--bostan-cream);
+  --color-info: var(--bostan-info-text);
+  --color-info-bg: var(--bostan-info-bg);
+  --color-warn: var(--bostan-warn-text);
+  --color-warn-bg: var(--bostan-warn-bg);
+  --color-ok: var(--bostan-ok-text);
+  --color-ok-bg: var(--bostan-ok-bg);
+  --color-bad: var(--bostan-bad-text);
+  --color-bad-bg: var(--bostan-bad-bg);
   /* Multiplicative radius ladder (modern shadcn/Tailwind v4 mapping):
      sm/md/lg/xl/2xl/3xl/4xl = 0.6/0.8/1.0/1.4/1.8/2.2/2.6 x the single
      --radius knob (base anchor 0.5rem = 8px; rounded-lg IS the anchor).
@@ -209,11 +236,47 @@
 /* Keep this font runtime-resolved: the proposal/sandbox theme substitutes
    Paper Mono for every shared font-mono consumer, including portaled content. */
 @theme {
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  /* Bostan type system: Inter Tight for product headings, Newsreader for
+     editorial copy and the wordmark, JetBrains Mono for data. */
+  --font-display: "Inter Tight Variable", "Inter Tight", "InterVariable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Newsreader Variable", "Newsreader", ui-serif, Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
 :root {
   color-scheme: light;
+  /* ── Bostan brand tokens ───────────────────────────────────────────────
+     Mirrored in src/brand/tokens.ts (brand-tokens.test.ts keeps them in
+     sync and checks WCAG AA). Themed values below, dark values in .dark.
+     Semantic shadcn variables underneath map onto these. */
+  --bostan-bg: #F4F1E8;
+  --bostan-chrome: #F6F4EB;
+  --bostan-surface: #FBFAF5;
+  --bostan-card: #FFFFFF;
+  --bostan-muted: #ECE9DC;
+  --bostan-sage: #D7E7DE;
+  --bostan-ink: #1F1F1C;
+  --bostan-ink-2: #3B3B36;
+  --bostan-ink-3: #5A5A52;
+  --bostan-on-ink: #F6F4EB;
+  --bostan-line: #E2DED2;
+  --bostan-line-strong: #CFCAB8;
+  --bostan-accent-text: #3D5D75;
+  --bostan-info-bg: #EAF0F5;
+  --bostan-info-text: #2C4A61;
+  --bostan-warn-bg: #F3EEDB;
+  --bostan-warn-text: #5E480B;
+  --bostan-ok-bg: #E6F0EA;
+  --bostan-ok-text: #234536;
+  --bostan-bad-bg: #F7E7E4;
+  --bostan-bad-text: #7E241E;
+  --bostan-danger: #A3322A;
+  --bostan-on-danger: #FFFFFF;
+  /* Theme-independent brand colours. */
+  --bostan-slate: #7F9EB7;
+  --bostan-slate-700: #3D5D75;
+  --bostan-eucalyptus: #8FB5A2;
+  --bostan-cream: #F6F4EB;
   --font-paper-mono: "Paper Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --file-tree-indent-base: calc(var(--spacing) * 2);
   --file-tree-indent-step: calc(var(--spacing) * 6);
@@ -228,52 +291,52 @@
   --composer-effort-press-scale: 1.16;
   --composer-effort-halo: 0 0 0 calc(var(--spacing) * 1.5) color-mix(in oklab, var(--tc-mode-ask) 14%, transparent);
   --radius: 0.5rem;
-  --background: oklch(1 0 0);
+  --background: var(--bostan-bg);
   --background-alt: var(--muted);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --collection-filter-active: var(--color-blue-600);
-  --collection-filter-badge: var(--color-blue-600);
-  --collection-filter-badge-foreground: var(--color-white);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
+  --foreground: var(--bostan-ink);
+  --card: var(--bostan-card);
+  --card-foreground: var(--bostan-ink);
+  --popover: var(--bostan-card);
+  --popover-foreground: var(--bostan-ink);
+  --primary: var(--bostan-ink);
+  --primary-foreground: var(--bostan-on-ink);
+  --collection-filter-active: var(--bostan-accent-text);
+  --collection-filter-badge: var(--bostan-accent-text);
+  --collection-filter-badge-foreground: var(--bostan-on-ink);
+  --secondary: var(--bostan-muted);
+  --secondary-foreground: var(--bostan-ink);
+  --muted: var(--bostan-muted);
   --muted-highlight: var(--muted);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --muted-foreground: var(--bostan-ink-3);
+  --accent: var(--bostan-sage);
+  --accent-foreground: var(--bostan-ink);
+  --destructive: var(--bostan-danger);
+  --destructive-foreground: var(--bostan-on-danger);
+  --border: var(--bostan-line);
+  --input: var(--bostan-line-strong);
+  --ring: var(--bostan-accent-text);
   --focus-ring-stroke-width: 1px;
   --focus-ring-halo-width: 3px;
   --focus-ring-halo: color-mix(in srgb, var(--ring) 20%, transparent);
   --focus-ring-shadow: 0 0 0 var(--focus-ring-halo-width) var(--focus-ring-halo);
-  --scrollbar-thumb: oklch(0.7 0 0);
-  --scrollbar-thumb-hover: oklch(0.6 0 0);
+  --scrollbar-thumb: var(--bostan-line-strong);
+  --scrollbar-thumb-hover: var(--bostan-ink-3);
   --scrollbar-size: 8px;
   --scrollbar-radius: 999px;
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.985 0 0);
+  --chart-1: var(--bostan-slate);
+  --chart-2: var(--bostan-eucalyptus);
+  --chart-3: var(--bostan-slate-700);
+  --chart-4: var(--bostan-ink-3);
+  --chart-5: var(--bostan-line-strong);
+  --sidebar: var(--bostan-chrome);
   --primary-sidebar-background: color-mix(in srgb, var(--border) 50%, var(--background));
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.88 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-foreground: var(--bostan-ink);
+  --sidebar-primary: var(--bostan-ink);
+  --sidebar-primary-foreground: var(--bostan-on-ink);
+  --sidebar-accent: var(--bostan-sage);
+  --sidebar-accent-foreground: var(--bostan-ink);
+  --sidebar-border: var(--bostan-line);
+  --sidebar-ring: var(--bostan-accent-text);
   --chip-match-title-bg: oklch(0.97 0.02 265);
   --chip-match-title-fg: oklch(0.4 0.13 265);
   --chip-match-title-border: oklch(0.85 0.05 265);
@@ -492,8 +555,8 @@
   --streamlined-task-detail-bg: var(--background);
   --side-panel-tab-active-bg: color-mix(in oklab, var(--accent) 88%, var(--background));
   --side-panel-tab-hover-bg: color-mix(in oklab, var(--accent) 58%, transparent);
-  --side-panel-streamlined-tab-hover-bg: oklch(0.9675 0 0);
-  --side-panel-streamlined-tab-active-bg: oklch(0.9581 0 0);
+  --side-panel-streamlined-tab-hover-bg: color-mix(in oklab, var(--bostan-muted) 60%, var(--bostan-bg));
+  --side-panel-streamlined-tab-active-bg: var(--bostan-muted);
   --radius-task-composer: 16px;
   /* Artifacts V1 (doc/plans/2026-10-22-artifacts-mvp-v1.md): the artifact
      directions lab's measurements, from the PCLP-Core mocks. Light values
@@ -563,7 +626,7 @@
   /* Agent-comment comparison fill used by TaskChatLab. The chosen production
      treatment sits directly on the page surface; this token keeps the darker
      card available as an explicit lab alternative. */
-  --bubble-agent: oklch(0.97 0 0);
+  --bubble-agent: var(--bostan-surface);
   --bubble-agent-card-padding-inline: 0.875rem;
 
   /* Redesigned thread viewport bound: lets the thread own its scroll (auto-
@@ -592,8 +655,31 @@
 }
 
 .dark {
-  --background: oklch(0.205 0 0);
-  --foreground: oklch(0.985 0 0);
+  color-scheme: dark;
+  /* Bostan dark theme values; semantic variables inherit the :root mapping. */
+  --bostan-bg: #141513;
+  --bostan-chrome: #1B1C1A;
+  --bostan-surface: #181917;
+  --bostan-card: #222420;
+  --bostan-muted: #2E302C;
+  --bostan-sage: #2C3D34;
+  --bostan-ink: #ECE9DE;
+  --bostan-ink-2: #C9C6BA;
+  --bostan-ink-3: #A3A196;
+  --bostan-on-ink: #141513;
+  --bostan-line: #2E302C;
+  --bostan-line-strong: #45483F;
+  --bostan-accent-text: #A9C3D8;
+  --bostan-info-bg: #23303B;
+  --bostan-info-text: #A9C3D8;
+  --bostan-warn-bg: #3A321A;
+  --bostan-warn-text: #E3CB7C;
+  --bostan-ok-bg: #1F3328;
+  --bostan-ok-text: #9FD0B2;
+  --bostan-bad-bg: #3B2220;
+  --bostan-bad-text: #F0A39A;
+  --bostan-danger: #F0A39A;
+  --bostan-on-danger: #141513;
   --artifact-shadow-sheet: drop-shadow(0 3.406px 10px rgba(26, 26, 26, 0.18));
   --artifact-shadow-print: 0 3.406px 20px rgba(26, 26, 26, 0.18);
   --artifact-tile-hover: #202020;
@@ -602,47 +688,11 @@
   --artifact-row: #262626;
   --artifact-row-hover: #2c2c2c;
   --side-panel-bg: var(--background);
-  --side-panel-fg: oklch(0.985 0 0);
+  --side-panel-fg: var(--bostan-ink);
   --streamlined-task-detail-bg: var(--background);
-  --side-panel-streamlined-tab-hover-bg: var(--side-panel-tab-hover-bg);
-  --side-panel-streamlined-tab-active-bg: color-mix(in oklab, color-mix(in oklab, var(--accent) 92%, var(--background)) 97%, var(--foreground) 3%);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --collection-filter-active: var(--color-blue-400);
-  --bubble-agent: oklch(0.185 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-highlight: #333333; /* Paper: --dark-color-muted-highlight. */
-  --background-alt: oklch(0.145 0 0); /* Paper: --dark-color-background-alt. */
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.637 0.237 25.331); /* Gallery feedback round 1: user preferred master's original dark destructive red over the preset's softer 0.704 0.191 22.216. */
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --scrollbar-thumb: oklch(0.4 0 0);
-  --scrollbar-thumb-hover: oklch(0.5 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
+  --muted-highlight: var(--bostan-line-strong);
+  --background-alt: var(--bostan-surface);
   --primary-sidebar-background: var(--muted);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.32 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
   --chip-match-title-bg: oklch(0.27 0.04 265 / 0.5);
   --chip-match-title-fg: oklch(0.78 0.10 265);
   --chip-match-title-border: oklch(0.4 0.06 265);
@@ -757,6 +807,23 @@
     font-family: var(--font-sans);
     height: 100%;
     overflow: hidden;
+  }
+
+  /* Bostan type roles: product headings use Inter Tight; data faces
+     (monospace, keyboard hints, times, and anything marked data-numeric)
+     use tabular figures so budgets, costs, counts and times line up. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+  }
+  .font-mono,
+  code,
+  kbd,
+  samp,
+  time,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
   }
   h1,
   h2,

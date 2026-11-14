@@ -108,7 +108,7 @@ const LIVENESS_COPY: Record<RunLivenessState, LivenessCopy> = {
   },
   empty_response: {
     label: "Empty response",
-    tone: "border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-300",
+    tone: "border-warn/30 bg-warn-bg text-warn",
     description: "Run finished without useful output.",
   },
   blocked: {

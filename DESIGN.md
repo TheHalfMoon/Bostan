@@ -24,6 +24,45 @@ Existing tiers already in index.css (~80+ tokens) — extraction maps to these o
 2. **Brand tier** — agent gradients `--agent-1a/1b..10a/10b` (fixed hex) and status hues `--status-task-*` / `--status-agent-*` (WCAG-tuned; see inline comments).
 3. **Domain tier** — match-chip tokens `--chip-match-*`, annotation highlights `--paperclip-doc-annotation-highlight-*`, plus motion/typography tokens.
 
+## Bostan brand identity (approved Nov 2026)
+
+The tree identity is approved and lands as token values only, as planned
+above. Source of truth: `--bostan-*` custom properties in `ui/src/index.css`
+(`:root` light, `.dark` dark), mirrored in `ui/src/brand/tokens.ts` for code
+that cannot read CSS. `ui/src/brand/brand-tokens.test.ts` fails if the two
+drift, if any text pairing drops below WCAG AA (4.5:1) in either theme, or if
+orange/terracotta reappears in the brand palette or logo assets.
+
+- **Palette.** Cream `#F6F4EB`, sage `#D7E7DE`, slate blue `#7F9EB7`, ink
+  `#1F1F1C`; eucalyptus `#8FB5A2` for illustration and charts. Slate and
+  eucalyptus are theme-independent. Slate is decorative only on light
+  surfaces (2.5:1); text accents and the focus ring use slate-700 `#3D5D75`
+  (`--bostan-accent-text`, 6.3:1 on cream). There is no orange or terracotta
+  in the brand. Info/warn/ok/bad pairs are semantic status colours, kept
+  separate from the brand palette.
+- **Semantic mapping.** shadcn variables point at brand tokens:
+  `--background` → bg, `--card`/`--popover` → card, `--primary` → ink on
+  `--primary-foreground` on-ink, `--accent` (hover/selected) → sage,
+  `--border` → line, `--input` → line-strong, `--sidebar` → chrome,
+  `--destructive` → danger. Tailwind utilities exist for the brand and
+  status roles: `bg-chrome`, `bg-surface`, `bg-sage`, `text-ink-2`,
+  `text-ink-3`, `text-accent-text`, `bg-brand-slate`, `text-info`/`bg-info-bg`,
+  `text-warn`/`bg-warn-bg`, `text-ok`/`bg-ok-bg`, `text-bad`/`bg-bad-bg`.
+  Prefer these over Tailwind palette classes.
+- **Type.** Inter (UI body), Inter Tight (`font-display`, applied to h1–h3),
+  Newsreader (`font-serif`, editorial copy and the wordmark), JetBrains Mono
+  (`font-mono`, data). All self-hosted under `ui/public/fonts/` (OFL). Budgets,
+  costs, counts and times use tabular figures: `font-mono`, `code`, `kbd`,
+  `time` and `[data-numeric]` get them by default; use `tabular-nums` on other
+  numeric containers.
+- **Theme.** Light, dark or system, persisted under `paperclip.theme`; system
+  follows `prefers-color-scheme`. The header carries the sun/moon toggle; the
+  account menu carries the Light/Dark/System control.
+- **Logo.** Components in `ui/src/components/brand/BostanMark.tsx`
+  (`BostanTree`, `BostanMark`, `BostanAppIcon`, `BostanLockupGraphic`); files in
+  `ui/src/assets/brand/` (see its README). Ink parts use `currentColor` and
+  nodes use `var(--bostan-slate)`, so marks follow the theme.
+
 ## Principles
 
 1. **One way to say each thing.** One component per job. One Button, one Card, one Badge, one Table, one EmptyState. Variants are props, not new components. Before creating a component, prove no existing one covers the job.
