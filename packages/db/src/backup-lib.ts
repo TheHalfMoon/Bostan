@@ -536,6 +536,13 @@ export async function runDatabaseBackup(opts: RunDatabaseBackupOptions): Promise
     throw new Error("Invalid backup filename prefix. Use letters, numbers, underscores or hyphens.");
   }
   const retention = opts.retention;
+  // Reject invalid retention at the library boundary before creating an archive
+  // or pruning existing recovery points. NaN and fractional values must not
+  // silently change the effective retention window.
+  if (!retention || ![retention.dailyDays, retention.weeklyWeeks, retention.monthlyMonths]
+    .every((value) => Number.isSafeInteger(value) && value >= 1)) {
+    throw new Error("Invalid backup retention policy. All retention periods must be positive integers.");
+  }
   const connectTimeout = Math.max(1, Math.trunc(opts.connectTimeoutSeconds ?? 5));
   const backupEngine = opts.backupEngine ?? "auto";
   let effectiveBackupEngine = backupEngine;
