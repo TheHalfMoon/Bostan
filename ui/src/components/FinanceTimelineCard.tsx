@@ -19,7 +19,7 @@ export function FinanceTimelineCard({
   emptyMessage = "No financial events recorded in this period. Events appear when reported through the API, CLI, or a supported integration.",
 }: FinanceTimelineCardProps) {
   return (
-    <Card>
+    <Card className="tabular-nums">
       <CardHeader className="px-4 pt-4 pb-1">
         <CardTitle className="text-base">Recent financial events</CardTitle>
         <CardDescription>Provider charges, subscriptions, fees, and credits. Reported separately from run-cost estimates.</CardDescription>

@@ -1,4 +1,5 @@
 import { Link } from "@/lib/router";
+import { ThemeToggle } from "./ThemeToggle";
 import { Menu, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { useSidebar } from "../context/SidebarContext";
@@ -48,6 +49,8 @@ function GlobalToolbar({
       {launchers.length > 0 ? (
         <PluginLauncherOutlet placementZones={["globalToolbarButton"]} context={context} className="flex items-center gap-1" />
       ) : null}
+      {/* Desktop: the title bar carries the theme toggle. */}
+      <ThemeToggle className="md:hidden" />
     </div>
   );
 }

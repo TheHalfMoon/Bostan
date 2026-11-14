@@ -28,3 +28,21 @@ The bundled WOFF2 files are included unmodified from the upstream v4.1 release.
 The refreshed task-row specimen uses this variable webfont for task identifiers.
 It supports upright weights 100–800. Existing uses of the system monospace stack
 remain unchanged until their design is reviewed.
+
+## Bostan brand faces (Inter Tight, JetBrains Mono, Newsreader)
+
+Directory: `brand/`. Variable WOFF2 subsets from the Fontsource npm packages,
+bundled without modification; `ui/src/brand-fonts.css` declares them with the
+packages' own `unicode-range` values so browsers fetch only needed subsets.
+
+| Family | Package | Version | Tarball SHA-256 | Files | License |
+| --- | --- | --- | --- | --- | --- |
+| Inter Tight | `@fontsource-variable/inter-tight` | 5.3.0 | `f41e72c42c25f57032c2a0e76c72659df67fe92f88d6850629c77bcd9e199124` | `inter-tight-*-wght-normal.woff2` (latin, latin-ext, cyrillic, cyrillic-ext, greek, greek-ext, vietnamese) | OFL 1.1, `brand/InterTight-OFL.txt` |
+| JetBrains Mono | `@fontsource-variable/jetbrains-mono` | 5.3.0 | `996fe6368a480c9ce15d4de22a2682b7c40b403718fee2b15e7272f244fd993f` | `jetbrains-mono-*-wght-normal.woff2` (latin, latin-ext, cyrillic, cyrillic-ext, greek, vietnamese) | OFL 1.1, `brand/JetBrainsMono-OFL.txt` |
+| Newsreader | `@fontsource-variable/newsreader` | 5.3.0 | `4b8cfba8f4e79abe7b221b761b751d76569fd2d2303a9cace2e90b862c56630d` | `newsreader-{latin,latin-ext,vietnamese}-standard-{normal,italic}.woff2` (wght + opsz axes) | OFL 1.1, `brand/Newsreader-OFL.txt` |
+
+Upstream projects: https://github.com/rsms/inter-tight,
+https://github.com/JetBrains/JetBrainsMono,
+https://github.com/productiontype/Newsreader. The Newsreader wordmark outlines
+in `ui/src/brand/paths.ts` and `ui/src/assets/brand/` are derived from this
+font (SemiBold, opsz 72), which the OFL permits for logos.

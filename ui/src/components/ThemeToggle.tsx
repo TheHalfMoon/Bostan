@@ -1,10 +1,11 @@
-import { Moon, Sun } from "lucide-react";
+import { useId } from "react";
+import { Monitor, Moon, Sun } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useTheme } from "../context/ThemeContext";
+import { useTheme, type ThemePreference } from "../context/ThemeContext";
 
-type ThemeToggleVariant = "icon" | "menu-action" | "compact-menu-action";
+type ThemeToggleVariant = "icon" | "menu-action" | "compact-menu-action" | "preference";
 
 interface ThemeToggleProps {
   className?: string;
@@ -18,6 +19,9 @@ interface ThemeToggleProps {
    *
    * `compact-menu-action`: compact label + icon row — matches the
    * surrounding actions in `SidebarAccountMenu`.
+   *
+   * `preference`: labelled Light / Dark / System radio group. The choice
+   * persists; System follows the OS `prefers-color-scheme`.
    */
   variant?: ThemeToggleVariant;
   /**
@@ -29,6 +33,53 @@ interface ThemeToggleProps {
 
 const MENU_ACTION_DESCRIPTION = "Toggle the app appearance.";
 
+const PREFERENCE_OPTIONS: ReadonlyArray<{ value: ThemePreference; label: string; Icon: typeof Sun }> = [
+  { value: "light", label: "Light", Icon: Sun },
+  { value: "dark", label: "Dark", Icon: Moon },
+  { value: "system", label: "System", Icon: Monitor },
+];
+
+function ThemePreferenceControl({ className, onAfterToggle }: Pick<ThemeToggleProps, "className" | "onAfterToggle">) {
+  const { preference, setPreference } = useTheme();
+  const labelId = useId();
+  return (
+    <div className={cn("flex items-center justify-between gap-3 px-2.5 py-1.5", className)}>
+      <span id={labelId} className="text-(length:--text-compact) font-medium text-foreground">
+        Appearance
+      </span>
+      <div
+        role="radiogroup"
+        aria-labelledby={labelId}
+        className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-muted p-0.5"
+      >
+        {PREFERENCE_OPTIONS.map(({ value, label, Icon }) => {
+          const selected = preference === value;
+          return (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              aria-label={label}
+              title={label}
+              onClick={() => {
+                setPreference(value);
+                onAfterToggle?.();
+              }}
+              className={cn(
+                "inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring",
+                selected && "bg-card text-foreground shadow-xs",
+              )}
+            >
+              <Icon className="size-3.5" aria-hidden="true" />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Canonical theme-toggle widget. Both the signed-out `/auth` chrome and
  * the in-app account menu render through this component so the label,
@@ -36,6 +87,9 @@ const MENU_ACTION_DESCRIPTION = "Toggle the app appearance.";
  */
 export function ThemeToggle({ className, variant = "icon", onAfterToggle }: ThemeToggleProps) {
   const { theme, toggleTheme } = useTheme();
+  if (variant === "preference") {
+    return <ThemePreferenceControl className={className} onAfterToggle={onAfterToggle} />;
+  }
   const isDark = theme === "dark";
   const label = isDark ? "Switch to light mode" : "Switch to dark mode";
   const Icon = isDark ? Sun : Moon;

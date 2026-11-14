@@ -126,11 +126,11 @@ describe("on-demand agent avatars", () => {
   }, 20_000);
   it("serves Slack exports on the Paperclip dark-mode color in a separate cache", async () => {
     const css = await readFile(new URL("../../../ui/src/index.css", import.meta.url), "utf8");
-    const lightness = Number(css.match(/\.dark\s*\{\s*--background:\s*oklch\(([\d.]+) 0 0\)/)?.[1]);
-    // Neutral OKLCH converts to equal sRGB channels; PNG rounds to 8-bit color.
-    const linear = lightness ** 3;
-    const channel = Math.round((linear <= 0.0031308 ? 12.92 * linear : 1.055 * linear ** (1 / 2.4) - 0.055) * 255);
-    expect(PAPERCLIP_DARK_AVATAR_BACKGROUND).toBe(`#${channel.toString(16).padStart(2, "0").repeat(3)}`);
+    // Exports sit on the dark theme's page background: `.dark { --bostan-bg }`.
+    const darkBlock = css.slice(css.indexOf("\n.dark {"), css.indexOf("\n}", css.indexOf("\n.dark {")));
+    const darkBackground = darkBlock.match(/--bostan-bg:\s*(#[0-9A-Fa-f]{6});/)?.[1];
+    expect(darkBackground).toBeDefined();
+    expect(PAPERCLIP_DARK_AVATAR_BACKGROUND.toLowerCase()).toBe(darkBackground!.toLowerCase());
     const service = createAgentAvatarService(await storage()); cleanups.push(() => service.close());
     const url = await serve(service);
     const clear = await fetch(url + "?size=512&scale=1");
@@ -140,7 +140,8 @@ describe("on-demand agent avatars", () => {
     const clearPixels = await sharp(Buffer.from(await clear.arrayBuffer())).ensureAlpha().raw().toBuffer();
     const darkPixels = await sharp(Buffer.from(await dark.arrayBuffer())).ensureAlpha().raw().toBuffer();
     expect(Array.from(clearPixels.subarray(0, 4))).toEqual([0, 0, 0, 0]);
-    expect(Array.from(darkPixels.subarray(0, 4))).toEqual([channel, channel, channel, 255]);
+    const [red, green, blue] = [1, 3, 5].map((i) => Number.parseInt(darkBackground!.slice(i, i + 2), 16));
+    expect(Array.from(darkPixels.subarray(0, 4))).toEqual([red, green, blue, 255]);
     expect(avatarCacheKey({ ...request, background: "paperclip-dark" })).not.toBe(avatarCacheKey(request));
     const invalid = await fetch(url + "?background=white");
     expect(invalid.status).toBe(400); await invalid.text();

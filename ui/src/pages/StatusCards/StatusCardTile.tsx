@@ -240,8 +240,8 @@ export function StatusCardTile({
         ) : null}
 
         {lifecycle === "paused_budget" || lifecycle === "paused_hours" ? (
-          <div className="flex items-center gap-2 rounded-md border border-orange-500/40 bg-orange-500/5 px-3 py-1.5 text-xs text-foreground">
-            <PauseCircle className="h-3.5 w-3.5 shrink-0 text-orange-500" />
+          <div className="flex items-center gap-2 rounded-md border border-warn/40 bg-warn-bg px-3 py-1.5 text-xs text-foreground">
+            <PauseCircle className="h-3.5 w-3.5 shrink-0 text-warn" />
             <span>
               {lifecycle === "paused_budget"
                 ? "Daily token cap reached — auto-updates paused"

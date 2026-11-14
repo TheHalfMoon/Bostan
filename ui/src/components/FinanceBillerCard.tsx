@@ -8,7 +8,7 @@ interface FinanceBillerCardProps {
 
 export function FinanceBillerCard({ row }: FinanceBillerCardProps) {
   return (
-    <Card>
+    <Card className="tabular-nums">
       <CardHeader className="px-4 pt-4 pb-1">
         <div className="flex items-start justify-between gap-3">
           <div>
