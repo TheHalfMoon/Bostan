@@ -529,7 +529,12 @@ export function createBufferedTextFileWriter(filePath: string, maxBufferedBytes 
 }
 
 export async function runDatabaseBackup(opts: RunDatabaseBackupOptions): Promise<RunDatabaseBackupResult> {
-  const filenamePrefix = opts.filenamePrefix ?? "paperclip";
+  const filenamePrefix = opts.filenamePrefix ?? "bostan";
+  // Validate at the library boundary, not only in the CLI: this value is used
+  // both to construct a filesystem path and to select files for pruning.
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(filenamePrefix)) {
+    throw new Error("Invalid backup filename prefix. Use letters, numbers, underscores or hyphens.");
+  }
   const retention = opts.retention;
   const connectTimeout = Math.max(1, Math.trunc(opts.connectTimeoutSeconds ?? 5));
   const backupEngine = opts.backupEngine ?? "auto";
