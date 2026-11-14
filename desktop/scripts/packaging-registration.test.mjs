@@ -17,9 +17,10 @@ test("NSIS registration uses the pinned builder identity and its versioned defau
   assert.equal(identity.productName, "Bostan");
   assert.equal(identity.displayName, "Bostan " + pkg.version);
   assert.match(identity.key, /^[a-f0-9-]{36}$/i);
+  const fixtureGuid = randomUUID();
   const overridden = nsisRegistrationIdentity({ ...pkg, build: { ...pkg.build, nsis: { ...pkg.build.nsis,
-    guid: "78b916d8-05c5-4b78-952f-e4158113737b", uninstallDisplayName: "${productName}" } } });
-  assert.equal(overridden.key, "78b916d8-05c5-4b78-952f-e4158113737b");
+    guid: fixtureGuid, uninstallDisplayName: "${productName}" } } });
+  assert.equal(overridden.key, fixtureGuid);
   assert.equal(overridden.displayName, "Bostan");
 });
 

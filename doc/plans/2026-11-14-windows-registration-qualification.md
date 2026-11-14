@@ -22,3 +22,11 @@ found no blocker. Independent security review found implicit stderr forwarding;
 explicit piped stdio fixes it. Native CI must qualify the new candidate before
 claiming Windows installed-app success. Installation latency remains a product
 concern, separate from functional qualification.
+
+Run43620830568 at1f55b4bd reported one generic-api-key finding. Pinned
+gitleaks8.30.1 current-script scanning identified the literal synthetic NSIS GUID
+override assertion on test line22. Independent review confirmed this value is
+only an identity fixture, with no authentication or network use. Generate the
+override with randomUUID and compare the returned identity to that variable.
+The exact historical commit/file/rule/line fingerprint alone is allowlisted;
+the full-history gate remains required. No broad rule or path exclusion is added.
