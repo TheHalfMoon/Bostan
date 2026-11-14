@@ -1,4 +1,5 @@
 const path = require("node:path");
+const fs = require("node:fs");
 const { pathToFileURL } = require("node:url");
 const phases = new Set([
   "window_loaded", "data_protected", "runtime_valid", "child_spawned",
@@ -39,11 +40,20 @@ function startupFailureSite(error, runtimeRoot) {
   // Never expose the raw message, stack, function names or absolute paths.
   try {
     if (typeof error?.stack !== "string") return null;
-    const prefix = pathToFileURL(path.join(runtimeRoot, "dist") + path.sep).href;
-    const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const frame = new RegExp(`^\\s+at (?:[^\\r\\n]*?\\()?${escaped}(index\\.js|config\\.js|services/decision-signing\\.js):([1-9]\\d{0,5}):([1-9]\\d{0,5})\\)?$`);
+    // macOS can canonicalize /var to /private/var in stack URLs.
+    // Accept only the configured runtime root and its filesystem real path.
+    const roots = [runtimeRoot];
+    try {
+      const realRoot = fs.realpathSync.native(runtimeRoot);
+      if (realRoot !== runtimeRoot) roots.push(realRoot);
+    } catch { /* Missing runtime roots still fail closed. */ }
+    const frames = roots.map(root => {
+      const prefix = pathToFileURL(path.join(root, "dist") + path.sep).href;
+      const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return new RegExp(`^\\s+at (?:[^\\r\\n]*?\\()?${escaped}(index\\.js|config\\.js|services/decision-signing\\.js):([1-9]\\d{0,5}):([1-9]\\d{0,5})\\)?$`);
+    });
     for (const line of error.stack.slice(0, 8192).split(/\r?\n/).slice(0, 32)) {
-      const match = frame.exec(line);
+      const match = frames.map(frame => frame.exec(line)).find(Boolean);
       if (!match) continue;
       const module = { "index.js": "server", "config.js": "config", "services/decision-signing.js": "signing" }[match[1]];
       return `BOSTAN_DESKTOP_STARTUP_SITE ${module}:${match[2]}:${match[3]}`;
