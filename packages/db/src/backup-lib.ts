@@ -529,6 +529,14 @@ export function createBufferedTextFileWriter(filePath: string, maxBufferedBytes 
 }
 
 export async function runDatabaseBackup(opts: RunDatabaseBackupOptions): Promise<RunDatabaseBackupResult> {
+  // A library caller must not accidentally select a default database or filesystem
+  // location when the backup target is absent or blank.
+  if (typeof opts.connectionString !== "string" || opts.connectionString.trim().length === 0) {
+    throw new Error("Invalid backup connection string. Specify the intended database explicitly.");
+  }
+  if (typeof opts.backupDir !== "string" || opts.backupDir.trim().length === 0) {
+    throw new Error("Invalid backup directory. Specify a nonblank destination.");
+  }
   const filenamePrefix = opts.filenamePrefix ?? "bostan";
   // Validate at the library boundary, not only in the CLI: this value is used
   // both to construct a filesystem path and to select files for pruning.
