@@ -71,6 +71,8 @@ vi.mock("../context/SidebarContext", () => ({
 vi.mock("../context/ThemeContext", () => ({
   useTheme: () => ({
     theme: "dark",
+    preference: "system",
+    setPreference: vi.fn(),
     toggleTheme: mockToggleTheme,
   }),
 }));
@@ -433,10 +435,10 @@ describe("SidebarAccountMenu", () => {
     expect(menuOrder.indexOf("Settings")).toBeLessThan(menuOrder.indexOf("Invite"));
     expect(menuOrder.indexOf("Invite")).toBeLessThan(menuOrder.indexOf("Documentation"));
 
-    // Documentation still appears before the theme toggle.
+    // Documentation still appears before the appearance (light/dark/system) control.
     const menuText = popover?.textContent ?? "";
     const docsPos = menuText.indexOf("Documentation");
-    const themePos = menuText.indexOf("Switch to");
+    const themePos = menuText.indexOf("Appearance");
     expect(docsPos).toBeLessThan(themePos);
 
     // The popover header stays down to name + email: no "Account" badge, no version line.

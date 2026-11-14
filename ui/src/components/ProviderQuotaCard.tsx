@@ -140,7 +140,7 @@ export function ProviderQuotaCard({
     supportsSubscriptionQuota && (quotaLoading || Boolean(quotaAccounts?.length) || quotaWindows.length > 0 || quotaError != null);
 
   return (
-    <Card>
+    <Card className="tabular-nums">
       <CardHeader className="px-4 pt-4 pb-0 gap-1">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

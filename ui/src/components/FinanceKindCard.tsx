@@ -8,7 +8,7 @@ interface FinanceKindCardProps {
 
 export function FinanceKindCard({ rows }: FinanceKindCardProps) {
   return (
-    <Card>
+    <Card className="tabular-nums">
       <CardHeader className="px-4 pt-4 pb-1">
         <CardTitle className="text-base">Financial event mix</CardTitle>
         <CardDescription>Account-level charges grouped by event kind.</CardDescription>

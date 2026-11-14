@@ -11,7 +11,11 @@ describe("BostanLoading", () => {
     expect(html).toContain('role="status"');
     expect(html).toContain("min-h-dvh");
     expect(html).toContain('aria-hidden="true"');
-    expect(html).toContain(">B</span>");
+    // Splash usage: the brand tree (slate nodes) above the Newsreader wordmark.
+    expect(html).toContain("<svg");
+    expect(html).toContain('fill="var(--bostan-slate)"');
+    expect(html).toContain("font-serif");
+    expect(html).toContain(">Bostan</span>");
     expect(html).not.toContain("paperclip-thinking-icon");
     expect(html).toContain('<span class="sr-only">Loading…</span>');
   });

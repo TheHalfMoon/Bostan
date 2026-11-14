@@ -72,7 +72,7 @@ export function SubscriptionCostCard({ companyId, report, error, onChanged }: {
   const known = report?.monthlyTotals.length;
   const estimatedCount = report?.monthlyTotals.reduce((sum, total) => sum + total.estimatedCount, 0) ?? 0;
   return <>
-    <Card className="block p-4">
+    <Card className="block p-4 tabular-nums">
       <div className="text-(length:--text-micro) uppercase tracking-(--tracking-eyebrow) text-muted-foreground">Subscriptions</div>
       <div className="mt-2 font-mono text-2xl font-semibold tabular-nums">
         {known ? report!.monthlyTotals.map(total => <div key={total.currency}>{subscriptionMoney(total.amountCents, total.currency)}<span className="text-sm font-normal">/month</span></div>) : report && report.activeCount === 0 && report.accounts.length > 0 ? "$0.00/month" : "—"}
