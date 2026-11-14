@@ -98,6 +98,7 @@ describe("restore error redaction", () => {
       expect(message).toContain("restore command failed");
       expect(message).toContain("output omitted");
       expect(message).not.toContain(secret);
+      expect(message).not.toContain("postgres://synthetic:synthetic@127.0.0.1:1/synthetic");
       expect(message).not.toContain(dir);
       expect(message).not.toContain("ENOENT");
     } finally {
