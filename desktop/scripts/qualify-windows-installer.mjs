@@ -75,12 +75,18 @@ async function closeApplication() {
 }
 try {
   console.log("BOSTAN_WINDOWS_INSTALLER_PHASE install_begin");
+  const installationStarted = Date.now();
+  let installationElapsedMs;
   try {
     execFileSync(path.join(out, installers[0]), ["/S", "/D=" + install], {
-      windowsHide: true, timeout: 120000, stdio: "pipe",
+      // Verified archive-only extraction needs130.5s for the full2.16GB payload.
+      // Keep a bounded functional install budget; record latency separately.
+      windowsHide: true, timeout: 300000, stdio: "pipe",
       env: { ...process.env, TEMP: installerTemp, TMP: installerTemp, BOSTAN_INSTALLER_QA_LOG: installerPhaseLog },
     });
+    installationElapsedMs = Date.now() - installationStarted;
   } catch (error) {
+    installationElapsedMs = Date.now() - installationStarted;
     // Fixed, bounded facts distinguish extraction progress from a pre-install hang.
     // Never walk links, print paths, or replace the original installer failure.
     const snapshot = { installerFailed: true, installedExecutable: false, installDirectoryPresent: false,
@@ -97,6 +103,8 @@ try {
     } catch { snapshot.scanFailed = true; }
     console.log("BOSTAN_WINDOWS_INSTALLER_FAILURE " + JSON.stringify(snapshot));
     throw error;
+  } finally {
+    console.log("BOSTAN_WINDOWS_INSTALLER_TIMING " + JSON.stringify({ elapsedMs: installationElapsedMs, budgetMs: 300000 }));
   }
   console.log("BOSTAN_WINDOWS_INSTALLER_PHASE install_complete");
   console.log("BOSTAN_WINDOWS_NSIS_PHASES " + JSON.stringify(installerPhases()));

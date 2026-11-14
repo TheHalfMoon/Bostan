@@ -426,3 +426,34 @@ argument and failed before the guard; fileURLToPath corrected that fixture.
 Independent correctness/parsimony/product and security reviews pass. Full
 payload timing is pending. Candidate dba0ca81 had no started jobs at inspection
 and is superseded by this combined diagnostic candidate, not accepted as passing.
+
+## macOS installed journey passes; Windows budget measured, 2026-11-14
+
+Exact7f93cb56 run43568899387 completed16PASS/1FAIL. The native macOS ARM64
+job132368742785 passed the actual unsigned DMG installation, synthetic signup
+and administrator claim, browser onboarding, protected data-path checks, close
+and reopen with original session/company/agent persistence, clean PostgreSQL
+shutdown checks, and uninstall while preserving the application-data sentinel.
+First backend-ready receipt was95,646ms after mounting began; installed startup
+after installation took about29seconds. Reopened backend was ready after about
+14seconds; both close operations completed. This qualifies the deferred-agent
+journey only, not genuine model execution or full product acceptance.
+
+The native package lookup defect is supported by the failed image's deployed
+layout, actual Node regression and the later installed macOS pass. Source PR562
+at260ff36 passed all15 exact jobs43567441077 and independent review, then merged
+as65c5b35b8444de7a47d95b1e878279acad0b8b65. Earlier mainf3165a43 passed all15
+post-merge jobs43566278891; new main post-merge run43591292603 remains required.
+
+Windows still failed the120second installer bound. The failure-only diagnostic
+recognized the complete embedded runtime and completed extraction in130,542ms
+(inventory611ms). It did not qualify installation. The observed extraction cost
+supports a transparent300second bounded functional installation budget, with
+actual installer elapsed time captured before failure scans and reported on both
+outcomes. This changes no other deadline or functional assertion, conceals none
+of the previous failures and is not a speed improvement. Independent review
+read the original timeout constraint and recommends this evidence-based revision.
+Fresh full Windows installation/onboarding/restart/shutdown/uninstall/data
+preservation acceptance remains required; see
+doc/plans/2026-11-14-windows-installation-budget.md. If this budget fails, diagnose
+the resulting phase instead of extending again without new evidence.
