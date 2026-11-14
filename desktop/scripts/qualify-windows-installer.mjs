@@ -6,6 +6,7 @@ import { qualifyInstalledApp } from "./installed-app-journey.mjs";
 import { installedAppPhase, observeInstalledAppStartup } from "./installed-app-phase.mjs";
 import { installerTreeSnapshot } from "./installer-tree-snapshot.mjs";
 import { verifyCandidateInstall } from "./artifact-checksums.mjs";
+import { nsisRegistrationIdentity, assertInstalledRegistration } from "./windows-registration-identity.mjs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { resolvePrivateWindowsPowerShellBinary } from "../../scripts/bostan-private-windows-powershell-binary.mjs";
@@ -25,12 +26,20 @@ await verifyCandidateInstall(out, installers[0]);
 const appData = path.join(process.env.APPDATA, "Bostan");
 assert.equal(fs.lstatSync(appData, { throwIfNoEntry: false }), undefined, "Never qualify against pre-existing Bostan data");
 const scanner = resolvePrivateWindowsPowerShellBinary();
+const registrationIdentity = nsisRegistrationIdentity(JSON.parse(fs.readFileSync(path.join(repo, "desktop/package.json"), "utf8")));
 function uninstallRegistrations() {
-  return Number(execFileSync(scanner, ["-NoProfile", "-NonInteractive", "-Command", "@(Get-ChildItem -LiteralPath 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall' -ErrorAction SilentlyContinue | Get-ItemProperty | Where-Object DisplayName -eq 'Bostan').Count"], {
-    encoding: "utf8", windowsHide: true, timeout: 15000,
-  }).trim());
+  try {
+    const raw = execFileSync(scanner, ["-NoProfile", "-NonInteractive", "-File", path.join(import.meta.dirname, "read-windows-registration.ps1")], {
+      env: { ...process.env, BOSTAN_QA_UNINSTALL_KEY: registrationIdentity.key,
+        BOSTAN_QA_PRODUCT_NAME: registrationIdentity.productName, BOSTAN_QA_DISPLAY_NAME: registrationIdentity.displayName },
+      encoding: "utf8", windowsHide: true, timeout: 15000, maxBuffer: 8192, stdio: ["ignore", "pipe", "pipe"],
+    });
+    const records = JSON.parse(raw);
+    assert.ok(Array.isArray(records));
+    return records;
+  } catch { throw new Error("Unable to inspect Windows installer registration"); }
 }
-assert.equal(uninstallRegistrations(), 0, "Never overwrite an existing Bostan installation");
+assert.equal(uninstallRegistrations().length, 0, "Never overwrite an existing Bostan installation");
 function noPostgres() {
   const scan = spawnSync(scanner, ["-NoProfile", "-NonInteractive", "-File", path.join(repo, "scripts/bostan-native-windows-postgres-no-orphans.ps1"), "-Run"], {
     encoding: "utf8", timeout: 15000, windowsHide: true, maxBuffer: 8192,
@@ -110,7 +119,7 @@ try {
   console.log("BOSTAN_WINDOWS_NSIS_PHASES " + JSON.stringify(installerPhases()));
   const executable = path.join(install, "Bostan.exe");
   assert.equal(fs.existsSync(executable), true, "Installer did not create the application executable");
-  assert.equal(uninstallRegistrations(), 1, "Installer registration is missing or ambiguous");
+  assertInstalledRegistration(uninstallRegistrations(), registrationIdentity, install);
   // Prove these are unsigned qualification artifacts, never OS-trusted releases.
   const signature = execFileSync(scanner, ["-NoProfile", "-NonInteractive", "-Command", "(Get-AuthenticodeSignature -LiteralPath $env:BOSTAN_QA_EXECUTABLE).Status.ToString()"], {
     env: { ...process.env, BOSTAN_QA_EXECUTABLE: executable }, encoding: "utf8", windowsHide: true,
@@ -148,7 +157,7 @@ try {
   fs.copyFileSync(path.join(install, uninstaller), uninstallCopy);
   execFileSync(uninstallCopy, ["/S", "_?=" + install], { windowsHide: true, timeout: 120000, stdio: "pipe" });
   assert.equal(fs.existsSync(executable), false, "Uninstaller did not remove the installed application");
-  assert.equal(uninstallRegistrations(), 0, "Uninstaller registration remains");
+  assert.equal(uninstallRegistrations().length, 0, "Uninstaller registration remains");
   assert.equal(fs.readFileSync(sentinel, "utf8"), "preserved", "Uninstall deleted application data");
   clean = true;
   console.log("BOSTAN_INSTALLED_WINDOWS_ONBOARDING_RESTART_UNINSTALL_PASS (synthetic account and deferred agent; no real model execution)");
