@@ -40,6 +40,18 @@ function readConfig(configPath: string): PartialConfig | null {
       if ("embeddedPostgresPort" in database && (typeof database.embeddedPostgresPort !== "number" || !Number.isInteger(database.embeddedPostgresPort) || database.embeddedPostgresPort < 1 || database.embeddedPostgresPort > 65535)) {
         throw new Error("Invalid embedded PostgreSQL port");
       }
+      if ("backup" in database) {
+        const backup = database.backup;
+        if (!backup || typeof backup !== "object" || Array.isArray(backup)) {
+          throw new Error("Invalid backup settings");
+        }
+        if ("dir" in backup && (typeof backup.dir !== "string" || !backup.dir.trim())) {
+          throw new Error("Invalid backup directory");
+        }
+        if ("retentionDays" in backup && (typeof backup.retentionDays !== "number" || !Number.isInteger(backup.retentionDays) || backup.retentionDays < 1)) {
+          throw new Error("Invalid backup retention");
+        }
+      }
     }
     return parsed as PartialConfig;
   } catch {
