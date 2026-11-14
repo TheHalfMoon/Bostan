@@ -1131,15 +1131,13 @@ export async function runDatabaseRestore(opts: RunDatabaseRestoreOptions): Promi
       await sql.unsafe(statement).execute();
     }
   } catch (error) {
-    const statementPreview = typeof error === "object" && error !== null && typeof (error as Record<string, unknown>).query === "string"
-      ? String((error as Record<string, unknown>).query)
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .find((line) => line.length > 0 && !line.startsWith("--"))
-      : null;
-    const psqlMessage = psqlRestoreError === null ? "" : `; psql error: ${sanitizeRestoreErrorMessage(psqlRestoreError)}`;
+    // SQL literals and driver error messages can contain sensitive restored data.
+    // Keep only a validated SQLSTATE code, never query text or database details.
+    const rawCode = error && typeof error === "object" ? (error as Record<string, unknown>).code : null;
+    const code = typeof rawCode === "string" && /^[A-Z0-9]{1,8}$/.test(rawCode)
+      ? ` (SQLSTATE ${rawCode})` : "";
     throw new Error(
-      `Failed to restore ${basename(opts.backupFile)}: ${sanitizeRestoreErrorMessage(error)}${statementPreview ? ` [statement: ${statementPreview.slice(0, 120)}]` : ""}${psqlMessage}`,
+      `Failed to restore ${basename(opts.backupFile)}${code}. SQL content omitted from diagnostics.`,
     );
   } finally {
     await sql.end();
