@@ -3,6 +3,9 @@
 # docs/bostan/B2_01_SECRET_SCAN_2026-11-08.md for the classification.
 # Do not add entries without the same review: a new fingerprint means a new
 # finding that must be investigated before it is allowlisted.
+# Synthetic NSIS identity override assertion; independently reviewed, not a credential.
+# See doc/plans/2026-11-14-windows-registration-qualification.md.
+1f55b4bd2e0f0de4417c1663951a99cace220a69:desktop/scripts/packaging-registration.test.mjs:generic-api-key:22
 07d50929bcbf35db477b6bc5373b511f9f62fb99:docs/bostan/B2_07_BOARD_ADVICE_FRESHNESS_UI.md:generic-api-key:10
 07d50929bcbf35db477b6bc5373b511f9f62fb99:ui/src/components/DecisionCard.test.tsx:generic-api-key:132
 07d50929bcbf35db477b6bc5373b511f9f62fb99:ui/src/components/DecisionCard.test.tsx:generic-api-key:144

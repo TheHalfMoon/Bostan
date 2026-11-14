@@ -10,6 +10,15 @@ diff --git a/dist/index.js b/dist/index.js
  // The default configuration options for the class
  const defaults = {
      databaseDir: path.join(process.cwd(), 'data', 'db'),
+@@ -42,5 +42,8 @@
+ const BIN_PERMISSIONS = 0b101101101;
+ const ensureBinIsExecutable = (filePath) => __awaiter(void 0, void 0, void 0, function* () {
++    // Windows does not use POSIX executable mode bits. The packaged .exe can
++    // be executed without chmod, which fails with EPERM on pnpm hardlinks.
++    if (process.platform === 'win32') return;
+     // Only fix the file's mode if it's missing a permission. This is useful
+     // when the binaries are in a read-only file system, as a call to chmod
+     // (even unnecessary) would cause a crash.
 @@ -133,7 +133,7 @@
                      `--pwfile=${passwordFile}`,
                      `--lc-messages=${LC_MESSAGES_LOCALE}`,
@@ -19,7 +28,27 @@ diff --git a/dist/index.js b/dist/index.js
                  // Connect to stderr, as that is where the messages get sent
                  (_a = process.stdout) === null || _a === void 0 ? void 0 : _a.on('data', (chunk) => {
                      // Parse the data as a string and log it
-@@ -177,7 +177,7 @@
+@@ -141,5 +144,11 @@
+                     this.options.onLog(message);
+                 });
++                // initdb writes native loader and initialization failures to stderr.
++                // Preserve them in the caller-owned bounded startup log buffer.
++                process.stderr?.on('data', (chunk) => {
++                    this.options.onError(chunk.toString('utf-8'));
++                });
++                process.on('error', reject);
+-                process.on('exit', (code) => {
++                process.on('close', (code) => {
+                     if (code === 0) {
+                         resolve();
+@@ -147,5 +156,5 @@
+                     else {
+-                        reject(`Postgres init script exited with code ${code}. Please check the logs for extra info. The data directory might already exist.`);
++                        reject(new Error(`Postgres init script exited with code ${code}. Please check the logs for extra info. The data directory might already exist.`));
+                     }
+                 });
+             });
+@@ -177,7 +186,7 @@
                      '-p',
                      this.options.port.toString(),
                      ...this.options.postgresFlags,

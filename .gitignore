@@ -104,3 +104,6 @@ test-results/
 # Bostan disposable prebundle experiment; source paths and sourcemaps
 # are local-only and must never enter a release or be committed.
 /server/dist-runtime-qa/
+
+# Private, disposable desktop packaging input; never commit staged dependencies.
+/desktop/bostan-desktop-stage-*/

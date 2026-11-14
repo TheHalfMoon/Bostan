@@ -74,6 +74,7 @@ jobs:
         working-directory: server
       - run: node --test scripts/*.test.mjs
         working-directory: ui
+      - run: node --test packages/db/scripts/copy-runtime-assets.test.mjs
       - run: node --test scripts/__tests__/ensure-plugin-build-deps.test.mjs
       # bostan-local-install exercises the compiled preview CLI in cli/dist.
       - run: node scripts/build-bostan-preview.mjs
@@ -161,6 +162,9 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
+      # Runner qualification hashes canonical source bytes. Disable CRLF
+      # conversion before checkout so generated manifests remain reproducible.
+      - run: git config --global core.autocrlf false
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
@@ -174,3 +178,70 @@ jobs:
       - run: pnpm run preflight:workspace-links
       - run: pnpm --filter @bostan/plugin-sdk ensure-build-deps
       - run: pnpm exec vitest run server/src/__tests__/agent-directory-probe.test.ts -t MAX_PATH
+      - run: node --test packages/db/scripts/copy-runtime-assets.test.mjs
+      # An install/typecheck does not exercise emitted JS or runtime assets.
+      # Build serially and drive the real authenticated server under plain Node.
+      - run: pnpm --filter @bostan/server... --workspace-concurrency=1 build
+      - run: node --test scripts/bostan-server-journey-command.test.mjs
+      - run: node --test scripts/bostan-ci-windows-user.test.mjs
+      - run: ./scripts/bostan-ci-windows-user.ps1 -Mode Server
+
+  desktop:
+    name: desktop (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-15]
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: node -p "process.platform + '-' + process.arch"
+      - run: pnpm install --frozen-lockfile
+      - run: npm --prefix desktop ci
+      # npm may withhold dependency lifecycle scripts. Fetch Electron's pinned
+      # platform runtime explicitly before native host tests and packaging.
+      - run: node desktop/node_modules/electron/install.js
+      - run: npm --prefix desktop test
+      - run: npm --prefix desktop run test:host
+      - run: pnpm --filter @bostan/server... --workspace-concurrency=1 build
+      - run: pnpm --filter @bostan/ui build
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+      - id: package
+        run: npm --prefix desktop run package
+      - if: runner.os == 'Windows'
+        id: windows_installer
+        run: ./scripts/bostan-ci-windows-user.ps1 -Mode Installer
+      - if: runner.os == 'macOS'
+        run: node desktop/scripts/qualify-macos-installer.mjs
+        env:
+          BOSTAN_DESKTOP_INSTALLER_QA: "1"
+      # Retain a completely built candidate even when installed QA fails, so
+      # its exact bytes remain inspectable. Job failure remains failure.
+      - if: ${{ !cancelled() && steps.package.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: bostan-unsigned-qualification-${{ matrix.os }}-${{ job.status }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.dmg
+            desktop/dist/SHA256SUMS
+            desktop/dist/bostan-sbom.cdx.json
+            desktop/dist/bostan-license-inventory.json
+      # Failure-only measurement; does not replace the120second installer gate.
+      - if: ${{ !cancelled() && steps.package.outcome == 'success' && steps.windows_installer.outcome == 'failure' }}
+        timeout-minutes: 6
+        run: node desktop/scripts/diagnose-windows-extraction.mjs
+        env:
+          BOSTAN_DESKTOP_EXTRACTION_DIAGNOSTIC: "1"
