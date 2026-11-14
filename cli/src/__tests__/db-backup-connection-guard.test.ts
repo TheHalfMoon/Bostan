@@ -136,7 +136,10 @@ test("db:backup refuses an explicitly empty destination before database access",
   try {
     process.env.DATABASE_URL = "postgres://synthetic.invalid/synthetic";
     writeFileSync(config, JSON.stringify({
+      $meta: { version: 1, updatedAt: "2026-01-01T00:00:00Z", source: "configure" },
       database: { mode: "postgres", connectionString: "postgres://synthetic.invalid/synthetic" },
+      logging: { mode: "file" },
+      server: {},
     }));
     await assert.rejects(
       dbBackupCommand({ config, dir: "  \t  " }),
