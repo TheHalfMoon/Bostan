@@ -159,7 +159,10 @@ test("db:backup rejects unsafe filename prefixes before opening a database", asy
   try {
     process.env.DATABASE_URL = "postgres://synthetic.invalid/synthetic";
     writeFileSync(config, JSON.stringify({
+      $meta: { version: 1, updatedAt: "2026-01-01T00:00:00Z", source: "configure" },
       database: { mode: "postgres", connectionString: "postgres://synthetic.invalid/synthetic" },
+      logging: { mode: "file" },
+      server: {},
     }));
     for (const filenamePrefix of ["", " ", "../escape", "sub/path", "sub\\\\path", ".", "..", "-leading", "foo bar"]) {
       await assert.rejects(
