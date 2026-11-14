@@ -112,6 +112,9 @@ test("db:backup refuses malformed and invalid configuration before opening a dat
       "[]",
       JSON.stringify({ database: { mode: "unknown" } }),
       JSON.stringify({ database: { mode: "postgres", connectionString: 42 } }),
+      ...[0, -1, 1.5, 65536, "54329", null].map((port) =>
+        JSON.stringify({ database: { mode: "embedded-postgres", embeddedPostgresPort: port } }),
+      ),
     ]) {
       writeFileSync(config, contents);
       await assert.rejects(
