@@ -52,3 +52,11 @@ extension, including the real deep rejection/ordinary repository regression.
 Independent correctness/security reviews found no blocker in these four cwd
 normalizations. Broad local build/typecheck was not repeated on the16GiB shared
 host under memory pressure; exact-head hosted checks remain required and pending.
+
+The next assembled source journey reached task closure and found the same
+plain-cwd crash in execution-workspaces.ts's existing runGit helper, called by
+close-readiness display hydration. Normalize that helper's Windows child cwd as
+well, retaining Git's explicit -C argument, errors, warnings and data-retention
+decisions. The diagnostic identified this separate stdout socket owner precisely;
+the failed journey is retained. Repaired assembled closure/restart proof remains
+required, rather than treating the earlier unit suites as coverage of this path.
