@@ -87,3 +87,23 @@ test("refuses HTML-entity-obfuscated remote asset URLs", () => {
     assert.ok(auditBostanUiBrandSnapshot(source).some(s => s.includes("remote script or link")), tag);
   }
 });
+
+
+test("refuses base href overrides that redirect relative offline assets", () => {
+  for (const tag of [
+    '<base href="https://cdn.example.invalid/">',
+    '<BASE HREF = "//cdn.example.invalid/">',
+    '<base href="/another-path/">',
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag + '<script src="./main.js"></script>';
+    assert.ok(auditBostanUiBrandSnapshot(source).some(s => s.includes("asset base URL")), tag);
+  }
+});
+
+test("ignores commented base elements and permits ordinary relative assets", () => {
+  const source = fixture();
+  source["ui/index.html"] += '<!-- <base href="https://cdn.example.invalid/"> -->';
+  source["ui/index.html"] += '<script src="./main.js"></script>';
+  assert.deepEqual(auditBostanUiBrandSnapshot(source), []);
+});
