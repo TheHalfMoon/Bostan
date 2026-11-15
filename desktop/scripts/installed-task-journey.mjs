@@ -13,7 +13,11 @@ function client(page) {
     const url = new URL(route, origin);
     assert.equal(url.origin, origin, "Installed task API must stay on its application origin");
     const response = await page.request[method](url.href, { ...(data === undefined ? {} : { data }), timeout: 15000 });
-    assert.ok(response.ok(), `Installed task API refused ${method} (${response.status()})`);
+    if (!response.ok()) {
+      const body = await response.json().catch(() => null);
+      const code = typeof body?.code === "string" && /^[a-z0-9_.-]{1,80}$/i.test(body.code) ? ` code=${body.code}` : "";
+      assert.fail(`Installed task API refused ${method} (${response.status()})${code}`);
+    }
     return response;
   };
 }

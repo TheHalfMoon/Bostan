@@ -26,6 +26,12 @@ await verifyCandidateInstall(out, installers[0]);
 const appData = path.join(process.env.APPDATA, "Bostan");
 assert.equal(fs.lstatSync(appData, { throwIfNoEntry: false }), undefined, "Never qualify against pre-existing Bostan data");
 const scanner = resolvePrivateWindowsPowerShellBinary();
+// GitHub's workflow shell is PowerShell 7. Keep the pinned Windows PowerShell
+// 5.1 scanner on its own inbox module paths when invoking it from that parent.
+const windowsPowerShellModulePath = [
+  path.join(process.env.SystemRoot || "C:\\Windows", "System32", "WindowsPowerShell", "v1.0", "Modules"),
+  path.join(process.env.ProgramFiles || "C:\\Program Files", "WindowsPowerShell", "Modules"),
+].join(path.delimiter);
 const registrationIdentity = nsisRegistrationIdentity(JSON.parse(fs.readFileSync(path.join(repo, "desktop/package.json"), "utf8")));
 function uninstallRegistrations() {
   try {
@@ -124,7 +130,7 @@ try {
   assertInstalledRegistration(uninstallRegistrations(), registrationIdentity, install);
   // Prove these are unsigned qualification artifacts, never OS-trusted releases.
   const signature = execFileSync(scanner, ["-NoProfile", "-NonInteractive", "-Command", "(Get-AuthenticodeSignature -LiteralPath $env:BOSTAN_QA_EXECUTABLE).Status.ToString()"], {
-    env: { ...process.env, BOSTAN_QA_EXECUTABLE: executable }, encoding: "utf8", windowsHide: true,
+    env: { ...process.env, PSModulePath: windowsPowerShellModulePath, BOSTAN_QA_EXECUTABLE: executable }, encoding: "utf8", windowsHide: true,
   }).trim();
   assert.equal(signature, "NotSigned");
 
