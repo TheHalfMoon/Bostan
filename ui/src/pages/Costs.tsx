@@ -605,7 +605,7 @@ export function Costs({
   const showOverviewLoading = spendLoading && customReady;
   const overviewError = !spendData && spendError;
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 tabular-nums">
       {scopedAgentError && (
         <p role="alert" className="text-sm text-destructive">Could not load agent details. Totals below show recorded organization costs.</p>
       )}

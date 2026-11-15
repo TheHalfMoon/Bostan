@@ -50,6 +50,8 @@ interface SidebarCompanyMenuProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   showChevron?: boolean;
+  /** `titlebar`: compact bordered trigger for the desktop title bar; never collapses to the rail. */
+  placement?: "sidebar" | "titlebar";
 }
 
 const TRIGGER_WORKSPACE_ICON_CLASS = "size-5 shrink-0 rounded-md text-(length:--text-micro)";
@@ -148,22 +150,23 @@ function SortableCompanyItem({
   );
 }
 
-export function SidebarCompanyMenu({ showChevron, ...props }: SidebarCompanyMenuProps = {}) {
+export function SidebarCompanyMenu({ showChevron, placement = "sidebar", ...props }: SidebarCompanyMenuProps = {}) {
   return (
     <PluginOrganizationSwitcher {...props}>
-      <BuiltinCompanyMenu {...props} showChevron={showChevron} />
+      <BuiltinCompanyMenu {...props} showChevron={showChevron} placement={placement} />
     </PluginOrganizationSwitcher>
   );
 }
 
-function BuiltinCompanyMenu({ open: controlledOpen, onOpenChange, showChevron = true }: SidebarCompanyMenuProps) {
+function BuiltinCompanyMenu({ open: controlledOpen, onOpenChange, showChevron = true, placement = "sidebar" }: SidebarCompanyMenuProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [isEditingOrder, setIsEditingOrder] = useState(false);
   const { companies, selectedCompany, setSelectedCompanyId, companyListUnavailable, retryCompanies } =
     useCompany();
   const { openOnboarding } = useDialogActions();
   const { isMobile, setSidebarOpen, collapsed, peeking } = useSidebar();
-  const rail = collapsed && !peeking;
+  const titlebar = placement === "titlebar";
+  const rail = !titlebar && collapsed && !peeking;
   const location = useLocation();
   const navigate = useNavigate();
   const open = controlledOpen ?? internalOpen;
@@ -269,7 +272,11 @@ function BuiltinCompanyMenu({ open: controlledOpen, onOpenChange, showChevron = 
           // is what lets the name truncate: a flex item's default `min-width:auto`
           // floors it at its content width, so without it a long name widens the
           // trigger past the sidebar and pushes the chevron out of bounds.
-          className="h-9 min-w-0 flex-1 justify-start gap-2 px-4 text-left hover:bg-sidebar-accent hover:text-sidebar-accent-foreground has-[>svg]:px-4 dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground"
+          className={
+            titlebar
+              ? "h-7 min-w-0 max-w-56 justify-start gap-2 rounded-md border border-border bg-card px-2 text-left hover:bg-accent has-[>svg]:px-2"
+              : "h-9 min-w-0 flex-1 justify-start gap-2 px-4 text-left hover:bg-sidebar-accent hover:text-sidebar-accent-foreground has-[>svg]:px-4 dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground"
+          }
           aria-label={
             currentName
               ? `Open ${currentName} ${switcherNoun} switcher`
@@ -285,7 +292,7 @@ function BuiltinCompanyMenu({ open: controlledOpen, onOpenChange, showChevron = 
             <TruncatedText
               marqueeResetKey={open}
               className={cn(
-                "min-w-0 truncate text-sm font-bold text-foreground",
+                titlebar ? "min-w-0 truncate text-xs font-medium text-foreground" : "min-w-0 truncate text-sm font-bold text-foreground",
                 rail && SIDEBAR_RAIL_HIDDEN_LABEL,
               )}
               title={currentName ?? undefined}
