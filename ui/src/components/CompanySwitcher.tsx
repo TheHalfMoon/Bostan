@@ -28,9 +28,16 @@ function statusDotColor(status?: string): string {
 interface CompanySwitcherProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** `sidebar` (default): full-width row. `titlebar`: compact bordered chip. */
+  variant?: "sidebar" | "titlebar";
 }
 
-export function CompanySwitcher({ open: controlledOpen, onOpenChange }: CompanySwitcherProps = {}) {
+function companyInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  return (words.length > 1 ? `${words[0][0]}${words[1][0]}` : name.slice(0, 2)).toUpperCase();
+}
+
+export function CompanySwitcher({ open: controlledOpen, onOpenChange, variant = "sidebar" }: CompanySwitcherProps = {}) {
   const [internalOpen, setInternalOpen] = useState(false);
   const { companies, selectedCompany, setSelectedCompanyId, companyListUnavailable, retryCompanies } =
     useCompany();
@@ -41,6 +48,22 @@ export function CompanySwitcher({ open: controlledOpen, onOpenChange }: CompanyS
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
+        {variant === "titlebar" ? (
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={selectedCompany ? `Organization: ${selectedCompany.name}. Switch organization` : "Select organization"}
+            className="h-7 max-w-56 gap-2 rounded-md bg-card px-2 text-xs font-medium"
+          >
+            {selectedCompany ? (
+              <span aria-hidden="true" className="flex size-4 shrink-0 items-center justify-center rounded-sm bg-selected text-(length:--text-micro) font-semibold text-bad">
+                {companyInitials(selectedCompany.name)}
+              </span>
+            ) : null}
+            <span className="truncate">{selectedCompany?.name ?? "Select organization"}</span>
+            <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+          </Button>
+        ) : (
         <Button
           variant="ghost"
           className="w-full justify-between px-2 py-1.5 h-auto text-left"
@@ -55,6 +78,7 @@ export function CompanySwitcher({ open: controlledOpen, onOpenChange }: CompanyS
           </div>
           <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         </Button>
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-(--sz-220px)">
         <DropdownMenuLabel>Organizations</DropdownMenuLabel>

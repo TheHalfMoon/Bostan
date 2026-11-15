@@ -117,6 +117,11 @@ vi.mock("./BreadcrumbBar", () => ({
   BreadcrumbBar: () => <div>Breadcrumbs</div>,
 }));
 
+// TitleBar has its own suite; here it only needs to mount on desktop.
+vi.mock("./TitleBar", () => ({
+  TitleBar: () => <div data-testid="app-title-bar">Title bar</div>,
+}));
+
 vi.mock("./PropertiesPanel", () => ({
   PropertiesPanel: () => null,
 }));
@@ -375,6 +380,31 @@ describe("Layout", () => {
       "Sign-in is required and this instance is intended for private-network access.",
     );
 
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("mounts the v3 title bar on desktop only", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    let root = createRoot(container);
+    await act(async () => {
+      renderLayoutView(root, queryClient);
+    });
+    await flushReact();
+    expect(container.querySelector('[data-testid="app-title-bar"]')).not.toBeNull();
+    await act(async () => {
+      root.unmount();
+    });
+
+    mockSidebarState.isMobile = true;
+    root = createRoot(container);
+    await act(async () => {
+      renderLayoutView(root, queryClient);
+    });
+    await flushReact();
+    expect(container.querySelector('[data-testid="app-title-bar"]')).toBeNull();
     await act(async () => {
       root.unmount();
     });
