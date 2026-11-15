@@ -73,7 +73,8 @@ describe("Bostan v3 tokens", () => {
     const root = block(":root");
     expect(root).toMatch(/--background: var\(--bostan-bg\);/);
     expect(root).toMatch(/--primary: var\(--bostan-primary-fill\);/);
-    expect(root).toMatch(/--sidebar-accent: var\(--bostan-selected\);/);
+    expect(root).toMatch(/--sidebar-accent: var\(--bostan-muted\);/);
+    expect(css).toMatch(/@utility nav-active \{[\s\S]*?background-color: var\(--color-selected\);[\s\S]*?color: var\(--color-bad\);[\s\S]*?box-shadow: var\(--nav-active-bar\);/);
     expect(root).toMatch(/--ring: var\(--bostan-primary\);/);
   });
 });

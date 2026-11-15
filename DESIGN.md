@@ -35,7 +35,8 @@ generated assets, so the structural rules in this document are unchanged.
   the accent is `#E5382F`, but white on it is only 4.25:1, so filled buttons
   keep Bostan Red in both themes.
 - **Active navigation.** `nav-active`: selected background, red (`bad-text`)
-  label, 3px inset left bar in the accent.
+  label, 3px inset left bar in the accent. `--sidebar-accent` stays the
+  neutral hover tint, so only the current item turns red.
 - **Type.** Outfit (display, `h1`/`h2`, `font-display`), Inter (interface,
   `font-sans`), JetBrains Mono (data, `font-mono`). All self-hosted under
   `ui/public/fonts/` (SIL OFL). Money, counts and times use tabular numerals.

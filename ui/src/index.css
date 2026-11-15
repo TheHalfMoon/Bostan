@@ -386,10 +386,10 @@
   --sidebar-foreground: var(--bostan-ink);
   --sidebar-primary: var(--bostan-primary-fill);
   --sidebar-primary-foreground: var(--bostan-on-primary);
-  /* Active nav item: selected background + red text + 3px inset bar in
-     primary (see .bostan-nav-active). */
-  --sidebar-accent: var(--bostan-selected);
-  --sidebar-accent-foreground: var(--bostan-bad-text);
+  /* Sidebar hover/neutral highlight. The active item uses the nav-active
+     utility instead: selected tint + red label + 3px inset accent bar. */
+  --sidebar-accent: var(--bostan-muted);
+  --sidebar-accent-foreground: var(--bostan-ink);
   --sidebar-border: var(--bostan-line);
   --sidebar-ring: var(--bostan-primary);
   --nav-active-bar: inset 3px 0 0 var(--bostan-primary);
@@ -789,8 +789,8 @@
   --sidebar-foreground: var(--bostan-ink);
   --sidebar-primary: var(--bostan-primary-fill);
   --sidebar-primary-foreground: var(--bostan-on-primary);
-  --sidebar-accent: var(--bostan-selected);
-  --sidebar-accent-foreground: var(--bostan-bad-text);
+  --sidebar-accent: var(--bostan-muted);
+  --sidebar-accent-foreground: var(--bostan-ink);
   --sidebar-border: var(--bostan-line);
   --sidebar-ring: var(--bostan-primary);
   --chip-match-title-bg: oklch(0.27 0.04 265 / 0.5);
