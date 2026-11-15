@@ -233,7 +233,7 @@ function runStatusClass(status: string) {
     case "error":
       return "text-red-700 dark:text-red-300";
     case "timed_out":
-      return "text-orange-700 dark:text-orange-300";
+      return "text-warn";
     case "running":
       return "text-blue-700 dark:text-blue-300";
     case "queued":
