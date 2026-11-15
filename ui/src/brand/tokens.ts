@@ -25,6 +25,7 @@ export const THEMED_TOKEN_NAMES = [
   "on-ink",
   "line",
   "line-strong",
+  "input-line",
   "accent-text",
   "info-bg",
   "info-text",
@@ -66,6 +67,8 @@ export const bostanThemes: Record<ThemeName, Record<ThemedTokenName, string>> = 
     "on-ink": "#F6F4EB",
     line: "#E2DED2",
     "line-strong": "#CFCAB8",
+    /** Form-control boundary: 3:1 on card, surface, bg and muted (WCAG 1.4.11). */
+    "input-line": "#8A8574",
     /** Text-safe brand accent: slate-700, 6.3:1 on cream. */
     "accent-text": "#3D5D75",
     "info-bg": "#EAF0F5",
@@ -103,6 +106,7 @@ export const bostanThemes: Record<ThemeName, Record<ThemedTokenName, string>> = 
     "on-ink": "#141513",
     line: "#2E302C",
     "line-strong": "#45483F",
+    "input-line": "#7A7D70",
     "accent-text": "#A9C3D8",
     "info-bg": "#23303B",
     "info-text": "#A9C3D8",
@@ -159,6 +163,9 @@ export const TEXT_PAIRS: ReadonlyArray<readonly [ThemedTokenName, ThemedTokenNam
   ["ink", "card"],
   ["ink", "muted"],
   ["ink", "sage"],
+  // Muted text on sage (selected rows) is re-scoped to ink-2; ink-3 on sage is
+  // 4.44:1 in dark and is never used for text there.
+  ["ink-2", "sage"],
   ["ink-2", "bg"],
   ["ink-2", "card"],
   ["ink-2", "muted"],
@@ -180,6 +187,20 @@ export const TEXT_PAIRS: ReadonlyArray<readonly [ThemedTokenName, ThemedTokenNam
   ["danger", "bg"],
   ["danger", "card"],
   ["unknown-text", "unknown-bg"],
+];
+
+/**
+ * Non-text pairs that identify a control or its state. Each must reach
+ * WCAG 2.1 SC 1.4.11 (3:1) in both themes: form-control boundaries against
+ * every surface a control sits on, and the focus ring against page and card.
+ */
+export const NON_TEXT_PAIRS: ReadonlyArray<readonly [ThemedTokenName, ThemedTokenName]> = [
+  ["input-line", "card"],
+  ["input-line", "surface"],
+  ["input-line", "bg"],
+  ["input-line", "muted"],
+  ["accent-text", "bg"],
+  ["accent-text", "card"],
 ];
 
 function channel(value: number): number {

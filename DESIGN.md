@@ -40,10 +40,17 @@ orange/terracotta reappears in the brand palette or logo assets.
   (`--bostan-accent-text`, 6.3:1 on cream). There is no orange or terracotta
   in the brand. Info/warn/ok/bad pairs are semantic status colours, kept
   separate from the brand palette.
+- **Accessibility contract** (enforced by `brand-tokens.test.ts`, both
+  themes): every pair in `TEXT_PAIRS` is ≥ 4.5:1; every pair in
+  `NON_TEXT_PAIRS` is ≥ 3:1 (WCAG 1.4.11). Form-control boundaries use
+  `--bostan-input-line` (`#8A8574` / `#7A7D70`, ≥ 3:1 on card, surface, bg and
+  muted), not the decorative `line-strong`. Text on the sage accent surface
+  uses ink-2: selected command rows and any `[data-accent-surface]` re-scope
+  `--muted-foreground` to ink-2, because ink-3 on dark sage is only 4.44:1.
 - **Semantic mapping.** shadcn variables point at brand tokens:
   `--background` → bg, `--card`/`--popover` → card, `--primary` → ink on
   `--primary-foreground` on-ink, `--accent` (hover/selected) → sage,
-  `--border` → line, `--input` → line-strong, `--sidebar` → chrome,
+  `--border` → line, `--input` → input-line, `--sidebar` → chrome,
   `--destructive` → danger. Tailwind utilities exist for the brand and
   status roles: `bg-chrome`, `bg-surface`, `bg-sage`, `text-ink-2`,
   `text-ink-3`, `text-accent-text`, `bg-brand-slate`, `text-info`/`bg-info-bg`,

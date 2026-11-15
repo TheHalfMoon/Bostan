@@ -271,6 +271,7 @@
   --bostan-on-ink: #F6F4EB;
   --bostan-line: #E2DED2;
   --bostan-line-strong: #CFCAB8;
+  --bostan-input-line: #8A8574;
   --bostan-accent-text: #3D5D75;
   --bostan-info-bg: #EAF0F5;
   --bostan-info-text: #2C4A61;
@@ -333,7 +334,7 @@
   --destructive: var(--bostan-danger);
   --destructive-foreground: var(--bostan-on-danger);
   --border: var(--bostan-line);
-  --input: var(--bostan-line-strong);
+  --input: var(--bostan-input-line);
   --ring: var(--bostan-accent-text);
   --focus-ring-stroke-width: 1px;
   --focus-ring-halo-width: 3px;
@@ -689,6 +690,7 @@
   --bostan-on-ink: #141513;
   --bostan-line: #2E302C;
   --bostan-line-strong: #45483F;
+  --bostan-input-line: #7A7D70;
   --bostan-accent-text: #A9C3D8;
   --bostan-info-bg: #23303B;
   --bostan-info-text: #A9C3D8;
@@ -846,6 +848,14 @@
   h2,
   h3 {
     font-family: var(--font-display);
+  }
+
+  /* Secondary text on the sage accent surface (selected command rows, or any
+     element marked data-accent-surface) steps up to ink-2: ink-3 on dark sage
+     is 4.44:1, below AA for small text. brand-tokens.test.ts pins the pair. */
+  [data-slot="command-item"][data-selected="true"],
+  [data-accent-surface] {
+    --muted-foreground: var(--bostan-ink-2);
   }
   .font-mono,
   code,

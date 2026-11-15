@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { bostanBrand, bostanThemes, contrastRatio, TEXT_PAIRS, THEMED_TOKEN_NAMES } from "./tokens";
+import { bostanBrand, bostanThemes, contrastRatio, NON_TEXT_PAIRS, TEXT_PAIRS, THEMED_TOKEN_NAMES } from "./tokens";
 
 const stylesheet = readFileSync(fileURLToPath(new URL("../index.css", import.meta.url)), "utf8");
 const assetsDir = fileURLToPath(new URL("../assets/brand/", import.meta.url));
@@ -70,6 +70,22 @@ describe("Bostan brand tokens", () => {
     expect(failures).toEqual([]);
   });
 
+  it.each(["light", "dark"] as const)("meets WCAG 1.4.11 (3:1) for control boundaries and focus in the %s theme", (theme) => {
+    const tokens = bostanThemes[theme];
+    const failures = NON_TEXT_PAIRS.map(([fg, bg]) => ({ fg, bg, ratio: contrastRatio(tokens[fg], tokens[bg]) }))
+      .filter(({ ratio }) => ratio < 3)
+      .map(({ fg, bg, ratio }) => `${fg} on ${bg}: ${ratio.toFixed(2)}`);
+    expect(failures).toEqual([]);
+  });
+
+  it("re-scopes muted text to ink-2 on the sage accent surface", () => {
+    expect(stylesheet).toMatch(
+      /\[data-slot="command-item"\]\[data-selected="true"\],\s*\[data-accent-surface\]\s*\{\s*--muted-foreground:\s*var\(--bostan-ink-2\);/,
+    );
+    // The accent surface itself is sage, so ink-2 on sage is the pair that matters.
+    expect(TEXT_PAIRS).toContainEqual(["ink-2", "sage"]);
+  });
+
   it("keeps slate-700 as the text-safe slate on cream (6.3:1)", () => {
     expect(contrastRatio(bostanBrand["slate-700"], bostanBrand.cream)).toBeGreaterThanOrEqual(6.3);
   });
@@ -84,6 +100,7 @@ describe("Bostan brand tokens", () => {
     expect(semantic("primary-foreground")).toBe("var(--bostan-on-ink)");
     expect(semantic("accent")).toBe("var(--bostan-sage)");
     expect(semantic("border")).toBe("var(--bostan-line)");
+    expect(semantic("input")).toBe("var(--bostan-input-line)");
     expect(semantic("ring")).toBe("var(--bostan-accent-text)");
     expect(semantic("sidebar")).toBe("var(--bostan-chrome)");
   });

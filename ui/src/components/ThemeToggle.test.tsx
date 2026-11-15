@@ -144,4 +144,43 @@ describe("ThemeToggle", () => {
     expect(mockSetPreference).toHaveBeenCalledWith("dark");
     act(() => root.unmount());
   });
+
+  it("supports radio-group keyboard navigation with a single tab stop", async () => {
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<ThemeToggle variant="preference" />);
+    });
+    await flushReact();
+    const radios = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="radio"]'));
+    // Only the checked option (System) is in the tab order.
+    expect(radios.map((radio) => radio.tabIndex)).toEqual([-1, -1, 0]);
+
+    const group = container.querySelector<HTMLElement>('[role="radiogroup"]')!;
+    radios[2]!.focus();
+    const press = (key: string) =>
+      act(() => {
+        group.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+      });
+
+    press("ArrowRight"); // wraps from System to Light
+    expect(mockSetPreference).toHaveBeenLastCalledWith("light");
+    expect(document.activeElement).toBe(radios[0]);
+
+    press("ArrowDown");
+    expect(mockSetPreference).toHaveBeenLastCalledWith("dark");
+    expect(document.activeElement).toBe(radios[1]);
+
+    press("ArrowLeft");
+    expect(mockSetPreference).toHaveBeenLastCalledWith("light");
+
+    press("End");
+    expect(mockSetPreference).toHaveBeenLastCalledWith("system");
+    press("Home");
+    expect(mockSetPreference).toHaveBeenLastCalledWith("light");
+
+    mockSetPreference.mockClear();
+    press("a");
+    expect(mockSetPreference).not.toHaveBeenCalled();
+    act(() => root.unmount());
+  });
 });
