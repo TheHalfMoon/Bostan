@@ -65,6 +65,14 @@ export function auditBostanUiBrandSnapshot(files) {
     if (/<base\b[^>]*\bhref\s*=/i.test(html)) {
       issues.push("HTML shell must not override its asset base URL");
     }
+    // Meta refresh can navigate the shell to a remote origin without a script/link URL.
+    // The installed offline entry point has no legitimate refresh-navigation requirement.
+    for (const tag of html.match(/<meta\\b[^>]*>/gi) ?? []) {
+      if (/\\bhttp-equiv\\s*=\\s*(?:"refresh"|'refresh'|refresh(?=[\\s>]))/i.test(tag)) {
+        issues.push("HTML shell must not use meta refresh navigation");
+        break;
+      }
+    }
     for (const tag of html.match(/<(?:script|link)\b[^>]*>/gi) ?? []) {
       for (const attribute of tag.matchAll(/\b(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)) {
         const url = decodeReferences(attribute[1] ?? attribute[2] ?? attribute[3]).trimStart();
