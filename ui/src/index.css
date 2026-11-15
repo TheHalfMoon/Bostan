@@ -382,7 +382,8 @@
   --chart-4: var(--bostan-red);
   --chart-5: var(--bostan-ink-3);
   --sidebar: var(--bostan-chrome);
-  --primary-sidebar-background: color-mix(in srgb, var(--border) 50%, var(--background));
+  /* v3: the primary sidebar sits on the chrome surface, like the title bar. */
+  --primary-sidebar-background: var(--bostan-chrome);
   --sidebar-foreground: var(--bostan-ink);
   --sidebar-primary: var(--bostan-primary-fill);
   --sidebar-primary-foreground: var(--bostan-on-primary);
@@ -785,7 +786,7 @@
   --chart-4: var(--bostan-primary);
   --chart-5: var(--bostan-ink-3);
   --sidebar: var(--bostan-chrome);
-  --primary-sidebar-background: var(--muted);
+  --primary-sidebar-background: var(--bostan-chrome);
   --sidebar-foreground: var(--bostan-ink);
   --sidebar-primary: var(--bostan-primary-fill);
   --sidebar-primary-foreground: var(--bostan-on-primary);
