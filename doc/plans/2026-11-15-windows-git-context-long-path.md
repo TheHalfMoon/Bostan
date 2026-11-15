@@ -60,3 +60,19 @@ well, retaining Git's explicit -C argument, errors, warnings and data-retention
 decisions. The diagnostic identified this separate stdout socket owner precisely;
 the failed journey is retained. Repaired assembled closure/restart proof remains
 required, rather than treating the earlier unit suites as coverage of this path.
+
+The assembled source journey at67d8ab9e subsequently passed15/15 checks including
+actual artifact APIs, cancel/timeout, truthful operator reconciliation, exact
+task Retry, original-session restart/port change and persisted outcomes/artifacts.
+The owned PostgreSQL cluster reported stopped afterward. This is deterministic
+source HTTP/process/storage evidence, not browser, installed or model acceptance.
+
+Exact67d8 CI43682945441 found one full-history secret-scan item. Because the scan
+includes all refs, it sees the desktop branch's historical synthetic NSIS GUID
+assertion at1f55b4bd, packaging-registration.test.mjs22. Pinned gitleaks8.30.1
+isolated that commit and confirmed the exact already-reviewed non-secret
+fingerprint; both independent classification and the desktop branch's narrow
+exception already exist. Carry only that historical commit/file/rule/line into
+this branch's ignore list. No path/rule-wide exclusion or credential exception
+is introduced; full-history CI must rerun. Production source is byte-identical
+to the successful67d8 journey after this evidence-only follow-up.
