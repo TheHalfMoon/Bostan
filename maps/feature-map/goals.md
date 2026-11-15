@@ -8,7 +8,7 @@ People define company and lower-level goals and connect projects and tasks to th
 
 Feature ID: `goals`.
 
-Implementation: [goals](../../ui/src/pages/Goals.tsx), [goal detail](../../ui/src/pages/GoalDetail.tsx).
+Implementation: [goals](../../ui/src/pages/Goals.tsx), [goal detail](../../ui/src/pages/GoalDetail.tsx), [CEO workspace](../../ui/src/pages/CeoWorkspace.tsx) (objective-centred plan, protected actions and hand-off to the CEO agent at `/ceo`).
 
 Agent access: [companion](../agent-access-map/goals.md).
 

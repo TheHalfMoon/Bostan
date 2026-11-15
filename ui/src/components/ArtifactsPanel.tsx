@@ -76,7 +76,7 @@ function statusBadge(status: string) {
     case "merged":
       return { label: "Completed", className: "bg-green-500/10 text-green-600 dark:text-green-400" };
     case "changes_requested":
-      return { label: "Changes Requested", className: "bg-orange-500/10 text-orange-600 dark:text-orange-400" };
+      return { label: "Changes Requested", className: "bg-warn-bg text-warn" };
     case "failed":
       return { label: "Failed", className: "bg-red-500/10 text-red-600 dark:text-red-400" };
     default:
@@ -324,10 +324,10 @@ function DocumentViewer({
         </div>
       )}
       {isRejected && (
-        <div className="border-t border-orange-500/30 bg-orange-500/5 px-4 py-3 shrink-0">
+        <div className="border-t border-warn/30 bg-warn-bg px-4 py-3 shrink-0">
           <div className="flex items-center gap-2">
-            <XCircle className="h-4 w-4 text-orange-500" />
-            <p className="text-(length:--text-compact) font-medium text-orange-700 dark:text-orange-400">
+            <XCircle className="h-4 w-4 text-warn" />
+            <p className="text-(length:--text-compact) font-medium text-warn">
               Changes requested — CEO is revising
             </p>
           </div>
