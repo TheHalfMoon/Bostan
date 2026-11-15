@@ -48,9 +48,7 @@ export function executionStateFromRun(
     case "running":
       return "running";
     case "succeeded":
-      if (liveness === "blocked") return "blocked";
-      if (liveness === "failed") return "failed";
-      return "completed";
+      return liveness ? executionStateFromSucceededLiveness(liveness) : "completed";
     case "failed":
     case "timed_out":
       return "failed";
@@ -59,6 +57,35 @@ export function executionStateFromRun(
       return "outcome_unknown";
     case "cancelled":
       return null;
+  }
+}
+
+/**
+ * A run can exit successfully without finishing the work. The backend's
+ * liveness classification (server/src/services/run-liveness.ts) says which;
+ * every value is mapped explicitly and only real progress counts as Completed.
+ */
+export function executionStateFromSucceededLiveness(liveness: RunLivenessState): ExecutionState {
+  switch (liveness) {
+    case "completed":
+    case "advanced":
+      // Concrete action evidence was recorded.
+      return "completed";
+    case "plan_only":
+    case "empty_response":
+      // No action evidence; recovery treats these as actionable and enqueues a continuation run.
+      return "queued";
+    case "needs_followup":
+      // Future work that is not safe to auto-continue: a person has to look.
+      return "blocked";
+    case "blocked":
+      return "blocked";
+    case "failed":
+      return "failed";
+    default: {
+      const unhandled: never = liveness;
+      throw new Error(`Unmapped run liveness state: ${String(unhandled)}`);
+    }
   }
 }
 

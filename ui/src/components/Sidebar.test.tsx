@@ -96,6 +96,11 @@ vi.mock("@/plugins/launchers", () => ({
   ),
 }));
 
+const mockHiddenSettings = vi.hoisted(() => ({ hidden: new Set<string>(), loaded: true }));
+vi.mock("@/hooks/useHiddenSettings", () => ({
+  useHiddenSettings: () => mockHiddenSettings,
+}));
+
 vi.mock("./SidebarCompanyMenu", () => ({
   SidebarCompanyMenu: () => <div>Company menu</div>,
 }));
@@ -165,6 +170,8 @@ describe("Sidebar", () => {
     mockHeartbeatsApi.liveRunsForCompany.mockResolvedValue([]);
     mockAttentionApi.list.mockResolvedValue({ items: [] });
     mockSidebar.isMobile = false;
+    mockHiddenSettings.hidden = new Set<string>();
+    mockHiddenSettings.loaded = true;
     mockSidebar.collapsed = false;
     mockSidebar.collapseLocked = false;
     mockSidebar.peeking = false;
@@ -686,6 +693,25 @@ describe("Sidebar", () => {
 
     expect(container.textContent).toContain("Company menu");
 
+    flushSync(() => {
+      root.unmount();
+    });
+  });
+
+  it("hides People & roles when the host hides the members page, and until settings load", async () => {
+    mockInstanceSettingsApi.getExperimental.mockResolvedValue({ enableIsolatedWorkspaces: false });
+    mockHiddenSettings.hidden = new Set(["company.members"]);
+    let root = await renderSidebar();
+    expect(sectionLinks(container, "Organization")).not.toContain("People & roles");
+    expect(container.querySelector('a[href="/company/settings/members"]')).toBeNull();
+    flushSync(() => {
+      root.unmount();
+    });
+
+    mockHiddenSettings.hidden = new Set<string>();
+    mockHiddenSettings.loaded = false;
+    root = await renderSidebar();
+    expect(sectionLinks(container, "Organization")).not.toContain("People & roles");
     flushSync(() => {
       root.unmount();
     });

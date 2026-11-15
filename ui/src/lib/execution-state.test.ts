@@ -1,4 +1,4 @@
-import { AGENT_STATUSES, APPROVAL_STATUSES, HEARTBEAT_RUN_STATUSES, ISSUE_STATUSES } from "@bostan/shared";
+import { AGENT_STATUSES, APPROVAL_STATUSES, HEARTBEAT_RUN_STATUSES, ISSUE_STATUSES, RUN_LIVENESS_STATES } from "@bostan/shared";
 import { describe, expect, it } from "vitest";
 import {
   EXECUTION_STATE_COPY,
@@ -7,6 +7,7 @@ import {
   executionStateFromApproval,
   executionStateFromIssue,
   executionStateFromRun,
+  executionStateFromSucceededLiveness,
 } from "./execution-state";
 
 describe("execution states", () => {
@@ -65,5 +66,22 @@ describe("execution states", () => {
     expect(executionStateFromAgent("error")).toBe("failed");
     expect(executionStateFromAgent("paused")).toBe("blocked");
     expect(executionStateFromAgent("idle")).toBeNull();
+  });
+
+  it("maps every run liveness value explicitly, claiming completion only with action evidence", () => {
+    const mapped = Object.fromEntries(RUN_LIVENESS_STATES.map((state) => [state, executionStateFromSucceededLiveness(state)]));
+    expect(mapped).toEqual({
+      completed: "completed",
+      advanced: "completed",
+      plan_only: "queued",
+      empty_response: "queued",
+      blocked: "blocked",
+      failed: "failed",
+      needs_followup: "blocked",
+    });
+    for (const state of ["plan_only", "empty_response", "needs_followup"] as const) {
+      expect(executionStateFromRun("succeeded", state)).not.toBe("completed");
+    }
+    expect(executionStateFromRun("succeeded", null)).toBe("completed");
   });
 });

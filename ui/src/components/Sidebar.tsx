@@ -33,6 +33,8 @@ import {
   Lock,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { hidesCompanyPage } from "@bostan/shared";
+import { useHiddenSettings } from "@/hooks/useHiddenSettings";
 import { useQuery } from "@tanstack/react-query";
 import { SidebarSection } from "./SidebarSection";
 import { SidebarNavItem } from "./SidebarNavItem";
@@ -74,6 +76,10 @@ export function Sidebar({ children }: { children?: ReactNode }) {
   const { enabled: streamlinedUiEnabled } = useStreamlinedUiEnabled();
   const rail = collapsed && !peeking;
   const inboxBadge = useInboxBadge(selectedCompanyId);
+  // Same policy as the organization menu: hosts can hide the members page, and
+  // the row stays out until the setting is known so it never flashes in.
+  const { hidden: hiddenSettings, loaded: hiddenSettingsLoaded } = useHiddenSettings();
+  const showPeopleAndRoles = hiddenSettingsLoaded && !hidesCompanyPage(hiddenSettings, "company.members");
   const { data: experimentalSettings } = useQuery({
     queryKey: queryKeys.instance.experimentalSettings,
     queryFn: () => instanceSettingsApi.getExperimental(),
@@ -217,7 +223,9 @@ export function Sidebar({ children }: { children?: ReactNode }) {
 
         <SidebarSection label="Organization" collapsible={{ open: organizationOpen, onOpenChange: setOrganizationOpen }}>
           <SidebarNavItem to="/companies" label="Companies" icon={Building2} />
-          <SidebarNavItem to="/company/settings/members" label="People & roles" icon={UserRound} />
+          {showPeopleAndRoles ? (
+            <SidebarNavItem to="/company/settings/members" label="People & roles" icon={UserRound} />
+          ) : null}
           <SidebarNavItem to="/agents" label="AI agents" icon={Bot} />
           <SidebarNavItem to="/org" label="Structure" icon={Network} />
           <SidebarNavItem to="/skills" label="Skills" icon={Boxes} />
