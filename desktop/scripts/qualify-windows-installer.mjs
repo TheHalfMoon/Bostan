@@ -63,7 +63,7 @@ function installerPhases() {
     const count = fs.readSync(descriptor, bytes, 0, bytes.length, 0);
     if (count > 2048) return ["unavailable"];
     const values = bytes.subarray(0, count).toString("utf8").split(/\r?\n/).filter(Boolean);
-    return values.every(value => ["pre_init", "multiuser_ready", "install_complete"].includes(value)) ? values : ["unavailable"];
+    return values.every(value => ["pre_init", "multiuser_ready", "extraction_direct_complete", "install_complete"].includes(value)) ? values : ["unavailable"];
   } finally { fs.closeSync(descriptor); }
 }
 let application;
@@ -117,6 +117,8 @@ try {
   }
   console.log("BOSTAN_WINDOWS_INSTALLER_PHASE install_complete");
   console.log("BOSTAN_WINDOWS_NSIS_PHASES " + JSON.stringify(installerPhases()));
+  assert.equal(installerPhases().filter(value => value === "extraction_direct_complete").length, 1,
+    "Installed qualification did not run the hash-verified direct Windows extractor");
   const executable = path.join(install, "Bostan.exe");
   assert.equal(fs.existsSync(executable), true, "Installer did not create the application executable");
   assertInstalledRegistration(uninstallRegistrations(), registrationIdentity, install);

@@ -11,6 +11,7 @@ import { inspectLinks, verifyStage } from "../../scripts/bostan-private-staged-s
 import { createPackagingStage } from "./packaging-stage.mjs";
 import { archiveDeclarationMaps } from "./declaration-map-archive.mjs";
 import { captureRuntimePayload, verifyPackagedRuntime, runtimeResourceEntries } from "./packaging-runtime.mjs";
+import { prepareWindowsInstallerExtraction } from "./prepare-windows-installer-extraction.mjs";
 
 const desktop = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repo = path.dirname(desktop);
@@ -28,6 +29,7 @@ fs.mkdirSync(out, { recursive: true });
 // stage inside the workspace, but outside the output tree builder replaces.
 const ownedStage = createPackagingStage(desktop);
 const stage = ownedStage.directory;
+let windowsExtraction = null;
 try {
   const pnpm = resolvePnpmInvocation();
   if (/[&|<>^%"\r\n]/.test(repo + stage)) throw new Error("Unsupported shell characters in build path");
@@ -72,6 +74,14 @@ try {
     }
   }
   inventory(stage);
+  prepareRuntimeLinks(stage);
+  console.log("BOSTAN_DECLARATION_MAPS " + JSON.stringify(archiveDeclarationMaps(stage)));
+  const payload = await captureRuntimePayload(stage);
+  if (process.platform === "win32") {
+    windowsExtraction = await prepareWindowsInstallerExtraction({ desktop, payload });
+    components.set("7-Zip standalone extractor@24.09", { type: "application", name: "7-Zip standalone extractor", version: "24.09" });
+    licenses.set("7-Zip standalone extractor@24.09", windowsExtraction.inventoryComponent);
+  }
   const bom = {
     bomFormat: "CycloneDX", specVersion: "1.6", serialNumber: `urn:uuid:${randomUUID()}`, version: 1,
     metadata: { timestamp: new Date().toISOString(), component: { type: "application", name: "Bostan", version: pkg.version } },
@@ -83,15 +93,14 @@ try {
     components: [...licenses.values()],
     electronNotices: ["LICENSE.electron.txt", "LICENSES.chromium.html"],
   }, null, 2) + "\n");
-  prepareRuntimeLinks(stage);
-  console.log("BOSTAN_DECLARATION_MAPS " + JSON.stringify(archiveDeclarationMaps(stage)));
-  const payload = await captureRuntimePayload(stage);
   // Artifact preparation is authorized; signing and publication are not.
   for (const key of ["CSC_LINK", "CSC_KEY_PASSWORD", "WIN_CSC_LINK", "WIN_CSC_KEY_PASSWORD", "CSC_NAME"]) delete process.env[key];
   process.env.CSC_IDENTITY_AUTO_DISCOVERY = "false";
   const artifacts = await build({
     projectDir: desktop, publish: "never",
+    ...(windowsExtraction ? { effectiveOptionComputed: windowsExtraction.effectiveOptionComputed } : {}),
     config: {
+      ...(windowsExtraction ? { nsis: { include: windowsExtraction.include } } : {}),
       extraResources: runtimeResourceEntries(stage, payload),
       afterPack: context => verifyPackagedRuntime(context, payload),
     },
@@ -99,5 +108,6 @@ try {
   await writeCandidateChecksums(out, artifacts);
   console.log("Bostan unsigned artifacts prepared; signing, notarization and publication remain separate gates.");
 } finally {
-  ownedStage.dispose();
+  try { windowsExtraction?.dispose(); }
+  finally { ownedStage.dispose(); }
 }
