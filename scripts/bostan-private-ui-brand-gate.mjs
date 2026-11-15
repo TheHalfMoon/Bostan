@@ -68,7 +68,7 @@ export function auditBostanUiBrandSnapshot(files) {
     // Meta refresh can navigate the shell to a remote origin without a script/link URL.
     // The installed offline entry point has no legitimate refresh-navigation requirement.
     for (const tag of html.match(/<meta\b[^>]*>/gi) ?? []) {
-      if (/\bhttp-equiv\s*=\s*(?:"refresh"|'refresh'|refresh(?=[\s>]))/i.test(tag)) {
+      if (/\bhttp-equiv\s*=\s*(?:"refresh"|'refresh'|refresh(?=[\s>]))/i.test(decodeReferences(tag))) {
         issues.push("HTML shell must not use meta refresh navigation");
         break;
       }
