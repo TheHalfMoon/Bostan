@@ -487,7 +487,9 @@ async function pathExists(value: string | null | undefined) {
 }
 
 async function runGit(args: string[], cwd: string) {
-  return await execFileAsync("git", ["-C", cwd, ...args], { cwd });
+  return await execFileAsync("git", ["-C", cwd, ...args], {
+    cwd: process.platform === "win32" ? path.toNamespacedPath(cwd) : cwd,
+  });
 }
 
 async function runExpensiveGitStatus(input: {

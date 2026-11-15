@@ -12,12 +12,31 @@ import {
 import { resolveDefaultAgentWorkspaceDir } from "../../home-paths.js";
 import {
   createHeartbeatWorkspaceResolver,
+  assertGitWorktreeBaseWorkspaceReady,
   ensureManagedProjectWorkspace,
   WorkspaceValidationFailure,
 } from "./workspaces.js";
 
 const runGit = promisify(execFile);
 let testRoot: string;
+
+it("rejects a non-Git base beyond Windows MAX_PATH without crashing and accepts a normal repository", async () => {
+  const cwd = path.join(testRoot, ...Array.from({ length: 9 }, (_, n) => `deep-${n}-${"x".repeat(24)}`));
+  await fs.mkdir(cwd, { recursive: true });
+  expect(cwd.length).toBeGreaterThan(260);
+  const input = {
+    requestedExecutionWorkspaceMode: "isolated_workspace" as const,
+    config: { workspaceStrategy: { type: "git_worktree" } },
+    issue: { id: "issue-one", identifier: "FIX-1", projectId: "project-one", projectWorkspaceId: "workspace-one" },
+    base: { baseCwd: cwd, source: "project_primary" as const, projectId: "project-one", workspaceId: "workspace-one",
+      repoUrl: null, repoRef: null },
+  };
+  await expect(assertGitWorktreeBaseWorkspaceReady(input)).rejects.toBeInstanceOf(WorkspaceValidationFailure);
+  const repository = path.join(testRoot, "short-repository");
+  await fs.mkdir(repository);
+  await runGit("git", ["init", "--initial-branch=main", repository]);
+  await expect(assertGitWorktreeBaseWorkspaceReady({ ...input, base: { ...input.base, baseCwd: repository } })).resolves.toBeUndefined();
+}, 20_000);
 
 beforeEach(async () => {
   testRoot = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-workspace-module-"));
