@@ -59,6 +59,12 @@ export function auditBostanUiBrandSnapshot(files) {
       .replace(/&(?:sol|colon|tab|newline);/gi, match => ({
         "&sol;": "/", "&colon;": ":", "&tab;": "\t", "&newline;": "\n",
       })[match.toLowerCase()] ?? match);
+    // A base URL silently redirects otherwise-local relative assets to a remote origin.
+    // Reject all base href declarations in the offline shell; a local base can also
+    // change relative URL resolution and is unnecessary for this entry point.
+    if (/<base\\b[^>]*\\bhref\\s*=/i.test(html)) {
+      issues.push("HTML shell must not override its asset base URL");
+    }
     for (const tag of html.match(/<(?:script|link)\b[^>]*>/gi) ?? []) {
       for (const attribute of tag.matchAll(/\b(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)) {
         const url = decodeReferences(attribute[1] ?? attribute[2] ?? attribute[3]).trimStart();
