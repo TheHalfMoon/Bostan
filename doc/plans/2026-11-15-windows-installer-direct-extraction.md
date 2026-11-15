@@ -27,10 +27,12 @@ The Windows installed-app job exceeded its unchanged 300-second install limit on
 - Follow-up `f90dde90` isolates the pinned Windows PowerShell 5.1 inbox module path for the unsigned-signature check and limits task API failure diagnostics to a validated fixed-format code. Exact-head CI is pending.
 - On `f902f2c4`, macOS again installed and launched, then the task API returned 403. The server guard requires a trusted same-origin `Origin` for browser-session mutations; the Playwright `page.request` helper is not a page-originated browser fetch, so it omitted that header. Commit `d2bfa95b` supplies the exact installed-app origin on mutation requests.
 - Windows job `132943545338` in run `43757118165` did not reach installer qualification: it ended when the 60-minute job timeout canceled it. The log shows packaging emitted `BOSTAN_DECLARATION_MAPS` at 20:32 UTC, then no later qualification markers before cancellation at 21:17 UTC. The installer-level 300-second timeout was not changed. The branch now includes a declaration-map archive packaging optimization; rerun the exact head to determine whether packaging advances and the native installer completes.
+- On exact head `df1c1b61` in run `43763219600`, macOS passed the full installed onboarding/task-control/restart/uninstall journey, including `provider_ready`, artifact verification, cancellation cleanup, timeout cleanup, retry reconciliation, exact retry success, and restart persistence. The same run passed all non-desktop gates and Windows server checks.
+- The Windows desktop job packaged successfully but its `Mode Installer` step produced no phase receipts before the 60-minute job deadline canceled it. The log shows package completion at 21:40 UTC and cancellation at 22:21 UTC, so the 300-second installer result is unknown. The standard-user wrapper captured child output to files until process exit, hiding phase progress; the local follow-up streams only fixed-format phase receipts and emits a bounded elapsed-time heartbeat while keeping raw output private.
 
 ## Still required
 
-- Run the exact follow-up candidate on native Windows and qualify the full installed onboarding, process/artifact control, restart persistence, and uninstall journey under the unchanged 300-second limit; verify the macOS same-origin mutation fix.
+- Run the instrumented exact follow-up candidate on native Windows, determine where `Mode Installer` stalls, and qualify the full installed onboarding, process/artifact control, restart persistence, and uninstall journey under the unchanged 300-second limit.
 - Keep the PR Draft if Windows qualification fails.
 - Complete the 7-Zip source and license review before any signing or release.
 

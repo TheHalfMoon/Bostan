@@ -38,11 +38,59 @@ try {
   $stdout = Join-Path $qaScratch 'stdout.log'
   $stderr = Join-Path $qaScratch 'stderr.log'
   $arguments = @('-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',('"'+$worker+'"'),'-Mode',$Mode,'-NodeBinary',('"'+$nodeBinary+'"'))
-  $process = Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe') -ArgumentList $arguments -Credential $credential -LoadUserProfile -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -Wait -PassThru
+  Write-Output ('BOSTAN_WINDOWS_USER_WORKER_BEGIN mode=' + $Mode)
+  $process = Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe') -ArgumentList $arguments -Credential $credential -LoadUserProfile -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
+  if ($Mode -eq 'Installer') {
+    # Stream only fixed-format installer/task phase receipts while the standard
+    # user worker is active. Its raw stderr and arbitrary stdout stay private.
+    $offset = [long]0
+    $pending = ''
+    $startedAt = Get-Date
+    $lastHeartbeat = 0
+    do {
+      if (Test-Path -LiteralPath $stdout) {
+        $stream = [IO.File]::Open($stdout, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+        try {
+          if ($stream.Length -gt $offset) {
+            $stream.Position = $offset
+            $buffer = New-Object IO.MemoryStream
+            $stream.CopyTo($buffer)
+            $offset = $stream.Position
+            $pending += [Text.Encoding]::UTF8.GetString($buffer.ToArray())
+            $buffer.Dispose()
+            while (($newline = $pending.IndexOf("`n")) -ge 0) {
+              $line = $pending.Substring(0, $newline).TrimEnd("`r")
+              $pending = $pending.Substring($newline + 1)
+              if ($line -match '^BOSTAN_(?:WINDOWS_INSTALLER_PHASE|WINDOWS_INSTALLER_TIMING|WINDOWS_INSTALLER_FAILURE|WINDOWS_NSIS_PHASES|INSTALLED_TASK_PHASE|INSTALLED_WINDOWS_ONBOARDING_RESTART_UNINSTALL_PASS)\b') {
+                Write-Output $line
+              }
+            }
+          }
+        } finally { $stream.Dispose() }
+      }
+      $process.Refresh()
+      if (-not $process.HasExited) {
+        $elapsedSeconds = [int]((Get-Date) - $startedAt).TotalSeconds
+        if ($elapsedSeconds -ge ($lastHeartbeat + 60)) {
+          $lastHeartbeat = $elapsedSeconds - ($elapsedSeconds % 60)
+          Write-Output ('BOSTAN_WINDOWS_USER_WORKER_WAIT elapsedSeconds=' + $lastHeartbeat)
+        }
+        Start-Sleep -Seconds 5
+      }
+    } while (-not $process.HasExited)
+    if ($pending -and $pending -match '^BOSTAN_(?:WINDOWS_INSTALLER_PHASE|WINDOWS_INSTALLER_TIMING|WINDOWS_INSTALLER_FAILURE|WINDOWS_NSIS_PHASES|INSTALLED_TASK_PHASE|INSTALLED_WINDOWS_ONBOARDING_RESTART_UNINSTALL_PASS)\b') {
+      Write-Output $pending.TrimEnd("`r")
+    }
+  } else {
+    $process.WaitForExit()
+  }
   $process.WaitForExit()
   if ($process.ExitCode -isnot [int]) { throw 'CI worker exit status unavailable; qualification refused' }
-  Get-Content -LiteralPath $stdout
-  if ((Get-Item -LiteralPath $stderr).Length -gt 0) { Get-Content -LiteralPath $stderr | Write-Output }
+  if ($Mode -eq 'Server') {
+    Get-Content -LiteralPath $stdout
+    if ((Get-Item -LiteralPath $stderr).Length -gt 0) { Get-Content -LiteralPath $stderr | Write-Output }
+  }
+  Write-Output ('BOSTAN_WINDOWS_USER_WORKER_EXIT code=' + $process.ExitCode)
   $exitCode = $process.ExitCode
 } finally {
   if ($qaUser) {
