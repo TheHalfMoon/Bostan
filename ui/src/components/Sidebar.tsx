@@ -31,6 +31,7 @@ import {
   Workflow,
   Wallet,
   Lock,
+  Asterisk,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { hidesCompanyPage } from "@bostan/shared";
@@ -199,6 +200,7 @@ export function Sidebar({ children }: { children?: ReactNode }) {
 
         <SidebarSection label="Command" collapsible={{ open: commandOpen, onOpenChange: setCommandOpen }}>
           <SidebarNavItem to="/dashboard" label="Home" icon={House} liveCount={liveRunCount} />
+          <SidebarNavItem to="/ceo" label="CEO · Chief of Staff" icon={Asterisk} />
           {!combinedInboxTasks ? (
             <SidebarNavItem
               to="/inbox"

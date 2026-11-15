@@ -518,7 +518,7 @@ describe("Sidebar", () => {
       .map((text) => ["Command", "Organization", "Execution", "Intelligence", "Operations"].find((label) => text.startsWith(label)))
       .filter(Boolean);
     expect(sectionOrder).toEqual(["Command", "Organization", "Execution", "Intelligence", "Operations"]);
-    expect(sectionLinks(container, "Command")).toEqual(["Home", "Inbox", "Approvals", "Activity"]);
+    expect(sectionLinks(container, "Command")).toEqual(["Home", "CEO · Chief of Staff", "Inbox", "Approvals", "Activity"]);
     expect(sectionLinks(container, "Organization")).toEqual(["Companies", "People & roles", "AI agents", "Structure", "Skills"]);
     expect(sectionLinks(container, "Execution")).toEqual(["Tasks", "Projects", "Workflows & runs"]);
     expect(sectionLinks(container, "Intelligence")).toEqual(["Artifacts"]);
@@ -528,6 +528,7 @@ describe("Sidebar", () => {
       [...container.querySelectorAll("nav a")].find((anchor) => anchor.textContent?.trim() === label)?.getAttribute("href");
     expect(href("Home")).toBe("/dashboard");
     expect(href("Approvals")).toBe("/approvals");
+    expect(href("CEO · Chief of Staff")).toBe("/ceo");
     expect(href("People & roles")).toBe("/company/settings/members");
     expect(href("Structure")).toBe("/org");
     expect(href("Workflows & runs")).toBe("/routines");
