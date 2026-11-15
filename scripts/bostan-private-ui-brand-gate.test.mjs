@@ -107,3 +107,18 @@ test("ignores commented base elements and permits ordinary relative assets", () 
   source["ui/index.html"] += '<script src="./main.js"></script>';
   assert.deepEqual(auditBostanUiBrandSnapshot(source), []);
 });
+
+test("refuses nonlocal URL schemes and browser-normalized backslash asset URLs", () => {
+  for (const tag of [
+    '<script src="ftp://example.invalid/app.js"></script>',
+    '<script src="data:text/javascript,alert(1)"></script>',
+    '<link rel="stylesheet" href="blob:https://example.invalid/id">',
+    '<script src="https:\\\\example.invalid/app.js"></script>',
+    '<link rel="stylesheet" href="\\\\example.invalid/style.css">',
+    '<link rel="stylesheet" href="&#x68;ttps:&#92;&#92;example.invalid/style.css">',
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    assert.ok(auditBostanUiBrandSnapshot(source).some(s => s.includes("remote script or link")), tag);
+  }
+});
