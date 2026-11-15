@@ -74,3 +74,16 @@ test("allows local HTML shell assets and ignores commented-out remote examples",
   source["ui/index.html"] += '<!-- multiline\\n<link href="//example.invalid/old.css">\\n-->';
   assert.deepEqual(auditBostanUiBrandSnapshot(source), []);
 });
+
+test("refuses HTML-entity-obfuscated remote asset URLs", () => {
+  for (const tag of [
+    '<script src="https:&#47;&#47;cdn.example.invalid/app.js"></script>',
+    '<link href="https&colon;&sol;&sol;cdn.example.invalid/font.css">',
+    '<script src="&#x68;ttps://cdn.example.invalid/app.js"></script>',
+    '<link href="&#32;//cdn.example.invalid/icon.svg">',
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    assert.ok(auditBostanUiBrandSnapshot(source).some(s => s.includes("remote script or link")), tag);
+  }
+});
