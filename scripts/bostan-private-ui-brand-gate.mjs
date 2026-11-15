@@ -70,7 +70,7 @@ export function auditBostanUiBrandSnapshot(files) {
         const url = decodeReferences(attribute[1] ?? attribute[2] ?? attribute[3]).trimStart();
         // Reject URL schemes and browser-normalized backslash variants, not only HTTP(S).
         // The offline entry point only needs local absolute or relative paths.
-        if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|\\\\)/i.test(url) || url.includes("\\\\")) {
+        if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|\\\\)/i.test(url) || url.includes("\\")) {
           issues.push("HTML shell must not load remote script or link assets by default");
           break;
         }
