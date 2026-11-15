@@ -12,7 +12,11 @@ function client(page) {
   return async (method, route, data) => {
     const url = new URL(route, origin);
     assert.equal(url.origin, origin, "Installed task API must stay on its application origin");
-    const response = await page.request[method](url.href, { ...(data === undefined ? {} : { data }), timeout: 15000 });
+    const response = await page.request[method](url.href, {
+      ...(data === undefined ? {} : { data }),
+      ...(method.toUpperCase() === "GET" ? {} : { headers: { origin } }),
+      timeout: 15000,
+    });
     if (!response.ok()) {
       const body = await response.json().catch(() => null);
       const code = typeof body?.code === "string" && /^[a-z0-9_.-]{1,80}$/i.test(body.code) ? ` code=${body.code}` : "";
