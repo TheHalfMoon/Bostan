@@ -168,12 +168,13 @@ test("refuses browser-normalized ASCII control characters in remote asset URLs",
   }
 });
 
-test("refuses literal browser-stripped ASCII controls in external asset URLs", () => {
-  for (const url of [
-    "ht\\ttps://cdn.example.invalid/a.js",
-    "https:\\n//cdn.example.invalid/a.js",
-    "https:\\r//cdn.example.invalid/a.js",
+test("refuses actual tab, LF and CR characters stripped by browser URL parsing", () => {
+  for (const [control, url] of [
+    [9, "ht" + String.fromCharCode(9) + "tps://cdn.example.invalid/a.js"],
+    [10, "https:" + String.fromCharCode(10) + "//cdn.example.invalid/a.js"],
+    [13, "https:" + String.fromCharCode(13) + "//cdn.example.invalid/a.js"],
   ]) {
+    assert.ok(url.includes(String.fromCharCode(control)), "fixture must contain the literal control character");
     const source = fixture();
     source["ui/index.html"] += '<script src="' + url + '"></script>';
     assert.ok(auditBostanUiBrandSnapshot(source).some(s => s.includes("remote script or link")), JSON.stringify(url));
