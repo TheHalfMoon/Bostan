@@ -68,7 +68,7 @@ jobs:
               for (const item of findings) {
                 const rule = String(item.RuleID || "unknown").replace(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 80);
                 const commit = /^[0-9a-f]{40}$/i.test(item.Commit || "") ? item.Commit : "unknown";
-                const file = String(item.File || "").replace(/[\\r\\n]/g, "_").slice(0, 240);
+                const file = String(item.File || "").replace(/[^a-zA-Z0-9_./-]/g, "_").slice(0, 240);
                 console.log(JSON.stringify({rule, commit, file}));
               }
               console.log("Gitleaks findings:", findings.length);
