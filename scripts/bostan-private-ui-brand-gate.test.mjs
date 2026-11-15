@@ -142,3 +142,15 @@ test("ignores commented refresh markup and ordinary metadata", () => {
   source["ui/index.html"] += '<meta name="description" content="Bostan offline shell">';
   assert.deepEqual(auditBostanUiBrandSnapshot(source), []);
 });
+
+test("refuses entity-encoded meta refresh values in offline HTML", () => {
+  for (const tag of [
+    '<meta http-equiv="ref&#114;esh" content="0;url=https://example.invalid/">',
+    '<meta http-equiv="&#x72;efresh" content="0;url=/local">',
+    "<META HTTP-EQUIV='refr&#101;sh' content='0;url=//example.invalid/'>",
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    assert.ok(auditBostanUiBrandSnapshot(source).some(s => s.includes("meta refresh")), tag);
+  }
+});
