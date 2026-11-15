@@ -49,9 +49,33 @@ jobs:
           curl -fsSL -o "$RUNNER_TEMP/gitleaks.tgz" https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
           echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  $RUNNER_TEMP/gitleaks.tgz" | sha256sum -c -
           tar -xzf "$RUNNER_TEMP/gitleaks.tgz" -C "$RUNNER_TEMP" gitleaks
-      - run: >-
-          "$RUNNER_TEMP/gitleaks" git . --log-opts="--all" --redact --no-banner
-          --gitleaks-ignore-path .gitleaksignore
+      # Keep full-history scanning and fail closed, but emit only non-secret
+      # finding metadata to make a blocked PR actionable. Never print Secret,
+      # Match, or source-line fields from the Gitleaks JSON report.
+      - name: Scan history and report safe finding metadata
+        shell: bash
+        run: |
+          set +e
+          "$RUNNER_TEMP/gitleaks" git . --log-opts="--all" --redact --no-banner \
+            --gitleaks-ignore-path .gitleaksignore \
+            --report-format json --report-path "$RUNNER_TEMP/bostan-gitleaks.json"
+          status=$?
+          set -e
+          if [ -f "$RUNNER_TEMP/bostan-gitleaks.json" ]; then
+            node -e '
+              const fs = require("node:fs");
+              const findings = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+              for (const item of findings) {
+                const rule = String(item.RuleID || "unknown").replace(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 80);
+                const commit = /^[0-9a-f]{40}$/i.test(item.Commit || "") ? item.Commit : "unknown";
+                const file = String(item.File || "").replace(/[^a-zA-Z0-9_./-]/g, "_").slice(0, 240);
+                const line = Number.isSafeInteger(item.StartLine) && item.StartLine > 0 ? item.StartLine : null;
+                console.log(JSON.stringify({rule, commit, file, line}));
+              }
+              console.log("Gitleaks findings:", findings.length);
+            ' "$RUNNER_TEMP/bostan-gitleaks.json"
+          fi
+          exit "$status"
 
   typecheck:
     runs-on: ubuntu-latest
