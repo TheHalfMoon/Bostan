@@ -1,0 +1,33 @@
+# Windows Git-context preparation in deep retry workspaces
+
+Actual owned source journeys at260ff36 passed artifact upload/readback,
+cancellation, timeout and explicit operator reconciliation, then the backend
+crashed with an unhandled stdout Socket readENOTCONN during retry preparation.
+This reproduced under Node24.19 and Electron45.2.3's embedded Node24.22.2.
+A diagnostic execFile wrapper observed the stream's error event and forwarded
+it unchanged: the owner was prepareGitHubExecutionEnvironment's local child.
+No command arguments, environment, tokens or error messages were collected.
+
+A small actual-Node reproducer isolated the Windows boundary: a100-character
+working directory succeeded; a345-character plain working directory produced
+anENOENT callback followed by fatal stdoutENOTCONN; the same345-character
+directory succeeded with path.toNamespacedPath. Missing commands, a missing
+short directory and an empty environment alone did not reproduce the crash.
+
+Normalize only the local child process's Windows cwd, following the existing
+agent-directory probe approach. Logical workspace identity, remote execution,
+credential policy, bounded output and15-second preparation timeout remain the
+same. No exception suppression, replay bypass or timeout increase is involved.
+The regression invokes the real Git-context child in a newly owned deep path,
+checks managed/no-network context and is explicitly included in native Windows
+CI. Local focused actual-child regression passed1/1. The adjacent GitHub launcher
+suite on this Windows host produced9 passes,24 failures and1 skip, predominantly
+POSIX shell fixtures failingENOENT. Those failures are retained, not converted
+to skips or claimed passing. Independent correctness/security reviews found no
+blocker in the scoped normalization. Exact-head CI remains required before merge.
+
+Earlier failures remain retained. A diagnostic journey also exposed a separate
+new fixture budgeting error: its artifact program permits two sequential10s
+requests but originally used a15s total adapter budget. That fixture now uses
+30s for artifact/retry and retains15s for cancellation/timeout holds, with
+recorded policy assertions. It remains uncommitted and is not product acceptance.
