@@ -239,7 +239,7 @@ jobs:
             desktop/dist/SHA256SUMS
             desktop/dist/bostan-sbom.cdx.json
             desktop/dist/bostan-license-inventory.json
-      # Failure-only measurement; does not replace the120second installer gate.
+      # Failure-only measurement; does not replace the functional installer gate.
       - if: ${{ !cancelled() && steps.package.outcome == 'success' && steps.windows_installer.outcome == 'failure' }}
         timeout-minutes: 6
         run: node desktop/scripts/diagnose-windows-extraction.mjs

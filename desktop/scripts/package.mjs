@@ -9,6 +9,7 @@ import { prepareRuntimeLinks } from "../app/runtime-links.mjs";
 import { resolvePnpmInvocation } from "../../server/scripts/prepare-runner-vendor.mjs";
 import { inspectLinks, verifyStage } from "../../scripts/bostan-private-staged-server-check.mjs";
 import { createPackagingStage } from "./packaging-stage.mjs";
+import { archiveDeclarationMaps } from "./declaration-map-archive.mjs";
 import { captureRuntimePayload, verifyPackagedRuntime, runtimeResourceEntries } from "./packaging-runtime.mjs";
 
 const desktop = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -31,7 +32,7 @@ try {
   const pnpm = resolvePnpmInvocation();
   if (/[&|<>^%"\r\n]/.test(repo + stage)) throw new Error("Unsupported shell characters in build path");
   const result = spawnSync(pnpm.command, [...pnpm.argsPrefix,
-    "--filter", "@bostan/server", "deploy", "--prod", "--ignore-scripts", stage], {
+    "--filter", "@bostan/server", "--package-import-method=copy", "deploy", "--prod", "--ignore-scripts", stage], {
     cwd: repo, stdio: "inherit", shell: pnpm.command === "pnpm" && process.platform === "win32",
     windowsHide: true,
   });
@@ -83,6 +84,7 @@ try {
     electronNotices: ["LICENSE.electron.txt", "LICENSES.chromium.html"],
   }, null, 2) + "\n");
   prepareRuntimeLinks(stage);
+  console.log("BOSTAN_DECLARATION_MAPS " + JSON.stringify(archiveDeclarationMaps(stage)));
   const payload = await captureRuntimePayload(stage);
   // Artifact preparation is authorized; signing and publication are not.
   for (const key of ["CSC_LINK", "CSC_KEY_PASSWORD", "WIN_CSC_LINK", "WIN_CSC_KEY_PASSWORD", "CSC_NAME"]) delete process.env[key];
