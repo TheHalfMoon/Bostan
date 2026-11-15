@@ -744,4 +744,14 @@ describe("Sidebar", () => {
       root.unmount();
     });
   });
+
+  it("keeps the organization menu in the legacy desktop shell, which has no title bar", async () => {
+    mockSidebar.isMobile = false;
+    mockInstanceSettingsApi.getExperimental.mockResolvedValue({ enableStreamlinedUi: false });
+    const root = await renderSidebar();
+    expect(container.textContent).toContain("Company menu");
+    flushSync(() => {
+      root.unmount();
+    });
+  });
 });

@@ -1,4 +1,4 @@
-import type { AgentStatus, ApprovalStatus, HeartbeatRunStatus, IssueStatus } from "@bostan/shared";
+import type { AgentStatus, ApprovalStatus, HeartbeatRunStatus, IssueStatus, RunLivenessState } from "@bostan/shared";
 
 /**
  * The nine execution states of the v3 desktop shell. Each has its own shape,
@@ -43,8 +43,15 @@ export const EXECUTION_STATE_META: Record<ExecutionState, ExecutionStateMeta> = 
   outcome_unknown: { label: "Outcome unknown", description: "Reconcile receipt", tone: "unknown" },
 };
 
-/** Heartbeat runs. Cancelled runs have no execution state. */
-export function executionStateForRun(status: HeartbeatRunStatus | string): ExecutionState | null {
+/**
+ * Heartbeat runs. Cancelled runs have no execution state. A successful exit
+ * is only Completed when the backend's liveness classification
+ * (server/src/services/run-liveness.ts) recorded progress; pass it when known.
+ */
+export function executionStateForRun(
+  status: HeartbeatRunStatus | string,
+  liveness?: RunLivenessState | null,
+): ExecutionState | null {
   switch (status) {
     case "queued":
     case "scheduled_retry":
@@ -52,7 +59,7 @@ export function executionStateForRun(status: HeartbeatRunStatus | string): Execu
     case "running":
       return "running";
     case "succeeded":
-      return "completed";
+      return liveness ? executionStateForSucceededLiveness(liveness) : "completed";
     case "failed":
     case "timed_out":
       return "failed";
@@ -61,6 +68,31 @@ export function executionStateForRun(status: HeartbeatRunStatus | string): Execu
       return "outcome_unknown";
     default:
       return null;
+  }
+}
+
+/** Every liveness value of a successful run, mapped explicitly; only real progress is Completed. */
+export function executionStateForSucceededLiveness(liveness: RunLivenessState): ExecutionState {
+  switch (liveness) {
+    case "completed":
+    case "advanced":
+      // Concrete action evidence was recorded.
+      return "completed";
+    case "plan_only":
+    case "empty_response":
+      // No action evidence; recovery treats these as actionable and enqueues a continuation run.
+      return "queued";
+    case "needs_followup":
+      // Future work that is not safe to auto-continue: a person has to look.
+      return "blocked";
+    case "blocked":
+      return "blocked";
+    case "failed":
+      return "failed";
+    default: {
+      const unhandled: never = liveness;
+      throw new Error(`Unmapped run liveness state: ${String(unhandled)}`);
+    }
   }
 }
 

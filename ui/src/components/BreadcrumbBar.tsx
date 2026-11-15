@@ -18,6 +18,7 @@ import { PluginSlotOutlet, usePluginSlots } from "@/plugins/slots";
 import { PluginLauncherOutlet, usePluginLaunchers } from "@/plugins/launchers";
 import { cn } from "../lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
+import { useStreamlinedUiEnabled } from "../hooks/useStreamlinedUiEnabled";
 
 type GlobalToolbarContext = { companyId: string | null; companyPrefix: string | null };
 
@@ -58,6 +59,7 @@ function GlobalToolbar({
 }
 
 export function BreadcrumbBar({ taskDetailLayout = false }: { taskDetailLayout?: boolean }) {
+  const { enabled: streamlinedUiEnabled } = useStreamlinedUiEnabled();
   const {
     breadcrumbs,
     breadcrumbToolbar,
@@ -82,7 +84,7 @@ export function BreadcrumbBar({ taskDetailLayout = false }: { taskDetailLayout?:
     <GlobalToolbar
       context={globalToolbarSlotContext}
       pageToolbar={isMobile ? null : breadcrumbToolbar}
-      showThemeToggle={isMobile}
+      showThemeToggle={isMobile || !streamlinedUiEnabled}
     />
   );
 

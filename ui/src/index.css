@@ -312,6 +312,7 @@
   --bostan-ink-3: #5B606B;
   --bostan-line: #E3E5EA;
   --bostan-line-strong: #C9CDD5;
+  --bostan-input-line: #858B96;
   /* Red is split by job. primary: brand accent (mark nodes, active-nav bar,
      focus ring; non-text, >= 3:1). primary-fill: button/badge fills under
      on-primary text (>= 4.5:1). primary-text: red used as text (>= 4.5:1 on
@@ -365,7 +366,7 @@
   --destructive: var(--bostan-bad-text);
   --destructive-foreground: var(--bostan-on-primary);
   --border: var(--bostan-line);
-  --input: var(--bostan-line-strong);
+  --input: var(--bostan-input-line);
   --ring: var(--bostan-primary);
   --focus-ring-stroke-width: 1px;
   --focus-ring-halo-width: 3px;
@@ -726,6 +727,7 @@
   --bostan-ink-3: #9A9FA9;
   --bostan-line: #262A31;
   --bostan-line-strong: #3D424B;
+  --bostan-input-line: #6C727D;
   /* #E5382F is the dark-theme brand accent. White text on it is only 4.25:1,
      so filled buttons keep Bostan Red (5.03:1) and red text uses the
      lighter bad-text tone. */
@@ -776,7 +778,7 @@
   --destructive: var(--bostan-bad-text);
   --destructive-foreground: var(--bostan-bg);
   --border: var(--bostan-line);
-  --input: var(--bostan-line-strong);
+  --input: var(--bostan-input-line);
   --ring: var(--bostan-primary);
   --scrollbar-thumb: var(--bostan-line-strong);
   --scrollbar-thumb-hover: var(--bostan-ink-3);

@@ -3,14 +3,17 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ThemeToggle } from "./ThemeToggle";
+import { ThemePreferenceControl, ThemeToggle } from "./ThemeToggle";
 
 const mockToggleTheme = vi.hoisted(() => vi.fn());
+const mockSetPreference = vi.hoisted(() => vi.fn());
 const mockTheme = vi.hoisted(() => ({ value: "dark" as "dark" | "light" }));
 
 vi.mock("../context/ThemeContext", () => ({
   useTheme: () => ({
     theme: mockTheme.value,
+    preference: "system",
+    setPreference: mockSetPreference,
     toggleTheme: mockToggleTheme,
   }),
 }));
@@ -120,5 +123,34 @@ describe("ThemeToggle", () => {
     expect(button?.getAttribute("aria-label")).toBe("Switch to dark mode");
 
     await act(async () => root.unmount());
+  });
+
+  it("makes the appearance radio group keyboard-operable with a single tab stop", async () => {
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<ThemePreferenceControl />);
+    });
+    const radios = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="radio"]'));
+    expect(radios.map((radio) => radio.tabIndex)).toEqual([-1, -1, 0]);
+    const group = container.querySelector<HTMLElement>('[role="radiogroup"]')!;
+    expect(document.getElementById(group.getAttribute("aria-labelledby")!)?.textContent).toBe("Appearance");
+    radios[2]!.focus();
+    const press = (key: string) =>
+      act(() => {
+        group.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+      });
+    press("ArrowRight");
+    expect(mockSetPreference).toHaveBeenLastCalledWith("light");
+    expect(document.activeElement).toBe(radios[0]);
+    press("ArrowDown");
+    expect(mockSetPreference).toHaveBeenLastCalledWith("dark");
+    press("End");
+    expect(mockSetPreference).toHaveBeenLastCalledWith("system");
+    press("Home");
+    expect(mockSetPreference).toHaveBeenLastCalledWith("light");
+    mockSetPreference.mockClear();
+    press("a");
+    expect(mockSetPreference).not.toHaveBeenCalled();
+    act(() => root.unmount());
   });
 });

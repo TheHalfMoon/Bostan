@@ -1,3 +1,4 @@
+import { useId, useRef, type KeyboardEvent } from "react";
 import { Monitor, Moon, Sun } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -113,26 +114,51 @@ const PREFERENCE_OPTIONS: ReadonlyArray<{ value: ThemePreference; label: string;
  */
 export function ThemePreferenceControl({ className }: { className?: string }) {
   const { preference, setPreference } = useTheme();
+  const labelId = useId();
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const checkedIndex = Math.max(0, PREFERENCE_OPTIONS.findIndex((option) => option.value === preference));
+
+  // WAI-ARIA radio group: one tab stop (the checked radio); arrows move and select.
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const last = PREFERENCE_OPTIONS.length - 1;
+    const focused = optionRefs.current.findIndex((node) => node === document.activeElement);
+    const from = focused === -1 ? checkedIndex : focused;
+    let next: number | null = null;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = from === last ? 0 : from + 1;
+    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = from === 0 ? last : from - 1;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = last;
+    if (next === null) return;
+    event.preventDefault();
+    setPreference(PREFERENCE_OPTIONS[next]!.value);
+    optionRefs.current[next]?.focus();
+  }
+
   return (
     <div className={cn("flex items-center gap-(--profile-popover-row-gap) px-2.5 py-1", className)}>
-      <span id="theme-preference-label" className="min-w-0 flex-1 truncate text-(length:--text-compact) font-medium text-foreground">
+      <span id={labelId} className="min-w-0 flex-1 truncate text-(length:--text-compact) font-medium text-foreground">
         Appearance
       </span>
       <div
         role="radiogroup"
-        aria-labelledby="theme-preference-label"
+        aria-labelledby={labelId}
+        onKeyDown={handleKeyDown}
         className="inline-flex shrink-0 items-center gap-0.5 rounded-lg border border-border bg-muted p-0.5"
       >
-        {PREFERENCE_OPTIONS.map(({ value, label, Icon }) => {
-          const checked = preference === value;
+        {PREFERENCE_OPTIONS.map(({ value, label, Icon }, index) => {
+          const checked = index === checkedIndex;
           return (
             <button
               key={value}
+              ref={(node) => {
+                optionRefs.current[index] = node;
+              }}
               type="button"
               role="radio"
               aria-checked={checked}
               aria-label={label}
               title={label}
+              tabIndex={checked ? 0 : -1}
               onClick={() => setPreference(value)}
               className={cn(
                 "inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",

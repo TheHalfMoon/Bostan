@@ -159,13 +159,15 @@ export function Sidebar({ children }: { children?: ReactNode }) {
       {/* On desktop the TitleBar carries the company switcher, so the sidebar
           starts with its first group. The mobile drawer has no title bar and
           keeps the company menu here. */}
-      {isMobile ? (
+      {/* The streamlined desktop title bar owns the organization menu; the mobile
+          drawer and the legacy opt-out shell (no title bar) keep it here. */}
+      {isMobile || !streamlinedUiEnabled ? (
         <div className="flex h-(--sz-60px) shrink-0 items-center gap-1 px-3">
           <SidebarCompanyMenu />
         </div>
       ) : null}
 
-      <nav className={cn(primarySidebarStyles.nav, !isMobile && "pt-3")}>
+      <nav className={cn(primarySidebarStyles.nav, !isMobile && streamlinedUiEnabled && "pt-3")}>
         {/* Identity v3 navigation: Command / Organization / Execution /
             Intelligence / Operations. Every destination is an existing route;
             experimental surfaces keep their flags. */}

@@ -632,6 +632,8 @@ describe("Layout", () => {
     await flushReact();
     await flushReact();
 
+    // The legacy opt-out shell keeps its sidebar organization menu; no v3 title bar.
+    expect(container.querySelector('[data-testid="app-title-bar"]')).toBeNull();
     expect(container.textContent).toContain("Main company nav");
     expect(container.textContent).toContain("Company settings sidebar");
     expect(mockSetForceCollapsed).toHaveBeenCalledWith(true);

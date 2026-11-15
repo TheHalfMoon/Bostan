@@ -35,6 +35,8 @@ export interface BostanThemeTokens {
   "ink-3": string;
   line: string;
   "line-strong": string;
+  /** Form-control boundary: 3:1 on card, surface, bg and muted (WCAG 1.4.11). */
+  "input-line": string;
   /** Brand accent: mark nodes, active-nav bar, focus ring. Not for text. */
   primary: string;
   /** Fill behind on-primary text (buttons, badges). */
@@ -66,6 +68,7 @@ export const BOSTAN_THEMES: Record<BostanThemeName, BostanThemeTokens> = {
     "ink-3": "#5B606B",
     line: "#E3E5EA",
     "line-strong": "#C9CDD5",
+    "input-line": "#858B96",
     primary: "#D91F26",
     "primary-fill": "#D91F26",
     "primary-text": "#A3141A",
@@ -92,6 +95,7 @@ export const BOSTAN_THEMES: Record<BostanThemeName, BostanThemeTokens> = {
     "ink-3": "#9A9FA9",
     line: "#262A31",
     "line-strong": "#3D424B",
+    "input-line": "#6C727D",
     primary: "#E5382F",
     // White on #E5382F is 4.25:1 (below AA for body text), so filled
     // buttons keep Bostan Red (5.03:1) in dark mode too.
@@ -140,6 +144,11 @@ export const BOSTAN_UI_PAIRS: ReadonlyArray<readonly [keyof BostanThemeTokens, k
   ["primary", "card"],
   ["primary", "selected"],
   ["cobalt", "card"],
+  // Form-control boundaries against every surface a control sits on.
+  ["input-line", "card"],
+  ["input-line", "surface"],
+  ["input-line", "bg"],
+  ["input-line", "muted"],
 ];
 
 function channel(value: number): number {

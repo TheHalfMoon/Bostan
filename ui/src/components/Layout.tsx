@@ -592,7 +592,9 @@ export function Layout({ sidebarSections }: { sidebarSections?: ReactNode }) {
       </a>
       <WorktreeBanner />
       <DevRestartBanner devServer={health?.devServer} />
-      {!isMobile && !designSandbox ? <TitleBar /> : null}
+      {/* The title bar belongs to the streamlined desktop shell only; the legacy
+          opt-out shell keeps its sidebar organization menu and header toggle. */}
+      {streamlinedUiEnabled && !isMobile && !designSandbox ? <TitleBar /> : null}
       <div className={cn("min-h-0 flex-1", isMobile ? "w-full" : "flex overflow-clip")}>
         {isMobile && sidebarOpen && (
           <button
