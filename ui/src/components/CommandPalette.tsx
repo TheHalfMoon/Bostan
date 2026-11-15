@@ -1,4 +1,5 @@
 import { AgentIdentity } from "@/components/AgentIdentity";
+import { OPEN_COMMAND_PALETTE_EVENT } from "@/lib/command-palette-events";
 import { useCombinedInboxTasksEnabled } from "@/hooks/useCombinedInboxTasksEnabled";
 import { useState, useEffect, useMemo } from "react";
 import { useLocation, useNavigate } from "@/lib/router";
@@ -115,8 +116,16 @@ export function CommandPalette() {
         if (isMobile) setSidebarOpen(false);
       }
     }
+    function handleOpenRequest() {
+      setOpen(true);
+      if (isMobile) setSidebarOpen(false);
+    }
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener(OPEN_COMMAND_PALETTE_EVENT, handleOpenRequest);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener(OPEN_COMMAND_PALETTE_EVENT, handleOpenRequest);
+    };
   }, [isMobile, setSidebarOpen]);
 
   useEffect(() => {

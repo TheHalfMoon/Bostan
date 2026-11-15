@@ -55,11 +55,15 @@ describe("ThemeContext", () => {
   let observedTheme: "light" | "dark" | null = null;
   let setTheme: ((theme: "light" | "dark") => void) | null = null;
   let toggleTheme: (() => void) | null = null;
+  let setPreference: ((preference: "light" | "dark" | "system") => void) | null = null;
+  let observedPreference: string | null = null;
 
   function Probe() {
     const ctx = useTheme();
     observedTheme = ctx.theme;
+    observedPreference = ctx.preference;
     setTheme = ctx.setTheme;
+    setPreference = ctx.setPreference;
     toggleTheme = ctx.toggleTheme;
     return null;
   }
@@ -171,6 +175,60 @@ describe("ThemeContext", () => {
       mql.dispatch(true);
     });
     expect(observedTheme).not.toBe("dark");
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
+  it("persists an explicit system preference and follows the OS again", () => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, "light");
+    const mql = installMatchMedia(true);
+
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <ThemeProvider>
+          <Probe />
+        </ThemeProvider>,
+      );
+    });
+    expect(observedPreference).toBe("light");
+    expect(mql.listenerCount()).toBe(0);
+
+    act(() => {
+      setPreference?.("system");
+    });
+    expect(observedPreference).toBe("system");
+    expect(observedTheme).toBe("dark");
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("system");
+    expect(mql.listenerCount()).toBe(1);
+
+    act(() => {
+      mql.dispatch(false);
+    });
+    expect(observedTheme).toBe("light");
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
+  it("restores a stored system preference on load", () => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, "system");
+    const mql = installMatchMedia(false);
+
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <ThemeProvider>
+          <Probe />
+        </ThemeProvider>,
+      );
+    });
+    expect(observedPreference).toBe("system");
+    expect(mql.listenerCount()).toBe(1);
 
     act(() => {
       root.unmount();
