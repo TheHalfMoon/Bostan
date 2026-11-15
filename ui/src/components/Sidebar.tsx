@@ -1,9 +1,13 @@
 import {
   Inbox,
+  House,
+  LayoutDashboard,
+  Crown,
+  ShieldCheck,
+  MessageSquareText,
   ListChecks,
   CircleCheck,
   Target,
-  LayoutDashboard,
   DollarSign,
   History,
   Search,
@@ -36,6 +40,9 @@ import { useDialogActions } from "../context/DialogContext";
 import { useCompany } from "../context/CompanyContext";
 import { useSidebar } from "../context/SidebarContext";
 import { attentionApi } from "../api/attention";
+import { agentsApi } from "../api/agents";
+import { dashboardApi } from "../api/dashboard";
+import { findCeoAgent } from "../lib/ceo-agent";
 import { heartbeatsApi } from "../api/heartbeats";
 import { instanceSettingsApi } from "../api/instanceSettings";
 import { queryKeys } from "../lib/queryKeys";
@@ -57,8 +64,10 @@ export function Sidebar({ children }: { children?: ReactNode }) {
   // one policy across static nav groups and the data-driven sections.
   const [workOpen, setWorkOpen] = useState(true);
   const [organizationOpen, setOrganizationOpen] = useState(true);
+  const [intelligenceOpen, setIntelligenceOpen] = useState(true);
+  const [operationsOpen, setOperationsOpen] = useState(true);
   const { selectedCompanyId, selectedCompany } = useCompany();
-  const { collapsed, peeking } = useSidebar();
+  const { collapsed, peeking, isMobile } = useSidebar();
   const { enabled: streamlinedUiEnabled } = useStreamlinedUiEnabled();
   const rail = collapsed && !peeking;
   const inboxBadge = useInboxBadge(selectedCompanyId);
@@ -113,6 +122,20 @@ export function Sidebar({ children }: { children?: ReactNode }) {
     refetchInterval: 60_000,
   });
   const attentionCount = attentionBadgeCount(attentionFeed);
+  // CEO workspace row appears only when the company actually has a CEO agent.
+  const { data: agents } = useQuery({
+    queryKey: queryKeys.agents.list(selectedCompanyId!),
+    queryFn: () => agentsApi.list(selectedCompanyId!),
+    enabled: !!selectedCompanyId,
+  });
+  const ceoAgent = findCeoAgent(agents);
+  // Pending approvals badge from the company dashboard summary (real count).
+  const { data: dashboardSummary } = useQuery({
+    queryKey: queryKeys.dashboard(selectedCompanyId!),
+    queryFn: () => dashboardApi.summary(selectedCompanyId!),
+    enabled: !!selectedCompanyId,
+  });
+  const pendingApprovals = dashboardSummary?.pendingApprovals ?? 0;
   const showCases = experimentalSettings?.enableCases === true;
   // Conference Room Chat flag (PAP-136/PAP-137): the Conference Room nav item
   // is a new surface, hidden entirely while the flag is off (same no-flash
@@ -133,18 +156,20 @@ export function Sidebar({ children }: { children?: ReactNode }) {
           : "border-r border-border bg-background",
       )}
     >
-      {/* Top bar: company name, aligned with top sections and borderless.
-          Search deliberately does NOT live here:
-          the header's spare width goes to the workspace/organization name,
-          which is the user's orientation anchor and truncates otherwise.
-          Search is the first nav item below instead. */}
-      <div className="flex h-(--sz-60px) shrink-0 items-center gap-1 px-3">
-        <SidebarCompanyMenu />
-      </div>
+      {/* On desktop the TitleBar carries the company switcher, so the sidebar
+          starts with its first group. The mobile drawer has no title bar and
+          keeps the company menu here. */}
+      {isMobile ? (
+        <div className="flex h-(--sz-60px) shrink-0 items-center gap-1 px-3">
+          <SidebarCompanyMenu />
+        </div>
+      ) : null}
 
-      <nav className={primarySidebarStyles.nav}>
-        <div className={primarySidebarStyles.group}>
-          {/* New Task button aligned with nav items */}
+      <nav className={cn(primarySidebarStyles.nav, !isMobile && "pt-3")}>
+        {/* Identity v3 navigation: Command / Organization / Execution /
+            Intelligence / Operations. Every destination is an existing route;
+            experimental surfaces keep their flags. */}
+        <SidebarSection label="Command">
           {(() => {
             const newTaskButton = (
               <button
@@ -152,7 +177,7 @@ export function Sidebar({ children }: { children?: ReactNode }) {
                 data-slot="icon-button"
                 aria-label={rail ? "New Task" : undefined}
                 className={cn(
-                  "flex items-center gap-2.5 mx-2 rounded-lg px-2 py-1.5 pointer-coarse:py-1 text-(length:--text-compact) font-medium text-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  "flex items-center gap-2.5 mx-2 rounded-lg px-2 py-1.5 pointer-coarse:py-1 text-(length:--text-compact) font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground",
                 )}
               >
                 <SquarePen className="h-4 w-4 shrink-0" />
@@ -168,12 +193,14 @@ export function Sidebar({ children }: { children?: ReactNode }) {
               newTaskButton
             );
           })()}
-          {/* Search moved out of the header so the workspace name keeps the
-              width; a nav row also keeps search reachable from the
-              collapsed rail, where the old header icon was dropped entirely.
-              Cmd/Ctrl+K remains the keyboard path (command palette). */}
+          {/* Search stays a nav row so it is reachable from the collapsed
+              rail; Cmd/Ctrl+K (title bar) remains the keyboard path. */}
           <SidebarNavItem to="/search" label="Search" icon={Search} />
-          <SidebarNavItem to="/dashboard" label="Dashboard" icon={LayoutDashboard} liveCount={liveRunCount} />
+          <SidebarNavItem to="/command-center" label="Home" icon={House} liveCount={liveRunCount} />
+          <SidebarNavItem to="/dashboard" label="Dashboard" icon={LayoutDashboard} end />
+          {ceoAgent ? (
+            <SidebarNavItem to="/ceo-workspace" label="CEO workspace" icon={Crown} />
+          ) : null}
           {!combinedInboxTasks ? (
             <SidebarNavItem
               to="/inbox"
@@ -185,30 +212,53 @@ export function Sidebar({ children }: { children?: ReactNode }) {
               alert={inboxBadge.failedRuns > 0}
             />
           ) : null}
+          <SidebarNavItem
+            to="/approvals"
+            label="Approvals"
+            icon={ShieldCheck}
+            badge={pendingApprovals}
+            badgeLabel="pending"
+          />
           {agentChatEnabled && !chatRail ? <SidebarNavItem to="/chats" label="Chat" icon={MessageCircle} /> : null}
-          {showDecisions ? (
-            <SidebarNavItem
-              to="/decisions"
-              label="Decisions"
-              icon={ListChecks}
-              badge={attentionCount}
-              badgeLabel="decisions"
-            />
-          ) : null}
           {showStatusCards ? (
             <SidebarNavItem to="/status" label="Status" icon={LayoutGrid} textBadge="beta" />
           ) : null}
           {conferenceRoomChatEnabled ? (
             <SidebarNavItem to="/board-chat" label="Conference Room" icon={MessagesSquare} />
           ) : null}
-        </div>
+          <SidebarNavItem to="/activity" label="Activity" icon={History} />
+        </SidebarSection>
 
-        <SidebarSection label="Work" collapsible={{ open: workOpen, onOpenChange: setWorkOpen }}>
-          {/* Agent Chat: Chat leads the Work group as a single row — the
-              agents you talk to live in the Chat surface's own secondary rail
-              (ChatContextualSidebar), not in the primary nav. */}
+        <SidebarSection
+          label="Organization"
+          collapsible={{ open: organizationOpen, onOpenChange: setOrganizationOpen }}
+        >
+          {/* The legacy shell lists agents in its own section below. */}
+          {streamlinedUiEnabled ? <SidebarNavItem to="/agents" label="AI agents" icon={Users} /> : null}
+          <SidebarNavItem to="/org" label="Structure" icon={Network} />
+          {streamlinedUiEnabled ? <SidebarNavItem to="/skills" label="Skills" icon={Boxes} /> : null}
+        </SidebarSection>
+
+        <SidebarSection label="Execution" collapsible={{ open: workOpen, onOpenChange: setWorkOpen }}>
+          {/* Agent Chat: Chat leads Execution as a single row — the agents you
+              talk to live in the Chat surface's own secondary rail. */}
           {chatRail ? (
             <SidebarNavItem to="/chats" label="Chat" icon={MessageCircle} />
+          ) : null}
+          {showGoalsLink ? (
+            <SidebarNavItem to="/goals" label="Goals" icon={Target} />
+          ) : goalsLinkPending ? (
+            <div
+              data-testid="sidebar-goals-placeholder"
+              className="h-8 pointer-coarse:h-7"
+              aria-hidden="true"
+            />
+          ) : null}
+          {streamlinedUiEnabled ? (
+            <>
+              <SidebarNavItem to="/projects" label="Projects" icon={FolderOpen} />
+              <SidebarStarredProjects />
+            </>
           ) : null}
           {/* Combined Inbox + Task List: Inbox is a view inside Tasks, so the
               unread/failed-run badge rides on Tasks. */}
@@ -225,25 +275,9 @@ export function Sidebar({ children }: { children?: ReactNode }) {
           ) : (
             <SidebarNavItem to="/issues" label="Tasks" icon={CircleCheck} />
           )}
-          {streamlinedUiEnabled ? (
-            <>
-              <SidebarNavItem to="/projects" label="Projects" icon={FolderOpen} />
-              <SidebarStarredProjects />
-            </>
-          ) : null}
           <SidebarNavItem to="/routines" label="Routines" icon={Repeat} />
-          <SidebarNavItem to="/artifacts" label="Artifacts" icon={Package} />
           {showCases ? (
             <SidebarNavItem to="/cases" label="Cases" icon={Layers} textBadge="beta" />
-          ) : null}
-          {showGoalsLink ? (
-            <SidebarNavItem to="/goals" label="Goals" icon={Target} />
-          ) : goalsLinkPending ? (
-            <div
-              data-testid="sidebar-goals-placeholder"
-              className="h-8 pointer-coarse:h-7"
-              aria-hidden="true"
-            />
           ) : null}
           {showWorkspacesLink ? (
             <SidebarNavItem to="/workspaces" label="Workspaces" icon={GitBranch} />
@@ -265,17 +299,36 @@ export function Sidebar({ children }: { children?: ReactNode }) {
           />
         </SidebarSection>
 
-        {streamlinedUiEnabled ? (
-          <SidebarSection
-            label="Org"
-            collapsible={{ open: organizationOpen, onOpenChange: setOrganizationOpen }}
-          >
-            <SidebarNavItem to="/agents" label="Agents" icon={Users} />
-            <SidebarNavItem to="/skills" label="Skills" icon={Boxes} />
-            <SidebarNavItem to="/apps" label="Connectors" icon={Unplug} />
-            <SidebarNavItem to="/activity" label="Audit" icon={History} />
-          </SidebarSection>
-        ) : null}
+        <SidebarSection
+          label="Intelligence"
+          collapsible={{ open: intelligenceOpen, onOpenChange: setIntelligenceOpen }}
+        >
+          {showDecisions ? (
+            <SidebarNavItem
+              to="/decisions"
+              label="Decisions"
+              icon={ListChecks}
+              badge={attentionCount}
+              badgeLabel="decisions"
+            />
+          ) : null}
+          <SidebarNavItem to="/artifacts" label="Artifacts" icon={Package} />
+          {!streamlinedUiEnabled ? (
+            <>
+              <SidebarNavItem to="/timeline" label="Timeline" icon={GanttChartSquare} />
+              <SidebarNavItem to="/activity/commentary" label="Commentary" icon={MessageSquareText} />
+            </>
+          ) : null}
+        </SidebarSection>
+
+        <SidebarSection
+          label="Operations"
+          collapsible={{ open: operationsOpen, onOpenChange: setOperationsOpen }}
+        >
+          <SidebarNavItem to="/costs" label="Budgets & costs" icon={DollarSign} />
+          <SidebarNavItem to="/apps" label="Connectors" icon={Unplug} />
+          <SidebarNavItem to="/company/settings" label="Settings" icon={Settings} />
+        </SidebarSection>
 
         {children ?? (streamlinedUiEnabled ? <SidebarAgents streamlined /> : null)}
 
@@ -285,18 +338,6 @@ export function Sidebar({ children }: { children?: ReactNode }) {
           <>
             <SidebarProjects />
             <SidebarAgents />
-            <SidebarSection
-              label="Organization"
-              collapsible={{ open: organizationOpen, onOpenChange: setOrganizationOpen }}
-            >
-              <SidebarNavItem to="/org" label="Org" icon={Network} />
-              <SidebarNavItem to="/apps" label="Connectors" icon={Unplug} />
-              <SidebarNavItem to="/timeline" label="Timeline" icon={GanttChartSquare} />
-              <SidebarNavItem to="/costs" label="Costs" icon={DollarSign} />
-              <SidebarNavItem to="/activity" label="Activity" icon={History} />
-              <SidebarNavItem to="/activity/commentary" label="Commentary" icon={History} />
-              <SidebarNavItem to="/company/settings" label="Settings" icon={Settings} />
-            </SidebarSection>
           </>
         )}
 

@@ -34,9 +34,12 @@ function CrumbIdentifier({ identifier }: { identifier?: string }) {
 function GlobalToolbar({
   context,
   pageToolbar,
+  showThemeToggle = false,
 }: {
   context: GlobalToolbarContext;
   pageToolbar?: ReactNode;
+  /** Desktop shows the toggle in the TitleBar; mobile keeps it here. */
+  showThemeToggle?: boolean;
 }) {
   const { slots } = usePluginSlots({ slotTypes: ["globalToolbarButton"], companyId: context.companyId });
   const { launchers } = usePluginLaunchers({ placementZones: ["globalToolbarButton"], companyId: context.companyId, enabled: !!context.companyId });
@@ -49,7 +52,7 @@ function GlobalToolbar({
       {launchers.length > 0 ? (
         <PluginLauncherOutlet placementZones={["globalToolbarButton"]} context={context} className="flex items-center gap-1" />
       ) : null}
-      <ThemeToggle />
+      {showThemeToggle ? <ThemeToggle /> : null}
     </div>
   );
 }
@@ -79,6 +82,7 @@ export function BreadcrumbBar({ taskDetailLayout = false }: { taskDetailLayout?:
     <GlobalToolbar
       context={globalToolbarSlotContext}
       pageToolbar={isMobile ? null : breadcrumbToolbar}
+      showThemeToggle={isMobile}
     />
   );
 
