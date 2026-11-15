@@ -111,6 +111,7 @@ test("ignores commented base elements and permits ordinary relative assets", () 
 test("refuses nonlocal URL schemes and browser-normalized backslash asset URLs", () => {
   for (const tag of [
     '<script src="ftp://example.invalid/app.js"></script>',
+    '<script src="https:\\example.invalid/app.js"></script>',
     '<script src="data:text/javascript,alert(1)"></script>',
     '<link rel="stylesheet" href="blob:https://example.invalid/id">',
     '<script src="https:\\\\example.invalid/app.js"></script>',
