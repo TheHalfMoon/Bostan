@@ -22,6 +22,7 @@ const mockInstanceSettingsApi = vi.hoisted(() => ({
 const mockHealthApi = vi.hoisted(() => ({ get: vi.fn() }));
 const mockGetCurrentBoardAccess = vi.hoisted(() => vi.fn());
 const mockToggleTheme = vi.hoisted(() => vi.fn());
+const mockSetPreference = vi.hoisted(() => vi.fn());
 const mockSetSidebarOpen = vi.hoisted(() => vi.fn());
 const mockNavigateTopLevel = vi.hoisted(() => vi.fn());
 
@@ -71,7 +72,9 @@ vi.mock("../context/SidebarContext", () => ({
 vi.mock("../context/ThemeContext", () => ({
   useTheme: () => ({
     theme: "dark",
+    preference: "system",
     toggleTheme: mockToggleTheme,
+    setPreference: mockSetPreference,
   }),
 }));
 
@@ -433,11 +436,14 @@ describe("SidebarAccountMenu", () => {
     expect(menuOrder.indexOf("Settings")).toBeLessThan(menuOrder.indexOf("Invite"));
     expect(menuOrder.indexOf("Invite")).toBeLessThan(menuOrder.indexOf("Documentation"));
 
-    // Documentation still appears before the theme toggle.
+    // Documentation still appears before the appearance selector.
     const menuText = popover?.textContent ?? "";
     const docsPos = menuText.indexOf("Documentation");
-    const themePos = menuText.indexOf("Switch to");
+    const themePos = menuText.indexOf("Appearance");
     expect(docsPos).toBeLessThan(themePos);
+    const themeOptions = popover?.querySelectorAll('[role="radiogroup"] [role="radio"]') ?? [];
+    expect(Array.from(themeOptions).map((option) => option.getAttribute("aria-label"))).toEqual(["Light", "Dark", "System"]);
+    expect(popover?.querySelector('[role="radio"][aria-checked="true"]')?.getAttribute("aria-label")).toBe("System");
 
     // The popover header stays down to name + email: no "Account" badge, no version line.
     expect(popover?.textContent).not.toContain("Account");

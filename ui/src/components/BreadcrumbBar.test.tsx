@@ -31,6 +31,10 @@ vi.mock("../context/PanelContext", () => ({
   usePanel: () => ({ panelVisible: true, togglePanelVisible: vi.fn() }),
 }));
 
+vi.mock("../context/ThemeContext", () => ({
+  useTheme: () => ({ theme: "light", preference: "system", toggleTheme: vi.fn(), setPreference: vi.fn(), setTheme: vi.fn() }),
+}));
+
 vi.mock("@/plugins/slots", () => ({
   usePluginSlots: () => ({ slots: [] }),
   PluginSlotOutlet: () => null,
