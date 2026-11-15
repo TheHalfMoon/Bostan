@@ -47,6 +47,18 @@ export function auditBostanUiBrandSnapshot(files) {
        !/name="apple-mobile-web-app-title" content="Bostan"/.test(index))) {
     issues.push("HTML document metadata must identify Bostan");
   }
+  // Offline-first admission: the HTML shell must not silently fetch third-party
+  // scripts, styles, fonts or icons before consent can be established.
+  // This is a source gate, not a substitute for browser/network qualification.
+  if (typeof index === "string") {
+    const html = index.replace(/<!--[\\s\\S]*?-->/g, "");
+    for (const tag of html.match(/<(?:script|link)\\b[^>]*>/gi) ?? []) {
+      if (/\\b(?:src|href)\\s*=\\s*(?:"\\s*(?:https?:)?\\/\\/|'\\s*(?:https?:)?\\/\\/|(?:https?:)?\\/\\/)/i.test(tag)) {
+        issues.push("HTML shell must not load remote script or link assets by default");
+        break;
+      }
+    }
+  }
   const manifest = files?.["ui/public/site.webmanifest"];
   if (typeof manifest === "string") {
     try {
