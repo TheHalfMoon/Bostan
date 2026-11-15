@@ -47,16 +47,27 @@ export function auditBostanUiBrandSnapshot(files) {
        !/name="apple-mobile-web-app-title" content="Bostan"/.test(index))) {
     issues.push("HTML document metadata must identify Bostan");
   }
-  // Offline-first admission: the HTML shell must not silently fetch third-party
-  // scripts, styles, fonts or icons before consent can be established.
-  // This is a source gate, not a substitute for browser/network qualification.
+  // HTML character references are resolved by browsers before resource loading.
+  // This source admission does not replace browser network qualification.
   if (typeof index === "string") {
     const html = index.replace(/<!--[\s\S]*?-->/g, "");
+    const decodeReferences = value => value
+      .replace(/&#(?:x([0-9a-f]+)|([0-9]+));?/gi, (match, hex, dec) => {
+        const point = Number.parseInt(hex ?? dec, hex ? 16 : 10);
+        return point > 0 && point <= 0x10ffff ? String.fromCodePoint(point) : match;
+      })
+      .replace(/&(?:sol|colon|tab|newline);/gi, match => ({
+        "&sol;": "/", "&colon;": ":", "&tab;": "\t", "&newline;": "\n",
+      })[match.toLowerCase()] ?? match);
     for (const tag of html.match(/<(?:script|link)\b[^>]*>/gi) ?? []) {
-      if (/\b(?:src|href)\s*=\s*(?:"\s*(?:https?:)?\/\/|'\s*(?:https?:)?\/\/|(?:https?:)?\/\/)/i.test(tag)) {
-        issues.push("HTML shell must not load remote script or link assets by default");
-        break;
+      for (const attribute of tag.matchAll(/\b(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)) {
+        const url = decodeReferences(attribute[1] ?? attribute[2] ?? attribute[3]).trimStart();
+        if (/^(?:https?:)?\/\//i.test(url)) {
+          issues.push("HTML shell must not load remote script or link assets by default");
+          break;
+        }
       }
+      if (issues.includes("HTML shell must not load remote script or link assets by default")) break;
     }
   }
   const manifest = files?.["ui/public/site.webmanifest"];
