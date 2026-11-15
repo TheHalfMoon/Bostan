@@ -53,3 +53,21 @@ test("refuses absent canonical status assets and malformed manifest", () => {
 test("verifies the exact checked-out UI files in an authorized private checkout", () => {
   assert.deepEqual(auditBostanUiBrandCheckout(fileURLToPath(new URL("..", import.meta.url))), []);
 });
+
+test("refuses remote scripts, styles and font preloads in the offline-first HTML shell", () => {
+  for (const tag of [
+    '<script src="https://cdn.example.invalid/app.js"></script>',
+    '<link rel="stylesheet" href="//fonts.example.invalid/main.css">',
+    '<link rel="preload" href=http://cdn.example.invalid/font.woff2 as="font">',
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    assert.ok(auditBostanUiBrandSnapshot(source).some(s => s.includes("remote script or link")), tag);
+  }
+});
+test("allows local HTML shell assets and ignores commented-out remote examples", () => {
+  const source = fixture();
+  source["ui/index.html"] += '<script src="/src/main.tsx"></script><link rel="icon" href="/favicon.svg">';
+  source["ui/index.html"] += '<!-- <script src="https://example.invalid/old.js"></script> -->';
+  assert.deepEqual(auditBostanUiBrandSnapshot(source), []);
+});
