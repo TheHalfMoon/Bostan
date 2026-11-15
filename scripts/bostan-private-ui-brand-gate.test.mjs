@@ -123,3 +123,22 @@ test("refuses nonlocal URL schemes and browser-normalized backslash asset URLs",
     assert.ok(auditBostanUiBrandSnapshot(source).some(s => s.includes("remote script or link")), tag);
   }
 });
+
+test("refuses meta refresh navigation in the offline shell", () => {
+  for (const tag of [
+    '<meta http-equiv="refresh" content="0;url=https://example.invalid/">',
+    "<META HTTP-EQUIV='REFRESH' content='1;url=//example.invalid/'>",
+    '<meta http-equiv=refresh content="0;url=/local">',
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    assert.ok(auditBostanUiBrandSnapshot(source).some(s => s.includes("meta refresh")), tag);
+  }
+});
+
+test("ignores commented refresh markup and ordinary metadata", () => {
+  const source = fixture();
+  source["ui/index.html"] += '<!-- <meta http-equiv="refresh" content="0;url=https://example.invalid/"> -->';
+  source["ui/index.html"] += '<meta name="description" content="Bostan offline shell">';
+  assert.deepEqual(auditBostanUiBrandSnapshot(source), []);
+});
