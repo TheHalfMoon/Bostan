@@ -180,3 +180,16 @@ test("refuses actual tab, LF and CR characters stripped by browser URL parsing",
     assert.ok(auditBostanUiBrandSnapshot(source).some(s => s.includes("remote script or link")), JSON.stringify(url));
   }
 });
+
+
+test("refuses responsive image preload URLs that bypass href checks", () => {
+  for (const tag of [
+    '<link rel="preload" as="image" imagesrcset="https://cdn.example.invalid/a.png 1x, /b.png 2x">',
+    '<LINK REL="preload" AS="image" IMAGESRCSET="/a.png 1x, //cdn.example.invalid/b.png 2x">',
+    '<link rel="preload" as="image" imagesrcset="/local.png 1x">',
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    assert.ok(auditBostanUiBrandSnapshot(source).some(s => s.includes("remote script or link")), tag);
+  }
+});
