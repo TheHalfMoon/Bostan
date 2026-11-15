@@ -167,3 +167,15 @@ test("refuses browser-normalized ASCII control characters in remote asset URLs",
     assert.ok(auditBostanUiBrandSnapshot(source).some(s => s.includes("remote script or link")), tag);
   }
 });
+
+test("refuses literal browser-stripped ASCII controls in external asset URLs", () => {
+  for (const url of [
+    "ht\\ttps://cdn.example.invalid/a.js",
+    "https:\\n//cdn.example.invalid/a.js",
+    "https:\\r//cdn.example.invalid/a.js",
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += '<script src="' + url + '"></script>';
+    assert.ok(auditBostanUiBrandSnapshot(source).some(s => s.includes("remote script or link")), JSON.stringify(url));
+  }
+});
