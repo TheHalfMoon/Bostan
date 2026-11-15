@@ -69,7 +69,8 @@ jobs:
                 const rule = String(item.RuleID || "unknown").replace(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 80);
                 const commit = /^[0-9a-f]{40}$/i.test(item.Commit || "") ? item.Commit : "unknown";
                 const file = String(item.File || "").replace(/[^a-zA-Z0-9_./-]/g, "_").slice(0, 240);
-                console.log(JSON.stringify({rule, commit, file}));
+                const line = Number.isSafeInteger(item.StartLine) && item.StartLine > 0 ? item.StartLine : null;
+                console.log(JSON.stringify({rule, commit, file, line}));
               }
               console.log("Gitleaks findings:", findings.length);
             ' "$RUNNER_TEMP/bostan-gitleaks.json"
