@@ -193,3 +193,6 @@ ef8f6a8d658a4d8400c584428fa4c265f63d713b:ui/src/pages/apps/chat/GitHubChatSetup.
 ef8f6a8d658a4d8400c584428fa4c265f63d713b:ui/src/pages/apps/gateways/ConnectClientDialog.test.tsx:generic-api-key:75
 ef8f6a8d658a4d8400c584428fa4c265f63d713b:ui/src/pages/apps/gateways/gateway-helpers.test.ts:generic-api-key:114
 ef8f6a8d658a4d8400c584428fa4c265f63d713b:ui/src/pages/apps/gateways/panels/TokensPanel.test.tsx:generic-api-key:52
+# 2026-11-15: historical Windows NSIS test fixture GUID at line 22; static UUID
+# asserted as installer identity, not a credential. Exact fingerprint only.
+1f55b4bd2e0f0de4417c1663951a99cace220a69:desktop/scripts/packaging-registration.test.mjs:generic-api-key:22
