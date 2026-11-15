@@ -23,10 +23,12 @@ The Windows installed-app job exceeded its unchanged 300-second install limit on
 - Targeted launcher test: passed (13.4 s).
 - Compiled NSIS success/corrupt-archive/NSIS-owner-termination fixture: passed (61.2 s).
 - `npm test --prefix desktop`: 59 passed, 1 skipped, 0 failed (65.1 s), including the NSIS-owner lifecycle fixture.
+- First full candidate CI head `750daa05`: Windows installer and archive integrity completed in 143,137 ms with the expected `extraction_direct_complete` receipt; the Windows job then failed because legacy Windows PowerShell could not load its security module from the inherited PowerShell 7 module path. The macOS package mounted, installed, and launched, but the first task API hire returned HTTP 403. Both failures are being investigated; this head is not qualified.
+- Follow-up `f90dde90` isolates the pinned Windows PowerShell 5.1 inbox module path for the unsigned-signature check and limits task API failure diagnostics to a validated fixed-format code. Exact-head CI is pending.
 
 ## Still required
 
-- Run the exact candidate on native Windows and qualify the full installed onboarding, process/artifact control, restart persistence, and uninstall journey under the unchanged 300-second limit.
+- Run the exact follow-up candidate on native Windows and qualify the full installed onboarding, process/artifact control, restart persistence, and uninstall journey under the unchanged 300-second limit; diagnose the macOS task API 403.
 - Keep the PR Draft if Windows qualification fails.
 - Complete the 7-Zip source and license review before any signing or release.
 
