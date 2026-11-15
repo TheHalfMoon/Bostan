@@ -118,6 +118,8 @@ try {
     launch,
     close: closeApplication,
     afterClose: noPostgres,
+    executable,
+    workspace: path.join(temp, "task-workspace"),
   });
   phase("onboarding_restart_complete");
   const sentinel = path.join(appData, "data/installer-data-preservation-qa");
@@ -144,4 +146,4 @@ try {
     fs.rmSync(temp, { recursive: true, force: false });
   }
 }
-console.log(`BOSTAN_INSTALLED_MACOS_ONBOARDING_RESTART_UNINSTALL_PASS (${process.arch}; unsigned qualification candidate; deferred agent, no real model execution)`);
+console.log(`BOSTAN_INSTALLED_MACOS_ONBOARDING_RESTART_UNINSTALL_PASS (${process.arch}; unsigned deterministic process/artifact/control/restart qualification; no real model execution)`);

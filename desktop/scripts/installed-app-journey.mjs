@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
+import { runInstalledTaskJourney, assertInstalledTaskPersistence } from "./installed-task-journey.mjs";
 
 /** Drive the real installed app through the same UI on both native platforms.
  * Platform wrappers own installation, process checks and guarded cleanup. */
-export async function qualifyInstalledApp({ launch, close, afterClose }) {
+export async function qualifyInstalledApp({ launch, close, afterClose, executable, workspace }) {
   let jsErrors = 0;
   let externalRequests = 0;
   function observe(page) {
@@ -42,6 +43,8 @@ export async function qualifyInstalledApp({ launch, close, afterClose }) {
   const agent = (await agentResponse.json()).find(item => item.name === "Desktop QA Worker");
   assert.equal(agent?.pauseReason, "setup");
   assert.equal(agent?.lifecycleState, "paused");
+  const taskReceipt = await runInstalledTaskJourney({ page, companyId: company.id,
+    reportsTo: agent.id, executable, workspace });
   assert.equal(jsErrors, 0); assert.equal(externalRequests, 0);
   await close();
   await afterClose();
@@ -53,6 +56,7 @@ export async function qualifyInstalledApp({ launch, close, afterClose }) {
   const persisted = await reopened.request.get(`${reopenedBase}/api/companies/${company.id}/agents`);
   assert.equal(persisted.status(), 200, "Session did not survive application restart");
   assert.equal((await persisted.json()).filter(item => item.id === agent.id).length, 1);
+  await assertInstalledTaskPersistence(reopened, taskReceipt);
   assert.equal(jsErrors, 0); assert.equal(externalRequests, 0);
   await close();
   await afterClose();

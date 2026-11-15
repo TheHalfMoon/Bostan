@@ -145,6 +145,8 @@ try {
     launch,
     close: closeApplication,
     afterClose: noPostgres,
+    executable,
+    workspace: path.join(temp, "task-workspace"),
   });
   const sentinel = path.join(appData, "data/installer-data-preservation-qa");
   fs.writeFileSync(sentinel, "preserved");
@@ -160,7 +162,7 @@ try {
   assert.equal(uninstallRegistrations().length, 0, "Uninstaller registration remains");
   assert.equal(fs.readFileSync(sentinel, "utf8"), "preserved", "Uninstall deleted application data");
   clean = true;
-  console.log("BOSTAN_INSTALLED_WINDOWS_ONBOARDING_RESTART_UNINSTALL_PASS (synthetic account and deferred agent; no real model execution)");
+  console.log("BOSTAN_INSTALLED_WINDOWS_ONBOARDING_RESTART_UNINSTALL_PASS (deterministic process/artifact/control/restart qualification; no real model execution)");
 } finally {
   try { if (application && !forcedStop) await closeApplication(); }
   finally { noPostgres(); }
