@@ -816,7 +816,9 @@ async function hasGitMetadata(cwd: string | null | undefined) {
 async function isGitCheckout(cwd: string | null | undefined) {
   const normalized = readNonEmptyString(cwd);
   if (!normalized) return false;
-  return execFile("git", ["rev-parse", "--show-toplevel"], { cwd: normalized })
+  return execFile("git", ["rev-parse", "--show-toplevel"], {
+    cwd: process.platform === "win32" ? path.toNamespacedPath(normalized) : normalized,
+  })
     .then((result) => Boolean(readNonEmptyString(result.stdout)))
     .catch(() => false);
 }
@@ -824,7 +826,7 @@ async function isGitCheckout(cwd: string | null | undefined) {
 async function probeGitWorktreeBase(cwd: string) {
   try {
     const result = await execFile("git", ["rev-parse", "--show-toplevel"], {
-      cwd,
+      cwd: process.platform === "win32" ? path.toNamespacedPath(cwd) : cwd,
       env: { ...process.env, LC_ALL: "C" },
     });
     return { isCheckout: Boolean(readNonEmptyString(result.stdout)), notRepository: false };
@@ -880,7 +882,9 @@ function sameResolvedPath(
 async function hasGitPushRemote(cwd: string | null | undefined) {
   const normalized = readNonEmptyString(cwd);
   if (!normalized) return false;
-  const remoteNames = await execFile("git", ["remote"], { cwd: normalized })
+  const remoteNames = await execFile("git", ["remote"], {
+    cwd: process.platform === "win32" ? path.toNamespacedPath(normalized) : normalized,
+  })
     .then((result) =>
       result.stdout
         .split(/\r?\n/)
@@ -893,7 +897,7 @@ async function hasGitPushRemote(cwd: string | null | undefined) {
     const pushUrl = await execFile(
       "git",
       ["remote", "get-url", "--push", remoteName],
-      { cwd: normalized },
+      { cwd: process.platform === "win32" ? path.toNamespacedPath(normalized) : normalized },
     )
       .then((result) => readNonEmptyString(result.stdout))
       .catch(() => null);

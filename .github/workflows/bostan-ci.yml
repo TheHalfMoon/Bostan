@@ -175,3 +175,4 @@ jobs:
       - run: pnpm --filter @bostan/plugin-sdk ensure-build-deps
       - run: pnpm exec vitest run server/src/__tests__/agent-directory-probe.test.ts -t MAX_PATH
       - run: pnpm exec vitest run packages/adapter-utils/src/github-local-context.test.ts
+      - run: pnpm exec vitest run server/src/services/heartbeat/workspaces.test.ts -t MAX_PATH

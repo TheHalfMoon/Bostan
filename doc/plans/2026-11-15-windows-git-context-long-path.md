@@ -31,3 +31,24 @@ new fixture budgeting error: its artifact program permits two sequential10s
 requests but originally used a15s total adapter budget. That fixture now uses
 30s for artifact/retry and retains15s for cancellation/timeout holds, with
 recorded policy assertions. It remains uncommitted and is not product acceptance.
+
+The repaired source journey subsequently recorded a successful actual task Retry
+at26b7a8a7. Its helper incorrectly searched the run-list summary for private
+lineage fields; the full run detail is the appropriate API. While it waited, a
+separate issue_disposition_repair follow-up reached another plain deep cwd in
+heartbeat/workspaces.ts and crashed on the same stdoutENOTCONN boundary. Apply
+the same Windows cwd normalization to that owner's checkout/base/remote probes.
+No workspace eligibility, Git-error classification or remediation is relaxed.
+
+The workspace regression checks that a deep non-repository returns the existing
+typed validation failure, and a normal repository still passes. Initial attempts
+to create an actual repository at a deep path failed inside this host's Git,
+even with core.longpaths and a namespaced cwd; these failed capability probes are
+retained. This change prevents a backend crash, not a claim that every installed
+Git version supports deep working directories.
+
+The complete focused workspace module suite passed14/14 locally after this
+extension, including the real deep rejection/ordinary repository regression.
+Independent correctness/security reviews found no blocker in these four cwd
+normalizations. Broad local build/typecheck was not repeated on the16GiB shared
+host under memory pressure; exact-head hosted checks remain required and pending.
