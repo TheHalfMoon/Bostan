@@ -154,3 +154,16 @@ test("refuses entity-encoded meta refresh values in offline HTML", () => {
     assert.ok(auditBostanUiBrandSnapshot(source).some(s => s.includes("meta refresh")), tag);
   }
 });
+
+test("refuses browser-normalized ASCII control characters in remote asset URLs", () => {
+  for (const tag of [
+    '<script src="ht\\ttps://cdn.example.invalid/a.js"></script>',
+    '<link href="https:\\n//cdn.example.invalid/a.css">',
+    '<script src="h&#x9;ttps://cdn.example.invalid/a.js"></script>',
+    '<link href="https:&#10;//cdn.example.invalid/a.css">',
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    assert.ok(auditBostanUiBrandSnapshot(source).some(s => s.includes("remote script or link")), tag);
+  }
+});
