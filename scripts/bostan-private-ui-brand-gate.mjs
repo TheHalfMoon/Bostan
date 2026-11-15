@@ -74,6 +74,12 @@ export function auditBostanUiBrandSnapshot(files) {
       }
     }
     for (const tag of html.match(/<(?:script|link)\b[^>]*>/gi) ?? []) {
+      // A preload link can fetch remote images through imagesrcset without href.
+      // This offline shell does not require responsive image preloads.
+      if (/^<link\b/i.test(tag) && /\bimagesrcset\s*=/i.test(tag)) {
+        issues.push("HTML shell must not load remote script or link assets by default");
+        break;
+      }
       for (const attribute of tag.matchAll(/\b(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)) {
         // URL parsers strip ASCII tabs and newlines even when embedded in a scheme.
         const url = decodeReferences(attribute[1] ?? attribute[2] ?? attribute[3])
