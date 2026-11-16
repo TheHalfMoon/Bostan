@@ -50,7 +50,9 @@ export function auditBostanUiBrandSnapshot(files) {
   // HTML character references are resolved by browsers before resource loading.
   // This source admission does not replace browser network qualification.
   if (typeof index === "string") {
-    const html = index.replace(/<!--[\s\S]*?-->/g, "");
+    // Preserve comment-looking text inside quoted tag attributes; only strip actual comments.
+    const html = index.replace(/(<[a-z][^>"\']*(?:"[^"]*"|\'[^\']*\'|[^>"\']*)*>)|<!--[\s\S]*?-->/gi,
+      (match, tag) => tag ?? "");
     const decodeReferences = value => value
       .replace(/&#(?:x([0-9a-f]+)|([0-9]+));?/gi, (match, hex, dec) => {
         const point = Number.parseInt(hex ?? dec, hex ? 16 : 10);
