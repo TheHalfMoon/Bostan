@@ -34,10 +34,10 @@ export function auditBostanStatusSvgSource(svg) {
   }
   // CSS escapes can spell @import or url without matching literal URL patterns.
   // Neither escapes nor URL references are required by the canonical animation.
-  if (/\\\\/.test(decoded) || /url\s*\(/i.test(decoded)) {
+  if (/\\/.test(decoded) || /url\s*\(/i.test(decoded)) {
     issues.push("Status SVG contains unreviewed CSS escapes or URL references");
   }
-  if (/<\\s*(?:script|foreignObject|iframe|image|use|feImage)\\b/i.test(decoded)) {
+  if (/<\s*(?:script|foreignObject|iframe|image|use|feImage)\b/i.test(decoded)) {
     issues.push("Status SVG must not contain active embedded or linked elements");
   }
   if (/@import\b/i.test(decoded) ||
