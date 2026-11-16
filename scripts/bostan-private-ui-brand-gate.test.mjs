@@ -225,3 +225,23 @@ test("still rejects remote src and href after inert data attributes", () => {
     assert.ok(auditBostanUiBrandSnapshot(source).some(issue => issue.includes("remote script or link")), tag);
   }
 });
+
+test("does not confuse inert data-prefixed navigation and preload attributes", () => {
+  const source = fixture();
+  source["ui/index.html"] += '<base data-href="https://example.invalid/">';
+  source["ui/index.html"] += '<meta data-http-equiv="refresh" content="0;url=https://example.invalid/">';
+  source["ui/index.html"] += '<link data-imagesrcset="https://example.invalid/a.png 1x">';
+  assert.deepEqual(auditBostanUiBrandSnapshot(source), []);
+});
+
+test("rejects active base, refresh and image preload attributes after inert data attributes", () => {
+  for (const [tag, expected] of [
+    ['<base data-href="/inert" href="https://example.invalid/">', "asset base URL"],
+    ['<meta data-http-equiv="none" http-equiv=" refresh " content="0;url=https://example.invalid/">', "meta refresh"],
+    ['<link data-imagesrcset="/inert.png 1x" imagesrcset="https://example.invalid/a.png 1x">', "remote script or link"],
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    assert.ok(auditBostanUiBrandSnapshot(source).some(issue => issue.includes(expected)), tag);
+  }
+});
