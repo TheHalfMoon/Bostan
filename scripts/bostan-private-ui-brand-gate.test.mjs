@@ -263,3 +263,90 @@ test("real HTML comments remain ignored beside quoted comment-like attributes", 
   source["ui/index.html"] += '<script data-note="<!-- -->" src="/local.js"></script>';
   assert.deepEqual(auditBostanUiBrandSnapshot(source), []);
 });
+
+test("refuses external media, frames and form actions in offline HTML shell", () => {
+  for (const tag of [
+    '<img src="https://tracker.example.invalid/pixel">',
+    '<iframe src="//external.example.invalid/embed"></iframe>',
+    '<video poster="https://external.example.invalid/poster.png"></video>',
+    '<source src="https://external.example.invalid/video.mp4">',
+    '<input type="submit" formaction="https://external.example.invalid/submit">',
+    '<embed src="https://external.example.invalid/file.pdf">',
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    assert.ok(auditBostanUiBrandSnapshot(source).some(issue => issue.includes("remote script or link")), tag);
+  }
+});
+
+test("permits local media sources and inert data-src attributes", () => {
+  const source = fixture();
+  source["ui/index.html"] += '<img src="/logo.svg" data-src="https://example.invalid/inert">';
+  source["ui/index.html"] += '<video poster="./poster.png"><source src="./video.mp4"></video>';
+  assert.deepEqual(auditBostanUiBrandSnapshot(source), []);
+});
+
+test("refuses responsive image candidates and external object/form targets", () => {
+  for (const tag of [
+    '<img srcset="https://cdn.example.invalid/a.png 1x, /b.png 2x">',
+    '<source srcset="/local.png 1x, //cdn.example.invalid/b.png 2x">',
+    '<img srcset="/local.png 1x">',
+    '<object data="https://cdn.example.invalid/document.pdf"></object>',
+    '<form action="//external.example.invalid/submit"></form>',
+    '<form action="https:&#47;&#47;external.example.invalid/submit"></form>',
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    assert.ok(auditBostanUiBrandSnapshot(source).some(issue => issue.includes("remote script or link")), tag);
+  }
+});
+
+test("permits local object/form targets and inert responsive attributes", () => {
+  const source = fixture();
+  source["ui/index.html"] += '<object data="/local.pdf"></object>';
+  source["ui/index.html"] += '<form action="./submit"><input data-srcset="https://example.invalid/inert"></form>';
+  assert.deepEqual(auditBostanUiBrandSnapshot(source), []);
+});
+
+test("refuses remote SVG image, use and filter references in offline HTML shell", () => {
+  for (const tag of [
+    '<svg><image href="https://external.example.invalid/pixel.svg"></image></svg>',
+    '<svg><use xlink:href="//external.example.invalid/icons.svg#icon"></use></svg>',
+    '<svg><feImage href="https://external.example.invalid/filter.png"></feImage></svg>',
+    '<svg><image data-href="https://external.example.invalid/inert" href="/local.svg"></image></svg>',
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    const issues = auditBostanUiBrandSnapshot(source);
+    if (tag.includes("data-href")) assert.deepEqual(issues, []);
+    else assert.ok(issues.some(issue => issue.includes("remote script or link")), tag);
+  }
+});
+
+test("refuses inline CSS that could fetch remote assets before consent", () => {
+  for (const tag of [
+    '<style>@import url("https://external.example.invalid/font.css");</style>',
+    '<style>body { background: url(https://external.example.invalid/pixel) }</style>',
+    '<div style="background-image:url(https://external.example.invalid/pixel)"></div>',
+    '<div data-note=">" style="background:url(//external.example.invalid/pixel)"></div>',
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    assert.ok(auditBostanUiBrandSnapshot(source).some(issue => issue.includes("inline CSS")), tag);
+  }
+});
+
+test("refuses iframe srcdoc and permits inert similarly named attributes", () => {
+  for (const tag of [
+    '<iframe srcdoc="<img src=https://external.example.invalid/pixel>"></iframe>',
+    '<iframe data-note=">" srcdoc="<script src=https://external.example.invalid/app.js></script>"></iframe>',
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    assert.ok(auditBostanUiBrandSnapshot(source).some(issue => issue.includes("iframe srcdoc")), tag);
+  }
+  const source = fixture();
+  source["ui/index.html"] += '<div data-style="background:url(https://example.invalid/inert)"></div>';
+  source["ui/index.html"] += '<iframe data-srcdoc="<img src=https://example.invalid/inert>"></iframe>';
+  assert.deepEqual(auditBostanUiBrandSnapshot(source), []);
+});

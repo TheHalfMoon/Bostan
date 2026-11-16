@@ -61,6 +61,17 @@ export function auditBostanUiBrandSnapshot(files) {
       .replace(/&(?:sol|colon|tab|newline);/gi, match => ({
         "&sol;": "/", "&colon;": ":", "&tab;": "\t", "&newline;": "\n",
       })[match.toLowerCase()] ?? match);
+    // Inline CSS can fetch fonts, backgrounds and imports without script/link tags.
+    // This minimal shell needs no inline stylesheet; refuse both forms rather
+    // than attempting to parse CSS escapes or nested url() expressions.
+    const htmlTags = html.match(/<[a-z][^>"']*(?:"[^"]*"|'[^']*'|[^>"']*)*>/gi) ?? [];
+    if (htmlTags.some(tag => /^<style\b/i.test(tag) || /\sstyle\s*=/i.test(tag))) {
+      issues.push("HTML shell must not contain inline CSS with unreviewed network access");
+    }
+    // srcdoc creates a nested browsing context whose markup can fetch assets.
+    if (htmlTags.some(tag => /^<iframe\b/i.test(tag) && /\ssrcdoc\s*=/i.test(tag))) {
+      issues.push("HTML shell must not embed unreviewed iframe srcdoc");
+    }
     // A base URL silently redirects otherwise-local relative assets to a remote origin.
     // Reject all base href declarations in the offline shell; a local base can also
     // change relative URL resolution and is unnecessary for this entry point.
@@ -75,14 +86,14 @@ export function auditBostanUiBrandSnapshot(files) {
         break;
       }
     }
-    for (const tag of html.match(/<(?:script|link)\b(?:"[^"]*"|\'[^\']*\'|[^\'">])*>/gi) ?? []) {
-      // A preload link can fetch remote images through imagesrcset without href.
-      // This offline shell does not require responsive image preloads.
-      if (/^<link\b/i.test(tag) && /\simagesrcset\s*=/i.test(tag)) {
+    for (const tag of html.match(/<(?:script|link|img|iframe|audio|video|source|track|embed|input|object|form|image|use|feimage)\b(?:"[^"]*"|\'[^\']*\'|[^\'">])*>/gi) ?? []) {
+      // Responsive image candidates can fetch remote URLs independently of src/href.
+      // Reject all srcset/imagesrcset declarations: this minimal offline shell does not need them.
+      if (/\s(?:srcset|imagesrcset)\s*=/i.test(tag)) {
         issues.push("HTML shell must not load remote script or link assets by default");
         break;
       }
-      for (const attribute of tag.matchAll(/\s(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)) {
+      for (const attribute of tag.matchAll(/\s(?:src|href|xlink:href|poster|formaction|action|data)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)) {
         // URL parsers strip ASCII tabs and newlines even when embedded in a scheme.
         const url = decodeReferences(attribute[1] ?? attribute[2] ?? attribute[3])
           .replace(/[\t\n\r]/g, "").trimStart();
