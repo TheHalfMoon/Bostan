@@ -62,14 +62,14 @@ export function auditBostanUiBrandSnapshot(files) {
         "&sol;": "/", "&colon;": ":", "&tab;": "\t", "&newline;": "\n",
       })[match.toLowerCase()] ?? match);
     // Inline CSS can fetch fonts, backgrounds and imports without script/link tags.
-    // This minimal shell has no inline stylesheet requirement: refuse both forms
-    // instead of attempting to parse CSS escapes or nested url() expressions.
-    if (/<style\\b/i.test(html) || /<[a-z][^>]*\\sstyle\\s*=/i.test(html)) {
+    // This minimal shell needs no inline stylesheet; refuse both forms rather
+    // than attempting to parse CSS escapes or nested url() expressions.
+    const htmlTags = html.match(/<[a-z][^>"']*(?:"[^"]*"|'[^']*'|[^>"']*)*>/gi) ?? [];
+    if (htmlTags.some(tag => /^<style\b/i.test(tag) || /\sstyle\s*=/i.test(tag))) {
       issues.push("HTML shell must not contain inline CSS with unreviewed network access");
     }
-    // srcdoc creates a nested browsing context whose own markup can fetch assets.
-    // The offline shell has no legitimate embedded-document requirement.
-    if (/<iframe\\b(?:\\"[^\\"]*\\"|'[^']*'|[^'\\">])*\\ssrcdoc\\s*=/i.test(html)) {
+    // srcdoc creates a nested browsing context whose markup can fetch assets.
+    if (htmlTags.some(tag => /^<iframe\b/i.test(tag) && /\ssrcdoc\s*=/i.test(tag))) {
       issues.push("HTML shell must not embed unreviewed iframe srcdoc");
     }
     // A base URL silently redirects otherwise-local relative assets to a remote origin.
