@@ -95,3 +95,17 @@ test("accepts shipped status artwork elements and reduced-motion CSS", () => {
     '<path d="M0 0" stroke="#fff"/></svg>'
   ), []);
 });
+
+test("refuses event handlers and linked attributes even on allowed SVG elements", () => {
+  for (const fragment of [
+    '<svg onload="fetch(\'https://example.invalid/pixel\')"><path d="M0 0"/></svg>',
+    '<svg><path onclick="alert(1)" d="M0 0"/></svg>',
+    '<svg><path href="#local" d="M0 0"/></svg>',
+    '<svg xml:base="https://example.invalid/"><path d="M0 0"/></svg>',
+    '<svg><path xlink:href="#local" d="M0 0"/></svg>',
+    '<svg><path src="https://example.invalid/x" d="M0 0"/></svg>',
+  ]) {
+    assert.ok(auditBostanStatusSvgSource(fragment).some(issue =>
+      issue.includes("executable, linked or base URI")), fragment);
+  }
+});
