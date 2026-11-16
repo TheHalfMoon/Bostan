@@ -245,3 +245,21 @@ test("rejects active base, refresh and image preload attributes after inert data
     assert.ok(auditBostanUiBrandSnapshot(source).some(issue => issue.includes(expected)), tag);
   }
 });
+
+test("comment delimiters inside quoted attributes cannot hide remote resource URLs", () => {
+  for (const tag of [
+    '<script data-note="<!--" src="https://example.invalid/hidden.js" data-end="-->"></script>',
+    '<link data-note="<!--" href="//example.invalid/hidden.css" data-end="-->">',
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    assert.ok(auditBostanUiBrandSnapshot(source).some(issue => issue.includes("remote script or link")), tag);
+  }
+});
+
+test("real HTML comments remain ignored beside quoted comment-like attributes", () => {
+  const source = fixture();
+  source["ui/index.html"] += '<!-- <script src="https://example.invalid/ignored.js"></script> -->';
+  source["ui/index.html"] += '<script data-note="<!-- -->" src="/local.js"></script>';
+  assert.deepEqual(auditBostanUiBrandSnapshot(source), []);
+});
