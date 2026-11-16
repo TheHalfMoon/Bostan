@@ -47,6 +47,55 @@ export function auditBostanUiBrandSnapshot(files) {
        !/name="apple-mobile-web-app-title" content="Bostan"/.test(index))) {
     issues.push("HTML document metadata must identify Bostan");
   }
+  // HTML character references are resolved by browsers before resource loading.
+  // This source admission does not replace browser network qualification.
+  if (typeof index === "string") {
+    // Preserve comment-looking text inside quoted tag attributes; only strip actual comments.
+    const html = index.replace(/(<[a-z][^>"\']*(?:"[^"]*"|\'[^\']*\'|[^>"\']*)*>)|<!--[\s\S]*?-->/gi,
+      (match, tag) => tag ?? "");
+    const decodeReferences = value => value
+      .replace(/&#(?:x([0-9a-f]+)|([0-9]+));?/gi, (match, hex, dec) => {
+        const point = Number.parseInt(hex ?? dec, hex ? 16 : 10);
+        return point > 0 && point <= 0x10ffff ? String.fromCodePoint(point) : match;
+      })
+      .replace(/&(?:sol|colon|tab|newline);/gi, match => ({
+        "&sol;": "/", "&colon;": ":", "&tab;": "\t", "&newline;": "\n",
+      })[match.toLowerCase()] ?? match);
+    // A base URL silently redirects otherwise-local relative assets to a remote origin.
+    // Reject all base href declarations in the offline shell; a local base can also
+    // change relative URL resolution and is unnecessary for this entry point.
+    if (/<base\b(?:"[^"]*"|\'[^\']*\'|[^\'">])*\shref\s*=/i.test(html)) {
+      issues.push("HTML shell must not override its asset base URL");
+    }
+    // Meta refresh can navigate the shell to a remote origin without a script/link URL.
+    // The installed offline entry point has no legitimate refresh-navigation requirement.
+    for (const tag of html.match(/<meta\b(?:"[^"]*"|\'[^\']*\'|[^\'">])*>/gi) ?? []) {
+      if (/\shttp-equiv\s*=\s*(?:"\s*refresh\s*"|'\s*refresh\s*'|refresh(?=[\s>]))/i.test(decodeReferences(tag))) {
+        issues.push("HTML shell must not use meta refresh navigation");
+        break;
+      }
+    }
+    for (const tag of html.match(/<(?:script|link)\b(?:"[^"]*"|\'[^\']*\'|[^\'">])*>/gi) ?? []) {
+      // A preload link can fetch remote images through imagesrcset without href.
+      // This offline shell does not require responsive image preloads.
+      if (/^<link\b/i.test(tag) && /\simagesrcset\s*=/i.test(tag)) {
+        issues.push("HTML shell must not load remote script or link assets by default");
+        break;
+      }
+      for (const attribute of tag.matchAll(/\s(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)) {
+        // URL parsers strip ASCII tabs and newlines even when embedded in a scheme.
+        const url = decodeReferences(attribute[1] ?? attribute[2] ?? attribute[3])
+          .replace(/[\t\n\r]/g, "").trimStart();
+        // Reject URL schemes and browser-normalized backslash variants, not only HTTP(S).
+        // The offline entry point only needs local absolute or relative paths.
+        if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|\\\\)/i.test(url) || url.includes("\\")) {
+          issues.push("HTML shell must not load remote script or link assets by default");
+          break;
+        }
+      }
+      if (issues.includes("HTML shell must not load remote script or link assets by default")) break;
+    }
+  }
   const manifest = files?.["ui/public/site.webmanifest"];
   if (typeof manifest === "string") {
     try {
