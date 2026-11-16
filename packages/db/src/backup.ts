@@ -23,9 +23,39 @@ function readConfig(configPath: string): PartialConfig | null {
   if (!existsSync(configPath)) return null;
   try {
     const parsed = JSON.parse(readFileSync(configPath, "utf8"));
-    return typeof parsed === "object" && parsed ? (parsed as PartialConfig) : null;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("Invalid backup configuration root");
+    }
+    if ("database" in parsed) {
+      const database = parsed.database;
+      if (!database || typeof database !== "object" || Array.isArray(database)) {
+        throw new Error("Invalid database configuration");
+      }
+      if ("mode" in database && database.mode !== "postgres" && database.mode !== "embedded-postgres") {
+        throw new Error("Invalid database mode");
+      }
+      if (database.mode === "postgres" && "connectionString" in database && typeof database.connectionString !== "string") {
+        throw new Error("Invalid external database connection string");
+      }
+      if ("embeddedPostgresPort" in database && (typeof database.embeddedPostgresPort !== "number" || !Number.isInteger(database.embeddedPostgresPort) || database.embeddedPostgresPort < 1 || database.embeddedPostgresPort > 65535)) {
+        throw new Error("Invalid embedded PostgreSQL port");
+      }
+      if ("backup" in database) {
+        const backup = database.backup;
+        if (!backup || typeof backup !== "object" || Array.isArray(backup)) {
+          throw new Error("Invalid backup settings");
+        }
+        if ("dir" in backup && (typeof backup.dir !== "string" || !backup.dir.trim())) {
+          throw new Error("Invalid backup directory");
+        }
+        if ("retentionDays" in backup && (typeof backup.retentionDays !== "number" || !Number.isInteger(backup.retentionDays) || backup.retentionDays < 1)) {
+          throw new Error("Invalid backup retention");
+        }
+      }
+    }
+    return parsed as PartialConfig;
   } catch {
-    return null;
+    throw new Error("Cannot read Bostan database backup configuration; refusing an ambiguous backup target.");
   }
 }
 
@@ -48,6 +78,10 @@ function resolveConnectionString(config: PartialConfig | null): string {
     if (trimmed) return trimmed;
   }
 
+  if (config?.database?.mode === "postgres") {
+    throw new Error("Postgres backup requires a configured database connection string or DATABASE_URL.");
+  }
+
   const port = resolveEmbeddedPort(config);
   return `postgres://paperclip:paperclip@127.0.0.1:${port}/paperclip`;
 }
@@ -65,22 +99,22 @@ function resolveRetentionDays(config: PartialConfig | null): number {
 }
 
 async function main() {
-  const configPath = resolveBostanConfigPathForInstance();
-  const config = readConfig(configPath);
-  const connectionString = resolveConnectionString(config);
-  const backupDir = resolveBackupDir(config);
-  const retentionDays = resolveRetentionDays(config);
-
-  console.log(`Config path: ${configPath}`);
-  console.log(`Backing up database to: ${backupDir}`);
-  console.log(`Retention window: ${retentionDays} day(s)`);
-
   try {
+    const configPath = resolveBostanConfigPathForInstance();
+    const config = readConfig(configPath);
+    const connectionString = resolveConnectionString(config);
+    const backupDir = resolveBackupDir(config);
+    const retentionDays = resolveRetentionDays(config);
+
+    console.log(`Config path: ${configPath}`);
+    console.log(`Backing up database to: ${backupDir}`);
+    console.log(`Retention window: ${retentionDays} day(s)`);
+
     const result = await runDatabaseBackup({
       connectionString,
       backupDir,
       retention: { dailyDays: retentionDays, weeklyWeeks: 4, monthlyMonths: 1 },
-      filenamePrefix: "paperclip",
+      filenamePrefix: "bostan",
     });
 
     console.log(`Backup saved: ${formatDatabaseBackupResult(result)}`);

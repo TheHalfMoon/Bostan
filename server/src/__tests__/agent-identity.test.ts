@@ -202,7 +202,7 @@ describe("agent cryptographic identity", () => {
       const seed = mode === "backup" ? undefined : resolveWorktreeSeedPlan(mode);
       const backup = await runDatabaseBackup({
         connectionString: database.connectionString, backupDir: join(directory, mode),
-        backupEngine: "javascript", retention: { dailyDays: 1, weeklyWeeks: 0, monthlyMonths: 0 },
+        backupEngine: "javascript", retention: { dailyDays: 1, weeklyWeeks: 1, monthlyMonths: 1 },
         excludeTables: seed?.excludedTables, nullifyColumns: seed?.nullifyColumns,
       });
       const target = new URL(database.connectionString);

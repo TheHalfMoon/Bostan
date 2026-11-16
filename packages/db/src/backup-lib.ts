@@ -78,17 +78,14 @@ const BACKUP_BREAKPOINT_DETECT_BYTES = 64 * 1024;
 const STATEMENT_BREAKPOINT = "-- paperclip statement breakpoint 69f6f3f1-42fd-46a6-bf17-d1d85f8f3900";
 
 function sanitizeRestoreErrorMessage(error: unknown): string {
-  if (error && typeof error === "object") {
-    const record = error as Record<string, unknown>;
-    const firstLine = typeof record.message === "string"
-      ? record.message.split(/\r?\n/, 1)[0]?.trim()
-      : "";
-    const detail = typeof record.detail === "string" ? record.detail.trim() : "";
-    const severity = typeof record.severity === "string" ? record.severity.trim() : "";
-    const message = firstLine || detail || (error instanceof Error ? error.message : String(error));
-    return severity ? `${severity}: ${message}` : message;
-  }
-  return error instanceof Error ? error.message : String(error);
+  // psql stderr can echo SQL literals, credentials, and local paths.
+  // Preserve only an allowlisted machine-readable code, not free-form text.
+  const code = error && typeof error === "object"
+    ? (error as Record<string, unknown>).code
+    : null;
+  return typeof code === "string" && /^[A-Z0-9]{5}$/.test(code)
+    ? `restore command failed (code ${code}; output omitted)`
+    : "restore command failed (output omitted)";
 }
 
 function timestamp(date: Date = new Date()): string {
@@ -529,8 +526,28 @@ export function createBufferedTextFileWriter(filePath: string, maxBufferedBytes 
 }
 
 export async function runDatabaseBackup(opts: RunDatabaseBackupOptions): Promise<RunDatabaseBackupResult> {
-  const filenamePrefix = opts.filenamePrefix ?? "paperclip";
+  // A library caller must not accidentally select a default database or filesystem
+  // location when the backup target is absent or blank.
+  if (typeof opts.connectionString !== "string" || opts.connectionString.trim().length === 0) {
+    throw new Error("Invalid backup connection string. Specify the intended database explicitly.");
+  }
+  if (typeof opts.backupDir !== "string" || opts.backupDir.trim().length === 0) {
+    throw new Error("Invalid backup directory. Specify a nonblank destination.");
+  }
+  const filenamePrefix = opts.filenamePrefix ?? "bostan";
+  // Validate at the library boundary, not only in the CLI: this value is used
+  // both to construct a filesystem path and to select files for pruning.
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(filenamePrefix)) {
+    throw new Error("Invalid backup filename prefix. Use letters, numbers, underscores or hyphens.");
+  }
   const retention = opts.retention;
+  // Reject invalid retention at the library boundary before creating an archive
+  // or pruning existing recovery points. NaN and fractional values must not
+  // silently change the effective retention window.
+  if (!retention || ![retention.dailyDays, retention.weeklyWeeks, retention.monthlyMonths]
+    .every((value) => Number.isSafeInteger(value) && value >= 1)) {
+    throw new Error("Invalid backup retention policy. All retention periods must be positive integers.");
+  }
   const connectTimeout = Math.max(1, Math.trunc(opts.connectTimeoutSeconds ?? 5));
   const backupEngine = opts.backupEngine ?? "auto";
   let effectiveBackupEngine = backupEngine;
@@ -1111,15 +1128,13 @@ export async function runDatabaseRestore(opts: RunDatabaseRestoreOptions): Promi
       await sql.unsafe(statement).execute();
     }
   } catch (error) {
-    const statementPreview = typeof error === "object" && error !== null && typeof (error as Record<string, unknown>).query === "string"
-      ? String((error as Record<string, unknown>).query)
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .find((line) => line.length > 0 && !line.startsWith("--"))
-      : null;
-    const psqlMessage = psqlRestoreError === null ? "" : `; psql error: ${sanitizeRestoreErrorMessage(psqlRestoreError)}`;
+    // SQL literals and driver error messages can contain sensitive restored data.
+    // Keep only a validated SQLSTATE code, never query text or database details.
+    const rawCode = error && typeof error === "object" ? (error as Record<string, unknown>).code : null;
+    const code = typeof rawCode === "string" && /^[A-Z0-9]{1,8}$/.test(rawCode)
+      ? ` (SQLSTATE ${rawCode})` : "";
     throw new Error(
-      `Failed to restore ${basename(opts.backupFile)}: ${sanitizeRestoreErrorMessage(error)}${statementPreview ? ` [statement: ${statementPreview.slice(0, 120)}]` : ""}${psqlMessage}`,
+      `Failed to restore ${basename(opts.backupFile)}${code}. SQL content omitted from diagnostics.`,
     );
   } finally {
     await sql.end();
