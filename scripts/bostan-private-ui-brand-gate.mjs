@@ -22,7 +22,22 @@ export function auditBostanStatusSvgSource(svg) {
       ? String.fromCodePoint(codepoint) : original;
   }).replace(/&colon;/gi, ":").replace(/&sol;/gi, "/").replace(/&amp;/gi, "&");
   const issues = [];
-  if (/<\s*(?:script|foreignObject|iframe|image|use|feImage)\b/i.test(decoded)) {
+  // This status mark is intentionally tiny. Reject new SVG element types until
+  // individually reviewed, rather than chasing every network-capable SVG feature
+  // (animation href, filters, fonts, nested documents, etc.) with a URL regex.
+  // The allowlist matches the shipped Bostan status artwork.
+  const elementTags = [...decoded.matchAll(/<\s*(\/?)\s*([a-z][\w:-]*)\b[^>]*>/gi)];
+  const allowedElements = new Set(["svg", "title", "style", "path"]);
+  if (!elementTags.length || elementTags.some(([, , name]) => !allowedElements.has(name.toLowerCase())) ||
+      /<!\s*(?:doctype|entity)\b/i.test(decoded) || /<\?(?!xml\s)/i.test(decoded)) {
+    issues.push("Status SVG contains unreviewed elements or XML declarations");
+  }
+  // CSS escapes can spell @import or url without matching literal URL patterns.
+  // Neither escapes nor URL references are required by the canonical animation.
+  if (/\\\\/.test(decoded) || /url\s*\(/i.test(decoded)) {
+    issues.push("Status SVG contains unreviewed CSS escapes or URL references");
+  }
+  if (/<\\s*(?:script|foreignObject|iframe|image|use|feImage)\\b/i.test(decoded)) {
     issues.push("Status SVG must not contain active embedded or linked elements");
   }
   if (/@import\b/i.test(decoded) ||
