@@ -75,14 +75,14 @@ export function auditBostanUiBrandSnapshot(files) {
         break;
       }
     }
-    for (const tag of html.match(/<(?:script|link|img|iframe|audio|video|source|track|embed|input|object|form)\b(?:"[^"]*"|\'[^\']*\'|[^\'">])*>/gi) ?? []) {
+    for (const tag of html.match(/<(?:script|link|img|iframe|audio|video|source|track|embed|input|object|form|image|use|feimage)\b(?:"[^"]*"|\'[^\']*\'|[^\'">])*>/gi) ?? []) {
       // Responsive image candidates can fetch remote URLs independently of src/href.
       // Reject all srcset/imagesrcset declarations: this minimal offline shell does not need them.
       if (/\s(?:srcset|imagesrcset)\s*=/i.test(tag)) {
         issues.push("HTML shell must not load remote script or link assets by default");
         break;
       }
-      for (const attribute of tag.matchAll(/\s(?:src|href|poster|formaction|action|data)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)) {
+      for (const attribute of tag.matchAll(/\s(?:src|href|xlink:href|poster|formaction|action|data)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)) {
         // URL parsers strip ASCII tabs and newlines even when embedded in a scheme.
         const url = decodeReferences(attribute[1] ?? attribute[2] ?? attribute[3])
           .replace(/[\t\n\r]/g, "").trimStart();
