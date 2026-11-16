@@ -62,13 +62,13 @@ export function auditBostanUiBrandSnapshot(files) {
     // A base URL silently redirects otherwise-local relative assets to a remote origin.
     // Reject all base href declarations in the offline shell; a local base can also
     // change relative URL resolution and is unnecessary for this entry point.
-    if (/<base\b(?:"[^"]*"|\'[^\']*\'|[^\'">])*\bhref\s*=/i.test(html)) {
+    if (/<base\b(?:"[^"]*"|\'[^\']*\'|[^\'">])*\shref\s*=/i.test(html)) {
       issues.push("HTML shell must not override its asset base URL");
     }
     // Meta refresh can navigate the shell to a remote origin without a script/link URL.
     // The installed offline entry point has no legitimate refresh-navigation requirement.
     for (const tag of html.match(/<meta\b(?:"[^"]*"|\'[^\']*\'|[^\'">])*>/gi) ?? []) {
-      if (/\bhttp-equiv\s*=\s*(?:"refresh"|'refresh'|refresh(?=[\s>]))/i.test(decodeReferences(tag))) {
+      if (/\shttp-equiv\s*=\s*(?:"\s*refresh\s*"|'\s*refresh\s*'|refresh(?=[\s>]))/i.test(decodeReferences(tag))) {
         issues.push("HTML shell must not use meta refresh navigation");
         break;
       }
@@ -76,7 +76,7 @@ export function auditBostanUiBrandSnapshot(files) {
     for (const tag of html.match(/<(?:script|link)\b(?:"[^"]*"|\'[^\']*\'|[^\'">])*>/gi) ?? []) {
       // A preload link can fetch remote images through imagesrcset without href.
       // This offline shell does not require responsive image preloads.
-      if (/^<link\b/i.test(tag) && /\bimagesrcset\s*=/i.test(tag)) {
+      if (/^<link\b/i.test(tag) && /\simagesrcset\s*=/i.test(tag)) {
         issues.push("HTML shell must not load remote script or link assets by default");
         break;
       }
