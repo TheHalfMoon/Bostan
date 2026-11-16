@@ -17,6 +17,8 @@ import { Fragment, useMemo, type ReactNode } from "react";
 import { PluginSlotOutlet, usePluginSlots } from "@/plugins/slots";
 import { PluginLauncherOutlet, usePluginLaunchers } from "@/plugins/launchers";
 import { cn } from "../lib/utils";
+import { ThemeToggle } from "./ThemeToggle";
+import { useStreamlinedUiEnabled } from "../hooks/useStreamlinedUiEnabled";
 
 type GlobalToolbarContext = { companyId: string | null; companyPrefix: string | null };
 
@@ -33,9 +35,12 @@ function CrumbIdentifier({ identifier }: { identifier?: string }) {
 function GlobalToolbar({
   context,
   pageToolbar,
+  showThemeToggle = false,
 }: {
   context: GlobalToolbarContext;
   pageToolbar?: ReactNode;
+  /** Desktop shows the toggle in the TitleBar; mobile keeps it here. */
+  showThemeToggle?: boolean;
 }) {
   const { slots } = usePluginSlots({ slotTypes: ["globalToolbarButton"], companyId: context.companyId });
   const { launchers } = usePluginLaunchers({ placementZones: ["globalToolbarButton"], companyId: context.companyId, enabled: !!context.companyId });
@@ -48,11 +53,13 @@ function GlobalToolbar({
       {launchers.length > 0 ? (
         <PluginLauncherOutlet placementZones={["globalToolbarButton"]} context={context} className="flex items-center gap-1" />
       ) : null}
+      {showThemeToggle ? <ThemeToggle /> : null}
     </div>
   );
 }
 
 export function BreadcrumbBar({ taskDetailLayout = false }: { taskDetailLayout?: boolean }) {
+  const { enabled: streamlinedUiEnabled } = useStreamlinedUiEnabled();
   const {
     breadcrumbs,
     breadcrumbToolbar,
@@ -77,6 +84,7 @@ export function BreadcrumbBar({ taskDetailLayout = false }: { taskDetailLayout?:
     <GlobalToolbar
       context={globalToolbarSlotContext}
       pageToolbar={isMobile ? null : breadcrumbToolbar}
+      showThemeToggle={isMobile || !streamlinedUiEnabled}
     />
   );
 

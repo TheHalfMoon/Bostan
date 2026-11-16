@@ -117,6 +117,11 @@ vi.mock("./BreadcrumbBar", () => ({
   BreadcrumbBar: () => <div>Breadcrumbs</div>,
 }));
 
+// TitleBar has its own suite; here it only needs to mount on desktop.
+vi.mock("./TitleBar", () => ({
+  TitleBar: () => <div data-testid="app-title-bar">Title bar</div>,
+}));
+
 vi.mock("./PropertiesPanel", () => ({
   PropertiesPanel: () => null,
 }));
@@ -380,6 +385,31 @@ describe("Layout", () => {
     });
   });
 
+  it("mounts the v3 title bar on desktop only", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    let root = createRoot(container);
+    await act(async () => {
+      renderLayoutView(root, queryClient);
+    });
+    await flushReact();
+    expect(container.querySelector('[data-testid="app-title-bar"]')).not.toBeNull();
+    await act(async () => {
+      root.unmount();
+    });
+
+    mockSidebarState.isMobile = true;
+    root = createRoot(container);
+    await act(async () => {
+      renderLayoutView(root, queryClient);
+    });
+    await flushReact();
+    expect(container.querySelector('[data-testid="app-title-bar"]')).toBeNull();
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
   it("scopes the Streamlined task-detail surface while preserving balanced horizontal gutters", async () => {
     currentPathname = "/PAP/issues/PAP-1";
     mockInstanceSettingsApi.getExperimental.mockResolvedValue({
@@ -602,6 +632,8 @@ describe("Layout", () => {
     await flushReact();
     await flushReact();
 
+    // The legacy opt-out shell keeps its sidebar organization menu; no v3 title bar.
+    expect(container.querySelector('[data-testid="app-title-bar"]')).toBeNull();
     expect(container.textContent).toContain("Main company nav");
     expect(container.textContent).toContain("Company settings sidebar");
     expect(mockSetForceCollapsed).toHaveBeenCalledWith(true);

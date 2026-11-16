@@ -25,7 +25,7 @@ import { FlyoutContent, FlyoutHeader, FlyoutOptions } from "@/components/ui/flyo
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn, SIDEBAR_RAIL_HIDDEN_LABEL } from "../lib/utils";
-import { ThemeToggle } from "./ThemeToggle";
+import { ThemePreferenceControl } from "./ThemeToggle";
 import { SidebarServerInfo } from "./SidebarServerInfo";
 import { TruncatedText } from "./TruncatedText";
 
@@ -258,7 +258,7 @@ export function SidebarAccountMenu({
                 external
                 onClick={() => setOpen(false)}
               />
-              <ThemeToggle variant="compact-menu-action" onAfterToggle={() => setOpen(false)} />
+              <ThemePreferenceControl />
               {deploymentMode === "authenticated" ? (
                 <button
                   type="button"
