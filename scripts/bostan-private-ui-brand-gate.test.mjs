@@ -322,3 +322,31 @@ test("refuses remote SVG image, use and filter references in offline HTML shell"
     else assert.ok(issues.some(issue => issue.includes("remote script or link")), tag);
   }
 });
+
+test("refuses inline CSS that could fetch remote assets before consent", () => {
+  for (const tag of [
+    '<style>@import url("https://external.example.invalid/font.css");</style>',
+    '<style>body { background: url(https://external.example.invalid/pixel) }</style>',
+    '<div style="background-image:url(https://external.example.invalid/pixel)"></div>',
+    '<div data-note=">" style="background:url(//external.example.invalid/pixel)"></div>',
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    assert.ok(auditBostanUiBrandSnapshot(source).some(issue => issue.includes("inline CSS")), tag);
+  }
+});
+
+test("refuses iframe srcdoc and permits inert similarly named attributes", () => {
+  for (const tag of [
+    '<iframe srcdoc="<img src=https://external.example.invalid/pixel>"></iframe>',
+    '<iframe data-note=">" srcdoc="<script src=https://external.example.invalid/app.js></script>"></iframe>',
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    assert.ok(auditBostanUiBrandSnapshot(source).some(issue => issue.includes("iframe srcdoc")), tag);
+  }
+  const source = fixture();
+  source["ui/index.html"] += '<div data-style="background:url(https://example.invalid/inert)"></div>';
+  source["ui/index.html"] += '<iframe data-srcdoc="<img src=https://example.invalid/inert>"></iframe>';
+  assert.deepEqual(auditBostanUiBrandSnapshot(source), []);
+});
