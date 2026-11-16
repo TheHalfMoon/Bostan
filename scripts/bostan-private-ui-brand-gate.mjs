@@ -75,14 +75,14 @@ export function auditBostanUiBrandSnapshot(files) {
         break;
       }
     }
-    for (const tag of html.match(/<(?:script|link)\b(?:"[^"]*"|\'[^\']*\'|[^\'">])*>/gi) ?? []) {
+    for (const tag of html.match(/<(?:script|link|img|iframe|audio|video|source|track|embed|input)\b(?:"[^"]*"|\'[^\']*\'|[^\'">])*>/gi) ?? []) {
       // A preload link can fetch remote images through imagesrcset without href.
       // This offline shell does not require responsive image preloads.
       if (/^<link\b/i.test(tag) && /\simagesrcset\s*=/i.test(tag)) {
         issues.push("HTML shell must not load remote script or link assets by default");
         break;
       }
-      for (const attribute of tag.matchAll(/\s(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)) {
+      for (const attribute of tag.matchAll(/\s(?:src|href|poster|formaction)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)) {
         // URL parsers strip ASCII tabs and newlines even when embedded in a scheme.
         const url = decodeReferences(attribute[1] ?? attribute[2] ?? attribute[3])
           .replace(/[\t\n\r]/g, "").trimStart();
