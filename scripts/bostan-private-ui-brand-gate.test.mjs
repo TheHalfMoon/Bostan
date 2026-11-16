@@ -207,3 +207,21 @@ test("refuses external assets and navigation when quoted attributes contain angl
     assert.ok(auditBostanUiBrandSnapshot(source).some(issue => issue.includes(expected)), tag);
   }
 });
+
+test("does not confuse inert data-src and data-href with browser resource attributes", () => {
+  const source = fixture();
+  source["ui/index.html"] += '<script data-src="https://example.invalid/inert.js"></script>';
+  source["ui/index.html"] += '<link data-href="https://example.invalid/inert.css">';
+  assert.deepEqual(auditBostanUiBrandSnapshot(source), []);
+});
+
+test("still rejects remote src and href after inert data attributes", () => {
+  for (const tag of [
+    '<script data-src="/local.js" src="https://example.invalid/active.js"></script>',
+    '<link data-href="/local.css" href="https://example.invalid/active.css">',
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    assert.ok(auditBostanUiBrandSnapshot(source).some(issue => issue.includes("remote script or link")), tag);
+  }
+});
