@@ -61,6 +61,17 @@ export function auditBostanUiBrandSnapshot(files) {
       .replace(/&(?:sol|colon|tab|newline);/gi, match => ({
         "&sol;": "/", "&colon;": ":", "&tab;": "\t", "&newline;": "\n",
       })[match.toLowerCase()] ?? match);
+    // Inline CSS can fetch fonts, backgrounds and imports without script/link tags.
+    // This minimal shell has no inline stylesheet requirement: refuse both forms
+    // instead of attempting to parse CSS escapes or nested url() expressions.
+    if (/<style\\b/i.test(html) || /<[a-z][^>]*\\sstyle\\s*=/i.test(html)) {
+      issues.push("HTML shell must not contain inline CSS with unreviewed network access");
+    }
+    // srcdoc creates a nested browsing context whose own markup can fetch assets.
+    // The offline shell has no legitimate embedded-document requirement.
+    if (/<iframe\\b(?:\\"[^\\"]*\\"|'[^']*'|[^'\\">])*\\ssrcdoc\\s*=/i.test(html)) {
+      issues.push("HTML shell must not embed unreviewed iframe srcdoc");
+    }
     // A base URL silently redirects otherwise-local relative assets to a remote origin.
     // Reject all base href declarations in the offline shell; a local base can also
     // change relative URL resolution and is unnecessary for this entry point.
