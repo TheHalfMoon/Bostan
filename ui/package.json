@@ -26,7 +26,7 @@
     "prepublishOnly": "node ../scripts/bostan-release-disabled.mjs"
   },
   "dependencies": {
-    "@assistant-ui/react": "0.15.22",
+    "@assistant-ui/react": "0.15.36",
     "@base-ui/react": "^1.7.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
