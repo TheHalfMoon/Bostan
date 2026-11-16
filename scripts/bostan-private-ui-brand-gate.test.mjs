@@ -193,3 +193,17 @@ test("refuses responsive image preload URLs that bypass href checks", () => {
     assert.ok(auditBostanUiBrandSnapshot(source).some(s => s.includes("remote script or link")), tag);
   }
 });
+
+
+test("refuses external assets and navigation when quoted attributes contain angle brackets", () => {
+  for (const [tag, expected] of [
+    ['<script data-note=">" src="https://cdn.example.invalid/a.js"></script>', "remote script or link"],
+    ['<link data-note=">" href="https://cdn.example.invalid/a.css">', "remote script or link"],
+    ['<meta data-note=">" http-equiv="refresh" content="0;url=https://example.invalid/">', "meta refresh"],
+    ['<base data-note=">" href="https://example.invalid/">', "asset base URL"],
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    assert.ok(auditBostanUiBrandSnapshot(source).some(issue => issue.includes(expected)), tag);
+  }
+});
