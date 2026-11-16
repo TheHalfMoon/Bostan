@@ -32,6 +32,12 @@ export function auditBostanStatusSvgSource(svg) {
       /<!\s*(?:doctype|entity)\b/i.test(decoded) || /<\?(?!xml\s)/i.test(decoded)) {
     issues.push("Status SVG contains unreviewed elements or XML declarations");
   }
+  // Even allowlisted SVG elements can execute handlers or navigate via attributes.
+  // The canonical status mark requires neither event handlers nor linked resources.
+  // Reject all href/src and XML base declarations, not just known remote schemes.
+  if (/\\s(?:on[a-z][\\w:-]*|(?:xlink:)?href|src|xml:base)\\s*=/i.test(decoded)) {
+    issues.push("Status SVG contains executable, linked or base URI attributes");
+  }
   // CSS escapes can spell @import or url without matching literal URL patterns.
   // Neither escapes nor URL references are required by the canonical animation.
   if (/\\/.test(decoded) || /url\s*\(/i.test(decoded)) {
