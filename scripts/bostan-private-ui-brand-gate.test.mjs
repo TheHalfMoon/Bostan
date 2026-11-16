@@ -73,3 +73,25 @@ test("refuses active linked and embedded content in canonical status SVG", () =>
 test("accepts inert, local Bostan SVG artwork", () => {
   assert.deepEqual(auditBostanStatusSvgSource('<svg xmlns="http://www.w3.org/2000/svg"><style>.a{fill:url(#local)}</style><path d="M0 0"/></svg>'), []);
 });
+
+test("rejects SVG elements that can fetch through animation, fonts or nested documents", () => {
+  for (const fragment of [
+    '<animate attributeName="href" to="https://example.invalid/pixel"/>',
+    '<a href="https://example.invalid/"><path d="M0 0"/></a>',
+    '<filter id="f"><feGaussianBlur stdDeviation="2"/></filter>',
+    '<text>unreviewed text</text>',
+    '<!DOCTYPE svg [<!ENTITY ext SYSTEM "https://example.invalid/a">]>',
+    '<style>@font-face { src: url(https://example.invalid/font.woff) }</style>',
+    '<style>.x{fill:u\\72l(https://example.invalid/pixel)}</style>',
+  ]) {
+    assert.ok(auditBostanStatusSvgSource('<svg>' + fragment + '</svg>').length > 0, fragment);
+  }
+});
+
+test("accepts shipped status artwork elements and reduced-motion CSS", () => {
+  assert.deepEqual(auditBostanStatusSvgSource(
+    '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"><title>Bostan</title>' +
+    '<style>@media (prefers-reduced-motion: reduce) { .b { animation: none } }</style>' +
+    '<path d="M0 0" stroke="#fff"/></svg>'
+  ), []);
+});
