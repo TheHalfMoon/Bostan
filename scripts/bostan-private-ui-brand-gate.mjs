@@ -11,6 +11,26 @@ export const UI_BRAND_FILES = Object.freeze([
   "ui/public/site.webmanifest",
 ]);
 
+/** Refuse network-capable content in the canonical status artwork before first-run consent.
+ * This is a source admission check, not a browser network-isolation proof. */
+export function auditBostanStatusSvgSource(svg) {
+  if (typeof svg !== "string") return ["Missing status SVG source"];
+  const decoded = svg.replace(/&#(x[0-9a-f]+|[0-9]+);?/gi, (_, entity) =>
+    String.fromCodePoint(entity[0].toLowerCase() === "x"
+      ? parseInt(entity.slice(1), 16) : parseInt(entity, 10)))
+    .replace(/&colon;/gi, ":").replace(/&sol;/gi, "/").replace(/&amp;/gi, "&");
+  const issues = [];
+  if (/<\\s*(?:script|foreignObject|iframe|image|use|feImage)\\b/i.test(decoded)) {
+    issues.push("Status SVG must not contain active embedded or linked elements");
+  }
+  if (/@import\\b/i.test(decoded) ||
+      /\\b(?:href|xlink:href|src)\\s*=\\s*["']?\\s*(?:https?:|\\/\\/|data:|javascript:)/i.test(decoded) ||
+      /url\\(\\s*["']?\\s*(?:https?:|\\/\\/|data:|javascript:)/i.test(decoded)) {
+    issues.push("Status SVG must not reference remote or executable resources");
+  }
+  return issues;
+}
+
 /** Pure, read-only brand admission for private Bostan UI source snapshots. */
 export function auditBostanUiBrandSnapshot(files) {
   const issues = [];
@@ -32,6 +52,7 @@ export function auditBostanUiBrandSnapshot(files) {
        /paperclip/i.test(asset))) {
     issues.push("Canonical Bostan status asset must use Bostan identity and respect reduced motion");
   }
+  if (typeof asset === "string") issues.push(...auditBostanStatusSvgSource(asset));
   if (typeof asset === "string" && typeof legacy === "string" && legacy !== asset) {
     issues.push("Legacy thinking asset must serve the same Bostan artwork");
   }
