@@ -70,8 +70,8 @@ test("refuses active linked and embedded content in canonical status SVG", () =>
   }
 });
 
-test("accepts inert, local Bostan SVG artwork", () => {
-  assert.deepEqual(auditBostanStatusSvgSource('<svg xmlns="http://www.w3.org/2000/svg"><style>.a{fill:url(#local)}</style><path d="M0 0"/></svg>'), []);
+test("refuses even local CSS URL references in the minimal status artwork", () => {
+  assert.ok(auditBostanStatusSvgSource('<svg xmlns="http://www.w3.org/2000/svg"><style>.a{fill:url(#local)}</style><path d="M0 0"/></svg>').length > 0);
 });
 
 test("rejects SVG elements that can fetch through animation, fonts or nested documents", () => {
