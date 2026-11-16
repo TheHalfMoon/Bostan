@@ -285,3 +285,25 @@ test("permits local media sources and inert data-src attributes", () => {
   source["ui/index.html"] += '<video poster="./poster.png"><source src="./video.mp4"></video>';
   assert.deepEqual(auditBostanUiBrandSnapshot(source), []);
 });
+
+test("refuses responsive image candidates and external object/form targets", () => {
+  for (const tag of [
+    '<img srcset="https://cdn.example.invalid/a.png 1x, /b.png 2x">',
+    '<source srcset="/local.png 1x, //cdn.example.invalid/b.png 2x">',
+    '<img srcset="/local.png 1x">',
+    '<object data="https://cdn.example.invalid/document.pdf"></object>',
+    '<form action="//external.example.invalid/submit"></form>',
+    '<form action="https:&#47;&#47;external.example.invalid/submit"></form>',
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    assert.ok(auditBostanUiBrandSnapshot(source).some(issue => issue.includes("remote script or link")), tag);
+  }
+});
+
+test("permits local object/form targets and inert responsive attributes", () => {
+  const source = fixture();
+  source["ui/index.html"] += '<object data="/local.pdf"></object>';
+  source["ui/index.html"] += '<form action="./submit"><input data-srcset="https://example.invalid/inert"></form>';
+  assert.deepEqual(auditBostanUiBrandSnapshot(source), []);
+});
