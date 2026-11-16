@@ -1,8 +1,8 @@
-import { Moon, Sun } from "lucide-react";
+import { Monitor, Moon, Sun } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useTheme } from "../context/ThemeContext";
+import { useTheme, type ThemePreference } from "../context/ThemeContext";
 
 type ThemeToggleVariant = "icon" | "menu-action" | "compact-menu-action";
 
@@ -98,5 +98,52 @@ export function ThemeToggle({ className, variant = "icon", onAfterToggle }: Them
     >
       <Icon />
     </Button>
+  );
+}
+
+const PREFERENCE_OPTIONS: ReadonlyArray<{ value: ThemePreference; label: string; Icon: typeof Sun }> = [
+  { value: "light", label: "Light", Icon: Sun },
+  { value: "dark", label: "Dark", Icon: Moon },
+  { value: "system", label: "System", Icon: Monitor },
+];
+
+/**
+ * Light / Dark / System appearance selector. The choice is persisted; System
+ * follows the OS `prefers-color-scheme` setting live.
+ */
+export function ThemePreferenceControl({ className }: { className?: string }) {
+  const { preference, setPreference } = useTheme();
+  return (
+    <div className={cn("flex items-center gap-(--profile-popover-row-gap) px-2.5 py-1", className)}>
+      <span id="theme-preference-label" className="min-w-0 flex-1 truncate text-(length:--text-compact) font-medium text-foreground">
+        Appearance
+      </span>
+      <div
+        role="radiogroup"
+        aria-labelledby="theme-preference-label"
+        className="inline-flex shrink-0 items-center gap-0.5 rounded-lg border border-border bg-muted p-0.5"
+      >
+        {PREFERENCE_OPTIONS.map(({ value, label, Icon }) => {
+          const checked = preference === value;
+          return (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={checked}
+              aria-label={label}
+              title={label}
+              onClick={() => setPreference(value)}
+              className={cn(
+                "inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                checked && "bg-card text-foreground shadow-xs",
+              )}
+            >
+              <Icon className="size-4" aria-hidden="true" />
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }

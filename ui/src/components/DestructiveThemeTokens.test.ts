@@ -24,8 +24,28 @@ function oklch(value: string): [number, number, number] {
   return [Number(match![1]), Number(match![2]), Number(match![3])];
 }
 
-// WCAG 2 relative luminance of an oklch() color, via OKLab and linear sRGB.
+/** Follow var(--x) references through the theme block, then :root. */
+function resolve(value: string, block: string): string {
+  const reference = value.match(/^var\(--([a-z0-9-]+)\)$/);
+  if (!reference) return value;
+  const own = block.match(new RegExp(`^\\s*--${reference[1]}:\\s*([^;]+);`, "m"));
+  const next = own ? own[1].trim() : token(cssBlock(":root"), reference[1]);
+  return resolve(next, block);
+}
+
+function srgbChannel(value: number): number {
+  const c = value / 255;
+  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+}
+
+// WCAG 2 relative luminance of a hex or oklch() color (oklch via OKLab and
+// linear sRGB).
 function relativeLuminance(value: string): number {
+  const hex = value.match(/^#([0-9a-f]{6})$/i);
+  if (hex) {
+    const [r, g, b] = [0, 2, 4].map((offset) => srgbChannel(parseInt(hex[1].slice(offset, offset + 2), 16)));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
   const [l, c, h] = oklch(value);
   const a = c * Math.cos((h * Math.PI) / 180);
   const b = c * Math.sin((h * Math.PI) / 180);
@@ -50,16 +70,16 @@ function contrastRatio(first: string, second: string): number {
 describe("destructive theme tokens", () => {
   // Confirm buttons use `bg-destructive text-destructive-foreground`. The label
   // must stay readable on the destructive fill in both themes.
-  // Light theme meets WCAG AA for normal text (4.5:1). The dark theme keeps the
-  // brighter red chosen in the gallery review, so it only has to meet 3:1.
+  // Bostan v3: both themes meet WCAG AA for normal text (4.5:1). Light uses
+  // white on bad-text red; dark uses the dark page colour on the light red.
   for (const [selector, minimum] of [
     [":root", 4.5],
-    [".dark", 3],
+    [".dark", 4.5],
   ] as const) {
     it(`keeps destructive-foreground readable on the destructive fill in ${selector}`, () => {
       const block = cssBlock(selector);
-      const fill = token(block, "destructive");
-      const foreground = token(block, "destructive-foreground");
+      const fill = resolve(token(block, "destructive"), block);
+      const foreground = resolve(token(block, "destructive-foreground"), block);
 
       expect(contrastRatio(foreground, fill)).toBeGreaterThanOrEqual(minimum);
     });

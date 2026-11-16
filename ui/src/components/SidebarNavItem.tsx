@@ -128,8 +128,9 @@ export function SidebarNavItem({
           // the icon breathing room inside the pill. Rows with hover menus
           // (agents/projects) reserve extra right padding via className.
           "flex items-center gap-2.5 mx-2 rounded-lg px-2 py-1.5 pointer-coarse:py-1 text-(length:--text-compact) font-medium transition-colors",
+          // v3 active item: selected tint, red label, 3px inset accent bar.
           (active ?? isActive)
-            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+            ? "nav-active"
             : "text-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
           className,
         )
