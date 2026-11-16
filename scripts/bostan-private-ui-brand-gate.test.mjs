@@ -263,3 +263,25 @@ test("real HTML comments remain ignored beside quoted comment-like attributes", 
   source["ui/index.html"] += '<script data-note="<!-- -->" src="/local.js"></script>';
   assert.deepEqual(auditBostanUiBrandSnapshot(source), []);
 });
+
+test("refuses external media, frames and form actions in offline HTML shell", () => {
+  for (const tag of [
+    '<img src="https://tracker.example.invalid/pixel">',
+    '<iframe src="//external.example.invalid/embed"></iframe>',
+    '<video poster="https://external.example.invalid/poster.png"></video>',
+    '<source src="https://external.example.invalid/video.mp4">',
+    '<input type="submit" formaction="https://external.example.invalid/submit">',
+    '<embed src="https://external.example.invalid/file.pdf">',
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    assert.ok(auditBostanUiBrandSnapshot(source).some(issue => issue.includes("remote script or link")), tag);
+  }
+});
+
+test("permits local media sources and inert data-src attributes", () => {
+  const source = fixture();
+  source["ui/index.html"] += '<img src="/logo.svg" data-src="https://example.invalid/inert">';
+  source["ui/index.html"] += '<video poster="./poster.png"><source src="./video.mp4"></video>';
+  assert.deepEqual(auditBostanUiBrandSnapshot(source), []);
+});
