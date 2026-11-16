@@ -307,3 +307,18 @@ test("permits local object/form targets and inert responsive attributes", () => 
   source["ui/index.html"] += '<form action="./submit"><input data-srcset="https://example.invalid/inert"></form>';
   assert.deepEqual(auditBostanUiBrandSnapshot(source), []);
 });
+
+test("refuses remote SVG image, use and filter references in offline HTML shell", () => {
+  for (const tag of [
+    '<svg><image href="https://external.example.invalid/pixel.svg"></image></svg>',
+    '<svg><use xlink:href="//external.example.invalid/icons.svg#icon"></use></svg>',
+    '<svg><feImage href="https://external.example.invalid/filter.png"></feImage></svg>',
+    '<svg><image data-href="https://external.example.invalid/inert" href="/local.svg"></image></svg>',
+  ]) {
+    const source = fixture();
+    source["ui/index.html"] += tag;
+    const issues = auditBostanUiBrandSnapshot(source);
+    if (tag.includes("data-href")) assert.deepEqual(issues, []);
+    else assert.ok(issues.some(issue => issue.includes("remote script or link")), tag);
+  }
+});
