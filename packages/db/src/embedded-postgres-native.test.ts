@@ -131,7 +131,7 @@ describe("embedded Postgres native runtime", () => {
 
     const dataDirectory = path.join(root, "data");
     const flags = await prepareWindowsPostgresExtensionRuntime(nativeRoot, dataDirectory);
-    const runtimeDirectory = path.join(dataDirectory, "postgres-extensions-18.1.0-beta.16");
+    const runtimeDirectory = path.join(root, "bostan-postgres-extensions-18.1.0-beta.16");
     expect(flags).toEqual([
       "-c", `extension_control_path='${runtimeDirectory};$system'`,
       "-c", `dynamic_library_path='${runtimeDirectory};$libdir'`,
@@ -140,6 +140,7 @@ describe("embedded Postgres native runtime", () => {
       "fuzzystrmatch--1.0.sql", "fuzzystrmatch.control", "fuzzystrmatch.dll",
       "pg_trgm--1.0.sql", "pg_trgm.control", "pg_trgm.dll",
     ]);
+    expect(fs.readdirSync(dataDirectory)).toEqual([]);
     expect(await prepareWindowsPostgresExtensionRuntime(nativeRoot, dataDirectory)).toEqual(flags);
 
     fs.writeFileSync(path.join(runtimeDirectory, "fuzzystrmatch--1.0.sql"), "tampered");

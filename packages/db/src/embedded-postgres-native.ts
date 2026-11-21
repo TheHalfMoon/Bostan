@@ -148,11 +148,15 @@ export async function prepareWindowsPostgresExtensionRuntime(nativeRoot: string,
   if (typeof packageMetadata.version !== "string" || !/^[A-Za-z0-9.-]{1,80}$/.test(packageMetadata.version)) {
     throw new Error("Embedded PostgreSQL native package version is invalid");
   }
-  const runtimeDirectory = path.join(dataDirectory, `postgres-extensions-${packageMetadata.version}`);
+  const runtimeDirectory = path.join(path.dirname(dataDirectory), `bostan-postgres-extensions-${packageMetadata.version}`);
   await fs.mkdir(dataDirectory, { recursive: true });
   const dataInfo = await fs.lstat(dataDirectory);
   if (!dataInfo.isDirectory() || dataInfo.isSymbolicLink()) {
     throw new Error("Embedded PostgreSQL data directory is unsafe");
+  }
+  const parentInfo = await fs.lstat(path.dirname(dataDirectory));
+  if (!parentInfo.isDirectory() || parentInfo.isSymbolicLink()) {
+    throw new Error("Embedded PostgreSQL data parent directory is unsafe");
   }
   await fs.mkdir(runtimeDirectory, { recursive: true });
   const runtimeInfo = await fs.lstat(runtimeDirectory);
