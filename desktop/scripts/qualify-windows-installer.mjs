@@ -33,6 +33,11 @@ const windowsPowerShellModulePath = [
   path.join(process.env.ProgramFiles || "C:\\Program Files", "WindowsPowerShell", "Modules"),
 ].join(path.delimiter);
 const registrationIdentity = nsisRegistrationIdentity(JSON.parse(fs.readFileSync(path.join(repo, "desktop/package.json"), "utf8")));
+process.on("uncaughtExceptionMonitor", () => {
+  // The worker wrapper keeps raw stderr private. Emit only a fixed receipt so
+  // an assertion or unexpected dependency failure still has a visible outcome.
+  try { console.log("BOSTAN_WINDOWS_INSTALLER_FAILURE qualification_failed"); } catch { /* Preserve the original failure. */ }
+});
 function uninstallRegistrations() {
   try {
     const raw = execFileSync(scanner, ["-NoProfile", "-NonInteractive", "-File", path.join(import.meta.dirname, "read-windows-registration.ps1")], {
@@ -102,10 +107,12 @@ try {
     installationElapsedMs = Date.now() - installationStarted;
   } catch (error) {
     installationElapsedMs = Date.now() - installationStarted;
+    console.log("BOSTAN_WINDOWS_INSTALLER_PHASE install_failed");
     // Fixed, bounded facts distinguish extraction progress from a pre-install hang.
     // Never walk links, print paths, or replace the original installer failure.
     const snapshot = { installerFailed: true, installedExecutable: false, installDirectoryPresent: false,
-      phases: [], entries: 0, scanCapped: false, scanFailed: false, temporary: null };
+      phases: [], entries: 0, scanCapped: false, scanFailed: false,
+      temporary: { entries: 0, regularBytes: 0, capped: false, failed: true } };
     try {
       snapshot.phases = installerPhases();
       snapshot.installDirectoryPresent = fs.lstatSync(install, { throwIfNoEntry: false })?.isDirectory() === true;
@@ -122,31 +129,50 @@ try {
     console.log("BOSTAN_WINDOWS_INSTALLER_TIMING " + JSON.stringify({ elapsedMs: installationElapsedMs, budgetMs: 300000 }));
   }
   console.log("BOSTAN_WINDOWS_INSTALLER_PHASE install_complete");
-  console.log("BOSTAN_WINDOWS_NSIS_PHASES " + JSON.stringify(installerPhases()));
-  assert.equal(installerPhases().filter(value => value === "extraction_direct_complete").length, 1,
+  console.log("BOSTAN_WINDOWS_INSTALLER_PHASE receipt_check_begin");
+  const completedInstallerPhases = installerPhases();
+  console.log("BOSTAN_WINDOWS_INSTALLER_PHASE receipt_check_complete");
+  console.log("BOSTAN_WINDOWS_NSIS_PHASES " + JSON.stringify(completedInstallerPhases));
+  assert.equal(completedInstallerPhases.filter(value => value === "extraction_direct_complete").length, 1,
     "Installed qualification did not run the hash-verified direct Windows extractor");
   const executable = path.join(install, "Bostan.exe");
   assert.equal(fs.existsSync(executable), true, "Installer did not create the application executable");
+  console.log("BOSTAN_WINDOWS_INSTALLER_PHASE registration_check_begin");
   assertInstalledRegistration(uninstallRegistrations(), registrationIdentity, install);
+  console.log("BOSTAN_WINDOWS_INSTALLER_PHASE registration_check_complete");
   // Prove these are unsigned qualification artifacts, never OS-trusted releases.
-  const signature = execFileSync(scanner, ["-NoProfile", "-NonInteractive", "-Command", "(Get-AuthenticodeSignature -LiteralPath $env:BOSTAN_QA_EXECUTABLE).Status.ToString()"], {
-    env: { ...process.env, PSModulePath: windowsPowerShellModulePath, BOSTAN_QA_EXECUTABLE: executable }, encoding: "utf8", windowsHide: true,
-  }).trim();
-  assert.equal(signature, "NotSigned");
+  console.log("BOSTAN_WINDOWS_INSTALLER_PHASE signature_check_begin");
+  let signature;
+  try {
+    signature = execFileSync(scanner, ["-NoProfile", "-NonInteractive", "-Command", "(Get-AuthenticodeSignature -LiteralPath $env:BOSTAN_QA_EXECUTABLE).Status.ToString()"], {
+      env: { ...process.env, PSModulePath: windowsPowerShellModulePath, BOSTAN_QA_EXECUTABLE: executable },
+      encoding: "utf8", windowsHide: true, timeout: 180000,
+    }).trim();
+    if (signature !== "NotSigned") throw new Error("signature_status_invalid");
+  } catch {
+    console.log("BOSTAN_WINDOWS_INSTALLER_FAILURE signature_check_failed");
+    throw new Error("Windows Authenticode qualification failed");
+  }
+  console.log("BOSTAN_WINDOWS_INSTALLER_PHASE signature_check_complete");
 
   async function launch() {
+    console.log("BOSTAN_WINDOWS_INSTALLER_PHASE electron_launch_begin");
     application = await _electron.launch({ executablePath: executable, env, timeout: 180000 });
+    console.log("BOSTAN_WINDOWS_INSTALLER_PHASE electron_connected");
     stopStartupObserver = observeInstalledAppStartup(application, line => console.log(line));
     forcedStop = false;
     const actual = await appPhase("data_path", () => application.evaluate(({ app }) => app.getPath("userData")));
     assert.equal(path.resolve(actual).toLowerCase(), path.resolve(appData).toLowerCase());
     fs.writeFileSync(path.join(appData, ".bostan-installer-qa-owned"), "disposable-ci", { flag: ownedData ? "w" : "wx" });
     ownedData = true;
+    console.log("BOSTAN_WINDOWS_INSTALLER_PHASE data_path_verified");
     const page = await appPhase("first_window", () => application.firstWindow({ timeout: 180000 }));
+    console.log("BOSTAN_WINDOWS_INSTALLER_PHASE first_window");
     page.setDefaultTimeout(30000);
     page.setDefaultNavigationTimeout(180000);
     await page.waitForURL(url => url.protocol === "http:" && url.hostname === "127.0.0.1", { timeout: 180000 });
     stopStartupObserver();
+    console.log("BOSTAN_WINDOWS_INSTALLER_PHASE backend_page_ready");
     return page;
   }
   await qualifyInstalledApp({
