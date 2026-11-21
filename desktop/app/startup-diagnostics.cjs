@@ -63,17 +63,22 @@ function startupMigrationLine(migration) {
 function startupMigrationIssue(error, migration) {
   if (migration !== "0080_company_search_fuzzystrmatch.sql") return null;
   let message = "";
-  try { message = typeof error?.message === "string" ? error.message.slice(0, 8192) : ""; }
+  try {
+    const fields = [error?.message, error?.detail, error?.hint, error?.file, error?.routine];
+    message = fields.filter(value => typeof value === "string").join("\n").slice(0, 8192);
+  }
   catch { return null; }
-  if (/could not open extension control file/i.test(message)) return "POSTGRES_EXTENSION_CONTROL_FILE_MISSING";
-  if (/could not open extension script file|could not open file .*fuzzystrmatch.*\.sql/i.test(message)) return "POSTGRES_EXTENSION_SQL_FILE_MISSING";
-  if (/could not access file|could not load library/i.test(message)) return "POSTGRES_EXTENSION_LIBRARY_MISSING";
+  if (/fuzzystrmatch\.control|extension control file/i.test(message)) return "POSTGRES_EXTENSION_CONTROL_FILE_MISSING";
+  if (/fuzzystrmatch[^\r\n]*\.sql|extension script file/i.test(message)) return "POSTGRES_EXTENSION_SQL_FILE_MISSING";
+  if (/fuzzystrmatch\.dll|\$libdir|could not access file|could not load library/i.test(message)) return "POSTGRES_EXTENSION_LIBRARY_MISSING";
   if (/could not open file/i.test(message)) return "POSTGRES_MIGRATION_FILE_MISSING";
+  if (error?.code === "58P01") return "POSTGRES_EXTENSION_FILE_LOOKUP_FAILED";
   return null;
 }
 const migrationIssues = new Set([
   "POSTGRES_EXTENSION_CONTROL_FILE_MISSING", "POSTGRES_EXTENSION_SQL_FILE_MISSING",
   "POSTGRES_EXTENSION_LIBRARY_MISSING", "POSTGRES_MIGRATION_FILE_MISSING",
+  "POSTGRES_EXTENSION_FILE_LOOKUP_FAILED",
 ]);
 function startupMigrationIssueLine(migration, issue) {
   return startupMigrationLine(migration) && migrationIssues.has(issue)
