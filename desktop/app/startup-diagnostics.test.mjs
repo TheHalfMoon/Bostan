@@ -26,6 +26,11 @@ test("startup receipts accept only fixed phases and failure codes", () => {
   assert.equal(diagnostics.isStartupDiagnosticLine(diagnostics.startupFailureLine("EPERM")), true);
   assert.equal(diagnostics.startupFailureLine("POSTGRES_START_FAILED"), "BOSTAN_DESKTOP_STARTUP_FAILURE POSTGRES_START_FAILED");
   assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_FAILURE POSTGRES_START_FAILED"), true);
+  assert.equal(diagnostics.startupErrorCode(Object.assign(new Error("private database detail"), { code: "POSTGRES_DATABASE_FAILED" })), "POSTGRES_DATABASE_FAILED");
+  assert.equal(diagnostics.startupFailureLine("POSTGRES_MIGRATION_FAILED"), "BOSTAN_DESKTOP_STARTUP_FAILURE POSTGRES_MIGRATION_FAILED");
+  const frozenNativeFailure = Object.freeze({ code: "28P01" });
+  assert.equal(diagnostics.startupErrorCode(frozenNativeFailure, "POSTGRES_MIGRATION_FAILED"), "POSTGRES_MIGRATION_FAILED");
+  assert.equal(diagnostics.startupErrorCode({ code: "EACCES" }, "POSTGRES_MIGRATION_FAILED"), "EACCES");
 });
 
 test("wrapped PostgreSQL initialization failures disclose only a fixed reason", () => {

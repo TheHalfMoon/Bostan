@@ -214,7 +214,10 @@ export interface StartedServer {
 // the process dies, and in a restart loop the leftover backends of every
 // failed generation can exhaust `max_connections` before the next boot even
 // gets a connection.
-type StartupDatabaseTeardown = { close: (() => Promise<void>) | null };
+type StartupDatabaseTeardown = {
+  close: (() => Promise<void>) | null;
+  failureCode: string;
+};
 
 // Ends the pool behind a drizzle client. Tolerates a client without `$client`
 // (test doubles) and never throws, so it is safe on every exit path.
@@ -225,8 +228,13 @@ async function endDatabaseClient(client: unknown, timeoutSeconds: number): Promi
   await sql.end({ timeout: timeoutSeconds });
 }
 
-export async function startServer(): Promise<StartedServer> {
-  const startupDatabase: StartupDatabaseTeardown = { close: null };
+export async function startServer(options?: {
+  onStartupFailure?: (failureCode: string) => void;
+}): Promise<StartedServer> {
+  const startupDatabase: StartupDatabaseTeardown = {
+    close: null,
+    failureCode: "SERVER_STARTUP_FAILED",
+  };
   try {
     return await startServerWithDatabaseTeardown(startupDatabase);
   } catch (error) {
@@ -235,6 +243,8 @@ export async function startServer(): Promise<StartedServer> {
         logger.error({ err: closeError }, "failed to close database clients after startup failure");
       });
     }
+    try { options?.onStartupFailure?.(startupDatabase.failureCode); }
+    catch (callbackError) { logger.error({ err: callbackError }, "desktop startup diagnostic callback failed"); }
     throw error;
   }
 }
@@ -242,16 +252,20 @@ export async function startServer(): Promise<StartedServer> {
 async function startServerWithDatabaseTeardown(
   startupDatabase: StartupDatabaseTeardown,
 ): Promise<StartedServer> {
+  startupDatabase.failureCode = "SERVER_INSTRUMENTATION_FAILED";
   setStartupRecoveryPhase("starting");
   warnIfUnsupportedNodeVersion(process.versions.node, (message) => logger.warn(message));
 
   // Tracing must be active (or have failed and logged) before the first DB
   // connection or the HTTP server exists — see instrumentation.ts.
   await instrumentationReady;
+  startupDatabase.failureCode = "SERVER_ERROR_MONITORING_FAILED";
   // Error monitoring must be ready before the first request can fail — see
   // sentry.ts.
   await sentryReady;
+  startupDatabase.failureCode = "SERVER_SIGNING_SECRET_FAILED";
   ensureDecisionSigningSecret();
+  startupDatabase.failureCode = "SERVER_CONFIG_FAILED";
   let config = loadConfig();
   const offline = isBostanOffline();
   if (offline) {
@@ -462,16 +476,20 @@ async function startServerWithDatabaseTeardown(
     | { mode: "external-postgres"; connectionString: string }
     | { mode: "embedded-postgres"; dataDir: string; port: number };
   assertCloudDatabaseContract();
+  startupDatabase.failureCode = "DATABASE_BOOTSTRAP_FAILED";
   if (config.databaseUrl) {
+    startupDatabase.failureCode = "DATABASE_MIGRATION_FAILED";
     const migrationUrl = config.databaseMigrationUrl ?? config.databaseUrl;
     migrationSummary = await ensureMigrations(migrationUrl, "PostgreSQL");
   
+    startupDatabase.failureCode = "DATABASE_BOOTSTRAP_FAILED";
     db = createDb(config.databaseUrl);
     pluginMigrationDb = config.databaseMigrationUrl ? createDb(config.databaseMigrationUrl) : db;
     logger.info("Using external PostgreSQL via DATABASE_URL/config");
     activeDatabaseConnectionString = config.databaseUrl;
     startupDbInfo = { mode: "external-postgres", connectionString: config.databaseUrl };
   } else {
+    startupDatabase.failureCode = "POSTGRES_BOOTSTRAP_FAILED";
     const moduleName = "embedded-postgres";
     let EmbeddedPostgres: EmbeddedPostgresCtor;
     try {
@@ -665,6 +683,7 @@ async function startServerWithDatabaseTeardown(
       }
     }
   
+    startupDatabase.failureCode = "POSTGRES_DATABASE_FAILED";
     const embeddedAdminConnectionString = `postgres://paperclip:paperclip@127.0.0.1:${port}/postgres`;
     const dbStatus = await ensurePostgresDatabase(embeddedAdminConnectionString, "paperclip");
     if (dbStatus === "created") {
@@ -676,10 +695,12 @@ async function startServerWithDatabaseTeardown(
     if (shouldAutoApplyFirstRunMigrations) {
       logger.info("Detected first-run embedded PostgreSQL setup; applying pending migrations automatically");
     }
+    startupDatabase.failureCode = "POSTGRES_MIGRATION_FAILED";
     migrationSummary = await ensureMigrations(embeddedConnectionString, "Embedded PostgreSQL", {
       autoApply: shouldAutoApplyFirstRunMigrations,
     });
   
+    startupDatabase.failureCode = "POSTGRES_DATABASE_FAILED";
     db = createDb(embeddedConnectionString);
     pluginMigrationDb = db;
     logger.info("Embedded PostgreSQL ready");
@@ -698,6 +719,7 @@ async function startServerWithDatabaseTeardown(
   };
   startupDatabase.close = closeDatabaseClients;
   setSentryRunLinkResolver(createSentryRunLinkResolver(db));
+  startupDatabase.failureCode = "SERVER_RUNTIME_INITIALIZATION_FAILED";
   
   // A claimed warm-pool stack may restart while its provider environment still
   // names the pool host. Restore the signed, durable identity before Better

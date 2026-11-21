@@ -23,6 +23,7 @@ let runtime;
 let stopping;
 let startup;
 let startupFailureAckTimer;
+let startupFailureCode = "STARTUP_FAILED";
 function stop() {
   return stopping ??= (async () => {
     // A quit request during migrations must wait for startup to settle before
@@ -52,7 +53,7 @@ startup = (async () => {
   process.parentPort.postMessage({ type: "startup-phase", phase: "importing_server" });
   const { startServer } = await import(pathToFileURL(entry).href);
   process.parentPort.postMessage({ type: "startup-phase", phase: "starting_server" });
-  runtime = await startServer();
+  runtime = await startServer({ onStartupFailure: code => { startupFailureCode = code; } });
   process.parentPort.postMessage({ type: "startup-phase", phase: "ready" });
   if (!stopping) process.parentPort.postMessage({ type: "ready", port: runtime.listenPort });
 })();
@@ -60,7 +61,7 @@ try {
   await startup;
 } catch (error) {
   // Raw backend stacks may include secrets, database URLs and host paths.
-  const code = diagnostics.startupErrorCode(error);
+  const code = diagnostics.startupErrorCode(error, startupFailureCode);
   const site = diagnostics.startupFailureSite(error, process.env.BOSTAN_DESKTOP_SERVER_ROOT);
   // Utility-process messages are asynchronous. Wait for the application host
   // to receive this bounded receipt before exiting; retain a fixed fallback

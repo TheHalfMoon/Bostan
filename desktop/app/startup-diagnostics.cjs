@@ -11,27 +11,37 @@ const codes = new Set([
   "EACCES", "EPERM", "ENOENT", "EADDRINUSE",
   "POSTGRES_LIBRARY_MISSING", "POSTGRES_SIGNATURE_INVALID", "POSTGRES_LOCALE_INVALID",
   "POSTGRES_PERMISSION_DENIED", "POSTGRES_ROOT_REFUSED", "POSTGRES_INIT_FAILED",
-  "POSTGRES_START_FAILED",
+  "POSTGRES_START_FAILED", "POSTGRES_DATABASE_FAILED", "POSTGRES_MIGRATION_FAILED",
+  "POSTGRES_BOOTSTRAP_FAILED", "DATABASE_BOOTSTRAP_FAILED", "DATABASE_MIGRATION_FAILED",
+  "SERVER_INSTRUMENTATION_FAILED",
+  "SERVER_ERROR_MONITORING_FAILED", "SERVER_SIGNING_SECRET_FAILED", "SERVER_CONFIG_FAILED",
+  "SERVER_RUNTIME_INITIALIZATION_FAILED", "SERVER_STARTUP_FAILED",
 ]);
 function startupPhaseLine(phase) {
   return phases.has(phase) ? `BOSTAN_DESKTOP_STARTUP_PHASE ${phase}` : null;
 }
 function startupCode(code) { return codes.has(code) ? code : "STARTUP_FAILED"; }
-function startupErrorCode(error) {
+function startupErrorCode(error, fallbackCode) {
   const code = startupCode(error?.code);
   if (code !== "STARTUP_FAILED" && code !== "POSTGRES_INIT_FAILED") return code;
   // The dependency wraps initdb exits as a message. Match only its fixed prefix;
   // classify buffered stderr locally, never emit any of its text or paths.
   try {
     const text = typeof error?.message === "string" ? error.message.slice(0, 65536) : "";
-    if (!text.startsWith("Postgres init script exited with code ")) return code;
-    if (/code signature|signature.*invalid|not valid for use in process/i.test(text)) return "POSTGRES_SIGNATURE_INVALID";
-    if (/Library not loaded:|image not found|cannot open shared object file/i.test(text)) return "POSTGRES_LIBRARY_MISSING";
-    if (/invalid locale|locale.*not supported|could not set locale/i.test(text)) return "POSTGRES_LOCALE_INVALID";
-    if (/cannot be run as root/i.test(text)) return "POSTGRES_ROOT_REFUSED";
-    if (/permission denied|operation not permitted/i.test(text)) return "POSTGRES_PERMISSION_DENIED";
-    return "POSTGRES_INIT_FAILED";
-  } catch { return code; }
+    if (text.startsWith("Postgres init script exited with code ")) {
+      if (/code signature|signature.*invalid|not valid for use in process/i.test(text)) return "POSTGRES_SIGNATURE_INVALID";
+      if (/Library not loaded:|image not found|cannot open shared object file/i.test(text)) return "POSTGRES_LIBRARY_MISSING";
+      if (/invalid locale|locale.*not supported|could not set locale/i.test(text)) return "POSTGRES_LOCALE_INVALID";
+      if (/cannot be run as root/i.test(text)) return "POSTGRES_ROOT_REFUSED";
+      if (/permission denied|operation not permitted/i.test(text)) return "POSTGRES_PERMISSION_DENIED";
+      return "POSTGRES_INIT_FAILED";
+    }
+  } catch { /* Fall through to a fixed stage code. */ }
+  if (code === "POSTGRES_INIT_FAILED") {
+    return code;
+  }
+  const stageCode = startupCode(fallbackCode);
+  return stageCode === "STARTUP_FAILED" ? code : stageCode;
 }
 function startupFailureLine(code) { return `BOSTAN_DESKTOP_STARTUP_FAILURE ${startupCode(code)}`; }
 const sitePattern = /^BOSTAN_DESKTOP_STARTUP_SITE (?:server|config|signing):[1-9]\d{0,5}:[1-9]\d{0,5}$/;
