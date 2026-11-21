@@ -28,6 +28,12 @@ test("startup receipts accept only fixed phases and failure codes", () => {
   assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_FAILURE POSTGRES_START_FAILED"), true);
   assert.equal(diagnostics.startupErrorCode(Object.assign(new Error("private database detail"), { code: "POSTGRES_DATABASE_FAILED" })), "POSTGRES_DATABASE_FAILED");
   assert.equal(diagnostics.startupFailureLine("POSTGRES_MIGRATION_FAILED"), "BOSTAN_DESKTOP_STARTUP_FAILURE POSTGRES_MIGRATION_FAILED");
+  const migrationLine = diagnostics.startupMigrationLine("0123_safe_name.sql");
+  assert.equal(migrationLine, "BOSTAN_DESKTOP_STARTUP_MIGRATION 0123_safe_name.sql");
+  assert.equal(diagnostics.isStartupDiagnosticLine(migrationLine), true);
+  for (const unsafe of ["../../secret.sql", "0123_name;SECRET.sql", "0123_Name.sql", "0123_name.sql\\nsecret"]) {
+    assert.equal(diagnostics.startupMigrationLine(unsafe), null);
+  }
   const frozenNativeFailure = Object.freeze({ code: "28P01" });
   assert.equal(diagnostics.startupErrorCode(frozenNativeFailure, "POSTGRES_MIGRATION_FAILED"), "POSTGRES_MIGRATION_AUTH_FAILED");
   assert.equal(diagnostics.startupErrorCode({ code: "08006" }, "POSTGRES_MIGRATION_FAILED"), "POSTGRES_MIGRATION_CONNECTION_FAILED");

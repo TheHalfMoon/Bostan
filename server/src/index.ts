@@ -217,6 +217,7 @@ export interface StartedServer {
 type StartupDatabaseTeardown = {
   close: (() => Promise<void>) | null;
   failureCode: string;
+  migrationFailure: string | null;
 };
 
 // Ends the pool behind a drizzle client. Tolerates a client without `$client`
@@ -229,11 +230,12 @@ async function endDatabaseClient(client: unknown, timeoutSeconds: number): Promi
 }
 
 export async function startServer(options?: {
-  onStartupFailure?: (failureCode: string) => void;
+  onStartupFailure?: (failureCode: string, migrationFile?: string) => void;
 }): Promise<StartedServer> {
   const startupDatabase: StartupDatabaseTeardown = {
     close: null,
     failureCode: "SERVER_STARTUP_FAILED",
+    migrationFailure: null,
   };
   try {
     return await startServerWithDatabaseTeardown(startupDatabase);
@@ -243,7 +245,7 @@ export async function startServer(options?: {
         logger.error({ err: closeError }, "failed to close database clients after startup failure");
       });
     }
-    try { options?.onStartupFailure?.(startupDatabase.failureCode); }
+    try { options?.onStartupFailure?.(startupDatabase.failureCode, startupDatabase.migrationFailure ?? undefined); }
     catch (callbackError) { logger.error({ err: callbackError }, "desktop startup diagnostic callback failed"); }
     throw error;
   }
@@ -313,6 +315,7 @@ async function startServerWithDatabaseTeardown(
   
   type EnsureMigrationsOptions = {
     autoApply?: boolean;
+    onMigrationFailure?: (migrationFile: string) => void;
   };
   
   async function ensureMigrations(
@@ -348,7 +351,7 @@ async function startServerWithDatabaseTeardown(
       }
   
       logger.info({ pendingMigrations: state.pendingMigrations }, `Applying ${state.pendingMigrations.length} pending migrations for ${label}`);
-      await applyPendingMigrations(connectionString);
+      await applyPendingMigrations(connectionString, { onMigrationFailure: opts?.onMigrationFailure });
       return "applied (pending migrations)";
     }
   
@@ -369,7 +372,7 @@ async function startServerWithDatabaseTeardown(
     }
 
     logger.info({ pendingMigrations: state.pendingMigrations }, `Applying ${state.pendingMigrations.length} pending migrations for ${label}`);
-    await applyPendingMigrations(connectionString);
+    await applyPendingMigrations(connectionString, { onMigrationFailure: opts?.onMigrationFailure });
     return "applied (pending migrations)";
   }
   
@@ -698,6 +701,7 @@ async function startServerWithDatabaseTeardown(
     startupDatabase.failureCode = "POSTGRES_MIGRATION_FAILED";
     migrationSummary = await ensureMigrations(embeddedConnectionString, "Embedded PostgreSQL", {
       autoApply: shouldAutoApplyFirstRunMigrations,
+      onMigrationFailure: migrationFile => { startupDatabase.migrationFailure = migrationFile; },
     });
   
     startupDatabase.failureCode = "POSTGRES_DATABASE_FAILED";

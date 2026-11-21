@@ -56,6 +56,10 @@ function startupErrorCode(error, fallbackCode) {
   return stageCode === "STARTUP_FAILED" ? code : stageCode;
 }
 function startupFailureLine(code) { return `BOSTAN_DESKTOP_STARTUP_FAILURE ${startupCode(code)}`; }
+function startupMigrationLine(migration) {
+  return typeof migration === "string" && /^\d{4}_[a-z0-9_]+\.sql$/.test(migration)
+    ? `BOSTAN_DESKTOP_STARTUP_MIGRATION ${migration}` : null;
+}
 const sitePattern = /^BOSTAN_DESKTOP_STARTUP_SITE (?:server|config|signing):[1-9]\d{0,5}:[1-9]\d{0,5}$/;
 function startupFailureSite(error, runtimeRoot) {
   // Only code locations in three known startup modules may leave this process.
@@ -78,10 +82,11 @@ function isStartupSiteLine(line) { return typeof line === "string" && !/[\r\n]/.
 function isStartupDiagnosticLine(line) {
   if (typeof line !== "string") return false;
   if (isStartupSiteLine(line)) return true;
+  if (startupMigrationLine(line.startsWith("BOSTAN_DESKTOP_STARTUP_MIGRATION ") ? line.slice("BOSTAN_DESKTOP_STARTUP_MIGRATION ".length) : null) === line) return true;
   const phasePrefix = "BOSTAN_DESKTOP_STARTUP_PHASE ";
   const phase = line.startsWith(phasePrefix) ? line.slice(phasePrefix.length) : null;
   if (phase !== null) return phases.has(phase);
   const prefix = "BOSTAN_DESKTOP_STARTUP_FAILURE ";
   return line.startsWith(prefix) && codes.has(line.slice(prefix.length));
 }
-module.exports = { startupPhaseLine, startupCode, startupErrorCode, startupFailureLine, startupFailureSite, isStartupSiteLine, isStartupDiagnosticLine };
+module.exports = { startupPhaseLine, startupCode, startupErrorCode, startupFailureLine, startupMigrationLine, startupFailureSite, isStartupSiteLine, isStartupDiagnosticLine };

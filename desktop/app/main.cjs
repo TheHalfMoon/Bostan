@@ -99,6 +99,8 @@ else {
           clearTimeout(timer); resolve(message.port);
         } else if (message?.type === "startup-failed") {
           if (diagnostics.isStartupSiteLine(message.site)) console.error(message.site);
+          const migrationLine = diagnostics.startupMigrationLine(message.migration);
+          if (migrationLine) console.error(migrationLine);
           clearTimeout(timer); reject(Object.assign(new Error("Bostan could not initialize its local backend. Your data is retained."), { code: diagnostics.startupCode(message.code) }));
           child.postMessage({ type: "startup-failure-ack" });
         }
