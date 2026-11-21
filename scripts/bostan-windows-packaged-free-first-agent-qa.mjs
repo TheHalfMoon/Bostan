@@ -15,6 +15,8 @@ import {
   observeHeartbeatQaStatus,
   requirePersistedRunComment,
   safeHeartbeatQaDiagnostic,
+  safeHeartbeatQaEventDiagnostic,
+  safeHeartbeatQaLogDiagnostic,
   safeAgentLifecycleDiagnostic,
   selectSingleAssignmentRun,
 } from "./bostan-first-agent-free-e2e.mjs";
@@ -411,7 +413,21 @@ async function run() {
       const result = await api(base, "GET", `heartbeat-runs/${assignedRun.id}`, { cookie });
       return observeHeartbeatQaStatus(result.data);
     }, 210_000, "native_first_agent_run_timeout");
-    console.log("BOSTAN_PACKAGED_FIRST_AGENT_RUN_DIAGNOSTIC " + JSON.stringify(safeHeartbeatQaDiagnostic(run)));
+    let events = null;
+    let logDiagnostic = null;
+    if (run.status !== "succeeded") {
+      const eventResult = await api(base, "GET", `heartbeat-runs/${assignedRun.id}/events?limit=200`, { cookie });
+      events = eventResult.data;
+      try {
+        const logResult = await api(base, "GET", `heartbeat-runs/${assignedRun.id}/log?limitBytes=65536`, { cookie });
+        logDiagnostic = safeHeartbeatQaLogDiagnostic(logResult.data?.content);
+      } catch { logDiagnostic = { available: false, bytes: 0, safeSignal: null }; }
+    }
+    console.log("BOSTAN_PACKAGED_FIRST_AGENT_RUN_DIAGNOSTIC " + JSON.stringify({
+      ...safeHeartbeatQaDiagnostic(run),
+      ...(events === null ? {} : { events: safeHeartbeatQaEventDiagnostic(events) }),
+      ...(logDiagnostic === null ? {} : { log: logDiagnostic }),
+    }));
     assertHeartbeatQaSucceeded(run);
     if (typeof run.usageJson?.costUsd !== "number" || run.usageJson.costUsd !== 0) {
       throw new Error("first_agent_usage_cost_not_verified_zero");

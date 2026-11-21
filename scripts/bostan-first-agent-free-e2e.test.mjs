@@ -5,7 +5,7 @@ import os from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel, syntheticFreeAgentAdapterConfig, observeHeartbeatQaStatus, assertHeartbeatQaSucceeded, firstAgentLifecycleReadinessTimeoutMs, safeAgentLifecycleDiagnostic, safeFreeProviderFailureSignal, safeHeartbeatQaDiagnostic, selectSingleAssignmentRun, safeFirstAgentQaEndpointClass, safeFirstAgentQaHttpError } from "./bostan-first-agent-free-e2e.mjs";
+import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel, syntheticFreeAgentAdapterConfig, observeHeartbeatQaStatus, assertHeartbeatQaSucceeded, firstAgentLifecycleReadinessTimeoutMs, safeAgentLifecycleDiagnostic, safeFreeProviderFailureSignal, safeHeartbeatQaDiagnostic, safeHeartbeatQaEventDiagnostic, safeHeartbeatQaLogDiagnostic, selectSingleAssignmentRun, safeFirstAgentQaEndpointClass, safeFirstAgentQaHttpError } from "./bostan-first-agent-free-e2e.mjs";
 
 function fixture() {
   const home = mkdtempSync(path.join(os.tmpdir(), "bostan-free-agent-guard-"));
@@ -257,6 +257,28 @@ test("packaged QA heartbeat diagnostics retain safe phase and provider failure s
   assert.doesNotMatch(JSON.stringify(diagnostic), /private-test-value|Bearer|Too Many Requests/);
   assert.deepEqual(safeHeartbeatQaDiagnostic({ status: "unknown", errorCode: "PRIVATE SECRET", error: "secret" }),
     { status: null, errorCode: null, executionStage: null });
+  assert.equal(safeHeartbeatQaDiagnostic({ status: "failed", errorCode: "native_session_interrupted",
+    error: "native_finalization_missing: session returned no semantic result; private details" }).safeSignal,
+  "native_semantic_result_missing");
+  const events = safeHeartbeatQaEventDiagnostic([
+    { eventType: "harness.ready", payload: { token: "private" } },
+    { eventType: "session.started" }, { eventType: "turn.started" },
+    { eventType: "provider.rpc_result", payload: { text: "private model output" } },
+    { eventType: "turn.failed" }, { eventType: "unknown.private.event" },
+  ]);
+  assert.deepEqual(events, { available: true, harnessReady: 1, sessionStarted: 1, sessionResumed: 0,
+    turnStarted: 1, turnCompleted: 0, turnFailed: 1, turnCancelled: 0, turnInterrupted: 0,
+    providerEvents: 0, providerRpcResults: 1 });
+  assert.doesNotMatch(JSON.stringify(events), /private|token|output/);
+  assert.equal(safeHeartbeatQaEventDiagnostic(null).available, false);
+  assert.deepEqual(safeHeartbeatQaLogDiagnostic("provider_request_timeout secret=private"),
+    { available: true, bytes: 39, safeSignal: "native_provider_request_timeout" });
+  assert.deepEqual(safeHeartbeatQaLogDiagnostic("unclassified private provider output"),
+    { available: true, bytes: 36, safeSignal: null });
+  assert.equal(safeHeartbeatQaLogDiagnostic("provider output: HTTP 429 Too Many Requests secret").safeSignal,
+    "adapter_rate_limit_signaled");
+  assert.doesNotMatch(JSON.stringify(safeHeartbeatQaLogDiagnostic("provider_request_timeout secret=private")), /private|secret/);
+  assert.deepEqual(safeHeartbeatQaLogDiagnostic(null), { available: false, bytes: 0, safeSignal: null });
 });
 
 

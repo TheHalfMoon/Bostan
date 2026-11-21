@@ -108,8 +108,74 @@ export function safeHeartbeatQaDiagnostic(run) {
   const errorCode = typeof code === "string" && /^[a-z][a-z0-9_]{0,63}$/.test(code) ? code : null;
   const executionStage = typeof stage === "string" && /^(preparing|dispatching|executing|settled)$/.test(stage)
     ? stage : null;
-  const safeSignal = safeFreeProviderFailureSignal(run);
+  const providerSignal = safeFreeProviderFailureSignal(run);
+  const error = typeof run?.error === "string" ? run.error.slice(0, 8192) : "";
+  const nativeSignal = run?.errorCode === "native_session_interrupted"
+    ? /native_finalization_missing: session returned no semantic result/i.test(error)
+      ? "native_semantic_result_missing"
+      : /native_finalization_missing: session returned no terminal event/i.test(error)
+        ? "native_terminal_event_missing"
+        : /provider_process_exited/i.test(error) ? "native_provider_process_exited"
+          : /provider_initialize_timeout/i.test(error) ? "native_provider_initialize_timeout"
+            : null
+    : null;
+  const safeSignal = providerSignal ?? nativeSignal;
   return { status, errorCode, executionStage, ...(safeSignal ? { safeSignal } : {}) };
+}
+
+export function safeHeartbeatQaEventDiagnostic(events) {
+  const counts = {
+    harnessReady: 0, sessionStarted: 0, sessionResumed: 0,
+    turnStarted: 0, turnCompleted: 0, turnFailed: 0,
+    turnCancelled: 0, turnInterrupted: 0, providerEvents: 0, providerRpcResults: 0,
+  };
+  const fields = new Map([
+    ["harness.ready", "harnessReady"], ["session.started", "sessionStarted"],
+    ["session.resumed", "sessionResumed"], ["turn.started", "turnStarted"],
+    ["turn.completed", "turnCompleted"], ["turn.failed", "turnFailed"],
+    ["turn.cancelled", "turnCancelled"], ["turn.interrupted", "turnInterrupted"],
+    ["provider.event", "providerEvents"], ["provider.rpc_result", "providerRpcResults"],
+  ]);
+  if (!Array.isArray(events)) return { available: false, ...counts };
+  for (const event of events.slice(0, 200)) {
+    const key = fields.get(event?.eventType);
+    if (key) counts[key]++;
+  }
+  return { available: true, ...counts };
+}
+
+export function safeHeartbeatQaLogDiagnostic(content) {
+  if (typeof content !== "string") return { available: false, bytes: 0, safeSignal: null };
+  const bounded = content.slice(0, 65_536);
+  const signals = [
+    [/native_finalization_missing: session returned no semantic result/i, "native_semantic_result_missing"],
+    [/native_finalization_missing: session returned no terminal event/i, "native_terminal_event_missing"],
+    [/native_permission_declined/i, "native_permission_declined"],
+    [/native_provider_model_rejected/i, "native_provider_model_rejected"],
+    [/native_provider_approval_required/i, "native_provider_approval_required"],
+    [/native_provider_usage_limit/i, "native_provider_usage_limit"],
+    [/provider_initialize_timeout/i, "native_provider_initialize_timeout"],
+    [/provider_initialize_protocol_error/i, "native_provider_initialize_protocol_error"],
+    [/provider_request_timeout/i, "native_provider_request_timeout"],
+    [/provider_request_protocol_error/i, "native_provider_request_protocol_error"],
+    [/provider_process_output_closed/i, "native_provider_output_closed"],
+    [/provider_stdout_closed/i, "native_provider_output_closed"],
+    [/provider_process_exited/i, "native_provider_process_exited"],
+    [/provider_transport_failed/i, "native_provider_transport_failed"],
+    [/native_provider_runtime_missing/i, "native_provider_runtime_missing"],
+    [/native_provider_terminal_failed/i, "native_provider_terminal_failed"],
+    [/ENOENT.*spawn|spawn.*ENOENT/i, "native_provider_executable_missing"],
+    [/EACCES.*spawn|spawn.*EACCES/i, "native_provider_executable_denied"],
+    [/\b429\b|TooManyRequests|rate[ -]?limit|free (?:usage|tier) (?:limit|quota)/i, "adapter_rate_limit_signaled"],
+    [/\b401\b|\b403\b|unauthorized|authentication required/i, "native_provider_auth_rejected"],
+    [/\b502\b|\b503\b|service unavailable|provider unavailable|bad gateway/i, "adapter_provider_unavailable_signaled"],
+    [/ETIMEDOUT|request timed out|connection timeout/i, "native_provider_timeout"],
+    [/ECONNREFUSED|connection refused/i, "native_provider_connection_refused"],
+    [/model (?:not found|rejected|unsupported)|unknown model/i, "native_provider_model_rejected"],
+    [/permission (?:was )?declined|approval required/i, "native_provider_approval_required"],
+  ];
+  const safeSignal = signals.find(([pattern]) => pattern.test(bounded))?.[1] ?? null;
+  return { available: true, bytes: Buffer.byteLength(bounded), safeSignal };
 }
 
 export function assertHeartbeatQaSucceeded(run) {
