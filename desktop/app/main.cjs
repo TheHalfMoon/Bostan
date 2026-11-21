@@ -11,6 +11,7 @@ else {
   let exited = false;
   let quitting = false;
   let stopping = false;
+  let startupComplete = false;
   let shutdownTimer;
 
   app.on("second-instance", () => {
@@ -79,7 +80,7 @@ else {
     console.info(diagnostics.startupPhaseLine("child_spawned"));
     child.once("exit", () => {
       exited = true;
-      if (!quitting && !stopping) {
+      if (!quitting && !stopping && startupComplete) {
         console.error(diagnostics.startupFailureLine("BACKEND_EXITED"));
         dialog.showErrorBox("Bostan stopped", "The local backend stopped unexpectedly. Your data is retained. Reopen Bostan to recover.");
         app.quit();
@@ -101,6 +102,8 @@ else {
         } else if (message?.type === "ready" && Number.isSafeInteger(message.port) && message.port > 0 && message.port <= 65535) {
           clearTimeout(timer); resolve(message.port);
         } else if (message?.type === "startup-failed") {
+          const libraryLine = diagnostics.startupFailureLibraryLine(message.library);
+          if (libraryLine) console.error(libraryLine);
           if (diagnostics.isStartupSiteLine(message.site)) console.error(message.site);
           const migrationLine = diagnostics.startupMigrationLine(message.migration);
           if (migrationLine) console.error(migrationLine);
@@ -115,6 +118,7 @@ else {
     origin = `http://127.0.0.1:${actualPort}`;
     await window.loadURL(origin);
     window.show();
+    startupComplete = true;
   }
 
   app.on("window-all-closed", () => app.quit());
@@ -134,9 +138,15 @@ else {
     child.postMessage({ type: "shutdown" });
   });
 
-  app.whenReady().then(start).catch(error => {
+  app.whenReady().then(start).catch(async error => {
     console.error(diagnostics.startupFailureLine(error?.code));
-    dialog.showErrorBox("Bostan could not start", error.message);
+    // Modal error boxes block Electron's main process on macOS. Keep a static,
+    // non-blocking failure page visible so quit can drain the owned utility
+    // process and its database after a failed startup.
+    if (window && !window.isDestroyed()) {
+      try { await window.loadFile(path.join(__dirname, "startup-error.html")); window.show(); return; }
+      catch { /* Fall through to app shutdown if the local page cannot load. */ }
+    }
     app.quit();
   });
 }

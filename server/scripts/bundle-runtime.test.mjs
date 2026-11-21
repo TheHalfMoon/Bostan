@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -10,6 +10,19 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { bundleRuntime, preserveModuleLocation, compiledRunnerQaShim, shouldResolveAsBarePackage } from "./bundle-runtime.mjs";
 
 const execFileAsync = promisify(execFile);
+
+function linkDirectory(target, link) {
+  symlinkSync(target, link, process.platform === "win32" ? "junction" : "dir");
+}
+
+function containsText(directory, needle) {
+  return readdirSync(directory, { withFileTypes: true }).some(entry => {
+    const file = path.join(directory, entry.name);
+    return entry.isDirectory()
+      ? containsText(file, needle)
+      : entry.isFile() && readFileSync(file, "utf8").includes(needle);
+  });
+}
 
 function write(file, content) {
   mkdirSync(path.dirname(file), { recursive: true });
@@ -45,14 +58,14 @@ describe("bundleRuntime", () => {
 
     const server = path.join(root, "server");
     mkdirSync(path.join(server, "node_modules", "@paperclipai"), { recursive: true });
-    symlinkSync(pkg, path.join(server, "node_modules", "@paperclipai", "fixture"), "dir");
+    linkDirectory(pkg, path.join(server, "node_modules", "@paperclipai", "fixture"));
     write(path.join(server, "package.json"), JSON.stringify({ name: "server", type: "module" }));
     for (const [version, flavor] of [["1", "installed at build"], ["2", "replaced after build"]]) {
       const store = path.join(root, "node_modules", ".pnpm", `server-dep@${version}`);
       write(path.join(store, "package.json"), JSON.stringify({ name: "server-dep", type: "module", main: "index.js" }));
       write(path.join(store, "index.js"), `export const flavor = ${JSON.stringify(flavor)};\n`);
     }
-    symlinkSync(path.join(root, "node_modules", ".pnpm", "server-dep@1"), path.join(server, "node_modules", "server-dep"), "dir");
+    linkDirectory(path.join(root, "node_modules", ".pnpm", "server-dep@1"), path.join(server, "node_modules", "server-dep"));
     write(path.join(server, "dist", "late.js"), "import { values } from \"@paperclipai/fixture\";\nexport const late = () => values.doubled + 1;\n");
     write(path.join(server, "dist", "index.js"), [
       "import { asset, location, values } from \"@paperclipai/fixture\";",
@@ -101,7 +114,7 @@ describe("bundleRuntime", () => {
     const outdir = path.join(root, "server", "dist-runtime");
     const summary = await bundleRuntime({ entry: path.join(root, "server", "dist", "index.js"), outdir });
     rmSync(path.join(root, "server", "node_modules", "server-dep"));
-    symlinkSync(path.join(root, "node_modules", ".pnpm", "server-dep@2"), path.join(root, "server", "node_modules", "server-dep"), "dir");
+    linkDirectory(path.join(root, "node_modules", ".pnpm", "server-dep@2"), path.join(root, "server", "node_modules", "server-dep"));
     const { stdout } = await execFileAsync(process.execPath, [summary.outfile], { cwd: path.join(root, "server"), timeout: 30_000 });
     expect(JSON.parse(stdout).flavor).toBe("replaced after build");
   });
@@ -109,8 +122,7 @@ describe("bundleRuntime", () => {
   it("keeps third-party packages external", async () => {
     const outdir = path.join(root, "server", "dist-runtime");
     await bundleRuntime({ entry: path.join(root, "server", "dist", "index.js"), outdir });
-    const { stdout } = await execFileAsync("grep", ["-rl", "resolved from the package", outdir], { encoding: "utf8" }).catch(() => ({ stdout: "" }));
-    expect(stdout.trim()).toBe("");
+    expect(containsText(outdir, "resolved from the package")).toBe(false);
   });
 });
 
@@ -118,7 +130,7 @@ describe("preserveModuleLocation", () => {
   it("replaces import.meta location properties with the original path", () => {
     const file = "/srv/app/packages/x/src/mod.ts";
     const out = preserveModuleLocation("a(import.meta.url); b(import.meta.dirname); c(import.meta.filename); d(import.meta.resolve);", file);
-    expect(out).toBe(`a("file:///srv/app/packages/x/src/mod.ts"); b("/srv/app/packages/x/src"); c("/srv/app/packages/x/src/mod.ts"); d(import.meta.resolve);`);
+    expect(out).toBe(`a(${JSON.stringify(pathToFileURL(file).href)}); b("/srv/app/packages/x/src"); c("/srv/app/packages/x/src/mod.ts"); d(import.meta.resolve);`);
   });
 });
 

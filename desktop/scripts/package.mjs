@@ -16,8 +16,10 @@ import { prepareWindowsInstallerExtraction } from "./prepare-windows-installer-e
 const desktop = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repo = path.dirname(desktop);
 const require = createRequire(path.join(desktop, "package.json"));
-const { build } = require("electron-builder");
-const out = path.join(desktop, "dist");
+const { Arch, Platform, build } = require("electron-builder");
+const unpackedOnly = process.env.BOSTAN_DESKTOP_BUILD_UNPACKED === "1";
+if (unpackedOnly && process.platform !== "win32") throw new Error("Windows unpacked QA builds require a Windows host");
+const out = path.join(desktop, unpackedOnly ? "dist-unpacked-qa" : "dist");
 const pkg = JSON.parse(fs.readFileSync(path.join(desktop, "package.json"), "utf8"));
 for (const required of ["server/dist/index.js", "server/dist/build-info.json", "ui/dist/index.html"]) {
   if (!fs.statSync(path.join(repo, required), { throwIfNoEntry: false })?.isFile()) {
@@ -86,7 +88,7 @@ try {
   prepareRuntimeLinks(stage);
   console.log("BOSTAN_DECLARATION_MAPS " + JSON.stringify(archiveDeclarationMaps(stage)));
   const payload = await captureRuntimePayload(stage);
-  if (process.platform === "win32") {
+  if (process.platform === "win32" && !unpackedOnly) {
     windowsExtraction = await prepareWindowsInstallerExtraction({ desktop, payload });
     components.set("7-Zip standalone extractor@24.09", { type: "application", name: "7-Zip standalone extractor", version: "24.09" });
     licenses.set("7-Zip standalone extractor@24.09", windowsExtraction.inventoryComponent);
@@ -107,15 +109,27 @@ try {
   process.env.CSC_IDENTITY_AUTO_DISCOVERY = "false";
   const artifacts = await build({
     projectDir: desktop, publish: "never",
+    ...(unpackedOnly ? { targets: Platform.WINDOWS.createTarget("dir", Arch.x64) } : {}),
     ...(windowsExtraction ? { effectiveOptionComputed: windowsExtraction.effectiveOptionComputed } : {}),
     config: {
+      directories: { output: path.relative(desktop, out) },
       ...(windowsExtraction ? { nsis: { include: windowsExtraction.include } } : {}),
       extraResources: runtimeResourceEntries(stage, payload),
       afterPack: context => verifyPackagedRuntime(context, payload),
     },
   });
-  await writeCandidateChecksums(out, artifacts);
-  console.log("Bostan unsigned artifacts prepared; signing, notarization and publication remain separate gates.");
+  if (unpackedOnly) {
+    const appDir = path.join(out, "win-unpacked");
+    for (const file of [path.join(appDir, "Bostan.exe"), path.join(appDir, "resources", "app.asar"),
+      path.join(appDir, "resources", "runtime", "dist-runtime", "server.mjs")]) {
+      const stat = fs.lstatSync(file, { throwIfNoEntry: false });
+      if (!stat?.isFile() || stat.isSymbolicLink()) throw new Error("Unpacked Bostan QA bundle is incomplete");
+    }
+    console.log("Bostan Windows unpacked QA bundle prepared; no installer was built.");
+  } else {
+    await writeCandidateChecksums(out, artifacts);
+    console.log("Bostan unsigned artifacts prepared; signing, notarization and publication remain separate gates.");
+  }
 } finally {
   try { windowsExtraction?.dispose(); }
   finally { ownedStage.dispose(); }

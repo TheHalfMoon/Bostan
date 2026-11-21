@@ -76,6 +76,18 @@ test("wrapped PostgreSQL initialization failures disclose only a fixed reason", 
   assert.equal(diagnostics.startupErrorCode(new Error("Library not loaded: private unrelated failure")), "STARTUP_FAILED");
   assert.equal(diagnostics.startupErrorCode(Object.assign(new Error(prefix), { code: "ENOENT" })), "ENOENT");
 });
+
+test("PostgreSQL loader failure receipts expose only the missing library basename", () => {
+  const failure = new Error("Postgres init script exited with code 1. Recent embedded Postgres logs: Library not loaded: @loader_path/../lib/libicui18n.dylib, referenced from: /private/secret/postgres");
+  assert.equal(diagnostics.startupFailureLibrary(failure), "libicui18n.dylib");
+  assert.equal(diagnostics.startupFailureLibraryLine("libicui18n.dylib"), "BOSTAN_DESKTOP_STARTUP_LIBRARY libicui18n.dylib");
+  assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_LIBRARY libicui18n.dylib"), true);
+  assert.equal(diagnostics.startupFailureLibrary(new Error("private path /secret/libanything.dylib")), null);
+  for (const value of ["../../secret.dylib", "libfoo.dylib\nsecret", "https://private.example/libfoo.dylib", "libfoo.dylib:/secret"]) {
+    assert.equal(diagnostics.startupFailureLibraryLine(value), null);
+    assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_LIBRARY " + value), false);
+  }
+});
 test("arbitrary dependency errors and forged multiline receipts disclose no raw data", () => {
   for (const value of ["https://user:secret@example.test", "C:\\private\\fixture", "ERR_PRIVATE_SECRET", "ready\nsecret"]) {
     assert.equal(diagnostics.startupPhaseLine(value), null);

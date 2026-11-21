@@ -68,18 +68,30 @@ describe("embedded Postgres native runtime", () => {
   });
 
   it.runIf(process.platform === "darwin")("creates only matching macOS major-soname aliases without touching other files", async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-darwin-postgres-libs-"));
-    tempDirs.push(dir);
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-darwin-postgres-libs-"));
+    const native = path.join(root, "native");
+    const dir = path.join(native, "lib");
+    fs.mkdirSync(dir, { recursive: true });
+    tempDirs.push(root);
     fs.writeFileSync(path.join(dir, "libicudata.77.1.dylib"), "synthetic-ICU");
     fs.writeFileSync(path.join(dir, "libicuuc.77.1.dylib"), "synthetic-UC");
     fs.writeFileSync(path.join(dir, "libz.1.3.1.dylib"), "synthetic-zlib");
     fs.writeFileSync(path.join(dir, "libzstd.1.5.7.dylib"), "synthetic-zstd");
     fs.writeFileSync(path.join(dir, "libssl.3.dylib"), "unmodified");
+    fs.writeFileSync(path.join(native, "pg-symlinks.json"), JSON.stringify([
+      { source: "native/lib/libicudata.77.1.dylib", target: "native/lib/libicudata.77.dylib" },
+      { source: "native/lib/libicudata.77.1.dylib", target: "native/lib/libicudata.dylib" },
+      { source: "native/lib/libicuuc.77.1.dylib", target: "native/lib/libicuuc.77.dylib" },
+      { source: "native/lib/libicuuc.77.1.dylib", target: "native/lib/libicuuc.dylib" },
+      { source: "native/lib/libz.1.3.1.dylib", target: "native/lib/libz.1.dylib" },
+      { source: "native/lib/libz.1.3.1.dylib", target: "native/lib/libz.dylib" },
+      { source: "native/lib/libzstd.1.5.7.dylib", target: "native/lib/libzstd.1.dylib" },
+    ]));
     const created = await ensureDarwinSharedLibraryAliases(dir);
     expect(created.map(value => path.basename(value)).sort()).toEqual([
       "libicudata.77.dylib", "libicudata.dylib",
       "libicuuc.77.dylib", "libicuuc.dylib",
-      "libz.1.dylib", "libzstd.1.dylib",
+      "libz.1.dylib", "libz.dylib", "libzstd.1.dylib",
     ]);
     expect(fs.readlinkSync(path.join(dir, "libicudata.77.dylib")))
       .toBe("libicudata.77.1.dylib");
@@ -92,15 +104,33 @@ describe("embedded Postgres native runtime", () => {
   });
 
   it.runIf(process.platform === "darwin")("preserves an existing alias file rather than overwriting dependency content", async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-darwin-existing-alias-"));
-    tempDirs.push(dir);
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-darwin-existing-alias-"));
+    const native = path.join(root, "native");
+    const dir = path.join(native, "lib");
+    fs.mkdirSync(dir, { recursive: true });
+    tempDirs.push(root);
     fs.writeFileSync(path.join(dir, "libicudata.77.1.dylib"), "versioned");
     fs.writeFileSync(path.join(dir, "libicudata.77.dylib"), "existing");
-    expect((await ensureDarwinSharedLibraryAliases(dir)).map(file => path.basename(file)))
-      .toEqual(["libicudata.dylib"]);
+    fs.writeFileSync(path.join(native, "pg-symlinks.json"), JSON.stringify([
+      { source: "native/lib/libicudata.77.1.dylib", target: "native/lib/libicudata.77.dylib" },
+      { source: "native/lib/libicudata.77.1.dylib", target: "native/lib/libicudata.dylib" },
+    ]));
+    await expect(ensureDarwinSharedLibraryAliases(dir)).rejects.toThrow(/alias destination is occupied/);
     expect(fs.readFileSync(path.join(dir, "libicudata.77.dylib"), "utf8")).toBe("existing");
-    expect(fs.readlinkSync(path.join(dir, "libicudata.dylib")))
-      .toBe("libicudata.77.1.dylib");
+    expect(fs.existsSync(path.join(dir, "libicudata.dylib"))).toBe(false);
+  });
+
+  it.runIf(process.platform === "darwin")("rejects a native alias manifest that escapes its package lib directory", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-darwin-alias-traversal-"));
+    const native = path.join(root, "native");
+    const dir = path.join(native, "lib");
+    fs.mkdirSync(dir, { recursive: true });
+    tempDirs.push(root);
+    fs.writeFileSync(path.join(native, "pg-symlinks.json"), JSON.stringify([
+      { source: "native/lib/libicuuc.77.1.dylib", target: "native/lib/../../../outside.dylib" },
+    ]));
+    await expect(ensureDarwinSharedLibraryAliases(dir)).rejects.toThrow(/manifest path is invalid/);
+    expect(fs.existsSync(path.join(root, "outside.dylib"))).toBe(false);
   });
 
   it("keeps the child process API untouched while preparing the runtime", async () => {

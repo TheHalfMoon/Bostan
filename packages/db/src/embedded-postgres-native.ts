@@ -82,36 +82,53 @@ export async function ensureLinuxSharedLibraryAliases(libDir: string): Promise<s
   return created;
 }
 
-/**
- * Prebuilt macOS Postgres ships patch-versioned dylibs such as ICU 77.1,
- * zstd 1.5.7 and zlib 1.3.1, while sibling binaries link the soname-level
- * ICU.77, zstd.1 or zlib.1 path. Only create exact-major symlink aliases
- * within that same dependency-owned lib directory. No cross-major aliases,
- * replacement, external library search or library downloads.
- */
+/** Rehydrate only the exact in-package aliases declared by the native package.
+ * pnpm deploy can preserve the versioned dylibs while omitting postinstall
+ * links. Resolve every manifest path beneath native/lib and never replace an
+ * existing file or link to an external target. */
 export async function ensureDarwinSharedLibraryAliases(libDir: string): Promise<string[]> {
-  const entries = await fs.readdir(libDir, { withFileTypes: true });
+  const packageRoot = path.resolve(libDir, "..", "..");
+  const manifestPath = path.join(packageRoot, "native", "pg-symlinks.json");
+  const manifestInfo = await fs.lstat(manifestPath);
+  if (!manifestInfo.isFile() || manifestInfo.isSymbolicLink() || manifestInfo.size > 64_000) {
+    throw new Error("Embedded PostgreSQL alias manifest is unsafe");
+  }
+  const aliases: unknown = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+  if (!Array.isArray(aliases) || aliases.length > 128) throw new Error("Embedded PostgreSQL alias manifest is invalid");
   const created: string[] = [];
-  for (const entry of entries) {
-    if (!entry.isFile()) continue;
-    const match = entry.name.match(/^(lib[^/]+?\.\d+)\.\d+(?:\.\d+)?\.dylib$/);
-    if (!match) continue;
-    const majorAlias = match[1] + ".dylib";
-    // Postgres 18 also references ICU without a soname in a few binaries:
-    // libicui18n.dylib, despite shipping only libicui18n.77.1.dylib.
-    // Keep that exceptional unversioned alias limited to same-package ICU.
-    const unversionedIcuAlias = /^libicu(?:data|uc|i18n)\.\d+$/.test(match[1])
-      ? match[1].replace(/\.\d+$/, "") + ".dylib" : null;
-    for (const aliasName of [majorAlias, unversionedIcuAlias].filter((name): name is string => !!name)) {
-      const aliasPath = path.join(libDir, aliasName);
-      try {
-        await fs.symlink(entry.name, aliasPath);
-        created.push(aliasPath);
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === "EEXIST") continue;
-        throw error;
-      }
+  const seen = new Set<string>();
+  for (const value of aliases) {
+    if (!value || typeof value !== "object" || !("source" in value) || !("target" in value)) {
+      throw new Error("Embedded PostgreSQL alias manifest entry is invalid");
     }
+    const { source, target } = value as { source: unknown; target: unknown };
+    const safePath = (entry: unknown): entry is string => typeof entry === "string"
+      && !entry.includes("\\") && !path.posix.isAbsolute(entry)
+      && !entry.split("/").some(segment => !segment || segment === "." || segment === "..");
+    if (!safePath(source) || !safePath(target)
+        || path.posix.dirname(source) !== "native/lib" || path.posix.dirname(target) !== "native/lib"
+        || !path.posix.basename(source).startsWith("lib") || !path.posix.basename(source).endsWith(".dylib")
+        || !path.posix.basename(target).startsWith("lib") || !path.posix.basename(target).endsWith(".dylib")
+        || source === target || seen.has(target)) {
+      throw new Error("Embedded PostgreSQL alias manifest path is invalid");
+    }
+    seen.add(target);
+    const sourcePath = path.join(packageRoot, source);
+    const aliasPath = path.join(packageRoot, target);
+    const sourceInfo = await fs.lstat(sourcePath);
+    if (!sourceInfo.isFile() || sourceInfo.isSymbolicLink()) throw new Error("Embedded PostgreSQL alias source is unsafe");
+    const existing = await fs.lstat(aliasPath).catch(error => {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+      throw error;
+    });
+    if (existing) {
+      if (!existing.isSymbolicLink() || await fs.realpath(aliasPath) !== await fs.realpath(sourcePath)) {
+        throw new Error("Embedded PostgreSQL alias destination is occupied");
+      }
+      continue;
+    }
+    await fs.symlink(path.posix.basename(source), aliasPath);
+    created.push(aliasPath);
   }
   return created;
 }

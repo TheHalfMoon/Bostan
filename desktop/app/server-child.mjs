@@ -73,6 +73,7 @@ try {
 } catch (error) {
   // Raw backend stacks may include secrets, database URLs and host paths.
   const code = diagnostics.startupErrorCode(error, startupFailureCode);
+  const library = diagnostics.startupFailureLibrary(error);
   const site = diagnostics.startupFailureSite(error, process.env.BOSTAN_DESKTOP_SERVER_ROOT);
   // Utility-process messages are asynchronous. Wait for the application host
   // to receive this bounded receipt before exiting; retain a fixed fallback
@@ -81,5 +82,5 @@ try {
     startupFailureAckTimer = null;
     process.exit(1);
   }, 5000);
-  process.parentPort.postMessage({ type: "startup-failed", code, site, migration: startupFailureMigration, migrationIssue: startupFailureIssue });
+  process.parentPort.postMessage({ type: "startup-failed", code, library, site, migration: startupFailureMigration, migrationIssue: startupFailureIssue });
 }

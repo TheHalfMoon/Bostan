@@ -56,6 +56,21 @@ function startupErrorCode(error, fallbackCode) {
   return stageCode === "STARTUP_FAILED" ? code : stageCode;
 }
 function startupFailureLine(code) { return `BOSTAN_DESKTOP_STARTUP_FAILURE ${startupCode(code)}`; }
+function startupFailureLibrary(error) {
+  if (startupErrorCode(error) !== "POSTGRES_LIBRARY_MISSING") return null;
+  try {
+    const text = typeof error?.message === "string" ? error.message.slice(0, 65536) : "";
+    const line = text.split(/\r?\n/).find(value => value.includes("Library not loaded:"));
+    if (!line) return null;
+    const reference = line.slice(line.indexOf("Library not loaded:") + "Library not loaded:".length).trim().split(",", 1)[0].trim();
+    const basename = reference.split(/[\\/]/).at(-1);
+    return typeof basename === "string" && /^lib[A-Za-z0-9_.+-]{1,100}\.dylib$/.test(basename) ? basename : null;
+  } catch { return null; }
+}
+function startupFailureLibraryLine(library) {
+  return typeof library === "string" && /^lib[A-Za-z0-9_.+-]{1,100}\.dylib$/.test(library)
+    ? `BOSTAN_DESKTOP_STARTUP_LIBRARY ${library}` : null;
+}
 function startupMigrationLine(migration) {
   return typeof migration === "string" && /^\d{4}_[a-z0-9_]+\.sql$/.test(migration)
     ? `BOSTAN_DESKTOP_STARTUP_MIGRATION ${migration}` : null;
@@ -114,6 +129,8 @@ function isStartupDiagnosticLine(line) {
   const phase = line.startsWith(phasePrefix) ? line.slice(phasePrefix.length) : null;
   if (phase !== null) return phases.has(phase);
   const prefix = "BOSTAN_DESKTOP_STARTUP_FAILURE ";
-  return line.startsWith(prefix) && codes.has(line.slice(prefix.length));
+  if (line.startsWith(prefix) && codes.has(line.slice(prefix.length))) return true;
+  const libraryPrefix = "BOSTAN_DESKTOP_STARTUP_LIBRARY ";
+  return line.startsWith(libraryPrefix) && startupFailureLibraryLine(line.slice(libraryPrefix.length)) === line;
 }
-module.exports = { startupPhaseLine, startupCode, startupErrorCode, startupFailureLine, startupMigrationLine, startupMigrationIssue, startupMigrationIssueLine, startupFailureSite, isStartupSiteLine, isStartupDiagnosticLine };
+module.exports = { startupPhaseLine, startupCode, startupErrorCode, startupFailureLine, startupFailureLibrary, startupFailureLibraryLine, startupMigrationLine, startupMigrationIssue, startupMigrationIssueLine, startupFailureSite, isStartupSiteLine, isStartupDiagnosticLine };
