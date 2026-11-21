@@ -14,6 +14,7 @@ import {
   buildFirstWorkerTask,
   observeHeartbeatQaStatus,
   requirePersistedRunComment,
+  safeHeartbeatQaDiagnostic,
   safeAgentLifecycleDiagnostic,
   selectSingleAssignmentRun,
 } from "./bostan-first-agent-free-e2e.mjs";
@@ -410,6 +411,7 @@ async function run() {
       const result = await api(base, "GET", `heartbeat-runs/${assignedRun.id}`, { cookie });
       return observeHeartbeatQaStatus(result.data);
     }, 210_000, "native_first_agent_run_timeout");
+    console.log("BOSTAN_PACKAGED_FIRST_AGENT_RUN_DIAGNOSTIC " + JSON.stringify(safeHeartbeatQaDiagnostic(run)));
     assertHeartbeatQaSucceeded(run);
     if (typeof run.usageJson?.costUsd !== "number" || run.usageJson.costUsd !== 0) {
       throw new Error("first_agent_usage_cost_not_verified_zero");

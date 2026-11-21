@@ -101,19 +101,22 @@ export function safeFreeProviderFailureSignal(run) {
   return null;
 }
 
+export function safeHeartbeatQaDiagnostic(run) {
+  const code = run?.errorCode;
+  const stage = run?.executionStage;
+  const status = TERMINAL_HEARTBEAT_STATUSES.has(run?.status) ? run.status : null;
+  const errorCode = typeof code === "string" && /^[a-z][a-z0-9_]{0,63}$/.test(code) ? code : null;
+  const executionStage = typeof stage === "string" && /^(preparing|dispatching|executing|settled)$/.test(stage)
+    ? stage : null;
+  const safeSignal = safeFreeProviderFailureSignal(run);
+  return { status, errorCode, executionStage, ...(safeSignal ? { safeSignal } : {}) };
+}
+
 export function assertHeartbeatQaSucceeded(run) {
   if (run?.status === "succeeded") return;
   // The provider may never have been called. Persisted interruption is
   // terminal and must not be mistaken for a 175-second provider timeout.
-  const code = run?.errorCode;
-  const stage = run?.executionStage;
-  const errorCode = typeof code === "string" && /^[a-z][a-z0-9_]{0,63}$/.test(code) ? code : null;
-  const executionStage = typeof stage === "string" &&
-    /^(preparing|dispatching|executing|settled)$/.test(stage) ? stage : null;
-  const safeSignal = safeFreeProviderFailureSignal(run);
-  throw new Error("Bostan synthetic heartbeat ended without success: " +
-    JSON.stringify({ status: run?.status ?? null, errorCode, executionStage,
-      ...(safeSignal ? { safeSignal } : {}) }));
+  throw new Error("Bostan synthetic heartbeat ended without success: " + JSON.stringify(safeHeartbeatQaDiagnostic(run)));
 }
 
 const MARKER = "BOSTAN_CLEAN_RUN_PASS";
