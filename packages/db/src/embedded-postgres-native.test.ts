@@ -131,19 +131,22 @@ describe("embedded Postgres native runtime", () => {
 
     const dataDirectory = path.join(root, "data");
     const flags = await prepareWindowsPostgresExtensionRuntime(nativeRoot, dataDirectory);
-    const runtimeDirectory = path.join(root, "bostan-postgres-extensions-18.1.0-beta.16");
+    const runtimeRoot = path.join(root, "bostan-postgres-runtime-18.1.0-beta.16");
+    const extensionDirectory = path.join(runtimeRoot, "extension");
+    const libraryDirectory = path.join(runtimeRoot, "lib");
     expect(flags).toEqual([
-      "-c", `extension_control_path=${runtimeDirectory};$system`,
-      "-c", `dynamic_library_path=${runtimeDirectory};$libdir`,
+      "-c", `extension_control_path=${runtimeRoot};$system`,
+      "-c", `dynamic_library_path=${libraryDirectory};$libdir`,
     ]);
-    expect(fs.readdirSync(runtimeDirectory).sort()).toEqual([
-      "fuzzystrmatch--1.0.sql", "fuzzystrmatch.control", "fuzzystrmatch.dll",
-      "pg_trgm--1.0.sql", "pg_trgm.control", "pg_trgm.dll",
+    expect(fs.readdirSync(extensionDirectory).sort()).toEqual([
+      "fuzzystrmatch--1.0.sql", "fuzzystrmatch.control",
+      "pg_trgm--1.0.sql", "pg_trgm.control",
     ]);
+    expect(fs.readdirSync(libraryDirectory).sort()).toEqual(["fuzzystrmatch.dll", "pg_trgm.dll"]);
     expect(fs.readdirSync(dataDirectory)).toEqual([]);
     expect(await prepareWindowsPostgresExtensionRuntime(nativeRoot, dataDirectory)).toEqual(flags);
 
-    fs.writeFileSync(path.join(runtimeDirectory, "fuzzystrmatch--1.0.sql"), "tampered");
+    fs.writeFileSync(path.join(extensionDirectory, "fuzzystrmatch--1.0.sql"), "tampered");
     await expect(prepareWindowsPostgresExtensionRuntime(nativeRoot, dataDirectory))
       .rejects.toThrow(/does not match the packaged files/);
   });

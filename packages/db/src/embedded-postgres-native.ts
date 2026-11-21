@@ -148,7 +148,9 @@ export async function prepareWindowsPostgresExtensionRuntime(nativeRoot: string,
   if (typeof packageMetadata.version !== "string" || !/^[A-Za-z0-9.-]{1,80}$/.test(packageMetadata.version)) {
     throw new Error("Embedded PostgreSQL native package version is invalid");
   }
-  const runtimeDirectory = path.join(path.dirname(dataDirectory), `bostan-postgres-extensions-${packageMetadata.version}`);
+  const runtimeRoot = path.join(path.dirname(dataDirectory), `bostan-postgres-runtime-${packageMetadata.version}`);
+  const extensionRuntimeDirectory = path.join(runtimeRoot, "extension");
+  const libraryRuntimeDirectory = path.join(runtimeRoot, "lib");
   await fs.mkdir(dataDirectory, { recursive: true });
   const dataInfo = await fs.lstat(dataDirectory);
   if (!dataInfo.isDirectory() || dataInfo.isSymbolicLink()) {
@@ -158,10 +160,13 @@ export async function prepareWindowsPostgresExtensionRuntime(nativeRoot: string,
   if (!parentInfo.isDirectory() || parentInfo.isSymbolicLink()) {
     throw new Error("Embedded PostgreSQL data parent directory is unsafe");
   }
-  await fs.mkdir(runtimeDirectory, { recursive: true });
-  const runtimeInfo = await fs.lstat(runtimeDirectory);
-  if (!runtimeInfo.isDirectory() || runtimeInfo.isSymbolicLink()) {
-    throw new Error("Embedded PostgreSQL extension runtime directory is unsafe");
+  await fs.mkdir(runtimeRoot, { recursive: true });
+  for (const runtimeDirectory of [runtimeRoot, extensionRuntimeDirectory, libraryRuntimeDirectory]) {
+    await fs.mkdir(runtimeDirectory, { recursive: true });
+    const runtimeInfo = await fs.lstat(runtimeDirectory);
+    if (!runtimeInfo.isDirectory() || runtimeInfo.isSymbolicLink()) {
+      throw new Error("Embedded PostgreSQL extension runtime directory is unsafe");
+    }
   }
 
   const extensionEntries = await fs.readdir(extensionSource, { withFileTypes: true });
@@ -178,18 +183,19 @@ export async function prepareWindowsPostgresExtensionRuntime(nativeRoot: string,
   }
 
   for (const name of extensionFiles) {
-    await copyImmutableAsset(path.join(extensionSource, name), path.join(runtimeDirectory, name));
+    await copyImmutableAsset(path.join(extensionSource, name), path.join(extensionRuntimeDirectory, name));
   }
   for (const name of ["fuzzystrmatch.dll", "pg_trgm.dll"]) {
-    await copyImmutableAsset(path.join(librarySource, name), path.join(runtimeDirectory, name));
+    await copyImmutableAsset(path.join(librarySource, name), path.join(libraryRuntimeDirectory, name));
   }
 
   // PostgreSQL 18 may fail to open extension SQL files through pnpm's deeply
   // nested runtime path on Windows. A short, app-owned copy keeps SQL/control
   // and DLL lookups below Win32 path limits while retaining the system search.
+  // PostgreSQL appends `extension` to every extension_control_path element.
   return [
-    "-c", `extension_control_path=${runtimeDirectory};$system`,
-    "-c", `dynamic_library_path=${runtimeDirectory};$libdir`,
+    "-c", `extension_control_path=${runtimeRoot};$system`,
+    "-c", `dynamic_library_path=${libraryRuntimeDirectory};$libdir`,
   ];
 }
 
