@@ -194,6 +194,7 @@ type EmbeddedPostgresCtor = new (opts: {
   port: number;
   persistent: boolean;
   initdbFlags?: string[];
+  postgresFlags?: string[];
   onLog?: (message: unknown) => void;
   onError?: (message: unknown) => void;
 }) => EmbeddedPostgresInstance;
@@ -509,9 +510,8 @@ async function startServerWithDatabaseTeardown(
         "Embedded PostgreSQL mode requires dependency `embedded-postgres`. Reinstall dependencies (without omitting required packages), or set DATABASE_URL for external Postgres.",
       );
     }
-    await prepareEmbeddedPostgresNativeRuntime();
-  
     const dataDir = resolve(config.embeddedPostgresDataDir);
+    const embeddedPostgresRuntimeFlags = await prepareEmbeddedPostgresNativeRuntime(dataDir);
     const configuredPort = config.embeddedPostgresPort;
     let port = configuredPort;
     const logBuffer = createEmbeddedPostgresLogBuffer(120);
@@ -611,6 +611,7 @@ async function startServerWithDatabaseTeardown(
           port,
           persistent: true,
           initdbFlags: ["--encoding=UTF8", "--locale=C", "--lc-messages=C"],
+          postgresFlags: embeddedPostgresRuntimeFlags,
           onLog: appendEmbeddedPostgresLog,
           onError: appendEmbeddedPostgresLog,
         });
@@ -653,6 +654,11 @@ async function startServerWithDatabaseTeardown(
           throw startupError;
         }
         embeddedPostgresStartedByThisProcess = true;
+        const stopEmbeddedPostgresOnStartupFailure = async () => {
+          if (!embeddedPostgres || !embeddedPostgresStartedByThisProcess) return;
+          await (embeddedPostgresSupervisor?.shutdown() ?? embeddedPostgres.stop());
+        };
+        startupDatabase.close = stopEmbeddedPostgresOnStartupFailure;
         embeddedPostgresSupervisor = createEmbeddedPostgresSupervisor({
           initialInstance: embeddedPostgres,
           createInstance: createEmbeddedPostgres,
@@ -721,7 +727,14 @@ async function startServerWithDatabaseTeardown(
     const clients = pluginMigrationDb === db ? [db] : [db, pluginMigrationDb];
     await Promise.all([...clients.map((client) => endDatabaseClient(client, 5)), closeLivenessDb(db, 5)]);
   };
-  startupDatabase.close = closeDatabaseClients;
+  startupDatabase.close = async () => {
+    try { await closeDatabaseClients(); }
+    finally {
+      if (embeddedPostgres && embeddedPostgresStartedByThisProcess) {
+        await (embeddedPostgresSupervisor?.shutdown() ?? embeddedPostgres.stop());
+      }
+    }
+  };
   setSentryRunLinkResolver(createSentryRunLinkResolver(db));
   startupDatabase.failureCode = "SERVER_RUNTIME_INITIALIZATION_FAILED";
   

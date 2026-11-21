@@ -196,6 +196,7 @@ type EmbeddedPostgresCtor = new (opts: {
   port: number;
   persistent: boolean;
   initdbFlags?: string[];
+  postgresFlags?: string[];
   onLog?: (message: unknown) => void;
   onError?: (message: unknown) => void;
 }) => EmbeddedPostgresInstance;
@@ -1117,8 +1118,6 @@ export async function ensureEmbeddedPostgres(
       "Embedded PostgreSQL support requires dependency `embedded-postgres`. Reinstall dependencies and try again.",
     );
   }
-  await prepareEmbeddedPostgresNativeRuntime();
-
   const postmasterPidFile = path.resolve(dataDir, "postmaster.pid");
   const runningPid = readRunningPostmasterPid(postmasterPidFile);
   if (runningPid) {
@@ -1136,6 +1135,7 @@ export async function ensureEmbeddedPostgres(
   }
 
   const port = await findAvailablePort(preferredPort);
+  const postgresFlags = await prepareEmbeddedPostgresNativeRuntime(dataDir);
   const logBuffer = createEmbeddedPostgresLogBuffer();
   const instance = new EmbeddedPostgres({
     databaseDir: dataDir,
@@ -1144,6 +1144,7 @@ export async function ensureEmbeddedPostgres(
     port,
     persistent: true,
     initdbFlags: ["--encoding=UTF8", "--locale=C", "--lc-messages=C"],
+    postgresFlags,
     onLog: logBuffer.append,
     onError: logBuffer.append,
   });

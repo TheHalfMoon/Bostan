@@ -1,4 +1,5 @@
 import { promises as fs } from "node:fs";
+import { constants as fsConstants } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
@@ -8,6 +9,9 @@ function resolveNativePackageName(): string | null {
   if (process.platform === "darwin") {
     return process.arch === "arm64" ? "darwin-arm64"
       : process.arch === "x64" ? "darwin-x64" : null;
+  }
+  if (process.platform === "win32") {
+    return process.arch === "x64" ? "windows-x64" : null;
   }
   if (process.platform !== "linux") return null;
 
@@ -112,22 +116,102 @@ export async function ensureDarwinSharedLibraryAliases(libDir: string): Promise<
   return created;
 }
 
-export async function prepareEmbeddedPostgresNativeRuntime(): Promise<void> {
+async function copyImmutableAsset(source: string, destination: string): Promise<void> {
+  const sourceInfo = await fs.lstat(source);
+  if (!sourceInfo.isFile() || sourceInfo.isSymbolicLink()) {
+    throw new Error("Embedded PostgreSQL extension source is not a regular file");
+  }
+  try {
+    const destinationInfo = await fs.lstat(destination);
+    if (!destinationInfo.isFile() || destinationInfo.isSymbolicLink()) {
+      throw new Error("Embedded PostgreSQL extension runtime contains an unsafe entry");
+    }
+    const [sourceBytes, destinationBytes] = await Promise.all([
+      fs.readFile(source),
+      fs.readFile(destination),
+    ]);
+    if (!sourceBytes.equals(destinationBytes)) {
+      throw new Error("Embedded PostgreSQL extension runtime does not match the packaged files");
+    }
+    return;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  await fs.copyFile(source, destination, fsConstants.COPYFILE_EXCL);
+}
+
+export async function prepareWindowsPostgresExtensionRuntime(nativeRoot: string, dataDirectory: string): Promise<string[]> {
+  const nativeDirectory = path.join(nativeRoot, "native");
+  const extensionSource = path.join(nativeDirectory, "share", "extension");
+  const librarySource = path.join(nativeDirectory, "lib");
+  const packageMetadata = JSON.parse(await fs.readFile(path.join(nativeRoot, "package.json"), "utf8")) as { version?: unknown };
+  if (typeof packageMetadata.version !== "string" || !/^[A-Za-z0-9.-]{1,80}$/.test(packageMetadata.version)) {
+    throw new Error("Embedded PostgreSQL native package version is invalid");
+  }
+  const runtimeDirectory = path.join(dataDirectory, `postgres-extensions-${packageMetadata.version}`);
+  await fs.mkdir(dataDirectory, { recursive: true });
+  const dataInfo = await fs.lstat(dataDirectory);
+  if (!dataInfo.isDirectory() || dataInfo.isSymbolicLink()) {
+    throw new Error("Embedded PostgreSQL data directory is unsafe");
+  }
+  await fs.mkdir(runtimeDirectory, { recursive: true });
+  const runtimeInfo = await fs.lstat(runtimeDirectory);
+  if (!runtimeInfo.isDirectory() || runtimeInfo.isSymbolicLink()) {
+    throw new Error("Embedded PostgreSQL extension runtime directory is unsafe");
+  }
+
+  const extensionEntries = await fs.readdir(extensionSource, { withFileTypes: true });
+  const extensionFiles = extensionEntries
+    .filter(entry => entry.isFile() && /^(?:fuzzystrmatch|pg_trgm)(?:\.control|--[A-Za-z0-9._-]+\.sql)$/.test(entry.name))
+    .map(entry => entry.name);
+  for (const extensionName of ["fuzzystrmatch", "pg_trgm"]) {
+    if (!extensionFiles.includes(`${extensionName}.control`)) {
+      throw new Error("Embedded PostgreSQL extension control file is missing from the packaged runtime");
+    }
+    if (!extensionFiles.some(name => name.startsWith(`${extensionName}--`))) {
+      throw new Error("Embedded PostgreSQL extension SQL files are missing from the packaged runtime");
+    }
+  }
+
+  for (const name of extensionFiles) {
+    await copyImmutableAsset(path.join(extensionSource, name), path.join(runtimeDirectory, name));
+  }
+  for (const name of ["fuzzystrmatch.dll", "pg_trgm.dll"]) {
+    await copyImmutableAsset(path.join(librarySource, name), path.join(runtimeDirectory, name));
+  }
+
+  // PostgreSQL 18 may fail to open extension SQL files through pnpm's deeply
+  // nested runtime path on Windows. A short, app-owned copy keeps SQL/control
+  // and DLL lookups below Win32 path limits while retaining the system search.
+  const configValue = (value: string) => `'${value.replaceAll("'", "''")}'`;
+  return [
+    "-c", `extension_control_path=${configValue(`${runtimeDirectory};$system`)}`,
+    "-c", `dynamic_library_path=${configValue(`${runtimeDirectory};$libdir`)}`,
+  ];
+}
+
+export async function prepareEmbeddedPostgresNativeRuntime(dataDirectory?: string): Promise<string[]> {
   const nativePackageName = resolveNativePackageName();
-  if (!nativePackageName) return;
+  if (!nativePackageName) return [];
   let embeddedPostgresEntry: string;
   try { embeddedPostgresEntry = require.resolve("embedded-postgres"); }
-  catch { return; }
+  catch { return []; }
   const nativeRoot = resolveEmbeddedPostgresNativePackageRoot(embeddedPostgresEntry, nativePackageName);
-  if (!nativeRoot) return;
+  if (!nativeRoot) return [];
+
+  if (process.platform === "win32") {
+    if (!dataDirectory) throw new Error("Embedded PostgreSQL Windows runtime requires an owned data directory");
+    return prepareWindowsPostgresExtensionRuntime(nativeRoot, dataDirectory);
+  }
 
   const libDir = path.join(nativeRoot, "native", "lib");
-  if (!(await pathExists(libDir))) return;
+  if (!(await pathExists(libDir))) return [];
 
   if (process.platform === "darwin") {
     await ensureDarwinSharedLibraryAliases(libDir);
-    return;
+    return [];
   }
   prependPathEnv("LD_LIBRARY_PATH", libDir);
   await ensureLinuxSharedLibraryAliases(libDir);
+  return [];
 }
