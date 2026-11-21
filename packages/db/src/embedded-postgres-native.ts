@@ -187,10 +187,9 @@ export async function prepareWindowsPostgresExtensionRuntime(nativeRoot: string,
   // PostgreSQL 18 may fail to open extension SQL files through pnpm's deeply
   // nested runtime path on Windows. A short, app-owned copy keeps SQL/control
   // and DLL lookups below Win32 path limits while retaining the system search.
-  const configValue = (value: string) => `'${value.replaceAll("'", "''")}'`;
   return [
-    "-c", `extension_control_path=${configValue(`${runtimeDirectory};$system`)}`,
-    "-c", `dynamic_library_path=${configValue(`${runtimeDirectory};$libdir`)}`,
+    "-c", `extension_control_path=${runtimeDirectory};$system`,
+    "-c", `dynamic_library_path=${runtimeDirectory};$libdir`,
   ];
 }
 
