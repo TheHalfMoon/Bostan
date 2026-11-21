@@ -1,7 +1,7 @@
 import { BOSTAN_CHAT_ATTACHMENTS_USER_AGENT } from "./bostan-user-agents.js";
 import type { Attachment, Message } from "chat";
 import { createHash } from "node:crypto";
-import { JSDOM } from "jsdom";
+import { loadJSDOM } from "../lazy-jsdom.js";
 import {
   isAllowedContentType,
   MAX_ATTACHMENT_BYTES,
@@ -650,6 +650,7 @@ function resolveCanonicalAttachmentTargetOrThrow(
       ? target
       : null;
   };
+  const { JSDOM } = loadJSDOM();
   const fragment = JSDOM.fragment(row.body_html);
   const candidates: URL[] = [];
   for (const anchor of fragment.querySelectorAll("a[href]")) {

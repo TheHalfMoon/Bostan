@@ -87,6 +87,7 @@ test("scope refuses startup without a managed run lock", () => {
 test("allowlisted QA models only; never attempt a paid or unknown model", () => {
   assert.equal(qualifyFreeQaModel(undefined), "opencode/deepseek-v4.1-flash-free");
   assert.equal(qualifyFreeQaModel("opencode/beam-free"), "opencode/beam-free");
+  assert.equal(qualifyFreeQaModel("opencode/hy4-flash-free"), "opencode/hy4-flash-free");
   for (const model of ["openai/gpt-5.2", "opencode/claude-opus-5-5", "unknown/free",
     "opencode/deepseek-v4.1-flash-free\n--ignore-safety"]) {
     assert.throws(() => qualifyFreeQaModel(model), /Only explicitly permitted/);
