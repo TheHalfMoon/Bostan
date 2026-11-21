@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { qualifyFreeQaModel } from "./bostan-free-model-policy.mjs";
 import { admitFreeOpenCodeModel } from "./bostan-opencode-free-admission.mjs";
 import { nativeGovernedCaseAgentConfig } from "./bostan-governed-case-free-e2e.mjs";
+import { classifyPackagedStartupProgress } from "./bostan-packaged-startup-progress.mjs";
 import {
   assertHeartbeatQaSucceeded,
   buildFirstWorkerTask,
@@ -107,6 +108,8 @@ function createStartupEvidence() {
     startedAt: Date.now(), phases: [], firstFailureCode: null,
     healthOutcome: "not_probed", ownedListenerCount: 0,
     metricsAt: 0, metrics: null, lastPhaseAt: Date.now(), lastProcessActivityAt: 0,
+    lastCpuActivityAt: 0, lastMemoryChangeAt: 0, cpuActivitySamples: 0,
+    memoryChangeSamples: 0, processCountChanges: 0, lastProcessCountChangeAt: 0,
   };
 }
 
@@ -187,9 +190,22 @@ async function findHealth(child, startupEvidence) {
       const current = processMetrics(pids);
       if (current) {
         const previous = startupEvidence.metrics;
+        const sampledAt = Date.now();
+        if (previous && current.cpuMs - previous.cpuMs >= 250) {
+          startupEvidence.lastCpuActivityAt = sampledAt;
+          startupEvidence.cpuActivitySamples++;
+        }
+        if (previous && Math.abs(current.rssMiB - previous.rssMiB) >= 2) {
+          startupEvidence.lastMemoryChangeAt = sampledAt;
+          startupEvidence.memoryChangeSamples++;
+        }
+        if (previous && current.count !== previous.count) {
+          startupEvidence.processCountChanges++;
+          startupEvidence.lastProcessCountChangeAt = sampledAt;
+        }
         if (previous && (current.cpuMs - previous.cpuMs >= 250 ||
             Math.abs(current.rssMiB - previous.rssMiB) >= 2 || current.count !== previous.count)) {
-          startupEvidence.lastProcessActivityAt = Date.now();
+          startupEvidence.lastProcessActivityAt = sampledAt;
         }
         startupEvidence.metrics = current;
       }
@@ -223,11 +239,18 @@ async function findHealth(child, startupEvidence) {
     lastSuccessfulPhase: lastPhase?.phase ?? "none",
     lastPhaseAgeMs: lastPhase ? Date.now() - lastPhase.at : null,
     firstFailureCode: startupEvidence.firstFailureCode,
-    startupProgress: Date.now() - startupEvidence.lastPhaseAt <= 30_000
-      ? "phase_progress_within_30s"
-      : Date.now() - startupEvidence.lastProcessActivityAt <= 30_000
-        ? "process_activity_without_phase_progress"
-        : "no_observed_phase_or_process_progress_for_30s",
+    startupProgress: classifyPackagedStartupProgress(startupEvidence),
+    progressEvidence: {
+      cpuActivitySamples: startupEvidence.cpuActivitySamples,
+      memoryChangeSamples: startupEvidence.memoryChangeSamples,
+      processCountChanges: startupEvidence.processCountChanges,
+      msSinceCpuActivity: startupEvidence.lastCpuActivityAt
+        ? Date.now() - startupEvidence.lastCpuActivityAt : null,
+      msSinceMemoryChange: startupEvidence.lastMemoryChangeAt
+        ? Date.now() - startupEvidence.lastMemoryChangeAt : null,
+      msSinceProcessCountChange: startupEvidence.lastProcessCountChangeAt
+        ? Date.now() - startupEvidence.lastProcessCountChangeAt : null,
+    },
     ownedLoopbackListeners: startupEvidence.ownedListenerCount,
     healthOutcome: startupEvidence.healthOutcome,
     processMetrics: startupEvidence.metrics,
