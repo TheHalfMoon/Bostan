@@ -29,7 +29,13 @@ test("startup receipts accept only fixed phases and failure codes", () => {
   assert.equal(diagnostics.startupErrorCode(Object.assign(new Error("private database detail"), { code: "POSTGRES_DATABASE_FAILED" })), "POSTGRES_DATABASE_FAILED");
   assert.equal(diagnostics.startupFailureLine("POSTGRES_MIGRATION_FAILED"), "BOSTAN_DESKTOP_STARTUP_FAILURE POSTGRES_MIGRATION_FAILED");
   const frozenNativeFailure = Object.freeze({ code: "28P01" });
-  assert.equal(diagnostics.startupErrorCode(frozenNativeFailure, "POSTGRES_MIGRATION_FAILED"), "POSTGRES_MIGRATION_FAILED");
+  assert.equal(diagnostics.startupErrorCode(frozenNativeFailure, "POSTGRES_MIGRATION_FAILED"), "POSTGRES_MIGRATION_AUTH_FAILED");
+  assert.equal(diagnostics.startupErrorCode({ code: "08006" }, "POSTGRES_MIGRATION_FAILED"), "POSTGRES_MIGRATION_CONNECTION_FAILED");
+  assert.equal(diagnostics.startupErrorCode({ code: "42P01" }, "POSTGRES_MIGRATION_FAILED"), "POSTGRES_MIGRATION_SCHEMA_FAILED");
+  assert.equal(diagnostics.startupErrorCode({ code: "42601" }, "POSTGRES_MIGRATION_FAILED"), "POSTGRES_MIGRATION_FAILED");
+  assert.equal(diagnostics.startupErrorCode({ code: "0A000" }, "POSTGRES_MIGRATION_FAILED"), "POSTGRES_MIGRATION_FEATURE_UNSUPPORTED");
+  assert.equal(diagnostics.startupErrorCode({ code: "58P01" }, "POSTGRES_MIGRATION_FAILED"), "POSTGRES_MIGRATION_FILE_MISSING");
+  assert.equal(diagnostics.startupErrorCode({ code: "23505" }, "POSTGRES_MIGRATION_FAILED"), "POSTGRES_MIGRATION_CONSTRAINT_FAILED");
   assert.equal(diagnostics.startupErrorCode({ code: "EACCES" }, "POSTGRES_MIGRATION_FAILED"), "EACCES");
 });
 
