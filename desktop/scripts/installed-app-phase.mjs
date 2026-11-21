@@ -25,6 +25,26 @@ export function observeInstalledAppStartup(application, onLine) {
   return () => { for (const dispose of listeners) dispose(); };
 }
 
+/** Resolve when Electron emits a fixed startup failure receipt. The caller
+ * owns any response to that failure and must still report qualification as failed. */
+export function createStartupFailureSignal() {
+  let resolveFailure;
+  let settled = false;
+  const promise = new Promise(resolve => { resolveFailure = resolve; });
+  return {
+    promise,
+    accept(line) {
+      const prefix = "BOSTAN_DESKTOP_STARTUP_FAILURE ";
+      if (!diagnostics.isStartupDiagnosticLine(line) || !line.startsWith(prefix)) return false;
+      if (!settled) {
+        settled = true;
+        resolveFailure(line.slice(prefix.length));
+      }
+      return true;
+    },
+  };
+}
+
 /** Bound an operation on the Electron process created by this QA invocation.
  * Timeout is always a qualification failure; forced exit never proves clean shutdown. */
 export async function installedAppPhase(application, phase, operation, { timeoutMs = 180000, onForcedStop = () => {} } = {}) {

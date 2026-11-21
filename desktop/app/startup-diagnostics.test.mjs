@@ -24,6 +24,8 @@ test("startup receipts accept only fixed phases and failure codes", () => {
   assert.equal(diagnostics.isStartupDiagnosticLine(diagnostics.startupPhaseLine("importing_server")), true);
   assert.equal(diagnostics.startupFailureLine("ERR_MODULE_NOT_FOUND"), "BOSTAN_DESKTOP_STARTUP_FAILURE ERR_MODULE_NOT_FOUND");
   assert.equal(diagnostics.isStartupDiagnosticLine(diagnostics.startupFailureLine("EPERM")), true);
+  assert.equal(diagnostics.startupFailureLine("POSTGRES_START_FAILED"), "BOSTAN_DESKTOP_STARTUP_FAILURE POSTGRES_START_FAILED");
+  assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_FAILURE POSTGRES_START_FAILED"), true);
 });
 
 test("wrapped PostgreSQL initialization failures disclose only a fixed reason", () => {
@@ -43,6 +45,8 @@ test("wrapped PostgreSQL initialization failures disclose only a fixed reason", 
     assert.equal(diagnostics.isStartupDiagnosticLine(line), true);
     assert.equal(line.includes("SECRET"), false);
   }
+  assert.equal(diagnostics.startupErrorCode(Object.assign(new Error(prefix + "Permission denied /private/SECRET"), { code: "POSTGRES_INIT_FAILED" })), "POSTGRES_PERMISSION_DENIED");
+  assert.equal(diagnostics.startupErrorCode(Object.assign(new Error(prefix + "arbitrary private SECRET diagnostic"), { code: "POSTGRES_INIT_FAILED" })), "POSTGRES_INIT_FAILED");
   assert.equal(diagnostics.startupErrorCode(new Error("Library not loaded: private unrelated failure")), "STARTUP_FAILED");
   assert.equal(diagnostics.startupErrorCode(Object.assign(new Error(prefix), { code: "ENOENT" })), "ENOENT");
 });

@@ -11,6 +11,7 @@ const codes = new Set([
   "EACCES", "EPERM", "ENOENT", "EADDRINUSE",
   "POSTGRES_LIBRARY_MISSING", "POSTGRES_SIGNATURE_INVALID", "POSTGRES_LOCALE_INVALID",
   "POSTGRES_PERMISSION_DENIED", "POSTGRES_ROOT_REFUSED", "POSTGRES_INIT_FAILED",
+  "POSTGRES_START_FAILED",
 ]);
 function startupPhaseLine(phase) {
   return phases.has(phase) ? `BOSTAN_DESKTOP_STARTUP_PHASE ${phase}` : null;
@@ -18,7 +19,7 @@ function startupPhaseLine(phase) {
 function startupCode(code) { return codes.has(code) ? code : "STARTUP_FAILED"; }
 function startupErrorCode(error) {
   const code = startupCode(error?.code);
-  if (code !== "STARTUP_FAILED") return code;
+  if (code !== "STARTUP_FAILED" && code !== "POSTGRES_INIT_FAILED") return code;
   // The dependency wraps initdb exits as a message. Match only its fixed prefix;
   // classify buffered stderr locally, never emit any of its text or paths.
   try {

@@ -3,11 +3,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { qualifyInstalledApp } from "./installed-app-journey.mjs";
-import { installedAppPhase, observeInstalledAppStartup } from "./installed-app-phase.mjs";
+import { installedAppPhase, observeInstalledAppStartup, createStartupFailureSignal } from "./installed-app-phase.mjs";
 import { installerTreeSnapshot } from "./installer-tree-snapshot.mjs";
 import { verifyCandidateInstall } from "./artifact-checksums.mjs";
 import { nsisRegistrationIdentity, assertInstalledRegistration } from "./windows-registration-identity.mjs";
 import { execFileSync, spawnSync } from "node:child_process";
+import { once } from "node:events";
 import { createRequire } from "node:module";
 import { resolvePrivateWindowsPowerShellBinary } from "../../scripts/bostan-private-windows-powershell-binary.mjs";
 import { evaluateWindowsPgOrphanCheck } from "../../scripts/bostan-private-windows-pg-orphan-proof.mjs";
@@ -159,7 +160,11 @@ try {
     console.log("BOSTAN_WINDOWS_INSTALLER_PHASE electron_launch_begin");
     application = await _electron.launch({ executablePath: executable, env, timeout: 180000 });
     console.log("BOSTAN_WINDOWS_INSTALLER_PHASE electron_connected");
-    stopStartupObserver = observeInstalledAppStartup(application, line => console.log(line));
+    const startupFailure = createStartupFailureSignal();
+    stopStartupObserver = observeInstalledAppStartup(application, line => {
+      console.log(line);
+      startupFailure.accept(line);
+    });
     forcedStop = false;
     const actual = await appPhase("data_path", () => application.evaluate(({ app }) => app.getPath("userData")));
     assert.equal(path.resolve(actual).toLowerCase(), path.resolve(appData).toLowerCase());
@@ -170,7 +175,28 @@ try {
     console.log("BOSTAN_WINDOWS_INSTALLER_PHASE first_window");
     page.setDefaultTimeout(30000);
     page.setDefaultNavigationTimeout(180000);
-    await page.waitForURL(url => url.protocol === "http:" && url.hostname === "127.0.0.1", { timeout: 180000 });
+    const ready = await Promise.race([
+      page.waitForURL(url => url.protocol === "http:" && url.hostname === "127.0.0.1", { timeout: 180000 })
+        .then(() => true),
+      startupFailure.promise.then(code => code),
+    ]);
+    if (ready !== true) {
+      // The error dialog is a deliberate user-facing recovery path. On this
+      // disposable CI profile it blocks unattended cleanup, so stop only the
+      // Electron process owned by this qualification and fail the gate.
+      console.log("BOSTAN_WINDOWS_INSTALLER_PHASE forced_stop_failure");
+      forcedStop = true;
+      stopStartupObserver();
+      const ownedProcess = application.process();
+      if (ownedProcess.exitCode === null && ownedProcess.signalCode === null) {
+        await appPhase("failed_startup_exit", () => {
+          const exited = once(ownedProcess, "exit");
+          ownedProcess.kill("SIGKILL");
+          return exited;
+        }, 15000);
+      }
+      throw new Error(`Installed startup failed (${ready})`);
+    }
     stopStartupObserver();
     console.log("BOSTAN_WINDOWS_INSTALLER_PHASE backend_page_ready");
     return page;

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once, EventEmitter } from "node:events";
 import { test } from "node:test";
-import { installedAppPhase, observeInstalledAppStartup } from "./installed-app-phase.mjs";
+import { installedAppPhase, observeInstalledAppStartup, createStartupFailureSignal } from "./installed-app-phase.mjs";
 
 test("startup observer reconstructs bounded fixed receipts and discards private or oversized output", () => {
   const stdout = new EventEmitter();
@@ -20,6 +20,16 @@ test("startup observer reconstructs bounded fixed receipts and discards private 
   assert.equal(stderr.listenerCount("data"), 0);
   stdout.emit("data", Buffer.from("BOSTAN_DESKTOP_STARTUP_PHASE ready\n"));
   assert.equal(lines.length, 2);
+});
+
+test("startup failure signal resolves once for an allowlisted failure receipt", async () => {
+  const signal = createStartupFailureSignal();
+  const result = signal.promise;
+  assert.equal(signal.accept("BOSTAN_DESKTOP_STARTUP_PHASE starting_server"), false);
+  assert.equal(signal.accept("BOSTAN_DESKTOP_STARTUP_FAILURE PRIVATE_SECRET"), false);
+  assert.equal(signal.accept("BOSTAN_DESKTOP_STARTUP_FAILURE POSTGRES_START_FAILED"), true);
+  assert.equal(signal.accept("BOSTAN_DESKTOP_STARTUP_FAILURE STARTUP_FAILED"), true);
+  assert.equal(await result, "POSTGRES_START_FAILED");
 });
 
 test("a stalled installed-app phase fails and stops only its actual owned child", async () => {

@@ -600,10 +600,14 @@ async function startServerWithDatabaseTeardown(
             await embeddedPostgres.initialise();
           } catch (err) {
             logEmbeddedPostgresFailure("initialise", err);
-            throw formatEmbeddedPostgresError(err, {
+            const startupError = formatEmbeddedPostgresError(err, {
               fallbackMessage: `Failed to initialize embedded PostgreSQL cluster in ${dataDir} on port ${port}`,
               recentLogs: logBuffer.getRecentLogs(),
             });
+            // The desktop host receives only this fixed code, not the formatted
+            // error text or buffered PostgreSQL startup logs.
+            Object.assign(startupError, { code: "POSTGRES_INIT_FAILED" });
+            throw startupError;
           }
         } else {
           logger.info(`Embedded PostgreSQL cluster already exists (${clusterVersionFile}); skipping init`);
@@ -617,10 +621,15 @@ async function startServerWithDatabaseTeardown(
           await embeddedPostgres.start();
         } catch (err) {
           logEmbeddedPostgresFailure("start", err);
-          throw formatEmbeddedPostgresError(err, {
+          const startupError = formatEmbeddedPostgresError(err, {
             fallbackMessage: `Failed to start embedded PostgreSQL on port ${port}`,
             recentLogs: logBuffer.getRecentLogs(),
           });
+          // embedded-postgres may reject with no Error when its process exits
+          // before the ready marker; distinguish that phase without forwarding
+          // its buffered stdout, stderr, paths, or connection information.
+          Object.assign(startupError, { code: "POSTGRES_START_FAILED" });
+          throw startupError;
         }
         embeddedPostgresStartedByThisProcess = true;
         embeddedPostgresSupervisor = createEmbeddedPostgresSupervisor({
