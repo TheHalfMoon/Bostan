@@ -272,11 +272,18 @@ test("packaged QA heartbeat diagnostics retain safe phase and provider failure s
   assert.doesNotMatch(JSON.stringify(events), /private|token|output/);
   assert.equal(safeHeartbeatQaEventDiagnostic(null).available, false);
   assert.deepEqual(safeHeartbeatQaLogDiagnostic("provider_request_timeout secret=private"),
-    { available: true, bytes: 39, safeSignal: "native_provider_request_timeout" });
+    { available: true, bytes: 39, safeSignal: "native_provider_request_timeout",
+      jsonLines: 0, errorRecords: 0, recordsWithErrorField: 0, recordsWithCodeField: 0 });
   assert.deepEqual(safeHeartbeatQaLogDiagnostic("unclassified private provider output"),
-    { available: true, bytes: 36, safeSignal: null });
+    { available: true, bytes: 36, safeSignal: null,
+      jsonLines: 0, errorRecords: 0, recordsWithErrorField: 0, recordsWithCodeField: 0 });
   assert.equal(safeHeartbeatQaLogDiagnostic("provider output: HTTP 429 Too Many Requests secret").safeSignal,
     "adapter_rate_limit_signaled");
+  const structuredLog = safeHeartbeatQaLogDiagnostic('{"level":"error","msg":"private","err":{"code":"E_PRIVATE","message":"secret"}}');
+  assert.deepEqual({ jsonLines: structuredLog.jsonLines, errorRecords: structuredLog.errorRecords,
+    recordsWithErrorField: structuredLog.recordsWithErrorField, recordsWithCodeField: structuredLog.recordsWithCodeField },
+  { jsonLines: 1, errorRecords: 1, recordsWithErrorField: 1, recordsWithCodeField: 1 });
+  assert.doesNotMatch(JSON.stringify(structuredLog), /private|secret|E_PRIVATE/);
   assert.doesNotMatch(JSON.stringify(safeHeartbeatQaLogDiagnostic("provider_request_timeout secret=private")), /private|secret/);
   assert.deepEqual(safeHeartbeatQaLogDiagnostic(null), { available: false, bytes: 0, safeSignal: null });
 });

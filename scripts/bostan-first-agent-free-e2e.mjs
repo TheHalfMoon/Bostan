@@ -147,6 +147,23 @@ export function safeHeartbeatQaEventDiagnostic(events) {
 export function safeHeartbeatQaLogDiagnostic(content) {
   if (typeof content !== "string") return { available: false, bytes: 0, safeSignal: null };
   const bounded = content.slice(0, 65_536);
+  let jsonLines = 0;
+  let errorRecords = 0;
+  let recordsWithErrorField = 0;
+  let recordsWithCodeField = 0;
+  for (const line of bounded.split(/\r?\n/).slice(0, 200)) {
+    try {
+      const record = JSON.parse(line);
+      if (!record || typeof record !== "object" || Array.isArray(record)) continue;
+      jsonLines++;
+      if (record.level === "error" || record.level === 50 || record.level === "fatal" || record.level === 60) errorRecords++;
+      if (Object.hasOwn(record, "error") || Object.hasOwn(record, "err")) recordsWithErrorField++;
+      const error = record.error ?? record.err;
+      if (error && typeof error === "object" && (Object.hasOwn(error, "code") || Object.hasOwn(error, "errorCode"))) {
+        recordsWithCodeField++;
+      }
+    } catch { /* The bounded content may be a non-JSON progress log. */ }
+  }
   const signals = [
     [/native_finalization_missing: session returned no semantic result/i, "native_semantic_result_missing"],
     [/native_finalization_missing: session returned no terminal event/i, "native_terminal_event_missing"],
@@ -175,7 +192,8 @@ export function safeHeartbeatQaLogDiagnostic(content) {
     [/permission (?:was )?declined|approval required/i, "native_provider_approval_required"],
   ];
   const safeSignal = signals.find(([pattern]) => pattern.test(bounded))?.[1] ?? null;
-  return { available: true, bytes: Buffer.byteLength(bounded), safeSignal };
+  return { available: true, bytes: Buffer.byteLength(bounded), safeSignal,
+    jsonLines, errorRecords, recordsWithErrorField, recordsWithCodeField };
 }
 
 export function assertHeartbeatQaSucceeded(run) {
