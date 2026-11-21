@@ -1,4 +1,5 @@
 import path from "node:path";
+import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 import { registerHooks } from "node:module";
 import diagnostics from "./startup-diagnostics.cjs";
@@ -51,7 +52,11 @@ process.parentPort.on("message", ({ data }) => {
 });
 
 startup = (async () => {
-  const entry = path.join(process.env.BOSTAN_DESKTOP_SERVER_ROOT, "dist/index.js");
+  const serverRoot = process.env.BOSTAN_DESKTOP_SERVER_ROOT;
+  const packedEntry = path.join(serverRoot, "dist-runtime/server.mjs");
+  const entry = fs.existsSync(packedEntry)
+    ? packedEntry
+    : path.join(serverRoot, "dist/index.js");
   process.parentPort.postMessage({ type: "startup-phase", phase: "importing_server" });
   const { startServer } = await import(pathToFileURL(entry).href);
   process.parentPort.postMessage({ type: "startup-phase", phase: "starting_server" });

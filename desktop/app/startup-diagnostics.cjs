@@ -90,14 +90,15 @@ function startupFailureSite(error, runtimeRoot) {
   // Never expose the raw message, stack, function names or absolute paths.
   try {
     if (typeof error?.stack !== "string") return null;
-    const prefix = pathToFileURL(path.join(runtimeRoot, "dist") + path.sep).href;
-    const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const frame = new RegExp(`^\\s+at (?:[^\\r\\n]*?\\()?${escaped}(index\\.js|config\\.js|services/decision-signing\\.js):([1-9]\\d{0,5}):([1-9]\\d{0,5})\\)?$`);
+    const prefixes = ["dist", "dist-runtime"].map(directory =>
+      pathToFileURL(path.join(runtimeRoot, directory) + path.sep).href
+        .replace(/[.*+?^${}()|[\\]\\]/g, "\\$&"));
+    const frame = new RegExp(`^\\s+at (?:[^\\r\\n]*?\\()?(${prefixes.join("|")})(index\\.js|server\\.mjs|config\\.js|services/decision-signing\\.js):([1-9]\\d{0,5}):([1-9]\\d{0,5})\\)?$`);
     for (const line of error.stack.slice(0, 8192).split(/\r?\n/).slice(0, 32)) {
       const match = frame.exec(line);
       if (!match) continue;
-      const module = { "index.js": "server", "config.js": "config", "services/decision-signing.js": "signing" }[match[1]];
-      return `BOSTAN_DESKTOP_STARTUP_SITE ${module}:${match[2]}:${match[3]}`;
+      const module = { "index.js": "server", "server.mjs": "server", "config.js": "config", "services/decision-signing.js": "signing" }[match[2]];
+      return `BOSTAN_DESKTOP_STARTUP_SITE ${module}:${match[3]}:${match[4]}`;
     }
   } catch { /* Optional diagnosis cannot replace the original startup failure. */ }
   return null;

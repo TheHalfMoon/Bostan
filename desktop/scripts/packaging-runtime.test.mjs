@@ -20,9 +20,11 @@ function fixture(t, platform = "win32") {
   });
   const stage = path.join(root, "stage");
   fs.mkdirSync(path.join(stage, "dist"), { recursive: true });
+  fs.mkdirSync(path.join(stage, "dist-runtime"), { recursive: true });
   fs.mkdirSync(path.join(stage, "ui-dist"));
   fs.writeFileSync(path.join(stage, "package.json"), '{"name":"@bostan/server","private":true}');
   fs.writeFileSync(path.join(stage, "dist/index.js"), "export const value = 1;\n");
+  fs.writeFileSync(path.join(stage, "dist-runtime/server.mjs"), "export const startServer = async () => ({ listenPort: 43117 });\n");
   fs.writeFileSync(path.join(stage, "ui-dist/index.html"), "<title>Bostan</title>");
   const appOutDir = path.join(root, "application");
   const runtime = platform === "darwin"

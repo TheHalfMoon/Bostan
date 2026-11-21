@@ -119,9 +119,13 @@ function recordStartupLine(evidence, line) {
     evidence.phases.push({ phase: phase[1], at: Date.now() });
     if (evidence.phases.length > 24) evidence.phases.shift();
     evidence.lastPhaseAt = Date.now();
+    console.log(`BOSTAN_PACKAGED_STARTUP_PHASE ${phase[1]}`);
   }
   const failure = line.match(/^BOSTAN_DESKTOP_STARTUP_FAILURE ([A-Z0-9_]{1,80})$/);
-  if (failure && !evidence.firstFailureCode) evidence.firstFailureCode = failure[1];
+  if (failure && !evidence.firstFailureCode) {
+    evidence.firstFailureCode = failure[1];
+    console.error(`BOSTAN_PACKAGED_STARTUP_FAILURE ${failure[1]}`);
+  }
 }
 
 function processMetrics(pids) {
@@ -218,7 +222,7 @@ async function findHealth(child, startupEvidence) {
       try {
         const { response, data } = await api(`http://127.0.0.1:${port}`, "GET", "health");
         if (response.ok && data?.status === "ok" && data.deploymentMode === "authenticated" &&
-            data.deploymentExposure === "private" && data.bootstrapStatus === "pending") {
+            data.deploymentExposure === "private" && data.bootstrapStatus === "bootstrap_pending") {
           startupEvidence.healthOutcome = "authenticated_private_health_ready";
           return `http://127.0.0.1:${port}`;
         }
@@ -337,7 +341,7 @@ async function run() {
         return ids.size > 0 ? { done: true, result: ids } : { done: false };
       } catch { return { done: false }; }
     }, 15_000, "desktop_process_ownership_probe_failed");
-    if (!pids) { await exited; throw new Error("desktop_exited_before_owned_process_tree"); }
+    if (!pids) { const code = await exited; throw new Error(`desktop_exited_before_owned_process_tree_${code ?? "unknown"}`); }
     const base = await findHealth(child, startupEvidence);
     console.log("BOSTAN_PACKAGED_DESKTOP_PRIVATE_HEALTH_PASS");
 

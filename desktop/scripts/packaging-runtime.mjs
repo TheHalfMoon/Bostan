@@ -37,7 +37,7 @@ export async function captureRuntimePayload(directory) {
     }
   }
   await walk(root);
-  for (const required of ["package.json", "dist/index.js", "ui-dist/index.html"]) {
+  for (const required of ["package.json", "dist/index.js", "dist-runtime/server.mjs", "ui-dist/index.html"]) {
     if (!files.some(file => file.path === required && file.kind === "file")) throw new Error("Incomplete packaged Bostan runtime");
   }
   return files;

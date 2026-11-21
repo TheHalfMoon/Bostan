@@ -6,8 +6,8 @@ import { spawn } from "node:child_process";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-for (const failStartup of [false, true, "postgres", "early-ack", "shutdown-during-failure"]) {
-test(`actual Electron Node child preserves compiled startup and private failure receipts (case=${failStartup})`, { timeout: 30000 }, async () => {
+for (const useBundledEntry of [false, true]) for (const failStartup of [false, true, "postgres", "early-ack", "shutdown-during-failure"]) {
+test(`actual Electron Node child preserves startup contract (bundled=${useBundledEntry}, case=${failStartup})`, { timeout: 30000 }, async () => {
   const expectedFailure = failStartup === true || failStartup === "postgres" || failStartup === "shutdown-during-failure";
   const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "bostan-electron-child-test-"));
   const desktop = path.resolve(import.meta.dirname, "..");
@@ -20,7 +20,7 @@ test(`actual Electron Node child preserves compiled startup and private failure 
     fs.mkdirSync(path.join(root, "runtime/node_modules/@bostan/fixture"), { recursive: true });
     fs.writeFileSync(path.join(root, "runtime/node_modules/@bostan/fixture/package.json"), JSON.stringify({ type: "module", exports: { "bostan-compiled": "./compiled.js", default: "./source-is-unavailable.ts" } }));
     fs.writeFileSync(path.join(root, "runtime/node_modules/@bostan/fixture/compiled.js"), "export const value = 'compiled';");
-    fs.writeFileSync(path.join(root, "runtime/dist/index.js"), `
+    const serverModule = `
       import fs from 'node:fs'; import path from 'node:path'; import {fileURLToPath} from 'node:url';
       import {spawnSync} from 'node:child_process'; import {value} from '@bostan/fixture';
       export async function startServer() {
@@ -34,7 +34,14 @@ test(`actual Electron Node child preserves compiled startup and private failure 
         await new Promise(resolve=>setTimeout(resolve,250));
         return { listenPort:43117, shutdown:async()=>fs.writeFileSync(path.join(process.env.HOME,'stopped'),'clean') };
       }
-    `);
+    `;
+    if (useBundledEntry) {
+      fs.mkdirSync(path.join(root, "runtime/dist-runtime"), { recursive: true });
+      fs.writeFileSync(path.join(root, "runtime/dist-runtime/server.mjs"), serverModule);
+      fs.writeFileSync(path.join(root, "runtime/dist/index.js"), "throw new Error('DIST_ENTRY_SHOULD_NOT_BE_USED');\n");
+    } else {
+      fs.writeFileSync(path.join(root, "runtime/dist/index.js"), serverModule);
+    }
     const childModule = fileURLToPath(new URL("../app/server-child.mjs", import.meta.url));
     fs.writeFileSync(path.join(root, "main.cjs"), `
       const {app,utilityProcess}=require('electron'); const path=require('node:path');

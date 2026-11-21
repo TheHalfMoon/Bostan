@@ -62,7 +62,10 @@ else {
       const { restoreRuntimeLinks } = await import("./runtime-links.mjs");
       restoreRuntimeLinks(runtimeRoot);
     }
-    if (!fs.existsSync(path.join(runtimeRoot, "dist/index.js")) || !fs.existsSync(path.join(runtimeRoot, "ui-dist/index.html"))) {
+    const serverEntry = app.isPackaged
+      ? path.join(runtimeRoot, "dist-runtime/server.mjs")
+      : path.join(runtimeRoot, "dist/index.js");
+    if (!fs.existsSync(serverEntry) || !fs.existsSync(path.join(runtimeRoot, "ui-dist/index.html"))) {
       throw Object.assign(new Error("Bostan compiled server or interface is missing. Reinstall the application."), { code: "RUNTIME_MISSING" });
     }
     console.info(diagnostics.startupPhaseLine("runtime_valid"));

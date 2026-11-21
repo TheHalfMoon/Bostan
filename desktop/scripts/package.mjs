@@ -32,6 +32,15 @@ const stage = ownedStage.directory;
 let windowsExtraction = null;
 try {
   const pnpm = resolvePnpmInvocation();
+  const runtimeBuild = spawnSync(pnpm.command, [...pnpm.argsPrefix,
+    "--filter", "@bostan/server", "build:runtime"], {
+    cwd: repo, stdio: "inherit", shell: pnpm.command === "pnpm" && process.platform === "win32",
+    windowsHide: true,
+  });
+  if (runtimeBuild.status !== 0 || runtimeBuild.error ||
+      !fs.statSync(path.join(repo, "server/dist-runtime/server.mjs"), { throwIfNoEntry: false })?.isFile()) {
+    throw new Error("Bostan compiled desktop runtime build failed");
+  }
   if (/[&|<>^%"\r\n]/.test(repo + stage)) throw new Error("Unsupported shell characters in build path");
   const result = spawnSync(pnpm.command, [...pnpm.argsPrefix,
     "--filter", "@bostan/server", "--package-import-method=copy", "deploy", "--prod", "--ignore-scripts", stage], {

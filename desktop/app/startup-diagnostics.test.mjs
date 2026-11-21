@@ -13,6 +13,9 @@ test("startup sites disclose only a fixed module identity and bounded line numbe
   assert.equal(diagnostics.isStartupDiagnosticLine(line), true);
   assert.equal(diagnostics.startupFailureSite({ stack: error.stack.replace("index.js", "private-file.js") }, root), null);
   assert.equal(diagnostics.startupFailureSite(error, path.resolve("different-root")), null);
+  const bundled = pathToFileURL(path.join(root, "dist-runtime/server.mjs")).href;
+  assert.equal(diagnostics.startupFailureSite({ stack: `Error: private\n    at privateFunction (${bundled}:234:56)` }, root),
+    "BOSTAN_DESKTOP_STARTUP_SITE server:234:56");
   assert.equal(diagnostics.startupFailureSite({ get stack() { throw Error("private"); } }, root), null);
   for (const suffix of ["server:123:45 secret", "private:123:45", "server:0:1", "server:1234567:1", "server:1:1\nsecret", "server:1:1\n", "server:1:1\r"]) {
     assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_SITE " + suffix), false);
