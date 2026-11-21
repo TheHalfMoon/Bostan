@@ -7,7 +7,12 @@ const OPENROUTER_FREE_MODELS = new Set([
   "openrouter/cohere/north-mini-code:free",
   "openrouter/recursive/flint-v1.0:free",
 ]);
-const ALLOWED_MODELS = new Set([DEFAULT_MODEL, "opencode/beam-free", ...OPENROUTER_FREE_MODELS]);
+const ALLOWED_MODELS = new Set([
+  DEFAULT_MODEL,
+  "opencode/beam-free",
+  "opencode/hy4-flash-free",
+  ...OPENROUTER_FREE_MODELS,
+]);
 
 export function isOpenRouterFreeQaModel(model) {
   return OPENROUTER_FREE_MODELS.has(model);
