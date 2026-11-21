@@ -280,7 +280,9 @@ describe("Pi installation factory", () => {
   it("refuses symlinked target assets and metadata", () => withPiTestPlatform("x64", async () => {
     const { root, assets } = await fixture();
     await rm(assets, { recursive: true });
-    await symlink(root, assets);
+    // A Windows directory symlink requires Developer Mode or elevation; a
+    // junction exercises the same refusal path for ordinary local users.
+    await symlink(root, assets, "junction");
     await expect(verifyPiInstallation(candidate())).rejects.toThrow("fixed asset directory");
   }));
 });
