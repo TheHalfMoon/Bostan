@@ -60,11 +60,12 @@ function startupFailureLibrary(error) {
   if (startupErrorCode(error) !== "POSTGRES_LIBRARY_MISSING") return null;
   try {
     const text = typeof error?.message === "string" ? error.message.slice(0, 65536) : "";
-    const line = text.split(/\r?\n/).find(value => value.includes("Library not loaded:"));
-    if (!line) return null;
-    const reference = line.slice(line.indexOf("Library not loaded:") + "Library not loaded:".length).trim().split(",", 1)[0].trim();
-    const basename = reference.split(/[\\/]/).at(-1);
-    return typeof basename === "string" && /^lib[A-Za-z0-9_.+-]{1,100}\.dylib$/.test(basename) ? basename : null;
+    // macOS versions and nested loaders vary in how they phrase dyld failures.
+    // Inspect only the loader line that caused the fixed POSTGRES_LIBRARY_MISSING
+    // classification, then emit a library basename (never a path or stderr).
+    const line = text.split(/\r?\n/).find(value => /Library not loaded:|image not found|cannot open shared object file/i.test(value));
+    const basename = line?.match(/\blib[A-Za-z0-9_.+-]{1,100}\.dylib\b/i)?.[0];
+    return typeof basename === "string" && /^lib[A-Za-z0-9_.+-]{1,100}\.dylib$/i.test(basename) ? basename : null;
   } catch { return null; }
 }
 function startupFailureLibraryLine(library) {

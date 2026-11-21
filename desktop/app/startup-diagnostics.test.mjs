@@ -78,8 +78,15 @@ test("wrapped PostgreSQL initialization failures disclose only a fixed reason", 
 });
 
 test("PostgreSQL loader failure receipts expose only the missing library basename", () => {
-  const failure = new Error("Postgres init script exited with code 1. Recent embedded Postgres logs: Library not loaded: @loader_path/../lib/libicui18n.dylib, referenced from: /private/secret/postgres");
-  assert.equal(diagnostics.startupFailureLibrary(failure), "libicui18n.dylib");
+  const cases = [
+    ["Library not loaded: @loader_path/../lib/libicui18n.dylib, referenced from: /private/secret/postgres", "libicui18n.dylib"],
+    ["dyld: library not loaded: '/private/secret/libpq.5.dylib'", "libpq.5.dylib"],
+    ["dlopen failed: image not found for /private/secret/libintl.dylib", "libintl.dylib"],
+  ];
+  for (const [loaderLine, expected] of cases) {
+    const failure = new Error("Postgres init script exited with code 1. Recent embedded Postgres logs: " + loaderLine);
+    assert.equal(diagnostics.startupFailureLibrary(failure), expected);
+  }
   assert.equal(diagnostics.startupFailureLibraryLine("libicui18n.dylib"), "BOSTAN_DESKTOP_STARTUP_LIBRARY libicui18n.dylib");
   assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_LIBRARY libicui18n.dylib"), true);
   assert.equal(diagnostics.startupFailureLibrary(new Error("private path /secret/libanything.dylib")), null);
