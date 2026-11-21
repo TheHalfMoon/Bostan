@@ -100,6 +100,7 @@ else {
         } else if (message?.type === "startup-failed") {
           if (diagnostics.isStartupSiteLine(message.site)) console.error(message.site);
           clearTimeout(timer); reject(Object.assign(new Error("Bostan could not initialize its local backend. Your data is retained."), { code: diagnostics.startupCode(message.code) }));
+          child.postMessage({ type: "startup-failure-ack" });
         }
       });
       child.once("exit", () => { clearTimeout(timer); reject(Object.assign(new Error("Bostan backend exited during startup."), { code: "BACKEND_EXITED" })); });

@@ -22,16 +22,23 @@ registerHooks({
 let runtime;
 let stopping;
 let startup;
+let startupFailureAckTimer;
 function stop() {
   return stopping ??= (async () => {
     // A quit request during migrations must wait for startup to settle before
     // closing the runtime. Exiting early would abandon an owned PostgreSQL.
-    await startup;
+    try { await startup; }
+    catch { return; } // The startup-failure receipt/ack path owns this exit.
     if (runtime) await runtime.shutdown();
     process.exit(0);
   })();
 }
 process.parentPort.on("message", ({ data }) => {
+  if (data?.type === "startup-failure-ack" && startupFailureAckTimer) {
+    clearTimeout(startupFailureAckTimer);
+    startupFailureAckTimer = null;
+    process.exit(1);
+  }
   if (data?.type === "shutdown") {
     void stop().catch(() => {
       stopping = null;
@@ -55,6 +62,12 @@ try {
   // Raw backend stacks may include secrets, database URLs and host paths.
   const code = diagnostics.startupErrorCode(error);
   const site = diagnostics.startupFailureSite(error, process.env.BOSTAN_DESKTOP_SERVER_ROOT);
+  // Utility-process messages are asynchronous. Wait for the application host
+  // to receive this bounded receipt before exiting; retain a fixed fallback
+  // for a host that has already disappeared.
+  startupFailureAckTimer = setTimeout(() => {
+    startupFailureAckTimer = null;
+    process.exit(1);
+  }, 5000);
   process.parentPort.postMessage({ type: "startup-failed", code, site });
-  process.exit(1);
 }

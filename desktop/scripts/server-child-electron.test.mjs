@@ -6,8 +6,9 @@ import { spawn } from "node:child_process";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-for (const failStartup of [false, true, "postgres"]) {
-test(`actual Electron Node child preserves compiled startup and private failure receipts (failure=${failStartup})`, { timeout: 30000 }, async () => {
+for (const failStartup of [false, true, "postgres", "early-ack", "shutdown-during-failure"]) {
+test(`actual Electron Node child preserves compiled startup and private failure receipts (case=${failStartup})`, { timeout: 30000 }, async () => {
+  const expectedFailure = failStartup === true || failStartup === "postgres" || failStartup === "shutdown-during-failure";
   const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "bostan-electron-child-test-"));
   const desktop = path.resolve(import.meta.dirname, "..");
   const electronPackage = JSON.parse(fs.readFileSync(path.join(desktop, "node_modules/electron/package.json"), "utf8"));
@@ -23,7 +24,7 @@ test(`actual Electron Node child preserves compiled startup and private failure 
       import fs from 'node:fs'; import path from 'node:path'; import {fileURLToPath} from 'node:url';
       import {spawnSync} from 'node:child_process'; import {value} from '@bostan/fixture';
       export async function startServer() {
-        ${failStartup === "postgres" ? 'throw new Error("Postgres init script exited with code 1. Recent embedded Postgres logs: Library not loaded: /private/SYNTHETIC_PRIVATE_BACKEND_MESSAGE/lib.dylib");' : failStartup ? 'throw new Error("SYNTHETIC_PRIVATE_BACKEND_MESSAGE");' : ''}
+        ${failStartup === "postgres" ? 'throw new Error("Postgres init script exited with code 1. Recent embedded Postgres logs: Library not loaded: /private/SYNTHETIC_PRIVATE_BACKEND_MESSAGE/lib.dylib");' : failStartup === true || failStartup === "shutdown-during-failure" ? 'throw new Error("SYNTHETIC_PRIVATE_BACKEND_MESSAGE");' : ''}
         if(value!=='compiled')throw Error('Wrong export');
         const sub=spawnSync(process.execPath,['--input-type=module','-e',"import {value} from '@bostan/fixture'; console.log(value,process.versions.node)"],{
           cwd:path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),encoding:'utf8',timeout:5000,windowsHide:true
@@ -45,7 +46,14 @@ test(`actual Electron Node child preserves compiled startup and private failure 
           env:{...process.env,BOSTAN_DESKTOP_SERVER_ROOT:path.join(process.env.HOME,'runtime')}
         });
         child.stderr.on('data',chunk=>process.stderr.write(chunk));
-        child.on('message',message=>console.log(JSON.stringify(message)));
+        child.on('message',message=>{
+          console.log(JSON.stringify(message));
+          if(message?.type==='startup-failed')child.postMessage({type:'startup-failure-ack'});
+          if(${JSON.stringify(failStartup === "early-ack")} && message?.type==='startup-phase' && message.phase==='importing_server')
+            child.postMessage({type:'startup-failure-ack'});
+          if(${JSON.stringify(failStartup === "shutdown-during-failure")} && message?.type==='startup-phase' && message.phase==='importing_server')
+            child.postMessage({type:'shutdown'});
+        });
         child.on('exit',code=>{console.log('CHILD_EXIT='+code);app.exit(code)});
         setTimeout(()=>child.postMessage({type:'shutdown'}),50);
       });
@@ -56,16 +64,17 @@ test(`actual Electron Node child preserves compiled startup and private failure 
     let output = "";
     for (const stream of [child.stdout, child.stderr]) stream.on("data", chunk => { output += chunk; });
     const timer = setTimeout(() => child.kill(), 20000);
-    const code = await new Promise((resolve, reject) => { child.once("error", reject); child.once("exit", resolve); });
+    const code = await new Promise((resolve, reject) => { child.once("error", reject); child.once("close", resolve); });
     clearTimeout(timer);
-    assert.equal(code, failStartup ? 1 : 0, output);
+    assert.equal(code, expectedFailure ? 1 : 0, output);
     const phases = output.split(/\r?\n/).filter(line => line.startsWith('{"type":"startup-phase"')).map(line => JSON.parse(line).phase);
-    assert.deepEqual(phases, failStartup ? ["utility_bootstrap", "importing_server", "starting_server"] : ["utility_bootstrap", "importing_server", "starting_server", "ready"]);
-    if (failStartup) {
+    assert.deepEqual(phases, expectedFailure ? ["utility_bootstrap", "importing_server", "starting_server"] : ["utility_bootstrap", "importing_server", "starting_server", "ready"]);
+    if (expectedFailure) {
       const failure = output.split(/\r?\n/).filter(line => line.startsWith('{"type":"startup-failed"')).map(line => JSON.parse(line));
       assert.equal(failure.length, 1);
       assert.equal(failure[0].code, failStartup === "postgres" ? "POSTGRES_LIBRARY_MISSING" : "STARTUP_FAILED");
       assert.match(failure[0].site, /^BOSTAN_DESKTOP_STARTUP_SITE server:[1-9]\d*:[1-9]\d*$/);
+      assert.equal(output.includes('{"type":"shutdown-failed"}'), false);
       assert.equal(output.includes("SYNTHETIC_PRIVATE_BACKEND_MESSAGE"), false);
     } else {
       assert.match(output, /CHILD_EXIT=0/);
