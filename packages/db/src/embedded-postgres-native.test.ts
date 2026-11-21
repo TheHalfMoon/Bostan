@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { afterEach, describe, expect, it } from "vitest";
-import { ensureDarwinSharedLibraryAliases, ensureLinuxSharedLibraryAliases, prepareEmbeddedPostgresNativeRuntime, resolveEmbeddedPostgresNativePackageRoot } from "./embedded-postgres-native.js";
+import { ensureDarwinSharedLibraryAliases, ensureLinuxSharedLibraryAliases, prepareEmbeddedPostgresNativeRuntime, prepareWindowsPostgresExtensionRuntime, resolveEmbeddedPostgresNativePackageRoot } from "./embedded-postgres-native.js";
 
 const require = createRequire(import.meta.url);
 
@@ -67,7 +67,7 @@ describe("embedded Postgres native runtime", () => {
     expect(fs.readlinkSync(path.join(tempDir, "libicuuc.so.60"))).toBe("libicuuc.so.60.2");
   });
 
-  it("creates only matching macOS major-soname aliases without touching other files", async () => {
+  it.runIf(process.platform === "darwin")("creates only matching macOS major-soname aliases without touching other files", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-darwin-postgres-libs-"));
     tempDirs.push(dir);
     fs.writeFileSync(path.join(dir, "libicudata.77.1.dylib"), "synthetic-ICU");
@@ -91,7 +91,7 @@ describe("embedded Postgres native runtime", () => {
     expect(await ensureDarwinSharedLibraryAliases(dir)).toEqual([]);
   });
 
-  it("preserves an existing alias file rather than overwriting dependency content", async () => {
+  it.runIf(process.platform === "darwin")("preserves an existing alias file rather than overwriting dependency content", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-darwin-existing-alias-"));
     tempDirs.push(dir);
     fs.writeFileSync(path.join(dir, "libicudata.77.1.dylib"), "versioned");
@@ -106,9 +106,49 @@ describe("embedded Postgres native runtime", () => {
   it("keeps the child process API untouched while preparing the runtime", async () => {
     const originalSpawn = childProcess.spawn;
 
-    await prepareEmbeddedPostgresNativeRuntime();
+    const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "bostan-embedded-pg-runtime-"));
+    tempDirs.push(root);
+    await prepareEmbeddedPostgresNativeRuntime(root);
 
     expect(childProcess.spawn).toBe(originalSpawn);
+  });
+
+  it("stages only required Windows extension assets into a short immutable runtime path", async () => {
+    const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "bostan-windows-pg-extensions-"));
+    tempDirs.push(root);
+    const nativeRoot = path.join(root, "native-package");
+    const extensionSource = path.join(nativeRoot, "native/share/extension");
+    const librarySource = path.join(nativeRoot, "native/lib");
+    fs.mkdirSync(extensionSource, { recursive: true });
+    fs.mkdirSync(librarySource, { recursive: true });
+    fs.writeFileSync(path.join(nativeRoot, "package.json"), JSON.stringify({ version: "18.1.0-beta.16" }));
+    for (const extension of ["fuzzystrmatch", "pg_trgm"]) {
+      fs.writeFileSync(path.join(extensionSource, `${extension}.control`), `${extension}-control`);
+      fs.writeFileSync(path.join(extensionSource, `${extension}--1.0.sql`), `${extension}-sql`);
+      fs.writeFileSync(path.join(librarySource, `${extension}.dll`), `${extension}-dll`);
+    }
+    fs.writeFileSync(path.join(extensionSource, "unrelated.control"), "leave out");
+
+    const dataDirectory = path.join(root, "data");
+    const flags = await prepareWindowsPostgresExtensionRuntime(nativeRoot, dataDirectory);
+    const runtimeRoot = path.join(root, "bostan-postgres-runtime-18.1.0-beta.16");
+    const extensionDirectory = path.join(runtimeRoot, "extension");
+    const libraryDirectory = path.join(runtimeRoot, "lib");
+    expect(flags).toEqual([
+      "-c", `extension_control_path=${runtimeRoot};$system`,
+      "-c", `dynamic_library_path=${libraryDirectory};$libdir`,
+    ]);
+    expect(fs.readdirSync(extensionDirectory).sort()).toEqual([
+      "fuzzystrmatch--1.0.sql", "fuzzystrmatch.control",
+      "pg_trgm--1.0.sql", "pg_trgm.control",
+    ]);
+    expect(fs.readdirSync(libraryDirectory).sort()).toEqual(["fuzzystrmatch.dll", "pg_trgm.dll"]);
+    expect(fs.readdirSync(dataDirectory)).toEqual([]);
+    expect(await prepareWindowsPostgresExtensionRuntime(nativeRoot, dataDirectory)).toEqual(flags);
+
+    fs.writeFileSync(path.join(extensionDirectory, "fuzzystrmatch--1.0.sql"), "tampered");
+    await expect(prepareWindowsPostgresExtensionRuntime(nativeRoot, dataDirectory))
+      .rejects.toThrow(/does not match the packaged files/);
   });
 
   it("uses the dependency-scoped portable locale patch", () => {

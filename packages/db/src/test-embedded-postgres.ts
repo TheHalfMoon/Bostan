@@ -72,7 +72,6 @@ type EmbeddedPostgresCtorProvider = () => Promise<EmbeddedPostgresCtor>;
 
 async function loadEmbeddedPostgresCtor(): Promise<EmbeddedPostgresCtor> {
   const mod = await import("embedded-postgres");
-  await prepareEmbeddedPostgresNativeRuntime();
   const ctor = mod.default as EmbeddedPostgresCtor;
   if (process.platform !== "win32") return ctor;
   // Resolve the native binary supplied by embedded-postgres, not system PG.
@@ -194,6 +193,7 @@ async function createEmbeddedPostgresTestInstance(tempDirPrefix: string) {
 async function createEmbeddedPostgresTestInstanceAt(dataDir: string) {
   const port = await getAvailablePort();
   const EmbeddedPostgres = await getEmbeddedPostgresCtor();
+  const postgresRuntimeFlags = await prepareEmbeddedPostgresNativeRuntime(dataDir);
   // Postgres writes the true reason for a failed start to its output, for
   // example `could not bind IPv4 address "127.0.0.1": Address already in use`.
   // The `start()` rejection carries an empty message, so we capture the output
@@ -206,7 +206,7 @@ async function createEmbeddedPostgresTestInstanceAt(dataDir: string) {
     port,
     persistent: true,
     initdbFlags: EMBEDDED_POSTGRES_INITDB_FLAGS,
-    postgresFlags: EMBEDDED_POSTGRES_TEST_FLAGS,
+    postgresFlags: [...postgresRuntimeFlags, ...EMBEDDED_POSTGRES_TEST_FLAGS],
     onLog: (message) => logBuffer.append(message),
     onError: (message) => logBuffer.append(message),
   });
