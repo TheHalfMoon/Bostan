@@ -230,7 +230,7 @@ async function endDatabaseClient(client: unknown, timeoutSeconds: number): Promi
 }
 
 export async function startServer(options?: {
-  onStartupFailure?: (failureCode: string, migrationFile?: string) => void;
+  onStartupFailure?: (failureCode: string, migrationFile?: string, error?: unknown) => void;
 }): Promise<StartedServer> {
   const startupDatabase: StartupDatabaseTeardown = {
     close: null,
@@ -245,7 +245,7 @@ export async function startServer(options?: {
         logger.error({ err: closeError }, "failed to close database clients after startup failure");
       });
     }
-    try { options?.onStartupFailure?.(startupDatabase.failureCode, startupDatabase.migrationFailure ?? undefined); }
+    try { options?.onStartupFailure?.(startupDatabase.failureCode, startupDatabase.migrationFailure ?? undefined, error); }
     catch (callbackError) { logger.error({ err: callbackError }, "desktop startup diagnostic callback failed"); }
     throw error;
   }

@@ -101,6 +101,8 @@ else {
           if (diagnostics.isStartupSiteLine(message.site)) console.error(message.site);
           const migrationLine = diagnostics.startupMigrationLine(message.migration);
           if (migrationLine) console.error(migrationLine);
+          const migrationIssueLine = diagnostics.startupMigrationIssueLine(message.migration, message.migrationIssue);
+          if (migrationIssueLine) console.error(migrationIssueLine);
           clearTimeout(timer); reject(Object.assign(new Error("Bostan could not initialize its local backend. Your data is retained."), { code: diagnostics.startupCode(message.code) }));
           child.postMessage({ type: "startup-failure-ack" });
         }

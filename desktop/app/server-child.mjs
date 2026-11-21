@@ -25,6 +25,7 @@ let startup;
 let startupFailureAckTimer;
 let startupFailureCode = "STARTUP_FAILED";
 let startupFailureMigration = null;
+let startupFailureIssue = null;
 function stop() {
   return stopping ??= (async () => {
     // A quit request during migrations must wait for startup to settle before
@@ -54,9 +55,10 @@ startup = (async () => {
   process.parentPort.postMessage({ type: "startup-phase", phase: "importing_server" });
   const { startServer } = await import(pathToFileURL(entry).href);
   process.parentPort.postMessage({ type: "startup-phase", phase: "starting_server" });
-  runtime = await startServer({ onStartupFailure: (code, migrationFile) => {
+  runtime = await startServer({ onStartupFailure: (code, migrationFile, error) => {
     startupFailureCode = code;
     if (typeof migrationFile === "string" && /^\d{4}_[a-z0-9_]+\.sql$/.test(migrationFile)) startupFailureMigration = migrationFile;
+    startupFailureIssue = diagnostics.startupMigrationIssue(error, migrationFile);
   } });
   process.parentPort.postMessage({ type: "startup-phase", phase: "ready" });
   if (!stopping) process.parentPort.postMessage({ type: "ready", port: runtime.listenPort });
@@ -74,5 +76,5 @@ try {
     startupFailureAckTimer = null;
     process.exit(1);
   }, 5000);
-  process.parentPort.postMessage({ type: "startup-failed", code, site, migration: startupFailureMigration });
+  process.parentPort.postMessage({ type: "startup-failed", code, site, migration: startupFailureMigration, migrationIssue: startupFailureIssue });
 }

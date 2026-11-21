@@ -60,6 +60,25 @@ function startupMigrationLine(migration) {
   return typeof migration === "string" && /^\d{4}_[a-z0-9_]+\.sql$/.test(migration)
     ? `BOSTAN_DESKTOP_STARTUP_MIGRATION ${migration}` : null;
 }
+function startupMigrationIssue(error, migration) {
+  if (migration !== "0080_company_search_fuzzystrmatch.sql") return null;
+  let message = "";
+  try { message = typeof error?.message === "string" ? error.message.slice(0, 8192) : ""; }
+  catch { return null; }
+  if (/could not open extension control file/i.test(message)) return "POSTGRES_EXTENSION_CONTROL_FILE_MISSING";
+  if (/could not open extension script file|could not open file .*fuzzystrmatch.*\.sql/i.test(message)) return "POSTGRES_EXTENSION_SQL_FILE_MISSING";
+  if (/could not access file|could not load library/i.test(message)) return "POSTGRES_EXTENSION_LIBRARY_MISSING";
+  if (/could not open file/i.test(message)) return "POSTGRES_MIGRATION_FILE_MISSING";
+  return null;
+}
+const migrationIssues = new Set([
+  "POSTGRES_EXTENSION_CONTROL_FILE_MISSING", "POSTGRES_EXTENSION_SQL_FILE_MISSING",
+  "POSTGRES_EXTENSION_LIBRARY_MISSING", "POSTGRES_MIGRATION_FILE_MISSING",
+]);
+function startupMigrationIssueLine(migration, issue) {
+  return startupMigrationLine(migration) && migrationIssues.has(issue)
+    ? `BOSTAN_DESKTOP_STARTUP_MIGRATION_ISSUE ${issue}` : null;
+}
 const sitePattern = /^BOSTAN_DESKTOP_STARTUP_SITE (?:server|config|signing):[1-9]\d{0,5}:[1-9]\d{0,5}$/;
 function startupFailureSite(error, runtimeRoot) {
   // Only code locations in three known startup modules may leave this process.
@@ -83,10 +102,12 @@ function isStartupDiagnosticLine(line) {
   if (typeof line !== "string") return false;
   if (isStartupSiteLine(line)) return true;
   if (startupMigrationLine(line.startsWith("BOSTAN_DESKTOP_STARTUP_MIGRATION ") ? line.slice("BOSTAN_DESKTOP_STARTUP_MIGRATION ".length) : null) === line) return true;
+  if (line.startsWith("BOSTAN_DESKTOP_STARTUP_MIGRATION_ISSUE ")
+      && migrationIssues.has(line.slice("BOSTAN_DESKTOP_STARTUP_MIGRATION_ISSUE ".length))) return true;
   const phasePrefix = "BOSTAN_DESKTOP_STARTUP_PHASE ";
   const phase = line.startsWith(phasePrefix) ? line.slice(phasePrefix.length) : null;
   if (phase !== null) return phases.has(phase);
   const prefix = "BOSTAN_DESKTOP_STARTUP_FAILURE ";
   return line.startsWith(prefix) && codes.has(line.slice(prefix.length));
 }
-module.exports = { startupPhaseLine, startupCode, startupErrorCode, startupFailureLine, startupMigrationLine, startupFailureSite, isStartupSiteLine, isStartupDiagnosticLine };
+module.exports = { startupPhaseLine, startupCode, startupErrorCode, startupFailureLine, startupMigrationLine, startupMigrationIssue, startupMigrationIssueLine, startupFailureSite, isStartupSiteLine, isStartupDiagnosticLine };

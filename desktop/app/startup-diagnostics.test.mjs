@@ -31,6 +31,11 @@ test("startup receipts accept only fixed phases and failure codes", () => {
   const migrationLine = diagnostics.startupMigrationLine("0123_safe_name.sql");
   assert.equal(migrationLine, "BOSTAN_DESKTOP_STARTUP_MIGRATION 0123_safe_name.sql");
   assert.equal(diagnostics.isStartupDiagnosticLine(migrationLine), true);
+  assert.equal(diagnostics.startupMigrationIssue({ message: 'could not open extension control file "private/path/fuzzystrmatch.control"' }, "0080_company_search_fuzzystrmatch.sql"), "POSTGRES_EXTENSION_CONTROL_FILE_MISSING");
+  assert.equal(diagnostics.startupMigrationIssue({ message: 'could not access file "$libdir/fuzzystrmatch": No such file' }, "0080_company_search_fuzzystrmatch.sql"), "POSTGRES_EXTENSION_LIBRARY_MISSING");
+  assert.equal(diagnostics.startupMigrationIssue({ message: "private detail" }, "0080_company_search_fuzzystrmatch.sql"), null);
+  assert.equal(diagnostics.startupMigrationIssue({ message: 'could not open extension control file' }, "other_migration.sql"), null);
+  assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_MIGRATION_ISSUE POSTGRES_EXTENSION_LIBRARY_MISSING"), true);
   for (const unsafe of ["../../secret.sql", "0123_name;SECRET.sql", "0123_Name.sql", "0123_name.sql\\nsecret"]) {
     assert.equal(diagnostics.startupMigrationLine(unsafe), null);
   }
