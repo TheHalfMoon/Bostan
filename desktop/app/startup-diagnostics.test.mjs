@@ -29,6 +29,16 @@ test("startup receipts accept only fixed phases and failure codes", () => {
   assert.equal(diagnostics.isStartupDiagnosticLine(diagnostics.startupFailureLine("EPERM")), true);
   assert.equal(diagnostics.startupFailureLine("POSTGRES_START_FAILED"), "BOSTAN_DESKTOP_STARTUP_FAILURE POSTGRES_START_FAILED");
   assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_FAILURE POSTGRES_START_FAILED"), true);
+  const postgresIssue = diagnostics.startupFailureIssue(Object.assign(
+    new Error('Failed to start embedded PostgreSQL. Recent logs: FATAL: could not bind IPv4 address "127.0.0.1": Address already in use'),
+    { code: "POSTGRES_START_FAILED" },
+  ), "POSTGRES_START_FAILED");
+  assert.equal(postgresIssue, "POSTGRES_START_ADDRESS_IN_USE");
+  const postgresIssueLine = diagnostics.startupFailureIssueLine(postgresIssue);
+  assert.equal(postgresIssueLine, "BOSTAN_DESKTOP_STARTUP_ISSUE POSTGRES_START_ADDRESS_IN_USE");
+  assert.equal(diagnostics.isStartupDiagnosticLine(postgresIssueLine), true);
+  assert.equal(diagnostics.startupFailureIssue(Object.assign(new Error("private C:\\Users\\secret"), { code: "POSTGRES_START_FAILED" }), "POSTGRES_START_FAILED"), "POSTGRES_START_UNCLASSIFIED");
+  assert.equal(diagnostics.startupFailureIssueLine("POSTGRES_START_UNCLASSIFIED\nC:\\private"), null);
   assert.equal(diagnostics.startupErrorCode(Object.assign(new Error("private database detail"), { code: "POSTGRES_DATABASE_FAILED" })), "POSTGRES_DATABASE_FAILED");
   assert.equal(diagnostics.startupFailureLine("POSTGRES_MIGRATION_FAILED"), "BOSTAN_DESKTOP_STARTUP_FAILURE POSTGRES_MIGRATION_FAILED");
   const migrationLine = diagnostics.startupMigrationLine("0123_safe_name.sql");

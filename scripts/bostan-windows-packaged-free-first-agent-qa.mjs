@@ -120,7 +120,7 @@ async function terminateOwnedApplicationTree(child, profile) {
 
 function createStartupEvidence() {
   return {
-    startedAt: Date.now(), phases: [], firstFailureCode: null,
+    startedAt: Date.now(), phases: [], firstFailureCode: null, firstFailureIssue: null,
     healthOutcome: "not_probed", ownedListenerCount: 0,
     metricsAt: 0, metrics: null, lastPhaseAt: Date.now(), lastProcessActivityAt: 0,
     lastCpuActivityAt: 0, lastMemoryChangeAt: 0, cpuActivitySamples: 0,
@@ -140,6 +140,11 @@ function recordStartupLine(evidence, line) {
   if (failure && !evidence.firstFailureCode) {
     evidence.firstFailureCode = failure[1];
     console.error(`BOSTAN_PACKAGED_STARTUP_FAILURE ${failure[1]}`);
+  }
+  const issue = line.match(/^BOSTAN_DESKTOP_STARTUP_ISSUE (POSTGRES_START_[A-Z_]{1,64})$/);
+  if (issue && !evidence.firstFailureIssue) {
+    evidence.firstFailureIssue = issue[1];
+    console.error(`BOSTAN_PACKAGED_STARTUP_ISSUE ${issue[1]}`);
   }
 }
 
@@ -258,6 +263,7 @@ async function findHealth(child, startupEvidence) {
     lastSuccessfulPhase: lastPhase?.phase ?? "none",
     lastPhaseAgeMs: lastPhase ? Date.now() - lastPhase.at : null,
     firstFailureCode: startupEvidence.firstFailureCode,
+    firstFailureIssue: startupEvidence.firstFailureIssue,
     startupProgress: classifyPackagedStartupProgress(startupEvidence),
     progressEvidence: {
       cpuActivitySamples: startupEvidence.cpuActivitySamples,

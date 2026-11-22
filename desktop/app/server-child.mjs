@@ -26,6 +26,7 @@ let startup;
 let startupFailureAckTimer;
 let startupFailureCode = "STARTUP_FAILED";
 let startupFailureMigration = null;
+let startupFailureMigrationIssue = null;
 let startupFailureIssue = null;
 function stop() {
   return stopping ??= (async () => {
@@ -63,7 +64,8 @@ startup = (async () => {
   runtime = await startServer({ onStartupFailure: (code, migrationFile, error) => {
     startupFailureCode = code;
     if (typeof migrationFile === "string" && /^\d{4}_[a-z0-9_]+\.sql$/.test(migrationFile)) startupFailureMigration = migrationFile;
-    startupFailureIssue = diagnostics.startupMigrationIssue(error, migrationFile);
+    startupFailureIssue = diagnostics.startupFailureIssue(error, code);
+    startupFailureMigrationIssue = diagnostics.startupMigrationIssue(error, migrationFile);
   } });
   process.parentPort.postMessage({ type: "startup-phase", phase: "ready" });
   if (!stopping) process.parentPort.postMessage({ type: "ready", port: runtime.listenPort });
@@ -82,5 +84,5 @@ try {
     startupFailureAckTimer = null;
     process.exit(1);
   }, 5000);
-  process.parentPort.postMessage({ type: "startup-failed", code, library, site, migration: startupFailureMigration, migrationIssue: startupFailureIssue });
+  process.parentPort.postMessage({ type: "startup-failed", code, library, site, issue: startupFailureIssue, migration: startupFailureMigration, migrationIssue: startupFailureMigrationIssue });
 }

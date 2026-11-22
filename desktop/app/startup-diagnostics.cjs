@@ -20,6 +20,12 @@ const codes = new Set([
   "SERVER_ERROR_MONITORING_FAILED", "SERVER_SIGNING_SECRET_FAILED", "SERVER_CONFIG_FAILED",
   "SERVER_RUNTIME_INITIALIZATION_FAILED", "SERVER_STARTUP_FAILED",
 ]);
+const postgresStartupIssues = new Set([
+  "POSTGRES_START_ADDRESS_IN_USE", "POSTGRES_START_DATA_DIRECTORY_DENIED",
+  "POSTGRES_START_LOCALE_INVALID", "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING",
+  "POSTGRES_START_EXTENSION_MISSING", "POSTGRES_START_SHARED_MEMORY_FAILED",
+  "POSTGRES_START_PROCESS_EXITED", "POSTGRES_START_UNCLASSIFIED",
+]);
 function startupPhaseLine(phase) {
   return phases.has(phase) ? `BOSTAN_DESKTOP_STARTUP_PHASE ${phase}` : null;
 }
@@ -56,6 +62,23 @@ function startupErrorCode(error, fallbackCode) {
   return stageCode === "STARTUP_FAILED" ? code : stageCode;
 }
 function startupFailureLine(code) { return `BOSTAN_DESKTOP_STARTUP_FAILURE ${startupCode(code)}`; }
+function startupFailureIssue(error, fallbackCode) {
+  if (startupCode(error?.code ?? fallbackCode) !== "POSTGRES_START_FAILED") return null;
+  try {
+    const message = typeof error?.message === "string" ? error.message.slice(0, 65536) : "";
+    if (/address already in use|could not bind.*(?:socket|address)/i.test(message)) return "POSTGRES_START_ADDRESS_IN_USE";
+    if (/permission denied|access is denied|could not access the data directory|could not open.*(?:directory|postmaster\.pid)/i.test(message)) return "POSTGRES_START_DATA_DIRECTORY_DENIED";
+    if (/invalid locale|locale.*not supported|could not set locale/i.test(message)) return "POSTGRES_START_LOCALE_INVALID";
+    if (/could not load library|could not access file|entry point.*not found|module could not be found/i.test(message)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
+    if (/pg_trgm|fuzzystrmatch|extension control file|extension script file/i.test(message)) return "POSTGRES_START_EXTENSION_MISSING";
+    if (/shared memory|could not create.*memory/i.test(message)) return "POSTGRES_START_SHARED_MEMORY_FAILED";
+    if (/start script exited|process exited before|server process.*exited/i.test(message)) return "POSTGRES_START_PROCESS_EXITED";
+  } catch { /* Keep startup reporting on the fixed fallback classification. */ }
+  return "POSTGRES_START_UNCLASSIFIED";
+}
+function startupFailureIssueLine(issue) {
+  return postgresStartupIssues.has(issue) ? `BOSTAN_DESKTOP_STARTUP_ISSUE ${issue}` : null;
+}
 function startupFailureLibrary(error) {
   if (startupErrorCode(error) !== "POSTGRES_LIBRARY_MISSING") return null;
   try {
@@ -123,6 +146,8 @@ function isStartupSiteLine(line) { return typeof line === "string" && !/[\r\n]/.
 function isStartupDiagnosticLine(line) {
   if (typeof line !== "string") return false;
   if (isStartupSiteLine(line)) return true;
+  if (line.startsWith("BOSTAN_DESKTOP_STARTUP_ISSUE ")
+      && startupFailureIssueLine(line.slice("BOSTAN_DESKTOP_STARTUP_ISSUE ".length)) === line) return true;
   if (startupMigrationLine(line.startsWith("BOSTAN_DESKTOP_STARTUP_MIGRATION ") ? line.slice("BOSTAN_DESKTOP_STARTUP_MIGRATION ".length) : null) === line) return true;
   if (line.startsWith("BOSTAN_DESKTOP_STARTUP_MIGRATION_ISSUE ")
       && migrationIssues.has(line.slice("BOSTAN_DESKTOP_STARTUP_MIGRATION_ISSUE ".length))) return true;
@@ -134,4 +159,4 @@ function isStartupDiagnosticLine(line) {
   const libraryPrefix = "BOSTAN_DESKTOP_STARTUP_LIBRARY ";
   return line.startsWith(libraryPrefix) && startupFailureLibraryLine(line.slice(libraryPrefix.length)) === line;
 }
-module.exports = { startupPhaseLine, startupCode, startupErrorCode, startupFailureLine, startupFailureLibrary, startupFailureLibraryLine, startupMigrationLine, startupMigrationIssue, startupMigrationIssueLine, startupFailureSite, isStartupSiteLine, isStartupDiagnosticLine };
+module.exports = { startupPhaseLine, startupCode, startupErrorCode, startupFailureLine, startupFailureIssue, startupFailureIssueLine, startupFailureLibrary, startupFailureLibraryLine, startupMigrationLine, startupMigrationIssue, startupMigrationIssueLine, startupFailureSite, isStartupSiteLine, isStartupDiagnosticLine };

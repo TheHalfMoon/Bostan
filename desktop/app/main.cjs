@@ -104,6 +104,8 @@ else {
         } else if (message?.type === "startup-failed") {
           const libraryLine = diagnostics.startupFailureLibraryLine(message.library);
           if (libraryLine) console.error(libraryLine);
+          const issueLine = diagnostics.startupFailureIssueLine(message.issue);
+          if (issueLine) console.error(issueLine);
           if (diagnostics.isStartupSiteLine(message.site)) console.error(message.site);
           const migrationLine = diagnostics.startupMigrationLine(message.migration);
           if (migrationLine) console.error(migrationLine);
