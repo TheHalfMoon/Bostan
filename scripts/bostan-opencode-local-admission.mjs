@@ -17,6 +17,13 @@ export const LOCAL_OLLAMA_HOST = "http://127.0.0.1:11434";
 export const LOCAL_OLLAMA_MANIFEST_DIGEST = "d7372fd828518a4d38b1eb196c673c31a85f2ed302b3d1e406c4c2d1b64a0668";
 const REPLY = "BOSTAN_LOCAL_MODEL_READY";
 
+export function localModelAppearsInOpenCodeCatalog(stdout, model = LOCAL_OPENCODE_QA_MODEL) {
+  return stdout.split(/\r?\n/).some(line => {
+    const id = line.trim().split(/\s+/, 1)[0];
+    return id === model;
+  });
+}
+
 export function qualifyLoopbackOllamaHost(value = LOCAL_OLLAMA_HOST) {
   let host;
   try { host = new URL(value); } catch { throw new Error("A local Ollama loopback endpoint is required"); }
@@ -77,6 +84,25 @@ export async function admitLocalOpenCodeModel({
     fs.mkdirSync(cwd, { mode: 0o700 });
     const childEnv = isolatedOpenCodeAdmissionEnvironment(home, env);
     childEnv.OLLAMA_HOST = modelInfo.endpoint;
+    const catalog = await runBoundedAdmissionChild({
+      executable, cwd, env: childEnv,
+      args: ["models", "ollama"],
+      timeoutMs: 20_000,
+    });
+    if (catalog.timedOut || catalog.exitCode !== 0
+      || !localModelAppearsInOpenCodeCatalog(catalog.stdout, qualifiedModel)) {
+      const details = {
+        phase: "model_discovery",
+        exitCode: catalog.exitCode,
+        signal: catalog.signal,
+        timedOut: catalog.timedOut,
+        modelFound: localModelAppearsInOpenCodeCatalog(catalog.stdout, qualifiedModel),
+        ...summarizeFreeModelAdmissionOutput(catalog.stdout, qualifiedModel, catalog.stderr),
+      };
+      console.error("BOSTAN_LOCAL_MODEL_DISCOVERY_FAILED " + JSON.stringify(details));
+      throw new Error("Pinned local Qwen model is missing from OpenCode's discovered Ollama catalog");
+    }
+    console.log("BOSTAN_LOCAL_MODEL_DISCOVERY_PASS " + qualifiedModel);
     const result = await runBoundedAdmissionChild({
       executable,
       cwd,

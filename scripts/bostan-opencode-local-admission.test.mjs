@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  localModelAppearsInOpenCodeCatalog,
   inspectLocalOllamaModel,
   LOCAL_OLLAMA_HOST,
   LOCAL_OLLAMA_MANIFEST_DIGEST,
@@ -42,4 +43,12 @@ test("rejects an absent or changed local model before OpenCode starts", async ()
     ok: true,
     json: async () => ({ models: [{ name: "qwen2.5-coder:1.5b", digest: "sha256:0000", size: 986_048_576 }] }),
   }) }), /pinned local Qwen2.5 Coder 1.5B model is not installed/);
+});
+
+test("requires the pinned local model in OpenCode's actual Ollama catalog", () => {
+  assert.equal(localModelAppearsInOpenCodeCatalog("ollama/qwen2.5-coder:1.5b\n"), true);
+  assert.equal(localModelAppearsInOpenCodeCatalog("ollama/qwen2.5-coder:1.5b (Qwen)\n"), true);
+  assert.equal(localModelAppearsInOpenCodeCatalog("ollama/qwen2.5-coder:7b\n"), false);
+  assert.equal(localModelAppearsInOpenCodeCatalog("ollama-cloud/qwen2.5-coder:1.5b\n"), false);
+  assert.equal(localModelAppearsInOpenCodeCatalog("", LOCAL_OPENCODE_QA_MODEL), false);
 });
