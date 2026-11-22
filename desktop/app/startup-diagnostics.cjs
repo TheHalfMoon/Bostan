@@ -27,6 +27,7 @@ const postgresStartupIssues = new Set([
   "POSTGRES_START_CONFIGURATION_INVALID", "POSTGRES_START_CLUSTER_INCOMPATIBLE",
   "POSTGRES_START_DISK_FULL", "POSTGRES_START_RECOVERY_FAILED",
   "POSTGRES_START_LOGS_EMPTY", "POSTGRES_START_LOGS_UNCLASSIFIED",
+  "SERVER_STARTUP_UNCLASSIFIED",
   "POSTGRES_START_PROCESS_EXITED", "POSTGRES_START_PROCESS_LAUNCH_FAILED",
   "POSTGRES_START_UNCLASSIFIED",
 ]);
@@ -67,7 +68,9 @@ function startupErrorCode(error, fallbackCode) {
 }
 function startupFailureLine(code) { return `BOSTAN_DESKTOP_STARTUP_FAILURE ${startupCode(code)}`; }
 function startupFailureIssue(error, fallbackCode) {
-  if (startupCode(error?.code ?? fallbackCode) !== "POSTGRES_START_FAILED") return null;
+  const failureCode = startupCode(error?.code ?? fallbackCode);
+  if (failureCode === "STARTUP_FAILED") return "SERVER_STARTUP_UNCLASSIFIED";
+  if (failureCode !== "POSTGRES_START_FAILED") return null;
   try {
     if (postgresStartupIssues.has(error?.postgresStartupIssue)) return error.postgresStartupIssue;
     const message = typeof error?.message === "string" ? error.message.slice(0, 65536) : "";
