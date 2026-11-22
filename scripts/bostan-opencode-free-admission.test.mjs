@@ -6,6 +6,7 @@ import test from "node:test";
 import {
   isolatedOpenCodeAdmissionEnvironment,
   freeModelResponseMatches,
+  summarizeFreeModelAdmissionOutput,
   runBoundedAdmissionChild,
   admitFreeOpenCodeModel,
 } from "./bostan-opencode-free-admission.mjs";
@@ -46,6 +47,27 @@ test("only a real JSON text event with exact response qualifies", () => {
   assert.equal(freeModelResponseMatches(JSON.stringify({ type: "text", part: { text: "before " + expected } })), false);
   assert.equal(freeModelResponseMatches("no JSON " + expected), false);
   assert.equal(freeModelResponseMatches(textEvent + "\n{bad json"), true);
+  assert.equal(freeModelResponseMatches([
+    JSON.stringify({ type: "text", part: { text: "BOSTAN_ISOLATED_" } }),
+    JSON.stringify({ type: "text", part: { text: "FREE_MODEL_READY" } }),
+  ].join("\n")), true);
+  assert.equal(freeModelResponseMatches([
+    JSON.stringify({ type: "text", part: { text: "BOSTAN_ISOLATED_" } }),
+    JSON.stringify({ type: "text", part: { text: "FREE_MODEL_READY plus extra" } }),
+  ].join("\n")), false);
+});
+
+test("admission failure summary is bounded and omits URL, path, and credential-like output", () => {
+  const output = [
+    JSON.stringify({ type: "step_start" }),
+    JSON.stringify({ type: "text", part: { text: "wrong https://private.invalid sk-abcdefghijklmnopqrstuvwxyz C:\\\\Users\\\\person\\\\secret" } }),
+  ].join("\n");
+  const summary = summarizeFreeModelAdmissionOutput(output);
+  assert.deepEqual(summary.eventTypes, ["step_start", "text"]);
+  assert.equal(summary.textEventCount, 1);
+  assert.equal(summary.includesExpected, false);
+  assert.ok(summary.preview.length <= 120);
+  assert.doesNotMatch(summary.preview, /https?:|sk-|C:\\\\Users|private\.invalid|secret/);
 });
 
 test("child stdin is EOF from birth and prints the required JSON text event", async () => {

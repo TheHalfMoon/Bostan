@@ -7,6 +7,7 @@ import {
   freeModelResponseMatches,
   isolatedOpenCodeAdmissionEnvironment,
   runBoundedAdmissionChild,
+  summarizeFreeModelAdmissionOutput,
 } from "./bostan-opencode-free-admission.mjs";
 
 export const LOCAL_OPENCODE_QA_MODEL = "ollama/qwen2.5-coder:1.5b";
@@ -85,6 +86,12 @@ export async function admitLocalOpenCodeModel({
     });
     if (result.timedOut) throw new Error("Local OpenCode model admission timed out before Bostan agent creation");
     if (result.exitCode !== 0 || !freeModelResponseMatches(result.stdout, REPLY)) {
+      const details = {
+        exitCode: result.exitCode,
+        signal: result.signal,
+        ...summarizeFreeModelAdmissionOutput(result.stdout, REPLY),
+      };
+      console.error("BOSTAN_LOCAL_MODEL_ADMISSION_FAILED " + JSON.stringify(details));
       throw new Error("Local OpenCode model did not return the exact admission reply");
     }
     return { qualified: true, model: qualifiedModel, digest: modelInfo.digest, costUsd: 0 };

@@ -35,12 +35,38 @@ export function isolatedOpenCodeAdmissionEnvironment(home, original = process.en
 }
 
 export function freeModelResponseMatches(stdout, expected = REPLY) {
-  return stdout.split(/\r?\n/).some(line => {
+  const chunks = [];
+  for (const line of stdout.split(/\r?\n/)) {
     try {
       const event = JSON.parse(line);
-      return event.type === "text" && event.part?.text?.trim() === expected;
-    } catch { return false; }
-  });
+      if (event.type === "text" && typeof event.part?.text === "string") chunks.push(event.part.text);
+    } catch {}
+  }
+  // OpenCode streams long text as multiple JSONL text events. Compare the
+  // assembled model response, not each individual transport chunk.
+  return chunks.join("").trim() === expected;
+}
+
+export function summarizeFreeModelAdmissionOutput(stdout, expected = REPLY) {
+  const types = [];
+  const chunks = [];
+  for (const line of stdout.split(/\r?\n/)) {
+    try {
+      const event = JSON.parse(line);
+      if (typeof event.type === "string" && types.length < 12 && !types.includes(event.type)) types.push(event.type);
+      if (event.type === "text" && typeof event.part?.text === "string") chunks.push(event.part.text);
+    } catch {}
+  }
+  const response = chunks.join("").trim();
+  const preview = response
+    .replace(/(?:sk-[A-Za-z0-9_-]{12,}|Bearer\s+\S+)/gi, "[redacted]")
+    .replace(/https?:\/\/\S+/gi, "[url]")
+    .replace(/[A-Za-z]:\\[^\s"']+/g, "[path]")
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .slice(0, 120);
+  return { eventTypes: types, textEventCount: chunks.length, responseLength: response.length,
+    includesExpected: response.includes(expected), preview };
 }
 
 function appendBounded(old, data) {
