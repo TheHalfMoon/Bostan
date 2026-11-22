@@ -13800,3 +13800,15 @@ it("keeps an ACPX missing runtime package failure actionable and stops automatic
   expect(code).toBe("native_provider_runtime_missing");
   expect(nativeSessionFailureDisposition(1, new Date(), code)).toEqual({ phase: "terminal_failure", failureCode: code, nextAttemptAt: null });
 });
+
+it("classifies a missing pinned OpenCode runtime as actionable instead of a generic interruption", () => {
+  const code = nativeSessionFailureSourceCode(new Error(
+    "Pinned OpenCode runtime unavailable: OpenCode native target is not qualified. Restore Paperclip's runtime dependencies.",
+  ));
+  expect(code).toBe("native_provider_runtime_missing");
+  expect(nativeSessionFailureDisposition(1, new Date(), code)).toEqual({
+    phase: "terminal_failure",
+    failureCode: code,
+    nextAttemptAt: null,
+  });
+});

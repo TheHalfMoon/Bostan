@@ -495,6 +495,7 @@ async function startServerWithDatabaseTeardown(
   } else {
     startupDatabase.failureCode = "POSTGRES_BOOTSTRAP_FAILED";
     const moduleName = "embedded-postgres";
+    startupDatabase.failureCode = "POSTGRES_DEPENDENCY_IMPORT_FAILED";
     let EmbeddedPostgres: EmbeddedPostgresCtor;
     try {
       // embedded-postgres registers async-exit-hook handlers as an import side
@@ -511,7 +512,9 @@ async function startServerWithDatabaseTeardown(
       );
     }
     const dataDir = resolve(config.embeddedPostgresDataDir);
+    startupDatabase.failureCode = "POSTGRES_NATIVE_RUNTIME_PREPARE_FAILED";
     const embeddedPostgresRuntimeFlags = await prepareEmbeddedPostgresNativeRuntime(dataDir);
+    startupDatabase.failureCode = "POSTGRES_BOOTSTRAP_FAILED";
     const configuredPort = config.embeddedPostgresPort;
     let port = configuredPort;
     const logBuffer = createEmbeddedPostgresLogBuffer(120);

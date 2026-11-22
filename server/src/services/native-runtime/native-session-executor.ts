@@ -6415,6 +6415,8 @@ export function nativeSessionFailureSourceCode(
   if (error instanceof NativeSessionCleanupQuarantinedError)
     return "native_session_cleanup_quarantined";
   const message = error instanceof Error ? error.message : String(error);
+  if (/Pinned OpenCode runtime unavailable:|OpenCode native target is not qualified/i.test(message))
+    return "native_provider_runtime_missing";
   if (/classification=runtime_package_missing\)/.test(message))
     return "native_provider_runtime_missing";
   if (/native_provider_model_rejected/i.test(message))
