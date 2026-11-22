@@ -15,7 +15,7 @@ async function installed(layout: "source" | "standalone" | "vendored", platform:
     : layout === "source" ? "src/drivers/opencode/driver.ts" : "dist/drivers/opencode/driver.js");
   const wrapper = join(root, "node_modules/opencode-ai");
   const artifact = join(root, "node_modules", name);
-  const executable = join(artifact, "bin/opencode");
+  const executable = join(artifact, "bin", platform === "win32" ? "opencode.exe" : "opencode");
   await mkdir(dirname(issuer), { recursive: true });
   await mkdir(join(wrapper, "bin"), { recursive: true });
   await mkdir(dirname(executable), { recursive: true });
@@ -32,6 +32,7 @@ it.each(["source", "standalone", "vendored"] as const)("resolves the platform bi
     ["darwin", "arm64", "opencode-darwin-arm64"],
     ["darwin", "x64", "opencode-darwin-x64-baseline"],
     ["linux", "x64", "opencode-linux-x64-baseline"],
+    ["win32", "x64", "opencode-windows-x64-baseline"],
   ] as const) {
     const install = await installed(layout, platform, architecture, name);
     expect(resolvePinnedOpenCodeCommand(install.issuer, { platform, architecture })).toBe(install.executable);
@@ -45,16 +46,20 @@ it("rejects missing or mismatched qualified dependencies", async () => {
   expect(() => resolvePinnedOpenCodeCommand(install.issuer, { platform: "darwin", architecture: "arm64" })).toThrow("identity mismatch");
   await rm(install.artifact, { recursive: true });
   expect(() => resolvePinnedOpenCodeCommand(install.issuer, { platform: "darwin", architecture: "arm64" })).toThrow("qualified platform dependency is missing");
-  expect(() => resolvePinnedOpenCodeCommand(install.issuer, { platform: "win32", architecture: "x64" })).toThrow("not qualified");
+  expect(() => resolvePinnedOpenCodeCommand(install.issuer, { platform: "win32", architecture: "ia32" })).toThrow("not qualified");
 });
 
-it("rejects executables outside the platform package or without execute permission", async () => {
+it("rejects executables outside the platform package or without POSIX execute permission", async () => {
   const install = await installed("source", "darwin", "arm64", "opencode-darwin-arm64");
-  await chmod(install.executable, 0o644);
-  expect(() => resolvePinnedOpenCodeCommand(install.issuer, { platform: "darwin", architecture: "arm64" })).toThrow("Pinned OpenCode runtime unavailable");
-  await rm(install.executable);
+  if (process.platform !== "win32") {
+    await chmod(install.executable, 0o644);
+    expect(() => resolvePinnedOpenCodeCommand(install.issuer, { platform: "darwin", architecture: "arm64" })).toThrow("Pinned OpenCode runtime unavailable");
+  }
+  if (process.platform !== "win32") {
+    await rm(install.executable);
   const outside = join(install.root, "outside");
   await writeFile(outside, "#!/bin/sh\n", { mode: 0o755 });
   await symlink(outside, install.executable);
-  expect(() => resolvePinnedOpenCodeCommand(install.issuer, { platform: "darwin", architecture: "arm64" })).toThrow("escapes its qualified platform package");
+    expect(() => resolvePinnedOpenCodeCommand(install.issuer, { platform: "darwin", architecture: "arm64" })).toThrow("escapes its qualified platform package");
+  }
 });

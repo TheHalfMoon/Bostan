@@ -104,6 +104,7 @@ export function resolvePinnedOpenCodeCommand(
       "linux-x64": ["opencode-linux-x64-baseline"],
       "darwin-arm64": ["opencode-darwin-arm64"],
       "darwin-x64": ["opencode-darwin-x64-baseline"],
+      "win32-x64": ["opencode-windows-x64-baseline", "opencode-windows-x64"],
     };
     const candidates = packageNames[`${platform}-${architecture}`];
     if (!candidates) {
@@ -135,7 +136,7 @@ export function resolvePinnedOpenCodeCommand(
         throw new Error("OpenCode installed platform artifact identity mismatch");
       }
       const root = dirname(platformManifest);
-      const executable = realpathSync(resolve(root, "bin/opencode"));
+      const executable = realpathSync(resolve(root, "bin", platform === "win32" ? "opencode.exe" : "opencode"));
       const inside = relative(root, executable);
       if (!inside || inside === ".." || inside.startsWith(`..${sep}`) || isAbsolute(inside)) {
         throw new Error("OpenCode executable escapes its qualified platform package");
@@ -143,7 +144,8 @@ export function resolvePinnedOpenCodeCommand(
       if (!statSync(executable).isFile()) {
         throw new Error("OpenCode executable is not a regular file");
       }
-      accessSync(executable, constants.X_OK);
+      // Windows' native package ships an .exe; X_OK is equivalent to F_OK there.
+      if (platform !== "win32") accessSync(executable, constants.X_OK);
       return executable;
     }
     throw new Error("OpenCode qualified platform dependency is missing");
