@@ -6,6 +6,7 @@ import test from "node:test";
 import {
   isolatedOpenCodeAdmissionEnvironment,
   freeModelResponseMatches,
+  openCodeAdmissionArgs,
   summarizeFreeModelAdmissionOutput,
   runBoundedAdmissionChild,
   admitFreeOpenCodeModel,
@@ -55,6 +56,13 @@ test("only a real JSON text event with exact response qualifies", () => {
     JSON.stringify({ type: "text", part: { text: "BOSTAN_ISOLATED_" } }),
     JSON.stringify({ type: "text", part: { text: "FREE_MODEL_READY plus extra" } }),
   ].join("\n")), false);
+});
+
+test("admission uses only flags supported by the packaged OpenCode run command", () => {
+  const args = openCodeAdmissionArgs("ollama/qwen2.5-coder:1.5b", "BOSTAN_LOCAL_MODEL_READY");
+  assert.deepEqual(args, ["run", "--format", "json", "--model", "ollama/qwen2.5-coder:1.5b",
+    "Reply exactly BOSTAN_LOCAL_MODEL_READY. Do not use tools."]);
+  assert.ok(!args.includes("--standalone"));
 });
 
 test("admission failure summary is bounded and omits URL, path, and credential-like output", () => {

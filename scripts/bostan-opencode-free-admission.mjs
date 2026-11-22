@@ -47,6 +47,16 @@ export function freeModelResponseMatches(stdout, expected = REPLY) {
   return chunks.join("").trim() === expected;
 }
 
+export function openCodeAdmissionArgs(model, reply) {
+  if (typeof model !== "string" || typeof reply !== "string" || !reply) {
+    throw new Error("An explicit OpenCode admission model and reply marker are required");
+  }
+  // The packaged 1.18.34 `run` command has no --standalone option. It starts
+  // its own local session server; the isolated HOME keeps its state disposable.
+  return ["run", "--format", "json", "--model", model,
+    "Reply exactly " + reply + ". Do not use tools."];
+}
+
 function sanitizedPreview(value) {
   return value
     .replace(/(?:sk-[A-Za-z0-9_-]{12,}|Bearer\s+\S+)/gi, "[redacted]")
@@ -150,8 +160,7 @@ export async function admitFreeOpenCodeModel({
     fs.mkdirSync(cwd, { mode: 0o700 });
     const result = await runBoundedAdmissionChild({
       executable, cwd, env: isolatedOpenCodeAdmissionEnvironment(home, env),
-      args: ["run", "--standalone", "--format", "json", "--model", qualifiedModel,
-        "Reply exactly " + REPLY + ". Do not use tools."],
+      args: openCodeAdmissionArgs(qualifiedModel, REPLY),
       timeoutMs,
     });
     if (result.timedOut) throw new Error("OpenCode free model admission timed out; no Bostan agent was created");

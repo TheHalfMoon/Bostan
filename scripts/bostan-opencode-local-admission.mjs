@@ -6,6 +6,7 @@ import { qualifyLocalOpenCodeQaModel } from "./bostan-free-model-policy.mjs";
 import {
   freeModelResponseMatches,
   isolatedOpenCodeAdmissionEnvironment,
+  openCodeAdmissionArgs,
   runBoundedAdmissionChild,
   summarizeFreeModelAdmissionOutput,
 } from "./bostan-opencode-free-admission.mjs";
@@ -80,8 +81,7 @@ export async function admitLocalOpenCodeModel({
       executable,
       cwd,
       env: childEnv,
-      args: ["run", "--standalone", "--format", "json", "--model", qualifiedModel,
-        "Reply exactly " + REPLY + ". Do not use tools."],
+      args: openCodeAdmissionArgs(qualifiedModel, REPLY),
       timeoutMs,
     });
     if (result.timedOut) throw new Error("Local OpenCode model admission timed out before Bostan agent creation");
