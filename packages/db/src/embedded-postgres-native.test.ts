@@ -165,6 +165,7 @@ describe("embedded Postgres native runtime", () => {
     const extensionDirectory = path.join(runtimeRoot, "extension");
     const libraryDirectory = path.join(runtimeRoot, "lib");
     expect(flags).toEqual([
+      "-c", "shared_buffers=32MB",
       "-c", `extension_control_path=${runtimeRoot};$system`,
       "-c", `dynamic_library_path=${libraryDirectory};$libdir`,
     ]);

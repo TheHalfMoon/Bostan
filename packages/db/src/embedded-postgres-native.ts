@@ -211,6 +211,10 @@ export async function prepareWindowsPostgresExtensionRuntime(nativeRoot: string,
   // and DLL lookups below Win32 path limits while retaining the system search.
   // PostgreSQL appends `extension` to every extension_control_path element.
   return [
+    // Keep the local Windows server's initial shared-memory reservation small.
+    // On constrained Windows runners the default 128 MiB segment can fail even
+    // when free physical RAM is high (commit limit differs from available RAM).
+    "-c", "shared_buffers=32MB",
     "-c", `extension_control_path=${runtimeRoot};$system`,
     "-c", `dynamic_library_path=${libraryRuntimeDirectory};$libdir`,
   ];

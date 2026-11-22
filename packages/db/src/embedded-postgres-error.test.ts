@@ -9,6 +9,7 @@ describe("classifyEmbeddedPostgresStartIssue", () => {
       [["FATAL: could not create shared memory segment"], "POSTGRES_START_SHARED_MEMORY_FAILED"],
       [["LOG: could not create shared memory segment: error code 1455"], "POSTGRES_START_SHARED_MEMORY_OS_ERROR_1455"],
       [["LOG: could not create shared memory segment: error code 8 (paging file limit)"], "POSTGRES_START_SHARED_MEMORY_OS_ERROR_8"],
+      [["FATAL: could not create shared memory segment: Cannot allocate memory"], "POSTGRES_START_SHARED_MEMORY_RESOURCE_LIMIT"],
       [["FATAL: invalid value for parameter \"private-setting\""], "POSTGRES_START_CONFIGURATION_INVALID"],
       [["FATAL: database files are incompatible with server"], "POSTGRES_START_CLUSTER_INCOMPATIBLE"],
       [["FATAL: could not write file C:\\private\\base: No space left on device"], "POSTGRES_START_DISK_FULL"],

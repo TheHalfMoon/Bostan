@@ -31,7 +31,7 @@ export function classifyEmbeddedPostgresStartIssue(recentLogs: string[]): Embedd
     if (osError && Number(osError) > 0 && Number(osError) <= 65535) {
       return `POSTGRES_START_SHARED_MEMORY_OS_ERROR_${Number(osError)}`;
     }
-    if (/error code (?:8|1455)\b|paging file|commit(?:ment)? limit|not enough (?:system )?memory|out of memory/i.test(haystack)) {
+    if (/error code (?:8|1455)\b|paging file|commit(?:ment)? limit|not enough (?:system )?(?:memory|resources)|cannot allocate memory|out of memory/i.test(haystack)) {
       return "POSTGRES_START_SHARED_MEMORY_RESOURCE_LIMIT";
     }
     return "POSTGRES_START_SHARED_MEMORY_FAILED";
