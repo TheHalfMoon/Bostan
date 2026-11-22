@@ -60,7 +60,7 @@ test("only a real JSON text event with exact response qualifies", () => {
 
 test("admission uses only flags supported by the packaged OpenCode run command", () => {
   const args = openCodeAdmissionArgs("ollama/qwen2.5-coder:1.5b", "BOSTAN_LOCAL_MODEL_READY");
-  assert.deepEqual(args, ["run", "--format", "json", "--model", "ollama/qwen2.5-coder:1.5b",
+  assert.deepEqual(args, ["run", "--print-logs", "--log-level", "DEBUG", "--format", "json", "--model", "ollama/qwen2.5-coder:1.5b",
     "Reply exactly BOSTAN_LOCAL_MODEL_READY. Do not use tools."]);
   assert.ok(!args.includes("--standalone"));
 });
@@ -85,6 +85,8 @@ test("admission failure summary is bounded and omits URL, path, and credential-l
   assert.ok(summary.stderrLength > 0);
   assert.ok(summary.stderrPreview.length <= 160);
   assert.doesNotMatch(summary.stderrPreview, /https?:|sk-|C:\\\\Users|private\.invalid|secret/);
+  assert.ok(summary.stderrTail.length <= 512);
+  assert.doesNotMatch(summary.stderrTail, /https?:|sk-|C:\\\\Users|private\.invalid|secret/);
 });
 
 test("child stdin is EOF from birth and prints the required JSON text event", async () => {

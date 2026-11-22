@@ -53,18 +53,18 @@ export function openCodeAdmissionArgs(model, reply) {
   }
   // The packaged 1.18.34 `run` command has no --standalone option. It starts
   // its own local session server; the isolated HOME keeps its state disposable.
-  return ["run", "--format", "json", "--model", model,
+  return ["run", "--print-logs", "--log-level", "DEBUG", "--format", "json", "--model", model,
     "Reply exactly " + reply + ". Do not use tools."];
 }
 
-function sanitizedPreview(value) {
-  return value
+function sanitizedPreview(value, maxLength = 160, fromEnd = false) {
+  const sanitized = value
     .replace(/(?:sk-[A-Za-z0-9_-]{12,}|Bearer\s+\S+)/gi, "[redacted]")
     .replace(/https?:\/\/\S+/gi, "[url]")
     .replace(/[A-Za-z]:\\[^\s"']+/g, "[path]")
     .replace(/[\u0000-\u001f\u007f]/g, " ")
-    .replace(/\s+/g, " ")
-    .slice(0, 160);
+    .replace(/\s+/g, " ");
+  return fromEnd ? sanitized.slice(-maxLength) : sanitized.slice(0, maxLength);
 }
 
 export function summarizeFreeModelAdmissionOutput(stdout, expected = REPLY, stderr = "") {
@@ -89,7 +89,8 @@ export function summarizeFreeModelAdmissionOutput(stdout, expected = REPLY, stde
   const stderrText = stderr.trim();
   return { eventTypes: types, textEventCount: chunks.length, responseLength: response.length,
     includesExpected: response.includes(expected), preview: sanitizedPreview(response),
-    errors, stderrLength: stderrText.length, stderrPreview: sanitizedPreview(stderrText) };
+    errors, stderrLength: stderrText.length, stderrPreview: sanitizedPreview(stderrText),
+    stderrTail: sanitizedPreview(stderrText, 512, true) };
 }
 
 function appendBounded(old, data) {
