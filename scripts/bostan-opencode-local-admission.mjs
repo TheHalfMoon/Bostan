@@ -28,8 +28,15 @@ export function localOllamaOpenCodeConfig(endpoint = LOCAL_OLLAMA_HOST) {
   const host = qualifyLoopbackOllamaHost(endpoint);
   return {
     $schema: "https://opencode.ai/config.json",
-    providers: {
-      ollama: { settings: { baseURL: host + "/v1" } },
+    provider: {
+      ollama: {
+        npm: "@ai-sdk/openai-compatible",
+        name: "Ollama (local)",
+        options: { baseURL: host + "/v1" },
+        models: {
+          "qwen2.5-coder:1.5b": { name: "Qwen2.5 Coder 1.5B" },
+        },
+      },
     },
   };
 }

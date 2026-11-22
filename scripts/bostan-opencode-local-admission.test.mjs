@@ -57,7 +57,14 @@ test("requires the pinned local model in OpenCode's actual Ollama catalog", () =
 test("isolated OpenCode config registers only loopback Ollama", () => {
   assert.deepEqual(localOllamaOpenCodeConfig(), {
     $schema: "https://opencode.ai/config.json",
-    providers: { ollama: { settings: { baseURL: "http://127.0.0.1:11434/v1" } } },
+    provider: {
+      ollama: {
+        npm: "@ai-sdk/openai-compatible",
+        name: "Ollama (local)",
+        options: { baseURL: "http://127.0.0.1:11434/v1" },
+        models: { "qwen2.5-coder:1.5b": { name: "Qwen2.5 Coder 1.5B" } },
+      },
+    },
   });
   assert.throws(() => localOllamaOpenCodeConfig("http://192.0.2.4:11434"), /private loopback/);
 });
