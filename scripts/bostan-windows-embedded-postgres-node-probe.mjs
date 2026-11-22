@@ -104,8 +104,13 @@ async function runProbe() {
     console.log("BOSTAN_NODE_POSTGRES_PROBE_PASS");
   } catch {
     try {
-      const { classifyEmbeddedPostgresStartIssue } = await import(pathToFileURL(errorModulePath).href);
-      failureIssue = classifyEmbeddedPostgresStartIssue(logBuffer?.getRecentLogs() ?? []);
+      const { classifyEmbeddedPostgresStartIssue, summarizeEmbeddedPostgresStartDiagnostic } = await import(pathToFileURL(errorModulePath).href);
+      const recentLogs = logBuffer?.getRecentLogs() ?? [];
+      failureIssue = classifyEmbeddedPostgresStartIssue(recentLogs);
+      const diagnostic = summarizeEmbeddedPostgresStartDiagnostic(recentLogs);
+      if (diagnostic.sharedMemorySystemCall || diagnostic.sharedMemoryOsErrorCode !== null) {
+        console.log(`BOSTAN_NODE_POSTGRES_PROBE_DETAIL ${JSON.stringify(diagnostic)}`);
+      }
     } catch {
       failureIssue = "POSTGRES_START_UNCLASSIFIED";
     }

@@ -17,6 +17,29 @@ export type EmbeddedPostgresStartIssue =
   | "POSTGRES_START_LOGS_EMPTY"
   | "POSTGRES_START_LOGS_UNCLASSIFIED";
 
+export interface EmbeddedPostgresStartDiagnostic {
+  sharedMemorySystemCall: "CreateFileMapping" | "MapViewOfFile" | "VirtualAlloc" | "shmget" | "mmap" | null;
+  sharedMemoryOsErrorCode: number | null;
+}
+
+/** Extract only allowlisted shared-memory facts; never return PostgreSQL log text. */
+export function summarizeEmbeddedPostgresStartDiagnostic(recentLogs: string[]): EmbeddedPostgresStartDiagnostic {
+  const haystack = recentLogs.join("\n").slice(-65536);
+  if (!/shared memory|could not create.*memory/i.test(haystack)) {
+    return { sharedMemorySystemCall: null, sharedMemoryOsErrorCode: null };
+  }
+
+  const errorMatch = haystack.match(/shared memory[\s\S]{0,256}?error code\s+(\d{1,5})\b/i);
+  const systemCallMatch = haystack.match(/failed system call was\s+(CreateFileMapping|MapViewOfFile|VirtualAlloc|shmget|mmap)\b/i);
+  const parsedErrorCode = errorMatch ? Number(errorMatch[1]) : null;
+  return {
+    sharedMemorySystemCall: (systemCallMatch?.[1] as EmbeddedPostgresStartDiagnostic["sharedMemorySystemCall"]) ?? null,
+    sharedMemoryOsErrorCode: parsedErrorCode !== null && parsedErrorCode > 0 && parsedErrorCode <= 65535
+      ? parsedErrorCode
+      : null,
+  };
+}
+
 /** Classify bounded PostgreSQL startup output without returning any log text. */
 export function classifyEmbeddedPostgresStartIssue(recentLogs: string[]): EmbeddedPostgresStartIssue {
   const haystack = recentLogs.join("\n").slice(-65536);

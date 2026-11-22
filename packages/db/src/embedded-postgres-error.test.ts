@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyEmbeddedPostgresStartIssue, createEmbeddedPostgresLogBuffer, formatEmbeddedPostgresError } from "./embedded-postgres-error.js";
+import { classifyEmbeddedPostgresStartIssue, createEmbeddedPostgresLogBuffer, formatEmbeddedPostgresError, summarizeEmbeddedPostgresStartDiagnostic } from "./embedded-postgres-error.js";
 
 describe("classifyEmbeddedPostgresStartIssue", () => {
   it("returns only fixed startup issues and distinguishes absent from unknown logs", () => {
@@ -22,6 +22,31 @@ describe("classifyEmbeddedPostgresStartIssue", () => {
       expect(issue).not.toContain("private");
       expect(issue).not.toContain("secret");
     }
+  });
+});
+
+describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
+  it("extracts only allowlisted shared-memory system facts", () => {
+    const summary = summarizeEmbeddedPostgresStartDiagnostic([
+      "FATAL: could not create shared memory segment: error code 1455",
+      "DETAIL: Failed system call was CreateFileMapping.",
+      "DETAIL: private path C:\\Users\\secret\\AppData\\Local\\temp\\db",
+    ]);
+
+    expect(summary).toEqual({ sharedMemorySystemCall: "CreateFileMapping", sharedMemoryOsErrorCode: 1455 });
+    expect(JSON.stringify(summary)).not.toContain("Users");
+    expect(JSON.stringify(summary)).not.toContain("secret");
+  });
+
+  it("returns no sensitive details for missing or unrecognized diagnostics", () => {
+    expect(summarizeEmbeddedPostgresStartDiagnostic([])).toEqual({
+      sharedMemorySystemCall: null,
+      sharedMemoryOsErrorCode: null,
+    });
+    expect(summarizeEmbeddedPostgresStartDiagnostic([
+      "FATAL: could not create shared memory segment",
+      "DETAIL: Failed system call was PrivateApi at C:\\private\\value",
+    ])).toEqual({ sharedMemorySystemCall: null, sharedMemoryOsErrorCode: null });
   });
 });
 
