@@ -34,6 +34,11 @@ test("startup receipts accept only fixed phases and failure codes", () => {
     { code: "POSTGRES_START_FAILED" },
   ), "POSTGRES_START_FAILED");
   assert.equal(postgresIssue, "POSTGRES_START_ADDRESS_IN_USE");
+  const sharedMemoryOsIssue = "POSTGRES_START_SHARED_MEMORY_OS_ERROR_1455";
+  const sharedMemoryOsLine = diagnostics.startupFailureIssueLine(sharedMemoryOsIssue);
+  assert.equal(sharedMemoryOsLine, `BOSTAN_DESKTOP_STARTUP_ISSUE ${sharedMemoryOsIssue}`);
+  assert.equal(diagnostics.isStartupDiagnosticLine(sharedMemoryOsLine), true);
+  assert.equal(diagnostics.startupFailureIssueLine("POSTGRES_START_SHARED_MEMORY_OS_ERROR_99999"), null);
   assert.equal(diagnostics.startupFailureIssue(Object.assign(new Error("Postgres server exited before readiness (exitCode=1, signal=none)."), {
     code: "POSTGRES_START_FAILED", postgresStartupIssue: "POSTGRES_START_LOGS_EMPTY",
   }), "POSTGRES_START_FAILED"), "POSTGRES_START_LOGS_EMPTY");

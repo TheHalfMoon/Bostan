@@ -8,6 +8,8 @@ export type EmbeddedPostgresStartIssue =
   | "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING"
   | "POSTGRES_START_EXTENSION_MISSING"
   | "POSTGRES_START_SHARED_MEMORY_FAILED"
+  | "POSTGRES_START_SHARED_MEMORY_RESOURCE_LIMIT"
+  | `POSTGRES_START_SHARED_MEMORY_OS_ERROR_${number}`
   | "POSTGRES_START_DISK_FULL"
   | "POSTGRES_START_CLUSTER_INCOMPATIBLE"
   | "POSTGRES_START_CONFIGURATION_INVALID"
@@ -24,7 +26,16 @@ export function classifyEmbeddedPostgresStartIssue(recentLogs: string[]): Embedd
   if (/invalid locale|locale.*not supported|could not set locale/i.test(haystack)) return "POSTGRES_START_LOCALE_INVALID";
   if (/pg_trgm|fuzzystrmatch|extension control file|extension script file|could not access file.*extension/i.test(haystack)) return "POSTGRES_START_EXTENSION_MISSING";
   if (/could not load library|entry point.*not found|module could not be found|could not open.*\.(?:dll|so|dylib)/i.test(haystack)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
-  if (/shared memory|could not create.*memory/i.test(haystack)) return "POSTGRES_START_SHARED_MEMORY_FAILED";
+  if (/shared memory|could not create.*memory/i.test(haystack)) {
+    const osError = haystack.match(/shared memory[\s\S]{0,256}?error code\s+(\d{1,5})\b/i)?.[1];
+    if (osError && Number(osError) > 0 && Number(osError) <= 65535) {
+      return `POSTGRES_START_SHARED_MEMORY_OS_ERROR_${Number(osError)}`;
+    }
+    if (/error code (?:8|1455)\b|paging file|commit(?:ment)? limit|not enough (?:system )?memory|out of memory/i.test(haystack)) {
+      return "POSTGRES_START_SHARED_MEMORY_RESOURCE_LIMIT";
+    }
+    return "POSTGRES_START_SHARED_MEMORY_FAILED";
+  }
   if (/no space left on device|not enough space|disk is full/i.test(haystack)) return "POSTGRES_START_DISK_FULL";
   if (/database files are incompatible with server|database system identifier differs|wrong database system identifier/i.test(haystack)) return "POSTGRES_START_CLUSTER_INCOMPATIBLE";
   if (/invalid value for parameter|unrecognized configuration parameter|could not open configuration file|configuration file contains errors/i.test(haystack)) return "POSTGRES_START_CONFIGURATION_INVALID";

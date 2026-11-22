@@ -26,6 +26,7 @@ const postgresStartupIssues = new Set([
   "POSTGRES_START_EXTENSION_MISSING", "POSTGRES_START_SHARED_MEMORY_FAILED",
   "POSTGRES_START_CONFIGURATION_INVALID", "POSTGRES_START_CLUSTER_INCOMPATIBLE",
   "POSTGRES_START_DISK_FULL", "POSTGRES_START_RECOVERY_FAILED",
+  "POSTGRES_START_SHARED_MEMORY_RESOURCE_LIMIT",
   "POSTGRES_START_LOGS_EMPTY", "POSTGRES_START_LOGS_UNCLASSIFIED",
   "SERVER_STARTUP_UNCLASSIFIED",
   "POSTGRES_START_PROCESS_EXITED", "POSTGRES_START_PROCESS_LAUNCH_FAILED",
@@ -72,7 +73,7 @@ function startupFailureIssue(error, fallbackCode) {
   if (failureCode === "STARTUP_FAILED") return "SERVER_STARTUP_UNCLASSIFIED";
   if (failureCode !== "POSTGRES_START_FAILED") return null;
   try {
-    if (postgresStartupIssues.has(error?.postgresStartupIssue)) return error.postgresStartupIssue;
+    if (postgresStartupIssues.has(error?.postgresStartupIssue) || isSharedMemoryOsErrorIssue(error?.postgresStartupIssue)) return error.postgresStartupIssue;
     const message = typeof error?.message === "string" ? error.message.slice(0, 65536) : "";
     // The backend attaches only a bounded in-memory tail of PostgreSQL output
     // to its startup error. Convert recognized causes to fixed codes here;
@@ -82,6 +83,7 @@ function startupFailureIssue(error, fallbackCode) {
     if (/invalid locale|locale.*not supported|could not set locale/i.test(message)) return "POSTGRES_START_LOCALE_INVALID";
     if (/could not load library|could not access file|entry point.*not found|module could not be found/i.test(message)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
     if (/pg_trgm|fuzzystrmatch|extension control file|extension script file/i.test(message)) return "POSTGRES_START_EXTENSION_MISSING";
+    if (/shared memory.*(?:error code (?:8|1455)\b|paging file|commit(?:ment)? limit|not enough (?:system )?memory|out of memory)/i.test(message)) return "POSTGRES_START_SHARED_MEMORY_RESOURCE_LIMIT";
     if (/shared memory|could not create.*memory/i.test(message)) return "POSTGRES_START_SHARED_MEMORY_FAILED";
     if (/no space left on device|not enough space|disk is full/i.test(message)) return "POSTGRES_START_DISK_FULL";
     if (/database files are incompatible with server|database system identifier differs|wrong database system identifier/i.test(message)) return "POSTGRES_START_CLUSTER_INCOMPATIBLE";
@@ -96,8 +98,12 @@ function startupFailureIssue(error, fallbackCode) {
   return "POSTGRES_START_UNCLASSIFIED";
 }
 function startupFailureIssueLine(issue) {
-  return postgresStartupIssues.has(issue) || /^POSTGRES_START_PROCESS_EXIT_CODE_(?:null|0|[1-9]\d{0,2})$/.test(issue)
+  return postgresStartupIssues.has(issue) || isSharedMemoryOsErrorIssue(issue) || /^POSTGRES_START_PROCESS_EXIT_CODE_(?:null|0|[1-9]\d{0,2})$/.test(issue)
     ? `BOSTAN_DESKTOP_STARTUP_ISSUE ${issue}` : null;
+}
+function isSharedMemoryOsErrorIssue(issue) {
+  const match = typeof issue === "string" && /^POSTGRES_START_SHARED_MEMORY_OS_ERROR_(\d{1,5})$/.exec(issue);
+  return Boolean(match && Number(match[1]) > 0 && Number(match[1]) <= 65535);
 }
 function startupFailureLibrary(error) {
   if (startupErrorCode(error) !== "POSTGRES_LIBRARY_MISSING") return null;
