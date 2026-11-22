@@ -24,7 +24,8 @@ const postgresStartupIssues = new Set([
   "POSTGRES_START_ADDRESS_IN_USE", "POSTGRES_START_DATA_DIRECTORY_DENIED",
   "POSTGRES_START_LOCALE_INVALID", "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING",
   "POSTGRES_START_EXTENSION_MISSING", "POSTGRES_START_SHARED_MEMORY_FAILED",
-  "POSTGRES_START_PROCESS_EXITED", "POSTGRES_START_UNCLASSIFIED",
+  "POSTGRES_START_PROCESS_EXITED", "POSTGRES_START_PROCESS_LAUNCH_FAILED",
+  "POSTGRES_START_UNCLASSIFIED",
 ]);
 function startupPhaseLine(phase) {
   return phases.has(phase) ? `BOSTAN_DESKTOP_STARTUP_PHASE ${phase}` : null;
@@ -72,7 +73,9 @@ function startupFailureIssue(error, fallbackCode) {
     if (/could not load library|could not access file|entry point.*not found|module could not be found/i.test(message)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
     if (/pg_trgm|fuzzystrmatch|extension control file|extension script file/i.test(message)) return "POSTGRES_START_EXTENSION_MISSING";
     if (/shared memory|could not create.*memory/i.test(message)) return "POSTGRES_START_SHARED_MEMORY_FAILED";
-    if (/start script exited|process exited before|server process.*exited/i.test(message)) return "POSTGRES_START_PROCESS_EXITED";
+    if (/Postgres server failed to spawn \(code ENOENT\)/i.test(message)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
+    if (/Postgres server failed to spawn \(code (?:EACCES|EPERM)\)/i.test(message)) return "POSTGRES_START_PROCESS_LAUNCH_FAILED";
+    if (/start script exited|process exited before|server process.*exited|server exited before readiness/i.test(message)) return "POSTGRES_START_PROCESS_EXITED";
   } catch { /* Keep startup reporting on the fixed fallback classification. */ }
   return "POSTGRES_START_UNCLASSIFIED";
 }

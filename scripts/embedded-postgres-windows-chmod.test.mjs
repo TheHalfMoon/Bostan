@@ -19,3 +19,11 @@ test('existing locale and inherited process environment patches remain intact', 
   assert.match(patch, /\+const LC_MESSAGES_LOCALE = 'C';/);
   assert.equal((patch.match(/\+.*globalThis\.process\.env/g) ?? []).length, 2);
 });
+
+test('PostgreSQL start failures retain a bounded process classification', () => {
+  assert.match(patch, /\+                this\.process\.on\('error', \(error\) => \{/);
+  assert.match(patch, /Postgres server failed to spawn \(code \$\{code\}\)\./);
+  assert.match(patch, /this\.process\.on\('close', \(code, signal\) => \{/);
+  assert.match(patch, /Postgres server exited before readiness \(exitCode=/);
+  assert.doesNotMatch(patch, /^\+.*reject\(\);/m);
+});

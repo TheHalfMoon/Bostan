@@ -34,6 +34,18 @@ test("startup receipts accept only fixed phases and failure codes", () => {
     { code: "POSTGRES_START_FAILED" },
   ), "POSTGRES_START_FAILED");
   assert.equal(postgresIssue, "POSTGRES_START_ADDRESS_IN_USE");
+  assert.equal(diagnostics.startupFailureIssue(Object.assign(
+    new Error("Postgres server exited before readiness (exitCode=1, signal=none)."),
+    { code: "POSTGRES_START_FAILED" },
+  ), "POSTGRES_START_FAILED"), "POSTGRES_START_PROCESS_EXITED");
+  assert.equal(diagnostics.startupFailureIssue(Object.assign(
+    new Error("Postgres server failed to spawn (code ENOENT)."),
+    { code: "POSTGRES_START_FAILED" },
+  ), "POSTGRES_START_FAILED"), "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING");
+  assert.equal(diagnostics.startupFailureIssue(Object.assign(
+    new Error("Postgres server failed to spawn (code EACCES)."),
+    { code: "POSTGRES_START_FAILED" },
+  ), "POSTGRES_START_FAILED"), "POSTGRES_START_PROCESS_LAUNCH_FAILED");
   const postgresIssueLine = diagnostics.startupFailureIssueLine(postgresIssue);
   assert.equal(postgresIssueLine, "BOSTAN_DESKTOP_STARTUP_ISSUE POSTGRES_START_ADDRESS_IN_USE");
   assert.equal(diagnostics.isStartupDiagnosticLine(postgresIssueLine), true);

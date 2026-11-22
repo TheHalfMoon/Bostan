@@ -57,3 +57,24 @@ diff --git a/dist/index.js b/dist/index.js
                  // Connect to stderr, as that is where the messages get sent
                  (_a = this.process.stderr) === null || _a === void 0 ? void 0 : _a.on('data', (chunk) => {
                      // Parse the data as a string and log it
+@@ -193,11 +202,18 @@
+                     const message = chunk.toString('utf-8');
+                     this.options.onLog(message);
+                     // GUARD: Check for the right message to determine server start
+                     if (message.includes('database system is ready to accept connections')) {
+                         resolve();
+                     }
+                 });
+                 // In case the process exits early, the promise is rejected.
+-                this.process.on('close', () => {
+-                    reject();
++                this.process.on('error', (error) => {
++                    // Expose only a bounded OS error code; the original message may contain paths.
++                    const code = typeof error?.code === 'string' && /^[A-Z0-9_]{1,32}$/.test(error.code)
++                        ? error.code
++                        : 'UNKNOWN';
++                    reject(new Error(`Postgres server failed to spawn (code ${code}).`));
++                });
++                this.process.on('close', (code, signal) => {
++                    reject(new Error(`Postgres server exited before readiness (exitCode=${code === null ? 'null' : code}, signal=${signal ?? 'none'}).`));
+                 });
