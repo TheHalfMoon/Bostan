@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   localModelAppearsInOpenCodeCatalog,
   inspectLocalOllamaModel,
+  localOllamaOpenCodeConfig,
   LOCAL_OLLAMA_HOST,
   LOCAL_OLLAMA_MANIFEST_DIGEST,
   LOCAL_OPENCODE_QA_MODEL,
@@ -51,4 +52,12 @@ test("requires the pinned local model in OpenCode's actual Ollama catalog", () =
   assert.equal(localModelAppearsInOpenCodeCatalog("ollama/qwen2.5-coder:7b\n"), false);
   assert.equal(localModelAppearsInOpenCodeCatalog("ollama-cloud/qwen2.5-coder:1.5b\n"), false);
   assert.equal(localModelAppearsInOpenCodeCatalog("", LOCAL_OPENCODE_QA_MODEL), false);
+});
+
+test("isolated OpenCode config registers only loopback Ollama", () => {
+  assert.deepEqual(localOllamaOpenCodeConfig(), {
+    $schema: "https://opencode.ai/config.json",
+    providers: { ollama: { settings: { baseURL: "http://127.0.0.1:11434/v1" } } },
+  });
+  assert.throws(() => localOllamaOpenCodeConfig("http://192.0.2.4:11434"), /private loopback/);
 });

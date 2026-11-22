@@ -24,6 +24,16 @@ export function localModelAppearsInOpenCodeCatalog(stdout, model = LOCAL_OPENCOD
   });
 }
 
+export function localOllamaOpenCodeConfig(endpoint = LOCAL_OLLAMA_HOST) {
+  const host = qualifyLoopbackOllamaHost(endpoint);
+  return {
+    $schema: "https://opencode.ai/config.json",
+    providers: {
+      ollama: { settings: { baseURL: host + "/v1" } },
+    },
+  };
+}
+
 export function qualifyLoopbackOllamaHost(value = LOCAL_OLLAMA_HOST) {
   let host;
   try { host = new URL(value); } catch { throw new Error("A local Ollama loopback endpoint is required"); }
@@ -84,6 +94,11 @@ export async function admitLocalOpenCodeModel({
     fs.mkdirSync(cwd, { mode: 0o700 });
     const childEnv = isolatedOpenCodeAdmissionEnvironment(home, env);
     childEnv.OLLAMA_HOST = modelInfo.endpoint;
+    const configPath = path.join(home, "opencode.json");
+    fs.writeFileSync(configPath, JSON.stringify(localOllamaOpenCodeConfig(modelInfo.endpoint)), {
+      encoding: "utf8", mode: 0o600, flag: "wx",
+    });
+    childEnv.OPENCODE_CONFIG = configPath;
     const catalog = await runBoundedAdmissionChild({
       executable, cwd, env: childEnv,
       args: ["models", "ollama"],
