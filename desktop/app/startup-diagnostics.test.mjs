@@ -34,6 +34,22 @@ test("startup receipts accept only fixed phases and failure codes", () => {
     { code: "POSTGRES_START_FAILED" },
   ), "POSTGRES_START_FAILED");
   assert.equal(postgresIssue, "POSTGRES_START_ADDRESS_IN_USE");
+  const postgresLogCases = [
+    ['Recent embedded Postgres logs: FATAL: could not access file "$libdir/private-extension"', "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING"],
+    ["Recent embedded Postgres logs: FATAL: could not create shared memory segment", "POSTGRES_START_SHARED_MEMORY_FAILED"],
+    ["Recent embedded Postgres logs: FATAL: invalid value for parameter \"private_setting\"", "POSTGRES_START_CONFIGURATION_INVALID"],
+    ["Recent embedded Postgres logs: FATAL: database files are incompatible with server", "POSTGRES_START_CLUSTER_INCOMPATIBLE"],
+    ["Recent embedded Postgres logs: FATAL: could not write file \"C:\\private\\base\": No space left on device", "POSTGRES_START_DISK_FULL"],
+    ["Recent embedded Postgres logs: PANIC: could not locate a valid checkpoint record", "POSTGRES_START_RECOVERY_FAILED"],
+  ];
+  for (const [privateMessage, expectedIssue] of postgresLogCases) {
+    const issue = diagnostics.startupFailureIssue(Object.assign(new Error(`${privateMessage}; host C:\\Users\\secret`), { code: "POSTGRES_START_FAILED" }), "POSTGRES_START_FAILED");
+    assert.equal(issue, expectedIssue);
+    const receipt = diagnostics.startupFailureIssueLine(issue);
+    assert.equal(diagnostics.isStartupDiagnosticLine(receipt), true);
+    assert.equal(receipt.includes("private"), false);
+    assert.equal(receipt.includes("secret"), false);
+  }
   assert.equal(diagnostics.startupFailureIssue(Object.assign(
     new Error("Postgres server exited before readiness (exitCode=1, signal=none)."),
     { code: "POSTGRES_START_FAILED" },

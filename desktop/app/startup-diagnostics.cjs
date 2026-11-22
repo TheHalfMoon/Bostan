@@ -24,6 +24,8 @@ const postgresStartupIssues = new Set([
   "POSTGRES_START_ADDRESS_IN_USE", "POSTGRES_START_DATA_DIRECTORY_DENIED",
   "POSTGRES_START_LOCALE_INVALID", "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING",
   "POSTGRES_START_EXTENSION_MISSING", "POSTGRES_START_SHARED_MEMORY_FAILED",
+  "POSTGRES_START_CONFIGURATION_INVALID", "POSTGRES_START_CLUSTER_INCOMPATIBLE",
+  "POSTGRES_START_DISK_FULL", "POSTGRES_START_RECOVERY_FAILED",
   "POSTGRES_START_PROCESS_EXITED", "POSTGRES_START_PROCESS_LAUNCH_FAILED",
   "POSTGRES_START_UNCLASSIFIED",
 ]);
@@ -67,12 +69,19 @@ function startupFailureIssue(error, fallbackCode) {
   if (startupCode(error?.code ?? fallbackCode) !== "POSTGRES_START_FAILED") return null;
   try {
     const message = typeof error?.message === "string" ? error.message.slice(0, 65536) : "";
+    // The backend attaches only a bounded in-memory tail of PostgreSQL output
+    // to its startup error. Convert recognized causes to fixed codes here;
+    // never include log text, paths, or connection details in the receipt.
     if (/address already in use|could not bind.*(?:socket|address)/i.test(message)) return "POSTGRES_START_ADDRESS_IN_USE";
     if (/permission denied|access is denied|could not access the data directory|could not open.*(?:directory|postmaster\.pid)/i.test(message)) return "POSTGRES_START_DATA_DIRECTORY_DENIED";
     if (/invalid locale|locale.*not supported|could not set locale/i.test(message)) return "POSTGRES_START_LOCALE_INVALID";
     if (/could not load library|could not access file|entry point.*not found|module could not be found/i.test(message)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
     if (/pg_trgm|fuzzystrmatch|extension control file|extension script file/i.test(message)) return "POSTGRES_START_EXTENSION_MISSING";
     if (/shared memory|could not create.*memory/i.test(message)) return "POSTGRES_START_SHARED_MEMORY_FAILED";
+    if (/no space left on device|not enough space|disk is full/i.test(message)) return "POSTGRES_START_DISK_FULL";
+    if (/database files are incompatible with server|database system identifier differs|wrong database system identifier/i.test(message)) return "POSTGRES_START_CLUSTER_INCOMPATIBLE";
+    if (/invalid value for parameter|unrecognized configuration parameter|could not open configuration file|configuration file contains errors/i.test(message)) return "POSTGRES_START_CONFIGURATION_INVALID";
+    if (/could not locate a valid checkpoint record|invalid primary checkpoint record|redo is not required/i.test(message)) return "POSTGRES_START_RECOVERY_FAILED";
     const processExit = message.match(/Postgres server exited before readiness \(exitCode=(null|0|[1-9]\d{0,2}), signal=(?:none|SIG[A-Z]+)\)/);
     if (processExit) return `POSTGRES_START_PROCESS_EXIT_CODE_${processExit[1]}`;
     if (/Postgres server failed to spawn \(code ENOENT\)/i.test(message)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
