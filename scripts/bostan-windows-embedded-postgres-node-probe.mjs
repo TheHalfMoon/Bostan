@@ -57,7 +57,9 @@ async function runProbe() {
     ]);
     const embeddedPostgresEntry = dbRequire.resolve("embedded-postgres");
     const EmbeddedPostgres = (await import(pathToFileURL(embeddedPostgresEntry).href)).default;
-    tempRoot = path.resolve(process.env.RUNNER_TEMP || os.tmpdir());
+    // Match the packaged QA harness, which creates its disposable profile in
+    // os.tmpdir(); RUNNER_TEMP may be a different volume with different ACLs.
+    tempRoot = path.resolve(os.tmpdir());
     const tempRootInfo = await fs.lstat(tempRoot);
     if (!tempRootInfo.isDirectory() || tempRootInfo.isSymbolicLink()) {
       throw new Error("Runner temp directory is unsafe");
