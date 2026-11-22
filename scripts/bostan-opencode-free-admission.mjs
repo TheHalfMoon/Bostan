@@ -70,18 +70,26 @@ function sanitizedPreview(value) {
 export function summarizeFreeModelAdmissionOutput(stdout, expected = REPLY, stderr = "") {
   const types = [];
   const chunks = [];
+  const errors = [];
   for (const line of stdout.split(/\r?\n/)) {
     try {
       const event = JSON.parse(line);
       if (typeof event.type === "string" && types.length < 12 && !types.includes(event.type)) types.push(event.type);
       if (event.type === "text" && typeof event.part?.text === "string") chunks.push(event.part.text);
+      if (event.type === "error" && errors.length < 3) {
+        const error = event.error;
+        const message = typeof error === "string" ? error
+          : [error?.data?.message, error?.message, error?.data?.error].find(value => typeof value === "string");
+        errors.push({ name: typeof error?.name === "string" ? sanitizedPreview(error.name) : undefined,
+          message: typeof message === "string" ? sanitizedPreview(message) : undefined });
+      }
     } catch {}
   }
   const response = chunks.join("").trim();
   const stderrText = stderr.trim();
   return { eventTypes: types, textEventCount: chunks.length, responseLength: response.length,
     includesExpected: response.includes(expected), preview: sanitizedPreview(response),
-    stderrLength: stderrText.length, stderrPreview: sanitizedPreview(stderrText) };
+    errors, stderrLength: stderrText.length, stderrPreview: sanitizedPreview(stderrText) };
 }
 
 function appendBounded(old, data) {

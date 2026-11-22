@@ -69,12 +69,17 @@ test("admission failure summary is bounded and omits URL, path, and credential-l
   const output = [
     JSON.stringify({ type: "step_start" }),
     JSON.stringify({ type: "text", part: { text: "wrong https://private.invalid sk-abcdefghijklmnopqrstuvwxyz C:\\\\Users\\\\person\\\\secret" } }),
+    JSON.stringify({ type: "error", error: { name: "RequestError", data: { message: "request to https://private.invalid failed with key sk-abcdefghijklmnopqrstuvwxyz at C:\\\\Users\\\\person\\\\secret" } } }),
   ].join("\n");
   const summary = summarizeFreeModelAdmissionOutput(output, undefined,
     "provider failed https://private.invalid sk-abcdefghijklmnopqrstuvwxyz C:\\\\Users\\\\person\\\\secret");
-  assert.deepEqual(summary.eventTypes, ["step_start", "text"]);
+  assert.deepEqual(summary.eventTypes, ["step_start", "text", "error"]);
   assert.equal(summary.textEventCount, 1);
   assert.equal(summary.includesExpected, false);
+  assert.equal(summary.errors.length, 1);
+  assert.equal(summary.errors[0].name, "RequestError");
+  assert.ok(summary.errors[0].message.length <= 160);
+  assert.doesNotMatch(summary.errors[0].message, /https?:|sk-|C:\\\\Users|private\.invalid|secret/);
   assert.ok(summary.preview.length <= 160);
   assert.doesNotMatch(summary.preview, /https?:|sk-|C:\\\\Users|private\.invalid|secret/);
   assert.ok(summary.stderrLength > 0);
