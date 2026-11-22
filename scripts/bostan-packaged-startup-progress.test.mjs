@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyPackagedStartupProgress } from "./bostan-packaged-startup-progress.mjs";
+import { classifyPackagedStartupProgress, packagedStartupFailure } from "./bostan-packaged-startup-progress.mjs";
 
 const now = 100_000;
 
@@ -38,4 +38,13 @@ test("reports no observed progress after the activity window", () => {
     lastPhaseAt: now - 60_000, lastProcessActivityAt: now - 31_000,
     lastCpuActivityAt: now - 31_000, lastMemoryChangeAt: now - 31_000,
   }, now), "no_observed_phase_or_process_progress_for_30s");
+});
+
+test("returns a bounded startup failure immediately instead of waiting for health timeout", () => {
+  assert.equal(packagedStartupFailure({ firstFailureCode: null }), null);
+  assert.equal(packagedStartupFailure({
+    firstFailureCode: "POSTGRES_START_FAILED",
+    firstFailureIssue: "POSTGRES_START_PROCESS_EXIT_CODE_1",
+  }), "packaged_startup_failure_POSTGRES_START_FAILED_POSTGRES_START_PROCESS_EXIT_CODE_1");
+  assert.equal(packagedStartupFailure({ firstFailureCode: "POSTGRES_START_FAILED\nsecret" }), null);
 });

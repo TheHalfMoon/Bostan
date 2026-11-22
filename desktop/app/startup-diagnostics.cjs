@@ -73,6 +73,8 @@ function startupFailureIssue(error, fallbackCode) {
     if (/could not load library|could not access file|entry point.*not found|module could not be found/i.test(message)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
     if (/pg_trgm|fuzzystrmatch|extension control file|extension script file/i.test(message)) return "POSTGRES_START_EXTENSION_MISSING";
     if (/shared memory|could not create.*memory/i.test(message)) return "POSTGRES_START_SHARED_MEMORY_FAILED";
+    const processExit = message.match(/Postgres server exited before readiness \(exitCode=(null|0|[1-9]\d{0,2}), signal=(?:none|SIG[A-Z]+)\)/);
+    if (processExit) return `POSTGRES_START_PROCESS_EXIT_CODE_${processExit[1]}`;
     if (/Postgres server failed to spawn \(code ENOENT\)/i.test(message)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
     if (/Postgres server failed to spawn \(code (?:EACCES|EPERM)\)/i.test(message)) return "POSTGRES_START_PROCESS_LAUNCH_FAILED";
     if (/start script exited|process exited before|server process.*exited|server exited before readiness/i.test(message)) return "POSTGRES_START_PROCESS_EXITED";
@@ -80,7 +82,8 @@ function startupFailureIssue(error, fallbackCode) {
   return "POSTGRES_START_UNCLASSIFIED";
 }
 function startupFailureIssueLine(issue) {
-  return postgresStartupIssues.has(issue) ? `BOSTAN_DESKTOP_STARTUP_ISSUE ${issue}` : null;
+  return postgresStartupIssues.has(issue) || /^POSTGRES_START_PROCESS_EXIT_CODE_(?:null|0|[1-9]\d{0,2})$/.test(issue)
+    ? `BOSTAN_DESKTOP_STARTUP_ISSUE ${issue}` : null;
 }
 function startupFailureLibrary(error) {
   if (startupErrorCode(error) !== "POSTGRES_LIBRARY_MISSING") return null;

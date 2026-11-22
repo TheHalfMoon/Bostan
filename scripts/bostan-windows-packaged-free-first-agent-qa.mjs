@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { qualifyFreeQaModel, qualifyLocalOpenCodeQaModel } from "./bostan-free-model-policy.mjs";
 import { admitFreeOpenCodeModel } from "./bostan-opencode-free-admission.mjs";
 import { nativeGovernedCaseAgentConfig, requireNativeCaseQaHost } from "./bostan-governed-case-free-e2e.mjs";
-import { classifyPackagedStartupProgress } from "./bostan-packaged-startup-progress.mjs";
+import { classifyPackagedStartupProgress, packagedStartupFailure } from "./bostan-packaged-startup-progress.mjs";
 import {
   assertHeartbeatQaSucceeded,
   buildFirstWorkerTask,
@@ -141,7 +141,7 @@ function recordStartupLine(evidence, line) {
     evidence.firstFailureCode = failure[1];
     console.error(`BOSTAN_PACKAGED_STARTUP_FAILURE ${failure[1]}`);
   }
-  const issue = line.match(/^BOSTAN_DESKTOP_STARTUP_ISSUE (POSTGRES_START_[A-Z_]{1,64})$/);
+  const issue = line.match(/^BOSTAN_DESKTOP_STARTUP_ISSUE (POSTGRES_START_[A-Z0-9_]{1,64})$/);
   if (issue && !evidence.firstFailureIssue) {
     evidence.firstFailureIssue = issue[1];
     console.error(`BOSTAN_PACKAGED_STARTUP_ISSUE ${issue[1]}`);
@@ -207,6 +207,8 @@ async function findHealth(child, startupEvidence) {
   const deadline = Date.now() + 180_000;
   let lastMetricSampleAt = 0;
   while (Date.now() < deadline && child.exitCode === null) {
+    const failure = packagedStartupFailure(startupEvidence);
+    if (failure) throw new Error(failure);
     let pids;
     try { pids = processTree(child.pid); }
     catch { await sleep(1_000); continue; }
@@ -350,6 +352,8 @@ async function run() {
   let cleanupAllowed = true;
   let failure;
   let taskReceipt;
+  let gracefulShutdownVerified = false;
+  let temporaryProfileCleanupVerified = false;
   try {
     if (mode === "remote-free") {
       await admitFreeOpenCodeModel({
@@ -656,7 +660,11 @@ async function run() {
     failure = error;
   } finally {
     if (child && child.exitCode === null) {
-      try { await closeMainWindow(child); }
+      try {
+        await closeMainWindow(child);
+        gracefulShutdownVerified = true;
+        console.log("BOSTAN_PACKAGED_NATIVE_QA_GRACEFUL_SHUTDOWN_PASS");
+      }
       catch {
         try {
           await terminateOwnedApplicationTree(child, profile);
@@ -666,7 +674,11 @@ async function run() {
       }
     }
     if (cleanupAllowed) {
-      try { safeDeleteTemp(profile); }
+      try {
+        safeDeleteTemp(profile);
+        temporaryProfileCleanupVerified = !fs.existsSync(profile);
+        if (temporaryProfileCleanupVerified) console.log("BOSTAN_PACKAGED_NATIVE_QA_TEMP_PROFILE_CLEANUP_PASS");
+      }
       catch { cleanupAllowed = false; }
     }
     if (!cleanupAllowed) console.error("BOSTAN_PACKAGED_FIRST_AGENT_TEMP_PRESERVED_FOR_SAFE_RECOVERY");
@@ -677,6 +689,9 @@ async function run() {
     throw new Error("qa_failed_" + (message || "unclassified"));
   }
   if (!cleanupAllowed) throw new Error("packaged_first_agent_qa_cleanup_unverified");
+  if (!gracefulShutdownVerified || !temporaryProfileCleanupVerified) {
+    throw new Error("packaged_first_agent_qa_shutdown_or_cleanup_unverified");
+  }
   console.log("BOSTAN_PACKAGED_DESKTOP_FIRST_FREE_AGENT_TASK_PASS " + JSON.stringify({
     ...taskReceipt,
     gracefulShutdown: true,

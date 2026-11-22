@@ -14,3 +14,16 @@ export function classifyPackagedStartupProgress(evidence, now = Date.now()) {
       ? "process_tree_change_without_phase_progress"
       : "memory_progress_without_phase_progress";
 }
+
+export function packagedStartupFailure(evidence) {
+  const code = typeof evidence?.firstFailureCode === "string"
+    && /^[A-Z0-9_]{1,80}$/.test(evidence.firstFailureCode)
+    ? evidence.firstFailureCode
+    : null;
+  if (!code) return null;
+  const issue = typeof evidence.firstFailureIssue === "string"
+    && /^POSTGRES_START_[A-Z0-9_]{1,64}$/.test(evidence.firstFailureIssue)
+    ? `_${evidence.firstFailureIssue}`
+    : "";
+  return `packaged_startup_failure_${code}${issue}`;
+}

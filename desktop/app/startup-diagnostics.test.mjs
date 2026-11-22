@@ -37,7 +37,10 @@ test("startup receipts accept only fixed phases and failure codes", () => {
   assert.equal(diagnostics.startupFailureIssue(Object.assign(
     new Error("Postgres server exited before readiness (exitCode=1, signal=none)."),
     { code: "POSTGRES_START_FAILED" },
-  ), "POSTGRES_START_FAILED"), "POSTGRES_START_PROCESS_EXITED");
+  ), "POSTGRES_START_FAILED"), "POSTGRES_START_PROCESS_EXIT_CODE_1");
+  assert.equal(diagnostics.startupFailureIssueLine("POSTGRES_START_PROCESS_EXIT_CODE_1"),
+    "BOSTAN_DESKTOP_STARTUP_ISSUE POSTGRES_START_PROCESS_EXIT_CODE_1");
+  assert.equal(diagnostics.startupFailureIssueLine("POSTGRES_START_PROCESS_EXIT_CODE_9999"), null);
   assert.equal(diagnostics.startupFailureIssue(Object.assign(
     new Error("Postgres server failed to spawn (code ENOENT)."),
     { code: "POSTGRES_START_FAILED" },
