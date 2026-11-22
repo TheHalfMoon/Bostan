@@ -26,7 +26,7 @@ export const NATIVE_CASE_QA_BUDGET = Object.freeze({
   totalMemoryGiB: 12, freeMemoryGiB: 6, tempFreeGiB: 8,
 });
 export function evaluateNativeCaseQaHost(input, budget = NATIVE_CASE_QA_BUDGET) {
-  const supported = ["darwin", "linux"].includes(input?.platform);
+  const supported = ["darwin", "linux", "win32"].includes(input?.platform);
   const enough = (actual, required) =>
     Number.isSafeInteger(actual) && actual >= required * GIB;
   const checks = {

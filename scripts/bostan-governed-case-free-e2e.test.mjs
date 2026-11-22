@@ -111,7 +111,7 @@ test("governed Case only admits native signed-API runner with all general OpenCo
   }), /absolute disposable workspace/);
 });
 
-test("native governed Case host preflight refuses low-memory Macs and sparse TEMP, not ordinary app installs", () => {
+test("native governed Case host preflight enforces memory and TEMP on Windows, macOS and Linux", () => {
   const G = 1024 ** 3;
   const good = { platform: "darwin", totalMemoryBytes: 16 * G, freeMemoryBytes: 9 * G, tempFreeBytes: 30 * G };
   assert.deepEqual(evaluateNativeCaseQaHost(good), {
@@ -124,7 +124,8 @@ test("native governed Case host preflight refuses low-memory Macs and sparse TEM
     ["enoughFreeMemory"]);
   assert.deepEqual(evaluateNativeCaseQaHost({ ...good, tempFreeBytes: 4 * G }).blocked,
     ["enoughTempDisk"]);
-  assert.deepEqual(evaluateNativeCaseQaHost({ ...good, platform: "win32" }).blocked,
+  assert.equal(evaluateNativeCaseQaHost({ ...good, platform: "win32" }).qualified, true);
+  assert.deepEqual(evaluateNativeCaseQaHost({ ...good, platform: "freebsd" }).blocked,
     ["supportedNativePlatform"]);
   assert.equal(evaluateNativeCaseQaHost({ ...good, freeMemoryBytes: null }).qualified, false);
 });

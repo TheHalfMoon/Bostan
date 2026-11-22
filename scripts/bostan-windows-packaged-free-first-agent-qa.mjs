@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { qualifyFreeQaModel } from "./bostan-free-model-policy.mjs";
 import { admitFreeOpenCodeModel } from "./bostan-opencode-free-admission.mjs";
-import { nativeGovernedCaseAgentConfig } from "./bostan-governed-case-free-e2e.mjs";
+import { nativeGovernedCaseAgentConfig, requireNativeCaseQaHost } from "./bostan-governed-case-free-e2e.mjs";
 import { classifyPackagedStartupProgress } from "./bostan-packaged-startup-progress.mjs";
 import {
   assertHeartbeatQaSucceeded,
@@ -290,6 +290,7 @@ async function closeMainWindow(child) {
 }
 
 async function run() {
+  requireNativeCaseQaHost();
   const opencode = requireOptIn();
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-packaged-first-agent-"));
   let child;
