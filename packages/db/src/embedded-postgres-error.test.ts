@@ -1,5 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { createEmbeddedPostgresLogBuffer, formatEmbeddedPostgresError } from "./embedded-postgres-error.js";
+import { classifyEmbeddedPostgresStartIssue, createEmbeddedPostgresLogBuffer, formatEmbeddedPostgresError } from "./embedded-postgres-error.js";
+
+describe("classifyEmbeddedPostgresStartIssue", () => {
+  it("returns only fixed startup issues and distinguishes absent from unknown logs", () => {
+    const cases = [
+      [[], "POSTGRES_START_LOGS_EMPTY"],
+      [["FATAL: could not bind IPv4 address: Address already in use"], "POSTGRES_START_ADDRESS_IN_USE"],
+      [["FATAL: could not create shared memory segment"], "POSTGRES_START_SHARED_MEMORY_FAILED"],
+      [["FATAL: invalid value for parameter \"private-setting\""], "POSTGRES_START_CONFIGURATION_INVALID"],
+      [["FATAL: database files are incompatible with server"], "POSTGRES_START_CLUSTER_INCOMPATIBLE"],
+      [["FATAL: could not write file C:\\private\\base: No space left on device"], "POSTGRES_START_DISK_FULL"],
+      [["PANIC: could not locate a valid checkpoint record"], "POSTGRES_START_RECOVERY_FAILED"],
+      [["FATAL: private unrecognized reason at C:\\Users\\secret"], "POSTGRES_START_LOGS_UNCLASSIFIED"],
+    ] as const;
+    for (const [logs, expected] of cases) {
+      const issue = classifyEmbeddedPostgresStartIssue([...logs]);
+      expect(issue).toBe(expected);
+      expect(issue).not.toContain("private");
+      expect(issue).not.toContain("secret");
+    }
+  });
+});
 
 describe("formatEmbeddedPostgresError", () => {
   it("adds a shared-memory hint when initdb logs expose the real cause", () => {

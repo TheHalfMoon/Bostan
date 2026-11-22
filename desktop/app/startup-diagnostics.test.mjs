@@ -34,6 +34,9 @@ test("startup receipts accept only fixed phases and failure codes", () => {
     { code: "POSTGRES_START_FAILED" },
   ), "POSTGRES_START_FAILED");
   assert.equal(postgresIssue, "POSTGRES_START_ADDRESS_IN_USE");
+  assert.equal(diagnostics.startupFailureIssue(Object.assign(new Error("Postgres server exited before readiness (exitCode=1, signal=none)."), {
+    code: "POSTGRES_START_FAILED", postgresStartupIssue: "POSTGRES_START_LOGS_EMPTY",
+  }), "POSTGRES_START_FAILED"), "POSTGRES_START_LOGS_EMPTY");
   const postgresLogCases = [
     ['Recent embedded Postgres logs: FATAL: could not access file "$libdir/private-extension"', "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING"],
     ["Recent embedded Postgres logs: FATAL: could not create shared memory segment", "POSTGRES_START_SHARED_MEMORY_FAILED"],

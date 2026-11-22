@@ -33,6 +33,7 @@ export {
   type RunDatabaseRestoreOptions,
 } from "./backup-lib.js";
 export {
+  classifyEmbeddedPostgresStartIssue,
   createEmbeddedPostgresLogBuffer,
   formatEmbeddedPostgresError,
 } from "./embedded-postgres-error.js";

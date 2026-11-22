@@ -1,6 +1,37 @@
 const DEFAULT_RECENT_LOG_LIMIT = 40;
 const RECENT_LOG_SUMMARY_LINES = 8;
 
+export type EmbeddedPostgresStartIssue =
+  | "POSTGRES_START_ADDRESS_IN_USE"
+  | "POSTGRES_START_DATA_DIRECTORY_DENIED"
+  | "POSTGRES_START_LOCALE_INVALID"
+  | "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING"
+  | "POSTGRES_START_EXTENSION_MISSING"
+  | "POSTGRES_START_SHARED_MEMORY_FAILED"
+  | "POSTGRES_START_DISK_FULL"
+  | "POSTGRES_START_CLUSTER_INCOMPATIBLE"
+  | "POSTGRES_START_CONFIGURATION_INVALID"
+  | "POSTGRES_START_RECOVERY_FAILED"
+  | "POSTGRES_START_LOGS_EMPTY"
+  | "POSTGRES_START_LOGS_UNCLASSIFIED";
+
+/** Classify bounded PostgreSQL startup output without returning any log text. */
+export function classifyEmbeddedPostgresStartIssue(recentLogs: string[]): EmbeddedPostgresStartIssue {
+  const haystack = recentLogs.join("\n").slice(-65536);
+  if (!haystack.trim()) return "POSTGRES_START_LOGS_EMPTY";
+  if (/address already in use|could not bind.*(?:socket|address)|could not create any tcp\/ip sockets/i.test(haystack)) return "POSTGRES_START_ADDRESS_IN_USE";
+  if (/permission denied|access is denied|could not access the data directory|could not open.*(?:directory|postmaster\.pid)/i.test(haystack)) return "POSTGRES_START_DATA_DIRECTORY_DENIED";
+  if (/invalid locale|locale.*not supported|could not set locale/i.test(haystack)) return "POSTGRES_START_LOCALE_INVALID";
+  if (/pg_trgm|fuzzystrmatch|extension control file|extension script file|could not access file.*extension/i.test(haystack)) return "POSTGRES_START_EXTENSION_MISSING";
+  if (/could not load library|entry point.*not found|module could not be found|could not open.*\.(?:dll|so|dylib)/i.test(haystack)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
+  if (/shared memory|could not create.*memory/i.test(haystack)) return "POSTGRES_START_SHARED_MEMORY_FAILED";
+  if (/no space left on device|not enough space|disk is full/i.test(haystack)) return "POSTGRES_START_DISK_FULL";
+  if (/database files are incompatible with server|database system identifier differs|wrong database system identifier/i.test(haystack)) return "POSTGRES_START_CLUSTER_INCOMPATIBLE";
+  if (/invalid value for parameter|unrecognized configuration parameter|could not open configuration file|configuration file contains errors/i.test(haystack)) return "POSTGRES_START_CONFIGURATION_INVALID";
+  if (/could not locate a valid checkpoint record|invalid primary checkpoint record|redo is not required/i.test(haystack)) return "POSTGRES_START_RECOVERY_FAILED";
+  return "POSTGRES_START_LOGS_UNCLASSIFIED";
+}
+
 function toError(error: unknown, fallbackMessage: string): Error {
   if (error instanceof Error) return error;
   if (error === undefined) return new Error(fallbackMessage);

@@ -63,6 +63,7 @@ import { and, eq } from "drizzle-orm";
 import {
   createDb,
   ensurePostgresDatabase,
+  classifyEmbeddedPostgresStartIssue,
   formatEmbeddedPostgresError,
   getPostgresDataDirectory,
   inspectMigrations,
@@ -646,14 +647,18 @@ async function startServerWithDatabaseTeardown(
           await embeddedPostgres.start();
         } catch (err) {
           logEmbeddedPostgresFailure("start", err);
+          const recentLogs = logBuffer.getRecentLogs();
           const startupError = formatEmbeddedPostgresError(err, {
             fallbackMessage: `Failed to start embedded PostgreSQL on port ${port}`,
-            recentLogs: logBuffer.getRecentLogs(),
+            recentLogs,
           });
           // embedded-postgres may reject with no Error when its process exits
           // before the ready marker; distinguish that phase without forwarding
           // its buffered stdout, stderr, paths, or connection information.
-          Object.assign(startupError, { code: "POSTGRES_START_FAILED" });
+          Object.assign(startupError, {
+            code: "POSTGRES_START_FAILED",
+            postgresStartupIssue: classifyEmbeddedPostgresStartIssue(recentLogs),
+          });
           throw startupError;
         }
         embeddedPostgresStartedByThisProcess = true;
