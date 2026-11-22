@@ -87,6 +87,9 @@ test("admission failure summary is bounded and omits URL, path, and credential-l
   assert.doesNotMatch(summary.stderrPreview, /https?:|sk-|C:\\\\Users|private\.invalid|secret/);
   assert.ok(summary.stderrTail.length <= 512);
   assert.doesNotMatch(summary.stderrTail, /https?:|sk-|C:\\\\Users|private\.invalid|secret/);
+  assert.equal(summary.errorLogs.length, 1);
+  assert.ok(summary.errorLogs[0].length <= 512);
+  assert.doesNotMatch(summary.errorLogs[0], /https?:|sk-|C:\\\\Users|private\.invalid|secret/);
 });
 
 test("child stdin is EOF from birth and prints the required JSON text event", async () => {

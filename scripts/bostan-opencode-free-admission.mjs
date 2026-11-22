@@ -87,10 +87,14 @@ export function summarizeFreeModelAdmissionOutput(stdout, expected = REPLY, stde
   }
   const response = chunks.join("").trim();
   const stderrText = stderr.trim();
+  const errorLogs = stderrText.split(/\r?\n/)
+    .filter(line => /\b(?:ERROR|WARN|error|failed|failure|500|404)\b/i.test(line))
+    .slice(-5)
+    .map(line => sanitizedPreview(line, 512));
   return { eventTypes: types, textEventCount: chunks.length, responseLength: response.length,
     includesExpected: response.includes(expected), preview: sanitizedPreview(response),
     errors, stderrLength: stderrText.length, stderrPreview: sanitizedPreview(stderrText),
-    stderrTail: sanitizedPreview(stderrText, 512, true) };
+    stderrTail: sanitizedPreview(stderrText, 512, true), errorLogs };
 }
 
 function appendBounded(old, data) {
