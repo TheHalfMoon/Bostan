@@ -6,7 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { qualifyFreeQaModel, isOpenRouterFreeQaModel } from "./bostan-free-model-policy.mjs";
+import { qualifyFreeQaModel, qualifyNativeOpenCodeQaModel, isOpenRouterFreeQaModel } from "./bostan-free-model-policy.mjs";
 import { admitOpenRouterZeroCostQa } from "./bostan-openrouter-free-preflight.mjs";
 import { qualifyDisposableFirstAgentScope, selectSingleAssignmentRun,
   observeHeartbeatQaStatus,
@@ -48,12 +48,20 @@ export function inspectNativeCaseQaHost() {
     const free = Number(disk.bavail) * Number(disk.bsize);
     if (Number.isSafeInteger(free)) tempFreeBytes = free;
   } catch { /* Missing inspection is never a positive resource receipt. */ }
-  return evaluateNativeCaseQaHost({
+  const measured = {
     platform: process.platform,
     totalMemoryBytes: os.totalmem(),
     freeMemoryBytes: os.freemem(),
     tempFreeBytes,
-  });
+  };
+  return {
+    ...evaluateNativeCaseQaHost(measured),
+    resourcesGiB: {
+      total: Number((measured.totalMemoryBytes / GIB).toFixed(2)),
+      free: Number((measured.freeMemoryBytes / GIB).toFixed(2)),
+      tempFree: measured.tempFreeBytes === null ? null : Number((measured.tempFreeBytes / GIB).toFixed(2)),
+    },
+  };
 }
 export function requireNativeCaseQaHost() {
   const result = inspectNativeCaseQaHost();
@@ -104,7 +112,7 @@ export function qualifyGovernedCaseQa(env = process.env) {
  * OpenCode's own general-purpose shell/read/edit permissions denied.
  */
 export function nativeGovernedCaseAgentConfig({ model, workspace }) {
-  qualifyFreeQaModel(model);
+  qualifyNativeOpenCodeQaModel(model);
   if (!path.isAbsolute(workspace)) throw new Error("Governed Case needs an absolute disposable workspace");
   return {
     provider: "opencode", model, cwd: workspace,

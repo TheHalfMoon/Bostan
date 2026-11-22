@@ -13,6 +13,9 @@ const ALLOWED_MODELS = new Set([
   "opencode/hy4-flash-free",
   ...OPENROUTER_FREE_MODELS,
 ]);
+const LOCAL_OPENCODE_MODELS = new Set([
+  "ollama/qwen2.5-coder:1.5b",
+]);
 
 export function isOpenRouterFreeQaModel(model) {
   return OPENROUTER_FREE_MODELS.has(model);
@@ -24,4 +27,16 @@ export function qualifyFreeQaModel(value) {
     throw new Error("Only explicitly permitted free test models are allowed");
   }
   return model;
+}
+
+export function qualifyLocalOpenCodeQaModel(value) {
+  if (!LOCAL_OPENCODE_MODELS.has(value)) {
+    throw new Error("Only the explicitly permitted local OpenCode QA model is allowed");
+  }
+  return value;
+}
+
+export function qualifyNativeOpenCodeQaModel(value) {
+  if (LOCAL_OPENCODE_MODELS.has(value)) return qualifyLocalOpenCodeQaModel(value);
+  return qualifyFreeQaModel(value);
 }

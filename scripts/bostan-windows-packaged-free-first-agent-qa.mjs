@@ -5,13 +5,14 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { qualifyFreeQaModel } from "./bostan-free-model-policy.mjs";
+import { qualifyFreeQaModel, qualifyLocalOpenCodeQaModel } from "./bostan-free-model-policy.mjs";
 import { admitFreeOpenCodeModel } from "./bostan-opencode-free-admission.mjs";
 import { nativeGovernedCaseAgentConfig, requireNativeCaseQaHost } from "./bostan-governed-case-free-e2e.mjs";
 import { classifyPackagedStartupProgress } from "./bostan-packaged-startup-progress.mjs";
 import {
   assertHeartbeatQaSucceeded,
   buildFirstWorkerTask,
+  buildSecondWorkerTask,
   observeHeartbeatQaStatus,
   requirePersistedRunComment,
   safeHeartbeatQaDiagnostic,
@@ -28,7 +29,9 @@ const APP_EXE = process.env.BOSTAN_E2E_APP_EXE
   : path.join(DEFAULT_APP, "Bostan.exe");
 const APP = path.dirname(APP_EXE);
 const RUNTIME = path.join(APP, "resources", "runtime");
-const MODEL = process.env.BOSTAN_E2E_FREE_MODEL || "opencode/hy4-flash-free";
+const MODEL_MODE = process.env.BOSTAN_E2E_MODEL_MODE || "remote-free";
+const MODEL = process.env.BOSTAN_E2E_FREE_MODEL || (MODEL_MODE === "local-ollama"
+  ? "ollama/qwen2.5-coder:1.5b" : "opencode/hy4-flash-free");
 const MARKER = "BOSTAN_CLEAN_RUN_PASS";
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -36,14 +39,23 @@ function requireOptIn() {
   if (process.platform !== "win32" || process.arch !== "x64") {
     throw new Error("windows_x64_only");
   }
-  if (process.env.BOSTAN_E2E_CONFIRM_TEMP_DATA !== "1" ||
-      process.env.BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL !== "1") {
+  if (process.env.BOSTAN_E2E_CONFIRM_TEMP_DATA !== "1") {
     throw new Error("explicit_temp_and_free_model_opt_in_required");
+  }
+  if (MODEL_MODE === "remote-free") {
+    if (process.env.BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL !== "1") throw new Error("explicit_temp_and_free_model_opt_in_required");
+    qualifyFreeQaModel(MODEL);
+  } else if (MODEL_MODE === "local-ollama") {
+    if (process.env.BOSTAN_E2E_ALLOW_LOCAL_MODEL !== "1" || process.env.BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL === "1") {
+      throw new Error("explicit_local_only_model_opt_in_required");
+    }
+    qualifyLocalOpenCodeQaModel(MODEL);
+  } else {
+    throw new Error("unsupported_packaged_qa_model_mode");
   }
   if (process.env.BOSTAN_E2E_APP_EXE && !path.isAbsolute(process.env.BOSTAN_E2E_APP_EXE)) {
     throw new Error("absolute_bostan_application_executable_required");
   }
-  qualifyFreeQaModel(MODEL);
   const info = JSON.parse(fs.readFileSync(path.join(REPO, "desktop", "package.json"), "utf8"));
   if (info.productName !== "Bostan" || info.build?.appId !== "io.bostan.desktop") {
     throw new Error("unexpected_desktop_identity");
@@ -58,7 +70,7 @@ function requireOptIn() {
   if (!opencode || !path.isAbsolute(opencode) || !fs.lstatSync(opencode).isFile()) {
     throw new Error("absolute_native_opencode_executable_required");
   }
-  return opencode;
+  return { opencode, model: MODEL, mode: MODEL_MODE };
 }
 
 function ps(script) {
@@ -289,19 +301,64 @@ async function closeMainWindow(child) {
   if (child.exitCode === null) throw new Error("desktop_did_not_confirm_graceful_shutdown");
 }
 
+async function launchPackagedApp(env, chromiumProfile, onChild = () => {}) {
+  const startupEvidence = createStartupEvidence();
+  const appChild = spawn(APP_EXE, [`--user-data-dir=${chromiumProfile}`], {
+    cwd: APP, env, windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
+  });
+  onChild(appChild);
+  for (const stream of [appChild.stdout, appChild.stderr]) {
+    let pending = "";
+    stream.on("data", chunk => {
+      pending = (pending + chunk.toString()).slice(-16_384);
+      let newline;
+      while ((newline = pending.indexOf("\n")) >= 0) {
+        const line = pending.slice(0, newline).trim();
+        pending = pending.slice(newline + 1);
+        recordStartupLine(startupEvidence, line);
+      }
+    });
+  }
+  const exited = new Promise(resolve => appChild.once("exit", code => resolve(code)));
+  const pids = await waitFor(async () => {
+    if (appChild.exitCode !== null) return { done: true, result: null };
+    try {
+      const ids = processTree(appChild.pid);
+      return ids.size > 0 ? { done: true, result: ids } : { done: false };
+    } catch { return { done: false }; }
+  }, 15_000, "desktop_process_ownership_probe_failed");
+  if (!pids) {
+    const code = await exited;
+    throw new Error(`desktop_exited_before_owned_process_tree_${code ?? "unknown"}`);
+  }
+  const base = await findHealth(appChild, startupEvidence);
+  return { child: appChild, base, startupEvidence };
+}
+
 async function run() {
-  requireNativeCaseQaHost();
-  const opencode = requireOptIn();
+  const startingHost = requireNativeCaseQaHost();
+  console.log("BOSTAN_PACKAGED_NATIVE_QA_HOST_BEFORE_MODEL " + JSON.stringify(startingHost.resourcesGiB));
+  const { opencode, model, mode } = requireOptIn();
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-packaged-first-agent-"));
   let child;
   let cleanupAllowed = true;
   let failure;
   let taskReceipt;
   try {
-    await admitFreeOpenCodeModel({
-      parent: profile, model: MODEL, executable: opencode,
-      env: { ...process.env, BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL: "1" }, timeoutMs: 75_000,
-    });
+    if (mode === "remote-free") {
+      await admitFreeOpenCodeModel({
+        parent: profile, model, executable: opencode,
+        env: { ...process.env, BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL: "1" }, timeoutMs: 75_000,
+      });
+    } else {
+      const { admitLocalOpenCodeModel } = await import("./bostan-opencode-local-admission.mjs");
+      await admitLocalOpenCodeModel({
+        parent: profile, model, executable: opencode,
+        env: { ...process.env, BOSTAN_E2E_ALLOW_LOCAL_MODEL: "1" }, timeoutMs: 75_000,
+      });
+      const postAdmissionHost = requireNativeCaseQaHost();
+      console.log("BOSTAN_PACKAGED_NATIVE_QA_HOST_AFTER_MODEL " + JSON.stringify(postAdmissionHost.resourcesGiB));
+    }
 
     const chromiumProfile = path.join(profile, "chromium-profile");
     const appData = path.join(profile, "AppData", "Roaming");
@@ -321,32 +378,10 @@ async function run() {
       APPDATA: appData, LOCALAPPDATA: localAppData, TEMP: temp, TMP: temp,
       DO_NOT_TRACK: "1", OTEL_SDK_DISABLED: "true",
     };
-    const startupEvidence = createStartupEvidence();
-    child = spawn(APP_EXE, [`--user-data-dir=${chromiumProfile}`], {
-      cwd: APP, env, windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
-    });
-    for (const stream of [child.stdout, child.stderr]) {
-      let pending = "";
-      stream.on("data", chunk => {
-        pending = (pending + chunk.toString()).slice(-16_384);
-        let newline;
-        while ((newline = pending.indexOf("\n")) >= 0) {
-          const line = pending.slice(0, newline).trim();
-          pending = pending.slice(newline + 1);
-          recordStartupLine(startupEvidence, line);
-        }
-      });
-    }
-    const exited = new Promise(resolve => child.once("exit", code => resolve(code)));
-    const pids = await waitFor(async () => {
-      if (child.exitCode !== null) return { done: true, result: null };
-      try {
-        const ids = processTree(child.pid);
-        return ids.size > 0 ? { done: true, result: ids } : { done: false };
-      } catch { return { done: false }; }
-    }, 15_000, "desktop_process_ownership_probe_failed");
-    if (!pids) { const code = await exited; throw new Error(`desktop_exited_before_owned_process_tree_${code ?? "unknown"}`); }
-    const base = await findHealth(child, startupEvidence);
+    if (mode === "local-ollama") env.OLLAMA_HOST = "http://127.0.0.1:11434";
+    let launch = await launchPackagedApp(env, chromiumProfile, value => { child = value; });
+    child = launch.child;
+    let base = launch.base;
     console.log("BOSTAN_PACKAGED_DESKTOP_PRIVATE_HEALTH_PASS");
 
     const email = `qa-${randomUUID()}@example.test`;
@@ -354,7 +389,7 @@ async function run() {
     const signup = await api(base, "POST", "auth/sign-up/email", {
       body: { name: "Bostan Disposable QA", email, password },
     });
-    const cookie = signup.response.headers.getSetCookie().map(value => value.split(";", 1)[0]).join("; ");
+    let cookie = signup.response.headers.getSetCookie().map(value => value.split(";", 1)[0]).join("; ");
     if (signup.response.status !== 200 || !cookie || !signup.data?.user?.id) {
       throw new Error("synthetic_signup_failed");
     }
@@ -371,7 +406,7 @@ async function run() {
     }
     const workspace = path.join(profile, "workspace");
     fs.mkdirSync(workspace);
-    const modelConfig = nativeGovernedCaseAgentConfig({ model: MODEL, workspace });
+    const modelConfig = nativeGovernedCaseAgentConfig({ model, workspace });
     const agentResult = await api(base, "POST", `companies/${company.id}/agents`, {
       body: {
         name: "Bostan Native Free QA Worker", role: "general",
@@ -441,9 +476,175 @@ async function run() {
       comments, agentId: agent.id, runId: run.id, marker: MARKER,
     });
     taskReceipt = {
-      model: MODEL, runStatus: run.status, exitCode: run.exitCode,
+      model, runStatus: run.status, exitCode: run.exitCode,
       costUsd: run.usageJson.costUsd, taskStatus: finalTask.data.status,
       runAttributedCommentPersisted: true, commentId: comment.commentId,
+    };
+
+    await closeMainWindow(child);
+    const firstProcessRoot = child.pid;
+    child = null;
+    await waitFor(async () => processesReferencing(profile).length === 0
+      ? { done: true, result: true } : { done: false }, 30_000, "first_app_process_tree_cleanup_unverified");
+    const firstProcessTree = processTree(firstProcessRoot);
+    if (firstProcessTree.size !== 0) throw new Error("first_app_process_tree_survived_shutdown");
+
+    launch = await launchPackagedApp(env, chromiumProfile, value => { child = value; });
+    child = launch.child;
+    base = launch.base;
+    console.log("BOSTAN_PACKAGED_DESKTOP_RESTART_READY_PASS");
+    const login = await api(base, "POST", "auth/sign-in/email", { body: { email, password } });
+    cookie = login.response.headers.getSetCookie().map(value => value.split(";", 1)[0]).join("; ");
+    if (login.response.status !== 200 || !cookie || !login.data?.user?.id) {
+      throw new Error("synthetic_user_signin_after_restart_failed");
+    }
+    const persistedFirstTask = await api(base, "GET", `issues/${task.id}`, { cookie });
+    const persistedFirstRun = await api(base, "GET", `heartbeat-runs/${run.id}`, { cookie });
+    const persistedFirstComments = await api(base, "GET", `issues/${task.id}/comments`, { cookie });
+    const persistedAgent = await api(base, "GET", `agents/${agent.id}`, { cookie });
+    const persistedComments = Array.isArray(persistedFirstComments.data)
+      ? persistedFirstComments.data : persistedFirstComments.data?.comments;
+    requirePersistedRunComment({ comments: persistedComments, agentId: agent.id, runId: run.id, marker: MARKER });
+    if (persistedFirstTask.data?.status !== "done" || persistedFirstRun.data?.status !== "succeeded"
+      || persistedAgent.data?.adapterType !== "paperclip_runner"
+      || (persistedAgent.data?.adapterConfig?.model ?? persistedAgent.data?.config?.model) !== model) {
+      throw new Error("first_agent_records_not_persisted_after_restart");
+    }
+    console.log("BOSTAN_PACKAGED_DESKTOP_FIRST_TASK_PERSISTENCE_PASS");
+
+    const secondTaskResult = await api(base, "POST", `companies/${company.id}/issues`, {
+      body: {
+        title: "Synthetic Bostan second native task " + randomUUID(),
+        description: buildSecondWorkerTask(), status: "todo", assigneeAgentId: agent.id,
+      }, cookie,
+    });
+    const secondTask = secondTaskResult.data;
+    if (secondTaskResult.response.status < 200 || secondTaskResult.response.status >= 300 || !secondTask?.id) {
+      throw new Error("synthetic_second_task_create_failed");
+    }
+    const secondAssignedRun = await waitFor(async () => {
+      const result = await api(base, "GET", `companies/${company.id}/heartbeat-runs?agentId=${agent.id}&limit=50`, { cookie });
+      const selected = selectSingleAssignmentRun(result.data, { agentId: agent.id, issueId: secondTask.id });
+      return selected ? { done: true, result: selected } : { done: false };
+    }, 60_000, "second_task_automatic_assignment_run_not_found");
+    const secondRun = await waitFor(async () => {
+      const result = await api(base, "GET", `heartbeat-runs/${secondAssignedRun.id}`, { cookie });
+      return observeHeartbeatQaStatus(result.data);
+    }, 210_000, "second_native_agent_run_timeout");
+    assertHeartbeatQaSucceeded(secondRun);
+    if (typeof secondRun.usageJson?.costUsd !== "number" || secondRun.usageJson.costUsd !== 0) {
+      throw new Error("second_agent_usage_cost_not_verified_zero");
+    }
+    const finalSecondTask = await api(base, "GET", `issues/${secondTask.id}`, { cookie });
+    const secondCommentsResult = await api(base, "GET", `issues/${secondTask.id}/comments`, { cookie });
+    const secondComments = Array.isArray(secondCommentsResult.data)
+      ? secondCommentsResult.data : secondCommentsResult.data?.comments;
+    const secondComment = requirePersistedRunComment({
+      comments: secondComments, agentId: agent.id, runId: secondRun.id, marker: "BOSTAN_SECOND_AGENT_PASS",
+    });
+    if (finalSecondTask.data?.status !== "done") throw new Error("second_agent_task_not_persisted_done");
+    taskReceipt.secondTask = {
+      runStatus: secondRun.status, costUsd: secondRun.usageJson.costUsd,
+      taskStatus: finalSecondTask.data.status, runAttributedCommentPersisted: true,
+      commentId: secondComment.commentId,
+    };
+
+    const processBaselineAfterSecondTask = processTree(child.pid);
+    const cancelTaskResult = await api(base, "POST", `companies/${company.id}/issues`, {
+      body: {
+        title: "Synthetic Bostan native cancellation and recovery task " + randomUUID(),
+        description: [
+          "Disposable cancellation qualification task. Do not mark this issue Done and do not post a comment.",
+          "Prepare a detailed analysis with at least 3000 numbered lines using only the synthetic task description.",
+          "Keep working until the board operator cancels this run. Do not access external services, files, shell tools, or any other task.",
+        ].join(" "), status: "todo", assigneeAgentId: agent.id,
+      }, cookie,
+    });
+    const cancelTask = cancelTaskResult.data;
+    if (cancelTaskResult.response.status < 200 || cancelTaskResult.response.status >= 300 || !cancelTask?.id) {
+      throw new Error("synthetic_cancellation_task_create_failed");
+    }
+    const cancelAssignedRun = await waitFor(async () => {
+      const result = await api(base, "GET", `companies/${company.id}/heartbeat-runs?agentId=${agent.id}&limit=50`, { cookie });
+      const selected = selectSingleAssignmentRun(result.data, { agentId: agent.id, issueId: cancelTask.id });
+      return selected ? { done: true, result: selected } : { done: false };
+    }, 60_000, "cancellation_task_assignment_run_not_found");
+    const activeNativeRun = await waitFor(async () => {
+      const [runResult, eventResult] = await Promise.all([
+        api(base, "GET", `heartbeat-runs/${cancelAssignedRun.id}`, { cookie }),
+        api(base, "GET", `heartbeat-runs/${cancelAssignedRun.id}/events?limit=200`, { cookie }),
+      ]);
+      const diagnostic = safeHeartbeatQaEventDiagnostic(eventResult.data);
+      if (["succeeded", "failed", "cancelled", "skipped"].includes(runResult.data?.status)) {
+        throw new Error("cancellation_task_finished_before_native_session_could_be_cancelled");
+      }
+      return runResult.data?.status === "running" && diagnostic.sessionStarted > 0
+        ? { done: true, result: { run: runResult.data, events: diagnostic } } : { done: false };
+    }, 90_000, "cancellation_task_native_session_start_not_observed");
+    const cancelResponse = await api(base, "POST", `heartbeat-runs/${cancelAssignedRun.id}/cancel`, {
+      body: { cancellationRequestId: randomUUID() }, cookie,
+    });
+    if (cancelResponse.response.status < 200 || cancelResponse.response.status >= 300
+      || cancelResponse.data?.status !== "cancelled") {
+      throw new Error("native_cancellation_request_not_persisted");
+    }
+    const cancelledRun = await waitFor(async () => {
+      const result = await api(base, "GET", `heartbeat-runs/${cancelAssignedRun.id}`, { cookie });
+      return result.data?.status === "cancelled" ? { done: true, result: result.data } : { done: false };
+    }, 60_000, "native_cancellation_settlement_not_persisted");
+    const cancelledEventsResult = await api(base, "GET", `heartbeat-runs/${cancelAssignedRun.id}/events?limit=200`, { cookie });
+    const cancelledEvents = safeHeartbeatQaEventDiagnostic(cancelledEventsResult.data);
+    if (cancelledEvents.sessionStarted < 1 || cancelledEvents.turnCancelled < 1) {
+      throw new Error("native_cancellation_terminal_event_not_persisted");
+    }
+    await waitFor(async () => {
+      const current = processTree(child.pid);
+      const survivors = [...current].filter(pid => !processBaselineAfterSecondTask.has(pid));
+      return survivors.length === 0 ? { done: true, result: true } : { done: false };
+    }, 30_000, "cancelled_native_runner_process_cleanup_unverified");
+    taskReceipt.cancelledRun = {
+      status: cancelledRun.status,
+      nativeSessionStarted: cancelledEvents.sessionStarted > 0,
+      turnCancelledEventPersisted: cancelledEvents.turnCancelled > 0,
+      noNewOwnedProcessesRemain: true,
+      observedBeforeCancellation: activeNativeRun.events,
+    };
+
+    const recoveryTaskResult = await api(base, "POST", `companies/${company.id}/issues`, {
+      body: {
+        title: "Synthetic Bostan post-cancellation recovery task " + randomUUID(),
+        description: buildFirstWorkerTask(), status: "todo", assigneeAgentId: agent.id,
+      }, cookie,
+    });
+    const recoveryTask = recoveryTaskResult.data;
+    if (recoveryTaskResult.response.status < 200 || recoveryTaskResult.response.status >= 300 || !recoveryTask?.id) {
+      throw new Error("synthetic_post_cancellation_recovery_task_create_failed");
+    }
+    const recoveryAssignedRun = await waitFor(async () => {
+      const result = await api(base, "GET", `companies/${company.id}/heartbeat-runs?agentId=${agent.id}&limit=50`, { cookie });
+      const selected = selectSingleAssignmentRun(result.data, { agentId: agent.id, issueId: recoveryTask.id });
+      return selected ? { done: true, result: selected } : { done: false };
+    }, 60_000, "post_cancellation_recovery_assignment_run_not_found");
+    const recoveryRun = await waitFor(async () => {
+      const result = await api(base, "GET", `heartbeat-runs/${recoveryAssignedRun.id}`, { cookie });
+      return observeHeartbeatQaStatus(result.data);
+    }, 210_000, "post_cancellation_native_recovery_run_timeout");
+    assertHeartbeatQaSucceeded(recoveryRun);
+    if (typeof recoveryRun.usageJson?.costUsd !== "number" || recoveryRun.usageJson.costUsd !== 0) {
+      throw new Error("post_cancellation_recovery_cost_not_verified_zero");
+    }
+    const finalRecoveryTask = await api(base, "GET", `issues/${recoveryTask.id}`, { cookie });
+    const recoveryCommentsResult = await api(base, "GET", `issues/${recoveryTask.id}/comments`, { cookie });
+    const recoveryComments = Array.isArray(recoveryCommentsResult.data)
+      ? recoveryCommentsResult.data : recoveryCommentsResult.data?.comments;
+    const recoveryComment = requirePersistedRunComment({
+      comments: recoveryComments, agentId: agent.id, runId: recoveryRun.id, marker: MARKER,
+    });
+    if (finalRecoveryTask.data?.status !== "done") throw new Error("post_cancellation_recovery_task_not_done");
+    taskReceipt.recoveryTask = {
+      runStatus: recoveryRun.status, costUsd: recoveryRun.usageJson.costUsd,
+      taskStatus: finalRecoveryTask.data.status, runAttributedCommentPersisted: true,
+      commentId: recoveryComment.commentId,
     };
   } catch (error) {
     failure = error;

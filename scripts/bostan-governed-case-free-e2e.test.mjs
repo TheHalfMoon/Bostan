@@ -101,6 +101,14 @@ test("governed Case only admits native signed-API runner with all general OpenCo
   assert.equal(config.provider, "opencode");
   assert.equal(config.opencodePermissionMode, "deny");
   assert.equal(config.lifecycleMode, "per_turn");
+  const localModelConfig = nativeGovernedCaseAgentConfig({
+    model: "ollama/qwen2.5-coder:1.5b", workspace: "/tmp/bostan-qa-only",
+  });
+  assert.equal(localModelConfig.model, "ollama/qwen2.5-coder:1.5b");
+  assert.equal(localModelConfig.opencodePermissionMode, "deny");
+  assert.throws(() => nativeGovernedCaseAgentConfig({
+    model: "ollama/unapproved:latest", workspace: "/tmp/bostan-qa-only",
+  }));
   assert.equal(config.cwd, "/tmp/bostan-qa-only");
   assert.ok(!Object.hasOwn(config, "dangerouslySkipPermissions"));
   assert.throws(() => nativeGovernedCaseAgentConfig({
