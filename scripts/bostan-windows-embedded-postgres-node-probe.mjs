@@ -46,6 +46,7 @@ async function runProbe() {
   let instance;
   let logBuffer;
   let failureIssue = "POSTGRES_START_LOGS_EMPTY";
+  let phase = "runtime_prepare";
   let probeRoot;
   let tempRoot;
   let cleanupFailed = false;
@@ -82,8 +83,8 @@ async function runProbe() {
     };
     instance = new EmbeddedPostgres({
       databaseDir: dataDirectory,
-      user: "bostan_probe",
-      password: randomUUID(),
+      user: "paperclip",
+      password: "paperclip",
       port,
       persistent: true,
       initdbFlags: ["--encoding=UTF8", "--locale=C", "--lc-messages=C"],
@@ -91,8 +92,11 @@ async function runProbe() {
       onLog: logBuffer.append,
       onError: logBuffer.append,
     });
+    phase = "initialize";
     await instance.initialise();
+    phase = "start";
     await instance.start();
+    phase = "stop";
     await instance.stop();
     instance = null;
     console.log("BOSTAN_NODE_POSTGRES_PROBE_PASS");
@@ -103,7 +107,7 @@ async function runProbe() {
     } catch {
       failureIssue = "POSTGRES_START_UNCLASSIFIED";
     }
-    console.log(`BOSTAN_NODE_POSTGRES_PROBE_FAIL ${failureIssue}`);
+    console.log(`BOSTAN_NODE_POSTGRES_PROBE_FAIL ${phase} ${failureIssue}`);
   } finally {
     if (instance) {
       try { await instance.stop(); }
