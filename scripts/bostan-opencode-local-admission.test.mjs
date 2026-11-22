@@ -57,6 +57,7 @@ test("requires the pinned local model in OpenCode's actual Ollama catalog", () =
 test("isolated OpenCode config registers only loopback Ollama", () => {
   assert.deepEqual(localOllamaOpenCodeConfig(), {
     $schema: "https://opencode.ai/config.json",
+    tools: { "*": false },
     provider: {
       ollama: {
         npm: "@ai-sdk/openai-compatible",

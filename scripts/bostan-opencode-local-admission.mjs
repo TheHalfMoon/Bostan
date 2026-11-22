@@ -28,6 +28,7 @@ export function localOllamaOpenCodeConfig(endpoint = LOCAL_OLLAMA_HOST) {
   const host = qualifyLoopbackOllamaHost(endpoint);
   return {
     $schema: "https://opencode.ai/config.json",
+    tools: { "*": false },
     provider: {
       ollama: {
         npm: "@ai-sdk/openai-compatible",
