@@ -62,12 +62,16 @@ test("admission failure summary is bounded and omits URL, path, and credential-l
     JSON.stringify({ type: "step_start" }),
     JSON.stringify({ type: "text", part: { text: "wrong https://private.invalid sk-abcdefghijklmnopqrstuvwxyz C:\\\\Users\\\\person\\\\secret" } }),
   ].join("\n");
-  const summary = summarizeFreeModelAdmissionOutput(output);
+  const summary = summarizeFreeModelAdmissionOutput(output, undefined,
+    "provider failed https://private.invalid sk-abcdefghijklmnopqrstuvwxyz C:\\\\Users\\\\person\\\\secret");
   assert.deepEqual(summary.eventTypes, ["step_start", "text"]);
   assert.equal(summary.textEventCount, 1);
   assert.equal(summary.includesExpected, false);
-  assert.ok(summary.preview.length <= 120);
+  assert.ok(summary.preview.length <= 160);
   assert.doesNotMatch(summary.preview, /https?:|sk-|C:\\\\Users|private\.invalid|secret/);
+  assert.ok(summary.stderrLength > 0);
+  assert.ok(summary.stderrPreview.length <= 160);
+  assert.doesNotMatch(summary.stderrPreview, /https?:|sk-|C:\\\\Users|private\.invalid|secret/);
 });
 
 test("child stdin is EOF from birth and prints the required JSON text event", async () => {

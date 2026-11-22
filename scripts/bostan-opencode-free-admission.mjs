@@ -47,7 +47,17 @@ export function freeModelResponseMatches(stdout, expected = REPLY) {
   return chunks.join("").trim() === expected;
 }
 
-export function summarizeFreeModelAdmissionOutput(stdout, expected = REPLY) {
+function sanitizedPreview(value) {
+  return value
+    .replace(/(?:sk-[A-Za-z0-9_-]{12,}|Bearer\s+\S+)/gi, "[redacted]")
+    .replace(/https?:\/\/\S+/gi, "[url]")
+    .replace(/[A-Za-z]:\\[^\s"']+/g, "[path]")
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .slice(0, 160);
+}
+
+export function summarizeFreeModelAdmissionOutput(stdout, expected = REPLY, stderr = "") {
   const types = [];
   const chunks = [];
   for (const line of stdout.split(/\r?\n/)) {
@@ -58,15 +68,10 @@ export function summarizeFreeModelAdmissionOutput(stdout, expected = REPLY) {
     } catch {}
   }
   const response = chunks.join("").trim();
-  const preview = response
-    .replace(/(?:sk-[A-Za-z0-9_-]{12,}|Bearer\s+\S+)/gi, "[redacted]")
-    .replace(/https?:\/\/\S+/gi, "[url]")
-    .replace(/[A-Za-z]:\\[^\s"']+/g, "[path]")
-    .replace(/[\u0000-\u001f\u007f]/g, " ")
-    .replace(/\s+/g, " ")
-    .slice(0, 120);
+  const stderrText = stderr.trim();
   return { eventTypes: types, textEventCount: chunks.length, responseLength: response.length,
-    includesExpected: response.includes(expected), preview };
+    includesExpected: response.includes(expected), preview: sanitizedPreview(response),
+    stderrLength: stderrText.length, stderrPreview: sanitizedPreview(stderrText) };
 }
 
 function appendBounded(old, data) {

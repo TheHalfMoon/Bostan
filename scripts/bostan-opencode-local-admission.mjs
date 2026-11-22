@@ -89,7 +89,7 @@ export async function admitLocalOpenCodeModel({
       const details = {
         exitCode: result.exitCode,
         signal: result.signal,
-        ...summarizeFreeModelAdmissionOutput(result.stdout, REPLY),
+        ...summarizeFreeModelAdmissionOutput(result.stdout, REPLY, result.stderr),
       };
       console.error("BOSTAN_LOCAL_MODEL_ADMISSION_FAILED " + JSON.stringify(details));
       throw new Error("Local OpenCode model did not return the exact admission reply");
