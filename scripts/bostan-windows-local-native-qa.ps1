@@ -55,6 +55,9 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'Hosted Windows resource inspection failed' }
   Write-Output "BOSTAN_NATIVE_WINDOWS_RESOURCES_AFTER_MODEL_SETUP $resources"
 
+  node scripts/bostan-windows-embedded-postgres-node-probe.mjs
+  if ($LASTEXITCODE -ne 0) { throw 'Node PostgreSQL comparison probe cleanup failed' }
+
   $env:BOSTAN_E2E_CONFIRM_TEMP_DATA = '1'
   $env:BOSTAN_E2E_ALLOW_LOCAL_MODEL = '1'
   $env:BOSTAN_E2E_MODEL_MODE = 'local-ollama'
