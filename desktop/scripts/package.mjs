@@ -12,6 +12,7 @@ import { createPackagingStage } from "./packaging-stage.mjs";
 import { archiveDeclarationMaps } from "./declaration-map-archive.mjs";
 import { captureRuntimePayload, verifyPackagedRuntime, runtimeResourceEntries } from "./packaging-runtime.mjs";
 import { prepareWindowsInstallerExtraction } from "./prepare-windows-installer-extraction.mjs";
+import { prepareDarwinPostgresNativeLinks } from "./postgres-native-links.mjs";
 
 const desktop = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repo = path.dirname(desktop);
@@ -50,6 +51,10 @@ try {
     windowsHide: true,
   });
   if (result.status !== 0 || result.error) throw new Error("Bostan production runtime staging failed");
+  if (process.platform === "darwin") {
+    const links = prepareDarwinPostgresNativeLinks(stage, process.arch);
+    console.log("BOSTAN_DARWIN_POSTGRES_LINKS " + JSON.stringify({ architecture: process.arch, created: links.length }));
+  }
   // pnpm 9 creates one source self-reference. Repair only that exact link in
   // this newly allocated stage; every other escaping dependency is rejected.
   const self = path.join(stage, "node_modules/.pnpm/node_modules/@bostan/server");
