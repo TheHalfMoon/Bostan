@@ -83,7 +83,13 @@ test("startup receipts accept only fixed phases and failure codes", () => {
   assert.equal(postgresIssueLine, "BOSTAN_DESKTOP_STARTUP_ISSUE POSTGRES_START_ADDRESS_IN_USE");
   assert.equal(diagnostics.isStartupDiagnosticLine(postgresIssueLine), true);
   assert.equal(diagnostics.startupFailureIssue(Object.assign(new Error("private C:\\Users\\secret"), { code: "POSTGRES_START_FAILED" }), "POSTGRES_START_FAILED"), "POSTGRES_START_UNCLASSIFIED");
-  assert.equal(diagnostics.startupFailureIssue(new Error("private unexpected startup error"), undefined), "SERVER_STARTUP_UNCLASSIFIED");
+  assert.equal(diagnostics.startupFailureIssue(new Error("private unexpected startup error"), undefined), "SERVER_STARTUP_ERROR_ERROR");
+  assert.equal(diagnostics.startupFailureIssueLine("SERVER_STARTUP_ERROR_ERROR"), "BOSTAN_DESKTOP_STARTUP_ISSUE SERVER_STARTUP_ERROR_ERROR");
+  const typedFailure = Object.assign(new TypeError("private C:\\Users\\secret"), { code: "UNSAFE_PRIVATE_CODE" });
+  assert.equal(diagnostics.startupFailureIssue(typedFailure, undefined), "SERVER_STARTUP_ERROR_TYPEERROR");
+  assert.equal(diagnostics.startupFailureIssueLine("SERVER_STARTUP_ERROR_TYPEERROR"), "BOSTAN_DESKTOP_STARTUP_ISSUE SERVER_STARTUP_ERROR_TYPEERROR");
+  assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_ISSUE SERVER_STARTUP_ERROR_TYPEERROR"), true);
+  assert.equal(diagnostics.startupFailureIssue({ name: "SecretCustomError", message: "private" }, undefined), "SERVER_STARTUP_UNCLASSIFIED");
   assert.equal(diagnostics.startupFailureIssueLine("SERVER_STARTUP_UNCLASSIFIED"), "BOSTAN_DESKTOP_STARTUP_ISSUE SERVER_STARTUP_UNCLASSIFIED");
   assert.equal(diagnostics.startupFailureIssueLine("POSTGRES_START_UNCLASSIFIED\nC:\\private"), null);
   assert.equal(diagnostics.startupErrorCode(Object.assign(new Error("private database detail"), { code: "POSTGRES_DATABASE_FAILED" })), "POSTGRES_DATABASE_FAILED");

@@ -29,6 +29,10 @@ const postgresStartupIssues = new Set([
   "POSTGRES_START_SHARED_MEMORY_RESOURCE_LIMIT",
   "POSTGRES_START_LOGS_EMPTY", "POSTGRES_START_LOGS_UNCLASSIFIED",
   "SERVER_STARTUP_UNCLASSIFIED",
+  "SERVER_STARTUP_ERROR_ERROR", "SERVER_STARTUP_ERROR_TYPEERROR",
+  "SERVER_STARTUP_ERROR_RANGEERROR", "SERVER_STARTUP_ERROR_REFERENCEERROR",
+  "SERVER_STARTUP_ERROR_SYNTAXERROR", "SERVER_STARTUP_ERROR_EVALERROR",
+  "SERVER_STARTUP_ERROR_URIERROR", "SERVER_STARTUP_ERROR_AGGREGATEERROR",
   "POSTGRES_START_PROCESS_EXITED", "POSTGRES_START_PROCESS_LAUNCH_FAILED",
   "POSTGRES_START_UNCLASSIFIED",
 ]);
@@ -70,7 +74,13 @@ function startupErrorCode(error, fallbackCode) {
 function startupFailureLine(code) { return `BOSTAN_DESKTOP_STARTUP_FAILURE ${startupCode(code)}`; }
 function startupFailureIssue(error, fallbackCode) {
   const failureCode = startupCode(error?.code ?? fallbackCode);
-  if (failureCode === "STARTUP_FAILED") return "SERVER_STARTUP_UNCLASSIFIED";
+  if (failureCode === "STARTUP_FAILED") {
+    try {
+      const name = error?.name;
+      const issue = typeof name === "string" ? `SERVER_STARTUP_ERROR_${name.toUpperCase()}` : "";
+      return postgresStartupIssues.has(issue) ? issue : "SERVER_STARTUP_UNCLASSIFIED";
+    } catch { return "SERVER_STARTUP_UNCLASSIFIED"; }
+  }
   if (failureCode !== "POSTGRES_START_FAILED") return null;
   try {
     const message = typeof error?.message === "string" ? error.message.slice(0, 65536) : "";
