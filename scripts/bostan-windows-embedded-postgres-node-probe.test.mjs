@@ -28,6 +28,11 @@ test("failed PostgreSQL startup does not await a child exit event that already f
   assert.equal(embeddedPostgresProcessHasExited({}), false);
 });
 
+test("the PostgreSQL start diagnostic excludes successful initdb output", async () => {
+  const probe = await readFile(new URL("./bostan-windows-embedded-postgres-node-probe.mjs", import.meta.url), "utf8");
+  assert.match(probe, /phase = "start";\s*logBuffer\.clear\(\);\s*await instance\.start\(\)/);
+});
+
 test("the probe preserves its failure exit code after embedded-postgres cleanup", () => {
   const dbRequire = createRequire(path.resolve("packages/db/package.json"));
   const embeddedPostgresEntry = dbRequire.resolve("embedded-postgres");
@@ -54,9 +59,14 @@ test("Windows native workflow propagates a failed Node PostgreSQL probe", async 
 
   assert.ok(probeStep, "expected the PostgreSQL preflight step");
   assert.match(probeStep, /shell:\s*pwsh/);
+  assert.match(probeStep, /BOSTAN_POSTGRES_HOST_MEMORY/);
+  assert.match(probeStep, /FreeVirtualMemory/);
   assert.match(probeStep, /\$probeExitCode = \$LASTEXITCODE/);
   assert.match(probeStep, /Write-Host "BOSTAN_NODE_POSTGRES_PROBE_SHELL_EXIT \$probeExitCode"/);
-  assert.match(probeStep, /if \(\$probeExitCode -ne 0\) \{ throw "Embedded PostgreSQL probe failed \(exit code \$probeExitCode\)" \}/);
+  assert.match(probeStep, /BOSTAN_POSTGRES_WINDOWS_EVENT/);
+  assert.match(probeStep, /faultingModule = \$faultingModule; exceptionCode = \$exceptionCode/);
+  assert.match(probeStep, /if \(\$probeExitCode -ne 0\) \{/);
+  assert.match(probeStep, /throw "Embedded PostgreSQL probe failed \(exit code \$probeExitCode\)"/);
 });
 
 test("PowerShell dot-sourced workflow script propagates native Node exit codes", { skip: process.platform !== "win32" }, async () => {

@@ -209,6 +209,7 @@ function detectEmbeddedPostgresHint(recentLogs: string[]): string | null {
 
 export function createEmbeddedPostgresLogBuffer(limit = DEFAULT_RECENT_LOG_LIMIT): {
   append(message: unknown): void;
+  clear(): void;
   getRecentLogs(): string[];
 } {
   const recentLogs: string[] = [];
@@ -230,6 +231,9 @@ export function createEmbeddedPostgresLogBuffer(limit = DEFAULT_RECENT_LOG_LIMIT
           recentLogs.splice(0, recentLogs.length - limit);
         }
       }
+    },
+    clear() {
+      recentLogs.length = 0;
     },
     getRecentLogs() {
       return [...recentLogs];

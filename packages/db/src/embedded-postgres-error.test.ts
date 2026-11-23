@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { classifyEmbeddedPostgresStartIssue, createEmbeddedPostgresLogBuffer, formatEmbeddedPostgresError, summarizeEmbeddedPostgresStartDiagnostic } from "./embedded-postgres-error.js";
 
@@ -140,5 +141,19 @@ describe("formatEmbeddedPostgresError", () => {
     buffer.append("line three");
 
     expect(buffer.getRecentLogs()).toEqual(["line two", "line three"]);
+  });
+
+  it("clears earlier phase logs before collecting a new startup boundary", () => {
+    const buffer = createEmbeddedPostgresLogBuffer();
+    buffer.append("LOG: initdb completed");
+    buffer.clear();
+    buffer.append("ERROR: server startup failed");
+
+    expect(buffer.getRecentLogs()).toEqual(["ERROR: server startup failed"]);
+  });
+
+  it("clears successful initdb logs before classifying a server-start failure", async () => {
+    const migrationRuntime = await readFile(new URL("./migration-runtime.ts", import.meta.url), "utf8");
+    expect(migrationRuntime).toMatch(/logBuffer\.clear\(\);\s*await instance\.start\(\)/);
   });
 });

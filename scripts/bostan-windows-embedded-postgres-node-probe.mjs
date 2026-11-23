@@ -60,6 +60,7 @@ async function runProbe() {
   const errorModulePath = path.join(repositoryRoot, "packages", "db", "dist", "embedded-postgres-error.js");
   let instance;
   let logBuffer;
+  let postgresDiagnostics;
   let failureIssue = "POSTGRES_START_LOGS_EMPTY";
   let phase = "runtime_prepare";
   let probeRoot;
@@ -72,6 +73,7 @@ async function runProbe() {
     const [{ prepareEmbeddedPostgresNativeRuntime }] = await Promise.all([
       import(pathToFileURL(runtimeModulePath).href),
     ]);
+    postgresDiagnostics = await import(pathToFileURL(errorModulePath).href);
     const embeddedPostgresEntry = dbRequire.resolve("embedded-postgres");
     embeddedPostgresExitHook = createRequire(embeddedPostgresEntry)("async-exit-hook");
     const EmbeddedPostgres = (await import(pathToFileURL(embeddedPostgresEntry).href)).default;
@@ -86,21 +88,7 @@ async function runProbe() {
     const dataDirectory = path.join(probeRoot, "data");
     const postgresFlags = await prepareEmbeddedPostgresNativeRuntime(dataDirectory);
     const port = await findAvailablePort();
-    const recentLogs = [];
-    logBuffer = {
-      append(message) {
-        const text = typeof message === "string"
-          ? message
-          : message instanceof Error
-            ? message.message
-            : String(message ?? "");
-        for (const line of text.split(/\r?\n/)) {
-          if (line.trim()) recentLogs.push(line.trim());
-        }
-        if (recentLogs.length > 40) recentLogs.splice(0, recentLogs.length - 40);
-      },
-      getRecentLogs() { return [...recentLogs]; },
-    };
+    logBuffer = postgresDiagnostics.createEmbeddedPostgresLogBuffer(40);
     instance = new EmbeddedPostgres({
       databaseDir: dataDirectory,
       user: "paperclip",
@@ -115,6 +103,7 @@ async function runProbe() {
     phase = "initialize";
     await instance.initialise();
     phase = "start";
+    logBuffer.clear();
     await instance.start();
     phase = "stop";
     await instance.stop();
@@ -127,7 +116,8 @@ async function runProbe() {
       : null;
     if (processExit) console.log(`BOSTAN_NODE_POSTGRES_PROBE_PROCESS_EXIT_CODE ${processExit[1]}`);
     try {
-      const { classifyEmbeddedPostgresStartIssue, summarizeEmbeddedPostgresStartDiagnostic } = await import(pathToFileURL(errorModulePath).href);
+      postgresDiagnostics ??= await import(pathToFileURL(errorModulePath).href);
+      const { classifyEmbeddedPostgresStartIssue, summarizeEmbeddedPostgresStartDiagnostic } = postgresDiagnostics;
       const recentLogs = logBuffer?.getRecentLogs() ?? [];
       failureIssue = classifyEmbeddedPostgresStartIssue(recentLogs);
       const diagnostic = summarizeEmbeddedPostgresStartDiagnostic(recentLogs);

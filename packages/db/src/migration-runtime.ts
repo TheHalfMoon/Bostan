@@ -164,6 +164,8 @@ async function ensureEmbeddedPostgresConnection(
     rmSync(postmasterPidFile, { force: true });
   }
   try {
+    // Keep successful initdb output from disguising a later server-start failure.
+    logBuffer.clear();
     await instance.start();
   } catch (error) {
     throw formatEmbeddedPostgresError(error, {
