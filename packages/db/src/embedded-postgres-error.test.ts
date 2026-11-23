@@ -43,6 +43,11 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
         { severity: "FATAL", kind: "CREATE_SEGMENT" },
         { severity: "DETAIL", kind: "SYSTEM_CALL" },
       ],
+      postgresLogLines: [
+        { severity: "FATAL", kind: "SHARED_MEMORY" },
+        { severity: "DETAIL", kind: "OTHER" },
+        { severity: "DETAIL", kind: "OTHER" },
+      ],
     });
     expect(JSON.stringify(summary)).not.toContain("Users");
     expect(JSON.stringify(summary)).not.toContain("secret");
@@ -55,6 +60,7 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
       sharedMemorySystemCall: null,
       sharedMemoryOsErrorCode: null,
       sharedMemoryLogLines: [],
+      postgresLogLines: [],
     });
     expect(summarizeEmbeddedPostgresStartDiagnostic([
       "FATAL: pre-existing shared memory block is still in use",
@@ -68,6 +74,10 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
         { severity: "FATAL", kind: "MENTION_ONLY" },
         { severity: "DETAIL", kind: "SYSTEM_CALL" },
       ],
+      postgresLogLines: [
+        { severity: "FATAL", kind: "SHARED_MEMORY" },
+        { severity: "DETAIL", kind: "OTHER" },
+      ],
     });
   });
 
@@ -80,6 +90,7 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
       sharedMemorySystemCall: null,
       sharedMemoryOsErrorCode: null,
       sharedMemoryLogLines: [{ severity: "LOG", kind: "DYNAMIC_SHARED_MEMORY" }],
+      postgresLogLines: [{ severity: "LOG", kind: "SHARED_MEMORY" }],
     });
   });
 
@@ -92,7 +103,17 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
       sharedMemorySystemCall: null,
       sharedMemoryOsErrorCode: null,
       sharedMemoryLogLines: [{ severity: "FATAL", kind: "ALLOCATION" }],
+      postgresLogLines: [{ severity: "FATAL", kind: "SHARED_MEMORY" }],
     });
+  });
+
+  it("summarizes only the severity and fixed class for other PostgreSQL errors", () => {
+    const summary = summarizeEmbeddedPostgresStartDiagnostic([
+      "2026-11-23 00:00:00 UTC [42] FATAL: private failure at C:\\Users\\secret\\db",
+    ]);
+    expect(summary.postgresLogLines).toEqual([{ severity: "FATAL", kind: "ERROR_OTHER" }]);
+    expect(JSON.stringify(summary)).not.toContain("Users");
+    expect(JSON.stringify(summary)).not.toContain("private");
   });
 });
 

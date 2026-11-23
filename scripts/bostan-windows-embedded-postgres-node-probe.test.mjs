@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
-import { isOwnedProbeDirectory } from "./bostan-windows-embedded-postgres-node-probe.mjs";
+import { embeddedPostgresProcessHasExited, isOwnedProbeDirectory } from "./bostan-windows-embedded-postgres-node-probe.mjs";
 
 test("PostgreSQL node probe cleanup is limited to its dedicated temp child", () => {
   const tempRoot = path.resolve("C:/runner/temp");
@@ -13,6 +13,13 @@ test("PostgreSQL node probe cleanup is limited to its dedicated temp child", () 
   assert.equal(isOwnedProbeDirectory(path.join(tempRoot, "other-data"), tempRoot), false);
   assert.equal(isOwnedProbeDirectory(path.join(tempRoot, "bostan-postgres-node-probe-abcd-", "nested"), tempRoot), false);
   assert.equal(isOwnedProbeDirectory(path.resolve(tempRoot, "..", "outside", "bostan-postgres-node-probe-abcd-"), tempRoot), false);
+});
+
+test("failed PostgreSQL startup does not await a child exit event that already fired", () => {
+  assert.equal(embeddedPostgresProcessHasExited({ process: { exitCode: 1, signalCode: null } }), true);
+  assert.equal(embeddedPostgresProcessHasExited({ process: { exitCode: null, signalCode: "SIGTERM" } }), true);
+  assert.equal(embeddedPostgresProcessHasExited({ process: { exitCode: null, signalCode: null } }), false);
+  assert.equal(embeddedPostgresProcessHasExited({}), false);
 });
 
 test("Windows native workflow propagates a failed Node PostgreSQL probe", async () => {

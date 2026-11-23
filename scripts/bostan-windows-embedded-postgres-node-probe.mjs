@@ -18,6 +18,11 @@ export function isOwnedProbeDirectory(candidate, tempRoot) {
     && path.basename(relative).startsWith(PROBE_DIRECTORY_PREFIX);
 }
 
+export function embeddedPostgresProcessHasExited(instance) {
+  const process = instance?.process;
+  return Boolean(process && (typeof process.exitCode === "number" || typeof process.signalCode === "string"));
+}
+
 async function findAvailablePort() {
   const server = createServer();
   server.unref();
@@ -114,14 +119,17 @@ async function runProbe() {
       const recentLogs = logBuffer?.getRecentLogs() ?? [];
       failureIssue = classifyEmbeddedPostgresStartIssue(recentLogs);
       const diagnostic = summarizeEmbeddedPostgresStartDiagnostic(recentLogs);
-      if (diagnostic.sharedMemoryFailureKind) {
-        console.log(`BOSTAN_NODE_POSTGRES_PROBE_DETAIL ${JSON.stringify(diagnostic)}`);
-      }
+      console.log(`BOSTAN_NODE_POSTGRES_PROBE_DIAGNOSTIC ${JSON.stringify({ failureIssue, diagnostic })}`);
     } catch {
       failureIssue = "POSTGRES_START_UNCLASSIFIED";
     }
     console.log(`BOSTAN_NODE_POSTGRES_PROBE_FAIL ${phase} ${failureIssue}`);
   } finally {
+    // embedded-postgres.stop() listens for a future `exit` event. When startup
+    // rejects from the child's `close` event, that exit has already happened;
+    // awaiting stop then leaves an unresolvable promise and Node can exit 0
+    // before this probe reports failure. The owned child is already gone.
+    if (embeddedPostgresProcessHasExited(instance)) instance = null;
     if (instance) {
       try { await instance.stop(); }
       catch { cleanupFailed = true; }

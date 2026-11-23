@@ -26,6 +26,45 @@ export interface EmbeddedPostgresStartDiagnostic {
     severity: "FATAL" | "PANIC" | "ERROR" | "WARNING" | "LOG" | "DETAIL" | "HINT" | "OTHER";
     kind: "CREATE_SEGMENT" | "OPEN_SEGMENT" | "MAP_SEGMENT" | "SYSTEM_CALL" | "ALLOCATION" | "RESERVATION" | "DYNAMIC_SHARED_MEMORY" | "MENTION_ONLY";
   }>;
+  postgresLogLines: Array<{
+    severity: "PANIC" | "FATAL" | "ERROR" | "WARNING" | "LOG" | "DETAIL" | "HINT" | "OTHER";
+    kind: "ADDRESS_BIND" | "SHARED_MEMORY" | "PERMISSION" | "EXTENSION" | "RUNTIME_DEPENDENCY" | "CONFIGURATION" | "DATA_DIRECTORY" | "LOCALE" | "RECOVERY" | "DISK" | "ERROR_OTHER" | "OTHER";
+  }>;
+}
+
+function summarizePostgresLogLines(recentLogs: string[]): EmbeddedPostgresStartDiagnostic["postgresLogLines"] {
+  const summaries: EmbeddedPostgresStartDiagnostic["postgresLogLines"] = [];
+  for (const line of recentLogs.slice(-DEFAULT_RECENT_LOG_LIMIT)) {
+    const severityMatch = /(?:^|\s)(PANIC|FATAL|ERROR|WARNING|LOG|DETAIL|HINT):/i.exec(line);
+    if (!severityMatch) continue;
+    const severity = severityMatch[1].toUpperCase() as EmbeddedPostgresStartDiagnostic["postgresLogLines"][number]["severity"];
+    const kind: EmbeddedPostgresStartDiagnostic["postgresLogLines"][number]["kind"] = /address already in use|could not bind|could not create any tcp\/ip sockets/i.test(line)
+      ? "ADDRESS_BIND"
+      : /shared memory/i.test(line)
+        ? "SHARED_MEMORY"
+        : /permission denied|access is denied|could not access the data directory/i.test(line)
+          ? "PERMISSION"
+          : /extension/i.test(line)
+            ? "EXTENSION"
+            : /module could not be found|library not loaded|image not found|could not open shared object/i.test(line)
+              ? "RUNTIME_DEPENDENCY"
+              : /configuration|invalid value|unrecognized parameter/i.test(line)
+                ? "CONFIGURATION"
+                : /directory|postmaster\.pid/i.test(line)
+                  ? "DATA_DIRECTORY"
+                  : /locale/i.test(line)
+                    ? "LOCALE"
+                    : /checkpoint|recovery/i.test(line)
+                      ? "RECOVERY"
+                      : /no space left|disk is full/i.test(line)
+                        ? "DISK"
+                        : ["PANIC", "FATAL", "ERROR"].includes(severity)
+                          ? "ERROR_OTHER"
+                          : "OTHER";
+    summaries.push({ severity, kind });
+    if (summaries.length > 8) summaries.shift();
+  }
+  return summaries;
 }
 
 /** Return only fixed, allowlisted facts from bounded PostgreSQL log lines. */
@@ -34,7 +73,7 @@ function summarizeSharedMemoryLogLines(recentLogs: string[]): EmbeddedPostgresSt
   const severityNames = new Set(["FATAL", "PANIC", "ERROR", "WARNING", "LOG", "DETAIL", "HINT"]);
   for (const line of recentLogs.slice(-DEFAULT_RECENT_LOG_LIMIT)) {
     if (!/shared memory|failed system call was/i.test(line)) continue;
-    const severityMatch = /^\s*([A-Z]+):/i.exec(line);
+    const severityMatch = /(?:^|\s)([A-Z]+):/i.exec(line);
     const severityCandidate = severityMatch?.[1]?.toUpperCase() ?? "OTHER";
     const severity = (severityNames.has(severityCandidate) ? severityCandidate : "OTHER") as EmbeddedPostgresStartDiagnostic["sharedMemoryLogLines"][number]["severity"];
     const kind: EmbeddedPostgresStartDiagnostic["sharedMemoryLogLines"][number]["kind"] = /failed system call was/i.test(line)
@@ -67,7 +106,7 @@ export function summarizeEmbeddedPostgresStartDiagnostic(recentLogs: string[]): 
   const haystack = recentLogs.join("\n").slice(-65536);
   const sharedMemoryLogLines = summarizeSharedMemoryLogLines(recentLogs);
   if (!hasSharedMemoryFailure(haystack)) {
-    return { sharedMemoryFailureKind: null, sharedMemoryEvidence: [], sharedMemorySystemCall: null, sharedMemoryOsErrorCode: null, sharedMemoryLogLines };
+    return { sharedMemoryFailureKind: null, sharedMemoryEvidence: [], sharedMemorySystemCall: null, sharedMemoryOsErrorCode: null, sharedMemoryLogLines, postgresLogLines: summarizePostgresLogLines(recentLogs) };
   }
 
   const errorMatch = haystack.match(/shared memory[\s\S]{0,256}?error code\s+(\d{1,5})\b/i);
@@ -104,6 +143,7 @@ export function summarizeEmbeddedPostgresStartDiagnostic(recentLogs: string[]): 
       ? parsedErrorCode
       : null,
     sharedMemoryLogLines,
+    postgresLogLines: summarizePostgresLogLines(recentLogs),
   };
 }
 
