@@ -50,6 +50,7 @@ async function runProbe() {
   let probeRoot;
   let tempRoot;
   let cleanupFailed = false;
+  let startupFailed = false;
 
   try {
     const [{ prepareEmbeddedPostgresNativeRuntime }] = await Promise.all([
@@ -103,6 +104,7 @@ async function runProbe() {
     instance = null;
     console.log("BOSTAN_NODE_POSTGRES_PROBE_PASS");
   } catch {
+    startupFailed = true;
     try {
       const { classifyEmbeddedPostgresStartIssue, summarizeEmbeddedPostgresStartDiagnostic } = await import(pathToFileURL(errorModulePath).href);
       const recentLogs = logBuffer?.getRecentLogs() ?? [];
@@ -144,7 +146,8 @@ async function runProbe() {
     console.log("BOSTAN_NODE_POSTGRES_PROBE_CLEANUP_FAIL");
     return 1;
   }
-  return 0;
+  if (startupFailed) console.log("BOSTAN_NODE_POSTGRES_PROBE_CLEANUP_PASS");
+  return startupFailed ? 1 : 0;
 }
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {

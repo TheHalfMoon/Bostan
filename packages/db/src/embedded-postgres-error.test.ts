@@ -35,6 +35,7 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
 
     expect(summary).toEqual({
       sharedMemoryFailureKind: "CREATE_FAILED",
+      sharedMemoryEvidence: ["FATAL", "DETAIL", "CREATE", "OS_ERROR"],
       sharedMemorySystemCall: "CreateFileMapping",
       sharedMemoryOsErrorCode: 1455,
     });
@@ -45,6 +46,7 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
   it("returns no sensitive details for missing or unrecognized diagnostics", () => {
     expect(summarizeEmbeddedPostgresStartDiagnostic([])).toEqual({
       sharedMemoryFailureKind: null,
+      sharedMemoryEvidence: [],
       sharedMemorySystemCall: null,
       sharedMemoryOsErrorCode: null,
     });
@@ -53,6 +55,7 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
       "DETAIL: Failed system call was PrivateApi at C:\\private\\value",
     ])).toEqual({
       sharedMemoryFailureKind: "PRE_EXISTING_BLOCK_IN_USE",
+      sharedMemoryEvidence: ["FATAL", "DETAIL", "EXISTING_OBJECT"],
       sharedMemorySystemCall: null,
       sharedMemoryOsErrorCode: null,
     });

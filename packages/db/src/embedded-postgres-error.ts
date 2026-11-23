@@ -19,6 +19,7 @@ export type EmbeddedPostgresStartIssue =
 
 export interface EmbeddedPostgresStartDiagnostic {
   sharedMemoryFailureKind: "PRE_EXISTING_BLOCK_IN_USE" | "CREATE_FAILED" | "MAP_FAILED" | "RESOURCE_LIMIT" | "SHARED_MEMORY_UNKNOWN" | null;
+  sharedMemoryEvidence: Array<"FATAL" | "DETAIL" | "HINT" | "EXISTING_OBJECT" | "CREATE" | "MAP" | "OS_ERROR" | "ACCESS_DENIED" | "RESOURCE_LIMIT">;
   sharedMemorySystemCall: "CreateFileMapping" | "MapViewOfFile" | "VirtualAlloc" | "shmget" | "mmap" | null;
   sharedMemoryOsErrorCode: number | null;
 }
@@ -27,7 +28,7 @@ export interface EmbeddedPostgresStartDiagnostic {
 export function summarizeEmbeddedPostgresStartDiagnostic(recentLogs: string[]): EmbeddedPostgresStartDiagnostic {
   const haystack = recentLogs.join("\n").slice(-65536);
   if (!/shared memory|could not create.*memory/i.test(haystack)) {
-    return { sharedMemoryFailureKind: null, sharedMemorySystemCall: null, sharedMemoryOsErrorCode: null };
+    return { sharedMemoryFailureKind: null, sharedMemoryEvidence: [], sharedMemorySystemCall: null, sharedMemoryOsErrorCode: null };
   }
 
   const errorMatch = haystack.match(/shared memory[\s\S]{0,256}?error code\s+(\d{1,5})\b/i);
@@ -42,8 +43,21 @@ export function summarizeEmbeddedPostgresStartDiagnostic(recentLogs: string[]): 
         : /not enough (?:system )?(?:memory|resources)|paging file|commit(?:ment)? limit|out of memory|cannot allocate memory/i.test(haystack)
           ? "RESOURCE_LIMIT"
           : "SHARED_MEMORY_UNKNOWN";
+  const sharedMemoryEvidence: EmbeddedPostgresStartDiagnostic["sharedMemoryEvidence"] = [];
+  if (/\bFATAL:/i.test(haystack)) sharedMemoryEvidence.push("FATAL");
+  if (/\bDETAIL:/i.test(haystack)) sharedMemoryEvidence.push("DETAIL");
+  if (/\bHINT:/i.test(haystack)) sharedMemoryEvidence.push("HINT");
+  if (/pre-existing|already exists|still in use/i.test(haystack)) sharedMemoryEvidence.push("EXISTING_OBJECT");
+  if (/\bcreate(?:d|s|ing)?\b/i.test(haystack)) sharedMemoryEvidence.push("CREATE");
+  if (/\bmap(?:ped|ping)?\b/i.test(haystack)) sharedMemoryEvidence.push("MAP");
+  if (/error code\s+\d|windows error\s+\d/i.test(haystack)) sharedMemoryEvidence.push("OS_ERROR");
+  if (/permission denied|access is denied/i.test(haystack)) sharedMemoryEvidence.push("ACCESS_DENIED");
+  if (/not enough (?:system )?(?:memory|resources)|paging file|commit(?:ment)? limit|out of memory|cannot allocate memory/i.test(haystack)) {
+    sharedMemoryEvidence.push("RESOURCE_LIMIT");
+  }
   return {
     sharedMemoryFailureKind,
+    sharedMemoryEvidence,
     sharedMemorySystemCall: (systemCallMatch?.[1] as EmbeddedPostgresStartDiagnostic["sharedMemorySystemCall"]) ?? null,
     sharedMemoryOsErrorCode: parsedErrorCode !== null && parsedErrorCode > 0 && parsedErrorCode <= 65535
       ? parsedErrorCode
