@@ -18,6 +18,7 @@ export type EmbeddedPostgresStartIssue =
   | "POSTGRES_START_LOGS_UNCLASSIFIED";
 
 export interface EmbeddedPostgresStartDiagnostic {
+  sharedMemoryFailureKind: "PRE_EXISTING_BLOCK_IN_USE" | "CREATE_FAILED" | "MAP_FAILED" | "RESOURCE_LIMIT" | "SHARED_MEMORY_UNKNOWN" | null;
   sharedMemorySystemCall: "CreateFileMapping" | "MapViewOfFile" | "VirtualAlloc" | "shmget" | "mmap" | null;
   sharedMemoryOsErrorCode: number | null;
 }
@@ -26,13 +27,23 @@ export interface EmbeddedPostgresStartDiagnostic {
 export function summarizeEmbeddedPostgresStartDiagnostic(recentLogs: string[]): EmbeddedPostgresStartDiagnostic {
   const haystack = recentLogs.join("\n").slice(-65536);
   if (!/shared memory|could not create.*memory/i.test(haystack)) {
-    return { sharedMemorySystemCall: null, sharedMemoryOsErrorCode: null };
+    return { sharedMemoryFailureKind: null, sharedMemorySystemCall: null, sharedMemoryOsErrorCode: null };
   }
 
   const errorMatch = haystack.match(/shared memory[\s\S]{0,256}?error code\s+(\d{1,5})\b/i);
   const systemCallMatch = haystack.match(/failed system call was\s+(CreateFileMapping|MapViewOfFile|VirtualAlloc|shmget|mmap)\b/i);
   const parsedErrorCode = errorMatch ? Number(errorMatch[1]) : null;
+  const sharedMemoryFailureKind = /pre-existing shared memory block is still in use/i.test(haystack)
+    ? "PRE_EXISTING_BLOCK_IN_USE"
+    : /could not (?:create|open) shared memory segment/i.test(haystack)
+      ? "CREATE_FAILED"
+      : /could not map shared memory segment/i.test(haystack)
+        ? "MAP_FAILED"
+        : /not enough (?:system )?(?:memory|resources)|paging file|commit(?:ment)? limit|out of memory|cannot allocate memory/i.test(haystack)
+          ? "RESOURCE_LIMIT"
+          : "SHARED_MEMORY_UNKNOWN";
   return {
+    sharedMemoryFailureKind,
     sharedMemorySystemCall: (systemCallMatch?.[1] as EmbeddedPostgresStartDiagnostic["sharedMemorySystemCall"]) ?? null,
     sharedMemoryOsErrorCode: parsedErrorCode !== null && parsedErrorCode > 0 && parsedErrorCode <= 65535
       ? parsedErrorCode

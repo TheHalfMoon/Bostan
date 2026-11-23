@@ -108,7 +108,7 @@ async function runProbe() {
       const recentLogs = logBuffer?.getRecentLogs() ?? [];
       failureIssue = classifyEmbeddedPostgresStartIssue(recentLogs);
       const diagnostic = summarizeEmbeddedPostgresStartDiagnostic(recentLogs);
-      if (diagnostic.sharedMemorySystemCall || diagnostic.sharedMemoryOsErrorCode !== null) {
+      if (diagnostic.sharedMemoryFailureKind) {
         console.log(`BOSTAN_NODE_POSTGRES_PROBE_DETAIL ${JSON.stringify(diagnostic)}`);
       }
     } catch {

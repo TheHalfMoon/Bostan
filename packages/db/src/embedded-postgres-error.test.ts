@@ -33,20 +33,29 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
       "DETAIL: private path C:\\Users\\secret\\AppData\\Local\\temp\\db",
     ]);
 
-    expect(summary).toEqual({ sharedMemorySystemCall: "CreateFileMapping", sharedMemoryOsErrorCode: 1455 });
+    expect(summary).toEqual({
+      sharedMemoryFailureKind: "CREATE_FAILED",
+      sharedMemorySystemCall: "CreateFileMapping",
+      sharedMemoryOsErrorCode: 1455,
+    });
     expect(JSON.stringify(summary)).not.toContain("Users");
     expect(JSON.stringify(summary)).not.toContain("secret");
   });
 
   it("returns no sensitive details for missing or unrecognized diagnostics", () => {
     expect(summarizeEmbeddedPostgresStartDiagnostic([])).toEqual({
+      sharedMemoryFailureKind: null,
       sharedMemorySystemCall: null,
       sharedMemoryOsErrorCode: null,
     });
     expect(summarizeEmbeddedPostgresStartDiagnostic([
-      "FATAL: could not create shared memory segment",
+      "FATAL: pre-existing shared memory block is still in use",
       "DETAIL: Failed system call was PrivateApi at C:\\private\\value",
-    ])).toEqual({ sharedMemorySystemCall: null, sharedMemoryOsErrorCode: null });
+    ])).toEqual({
+      sharedMemoryFailureKind: "PRE_EXISTING_BLOCK_IN_USE",
+      sharedMemorySystemCall: null,
+      sharedMemoryOsErrorCode: null,
+    });
   });
 });
 
