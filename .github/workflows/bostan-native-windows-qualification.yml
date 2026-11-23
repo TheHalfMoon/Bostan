@@ -35,7 +35,9 @@ jobs:
       - run: pnpm --filter @bostan/server... --workspace-concurrency=1 build
       - name: Probe embedded PostgreSQL before packaging or model setup
         shell: pwsh
-        run: node scripts/bostan-windows-embedded-postgres-node-probe.mjs
+        run: |
+          node scripts/bostan-windows-embedded-postgres-node-probe.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - run: pnpm --filter @bostan/ui build
         env:
           NODE_OPTIONS: --max-old-space-size=6144
