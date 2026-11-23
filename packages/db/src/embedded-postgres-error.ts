@@ -22,13 +22,47 @@ export interface EmbeddedPostgresStartDiagnostic {
   sharedMemoryEvidence: Array<"FATAL" | "DETAIL" | "HINT" | "EXISTING_OBJECT" | "CREATE" | "ALLOCATE" | "RESERVE" | "MAP" | "OS_ERROR" | "ACCESS_DENIED" | "RESOURCE_LIMIT">;
   sharedMemorySystemCall: "CreateFileMapping" | "MapViewOfFile" | "VirtualAlloc" | "shmget" | "mmap" | null;
   sharedMemoryOsErrorCode: number | null;
+  sharedMemoryLogLines: Array<{
+    severity: "FATAL" | "PANIC" | "ERROR" | "WARNING" | "LOG" | "DETAIL" | "HINT" | "OTHER";
+    kind: "CREATE_SEGMENT" | "OPEN_SEGMENT" | "MAP_SEGMENT" | "SYSTEM_CALL" | "ALLOCATION" | "RESERVATION" | "DYNAMIC_SHARED_MEMORY" | "MENTION_ONLY";
+  }>;
+}
+
+/** Return only fixed, allowlisted facts from bounded PostgreSQL log lines. */
+function summarizeSharedMemoryLogLines(recentLogs: string[]): EmbeddedPostgresStartDiagnostic["sharedMemoryLogLines"] {
+  const summaries: EmbeddedPostgresStartDiagnostic["sharedMemoryLogLines"] = [];
+  const severityNames = new Set(["FATAL", "PANIC", "ERROR", "WARNING", "LOG", "DETAIL", "HINT"]);
+  for (const line of recentLogs.slice(-DEFAULT_RECENT_LOG_LIMIT)) {
+    if (!/shared memory|failed system call was/i.test(line)) continue;
+    const severityMatch = /^\s*([A-Z]+):/i.exec(line);
+    const severityCandidate = severityMatch?.[1]?.toUpperCase() ?? "OTHER";
+    const severity = (severityNames.has(severityCandidate) ? severityCandidate : "OTHER") as EmbeddedPostgresStartDiagnostic["sharedMemoryLogLines"][number]["severity"];
+    const kind: EmbeddedPostgresStartDiagnostic["sharedMemoryLogLines"][number]["kind"] = /failed system call was/i.test(line)
+      ? "SYSTEM_CALL"
+      : /could not create.{0,64}shared memory/i.test(line)
+        ? "CREATE_SEGMENT"
+        : /could not open.{0,64}shared memory/i.test(line)
+          ? "OPEN_SEGMENT"
+          : /could not map.{0,64}shared memory/i.test(line)
+            ? "MAP_SEGMENT"
+            : /allocat.{0,64}shared memory|shared memory.{0,64}allocat/i.test(line)
+              ? "ALLOCATION"
+              : /reserv.{0,64}shared memory|shared memory.{0,64}reserv/i.test(line)
+                ? "RESERVATION"
+                : /dynamic shared memory/i.test(line)
+                  ? "DYNAMIC_SHARED_MEMORY"
+                  : "MENTION_ONLY";
+    summaries.push({ severity, kind });
+    if (summaries.length > 8) summaries.shift();
+  }
+  return summaries;
 }
 
 /** Extract only allowlisted shared-memory facts; never return PostgreSQL log text. */
 export function summarizeEmbeddedPostgresStartDiagnostic(recentLogs: string[]): EmbeddedPostgresStartDiagnostic {
   const haystack = recentLogs.join("\n").slice(-65536);
   if (!/shared memory|could not create.*memory/i.test(haystack)) {
-    return { sharedMemoryFailureKind: null, sharedMemoryEvidence: [], sharedMemorySystemCall: null, sharedMemoryOsErrorCode: null };
+    return { sharedMemoryFailureKind: null, sharedMemoryEvidence: [], sharedMemorySystemCall: null, sharedMemoryOsErrorCode: null, sharedMemoryLogLines: [] };
   }
 
   const errorMatch = haystack.match(/shared memory[\s\S]{0,256}?error code\s+(\d{1,5})\b/i);
@@ -64,6 +98,7 @@ export function summarizeEmbeddedPostgresStartDiagnostic(recentLogs: string[]): 
     sharedMemoryOsErrorCode: parsedErrorCode !== null && parsedErrorCode > 0 && parsedErrorCode <= 65535
       ? parsedErrorCode
       : null,
+    sharedMemoryLogLines: summarizeSharedMemoryLogLines(recentLogs),
   };
 }
 

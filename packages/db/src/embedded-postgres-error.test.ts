@@ -38,6 +38,10 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
       sharedMemoryEvidence: ["FATAL", "DETAIL", "CREATE", "OS_ERROR"],
       sharedMemorySystemCall: "CreateFileMapping",
       sharedMemoryOsErrorCode: 1455,
+      sharedMemoryLogLines: [
+        { severity: "FATAL", kind: "CREATE_SEGMENT" },
+        { severity: "DETAIL", kind: "SYSTEM_CALL" },
+      ],
     });
     expect(JSON.stringify(summary)).not.toContain("Users");
     expect(JSON.stringify(summary)).not.toContain("secret");
@@ -49,6 +53,7 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
       sharedMemoryEvidence: [],
       sharedMemorySystemCall: null,
       sharedMemoryOsErrorCode: null,
+      sharedMemoryLogLines: [],
     });
     expect(summarizeEmbeddedPostgresStartDiagnostic([
       "FATAL: pre-existing shared memory block is still in use",
@@ -58,6 +63,10 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
       sharedMemoryEvidence: ["FATAL", "DETAIL", "EXISTING_OBJECT"],
       sharedMemorySystemCall: null,
       sharedMemoryOsErrorCode: null,
+      sharedMemoryLogLines: [
+        { severity: "FATAL", kind: "MENTION_ONLY" },
+        { severity: "DETAIL", kind: "SYSTEM_CALL" },
+      ],
     });
   });
 
@@ -69,6 +78,7 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
       sharedMemoryEvidence: ["FATAL", "ALLOCATE", "RESOURCE_LIMIT"],
       sharedMemorySystemCall: null,
       sharedMemoryOsErrorCode: null,
+      sharedMemoryLogLines: [{ severity: "FATAL", kind: "ALLOCATION" }],
     });
   });
 });
