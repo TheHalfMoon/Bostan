@@ -39,6 +39,7 @@ import { errorHandler } from "../middleware/index.js";
 import { issueRoutes } from "../routes/issues.js";
 import { buildPaperclipWakePayload, heartbeatService } from "../services/heartbeat.js";
 import { deliverReconciledExecutions } from "../services/execution-recovery-resolution.js";
+import { requestTaskRetry } from "../services/task-retry.js";
 import { workspaceOperationService, isNativeWorkspaceFinalizationOperationActive } from "../services/workspace-operations.js";
 import { issueRecoveryActionService } from "../services/issue-recovery-actions.js";
 import { recoveryService } from "../services/recovery/service.js";
@@ -2049,6 +2050,9 @@ describeEmbeddedPostgres("issue recovery actions", () => {
     const runId = randomUUID();
     await seedHeartbeatRun({ companyId, agentId: coderId, runId, issueId: sourceIssueId, status: "failed" });
     await db.update(issues).set({ status: "blocked" }).where(eq(issues.id, sourceIssueId));
+    const retry = await requestTaskRetry({ db, companyId, issueId: sourceIssueId, actorId: "local-board",
+      actorSource: "local_implicit", observedRunId: runId, idempotencyKey: randomUUID() });
+    expect(retry.accepted).toBe(true);
     const [action] = await db.insert(issueRecoveryActions).values({
       companyId, sourceIssueId, kind: "active_run_watchdog", status: "resolved", outcome: "blocked",
       ownerType: "board", returnOwnerAgentId: coderId, cause: "uncertain_external_action", fingerprint: runId,
@@ -2066,9 +2070,23 @@ describeEmbeddedPostgres("issue recovery actions", () => {
     expect(resolved.body.issue.status).toBe("todo");
     const [recorded] = await db.select().from(issueRecoveryActions).where(eq(issueRecoveryActions.id, action!.id));
     expect(recorded!.evidence).not.toHaveProperty("automaticRecovery");
-    expect(recorded!.evidence).toMatchObject({ executionReconciliation: { runId }, continuationDelivery: "pending" });
+    expect(recorded!.evidence).toMatchObject({ executionReconciliation: { runId }, continuationDelivery: "delegated",
+      continuationDeliveryOwner: { kind: "board_task_retry", requestId: retry.requestId } });
     await request(app).post(`/api/issues/${sourceIssueId}/recovery-actions/resolve`).send(body).expect(200);
     expect((await db.select().from(issueRecoveryActions).where(eq(issueRecoveryActions.id, action!.id)))[0]).toEqual(recorded);
+    const heartbeat = heartbeatService(db, { runtimeEnv: {} });
+    await deliverReconciledExecutions(db, heartbeat.wakeup);
+    await heartbeat.resumeTaskRetry(companyId, retry.requestId!);
+    const continuations = await db.select().from(heartbeatRuns).where(and(
+      eq(heartbeatRuns.companyId, companyId),
+      sql`${heartbeatRuns.contextSnapshot}->>'taskRetryRequestId' = ${retry.requestId}`,
+    ));
+    expect(continuations).toHaveLength(1);
+    await deliverReconciledExecutions(db, heartbeat.wakeup);
+    expect(await db.select().from(heartbeatRuns).where(and(
+      eq(heartbeatRuns.companyId, companyId),
+      sql`${heartbeatRuns.contextSnapshot}->>'taskRetryRequestId' = ${retry.requestId}`,
+    ))).toHaveLength(1);
   });
 
   async function seedReconciledDelivery() {
