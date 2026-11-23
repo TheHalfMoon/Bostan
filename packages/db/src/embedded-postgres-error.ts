@@ -19,7 +19,7 @@ export type EmbeddedPostgresStartIssue =
 
 export interface EmbeddedPostgresStartDiagnostic {
   sharedMemoryFailureKind: "PRE_EXISTING_BLOCK_IN_USE" | "CREATE_FAILED" | "MAP_FAILED" | "RESOURCE_LIMIT" | "SHARED_MEMORY_UNKNOWN" | null;
-  sharedMemoryEvidence: Array<"FATAL" | "DETAIL" | "HINT" | "EXISTING_OBJECT" | "CREATE" | "MAP" | "OS_ERROR" | "ACCESS_DENIED" | "RESOURCE_LIMIT">;
+  sharedMemoryEvidence: Array<"FATAL" | "DETAIL" | "HINT" | "EXISTING_OBJECT" | "CREATE" | "ALLOCATE" | "RESERVE" | "MAP" | "OS_ERROR" | "ACCESS_DENIED" | "RESOURCE_LIMIT">;
   sharedMemorySystemCall: "CreateFileMapping" | "MapViewOfFile" | "VirtualAlloc" | "shmget" | "mmap" | null;
   sharedMemoryOsErrorCode: number | null;
 }
@@ -40,7 +40,7 @@ export function summarizeEmbeddedPostgresStartDiagnostic(recentLogs: string[]): 
       ? "CREATE_FAILED"
       : /could not map shared memory segment/i.test(haystack)
         ? "MAP_FAILED"
-        : /not enough (?:system )?(?:memory|resources)|paging file|commit(?:ment)? limit|out of memory|cannot allocate memory/i.test(haystack)
+        : /not enough (?:system )?(?:memory|resources)|paging file|commit(?:ment)? limit|out of memory|cannot allocate memory|could not allocate.{0,64}shared memory/i.test(haystack)
           ? "RESOURCE_LIMIT"
           : "SHARED_MEMORY_UNKNOWN";
   const sharedMemoryEvidence: EmbeddedPostgresStartDiagnostic["sharedMemoryEvidence"] = [];
@@ -49,10 +49,12 @@ export function summarizeEmbeddedPostgresStartDiagnostic(recentLogs: string[]): 
   if (/\bHINT:/i.test(haystack)) sharedMemoryEvidence.push("HINT");
   if (/pre-existing|already exists|still in use/i.test(haystack)) sharedMemoryEvidence.push("EXISTING_OBJECT");
   if (/\bcreate(?:d|s|ing)?\b/i.test(haystack)) sharedMemoryEvidence.push("CREATE");
+  if (/\ballocat(?:e|ed|es|ing|ion)\b/i.test(haystack)) sharedMemoryEvidence.push("ALLOCATE");
+  if (/\breserv(?:e|ed|es|ing|ation)\b/i.test(haystack)) sharedMemoryEvidence.push("RESERVE");
   if (/\bmap(?:ped|ping)?\b/i.test(haystack)) sharedMemoryEvidence.push("MAP");
   if (/error code\s+\d|windows error\s+\d/i.test(haystack)) sharedMemoryEvidence.push("OS_ERROR");
   if (/permission denied|access is denied/i.test(haystack)) sharedMemoryEvidence.push("ACCESS_DENIED");
-  if (/not enough (?:system )?(?:memory|resources)|paging file|commit(?:ment)? limit|out of memory|cannot allocate memory/i.test(haystack)) {
+  if (/not enough (?:system )?(?:memory|resources)|paging file|commit(?:ment)? limit|out of memory|cannot allocate memory|could not allocate.{0,64}shared memory/i.test(haystack)) {
     sharedMemoryEvidence.push("RESOURCE_LIMIT");
   }
   return {

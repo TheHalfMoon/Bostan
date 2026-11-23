@@ -60,6 +60,17 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
       sharedMemoryOsErrorCode: null,
     });
   });
+
+  it("recognizes allocation language without exposing log text", () => {
+    expect(summarizeEmbeddedPostgresStartDiagnostic([
+      "FATAL: could not allocate shared memory for worker",
+    ])).toEqual({
+      sharedMemoryFailureKind: "RESOURCE_LIMIT",
+      sharedMemoryEvidence: ["FATAL", "ALLOCATE", "RESOURCE_LIMIT"],
+      sharedMemorySystemCall: null,
+      sharedMemoryOsErrorCode: null,
+    });
+  });
 });
 
 describe("formatEmbeddedPostgresError", () => {
