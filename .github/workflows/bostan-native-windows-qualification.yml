@@ -37,7 +37,7 @@ jobs:
         shell: pwsh
         run: |
           node scripts/bostan-windows-embedded-postgres-node-probe.mjs
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($LASTEXITCODE -ne 0) { throw "Embedded PostgreSQL probe failed (exit code $LASTEXITCODE)" }
       - run: pnpm --filter @bostan/ui build
         env:
           NODE_OPTIONS: --max-old-space-size=6144
