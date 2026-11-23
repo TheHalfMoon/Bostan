@@ -103,8 +103,12 @@ async function runProbe() {
     await instance.stop();
     instance = null;
     console.log("BOSTAN_NODE_POSTGRES_PROBE_PASS");
-  } catch {
+  } catch (error) {
     startupFailed = true;
+    const processExit = typeof error?.message === "string"
+      ? /Postgres server exited before readiness \(exitCode=(null|0|[1-9]\d{0,2}), signal=(?:none|SIG[A-Z]+)\)/.exec(error.message)
+      : null;
+    if (processExit) console.log(`BOSTAN_NODE_POSTGRES_PROBE_PROCESS_EXIT_CODE ${processExit[1]}`);
     try {
       const { classifyEmbeddedPostgresStartIssue, summarizeEmbeddedPostgresStartDiagnostic } = await import(pathToFileURL(errorModulePath).href);
       const recentLogs = logBuffer?.getRecentLogs() ?? [];
@@ -151,5 +155,7 @@ async function runProbe() {
 }
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
-  process.exitCode = await runProbe();
+  const exitCode = await runProbe();
+  console.log(`BOSTAN_NODE_POSTGRES_PROBE_PROCESS_EXIT ${exitCode}`);
+  process.exitCode = exitCode;
 }

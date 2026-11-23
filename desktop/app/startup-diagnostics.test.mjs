@@ -34,6 +34,12 @@ test("startup receipts accept only fixed phases and failure codes", () => {
     { code: "POSTGRES_START_FAILED" },
   ), "POSTGRES_START_FAILED");
   assert.equal(postgresIssue, "POSTGRES_START_ADDRESS_IN_USE");
+  const processExitIssue = diagnostics.startupFailureIssue(Object.assign(
+    new Error("Postgres server exited before readiness (exitCode=1, signal=none). Recent logs: selecting dynamic shared memory implementation \"windows\""),
+    { code: "POSTGRES_START_FAILED", postgresStartupIssue: "POSTGRES_START_LOGS_UNCLASSIFIED" },
+  ), "POSTGRES_START_FAILED");
+  assert.equal(processExitIssue, "POSTGRES_START_PROCESS_EXIT_CODE_1");
+  assert.equal(diagnostics.isStartupDiagnosticLine(diagnostics.startupFailureIssueLine(processExitIssue)), true);
   const sharedMemoryOsIssue = "POSTGRES_START_SHARED_MEMORY_OS_ERROR_1455";
   const sharedMemoryOsLine = diagnostics.startupFailureIssueLine(sharedMemoryOsIssue);
   assert.equal(sharedMemoryOsLine, `BOSTAN_DESKTOP_STARTUP_ISSUE ${sharedMemoryOsIssue}`);
@@ -41,7 +47,7 @@ test("startup receipts accept only fixed phases and failure codes", () => {
   assert.equal(diagnostics.startupFailureIssueLine("POSTGRES_START_SHARED_MEMORY_OS_ERROR_99999"), null);
   assert.equal(diagnostics.startupFailureIssue(Object.assign(new Error("Postgres server exited before readiness (exitCode=1, signal=none)."), {
     code: "POSTGRES_START_FAILED", postgresStartupIssue: "POSTGRES_START_LOGS_EMPTY",
-  }), "POSTGRES_START_FAILED"), "POSTGRES_START_LOGS_EMPTY");
+  }), "POSTGRES_START_FAILED"), "POSTGRES_START_PROCESS_EXIT_CODE_1");
   const postgresLogCases = [
     ['Recent embedded Postgres logs: FATAL: could not access file "$libdir/private-extension"', "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING"],
     ["Recent embedded Postgres logs: FATAL: could not create shared memory segment", "POSTGRES_START_SHARED_MEMORY_FAILED"],

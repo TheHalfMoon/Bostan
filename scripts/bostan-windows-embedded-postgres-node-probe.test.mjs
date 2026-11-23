@@ -22,7 +22,9 @@ test("Windows native workflow propagates a failed Node PostgreSQL probe", async 
 
   assert.ok(probeStep, "expected the PostgreSQL preflight step");
   assert.match(probeStep, /shell:\s*pwsh/);
-  assert.match(probeStep, /if \(\$LASTEXITCODE -ne 0\) \{ throw "Embedded PostgreSQL probe failed \(exit code \$LASTEXITCODE\)" \}/);
+  assert.match(probeStep, /\$probeExitCode = \$LASTEXITCODE/);
+  assert.match(probeStep, /Write-Host "BOSTAN_NODE_POSTGRES_PROBE_SHELL_EXIT \$probeExitCode"/);
+  assert.match(probeStep, /if \(\$probeExitCode -ne 0\) \{ throw "Embedded PostgreSQL probe failed \(exit code \$probeExitCode\)" \}/);
 });
 
 test("PowerShell dot-sourced workflow script propagates native Node exit codes", { skip: process.platform !== "win32" }, async () => {

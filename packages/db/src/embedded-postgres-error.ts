@@ -58,11 +58,16 @@ function summarizeSharedMemoryLogLines(recentLogs: string[]): EmbeddedPostgresSt
   return summaries;
 }
 
+function hasSharedMemoryFailure(haystack: string): boolean {
+  return /failed system call was|could not (?:create|open|map|allocate|reserve)[^\n.]{0,160}shared memory|shared memory[^\n.]{0,160}(?:failed|error code|still in use|cannot|could not|not enough|allocate|allocation|reserve|map|create|open)/i.test(haystack);
+}
+
 /** Extract only allowlisted shared-memory facts; never return PostgreSQL log text. */
 export function summarizeEmbeddedPostgresStartDiagnostic(recentLogs: string[]): EmbeddedPostgresStartDiagnostic {
   const haystack = recentLogs.join("\n").slice(-65536);
-  if (!/shared memory|could not create.*memory/i.test(haystack)) {
-    return { sharedMemoryFailureKind: null, sharedMemoryEvidence: [], sharedMemorySystemCall: null, sharedMemoryOsErrorCode: null, sharedMemoryLogLines: [] };
+  const sharedMemoryLogLines = summarizeSharedMemoryLogLines(recentLogs);
+  if (!hasSharedMemoryFailure(haystack)) {
+    return { sharedMemoryFailureKind: null, sharedMemoryEvidence: [], sharedMemorySystemCall: null, sharedMemoryOsErrorCode: null, sharedMemoryLogLines };
   }
 
   const errorMatch = haystack.match(/shared memory[\s\S]{0,256}?error code\s+(\d{1,5})\b/i);
@@ -98,7 +103,7 @@ export function summarizeEmbeddedPostgresStartDiagnostic(recentLogs: string[]): 
     sharedMemoryOsErrorCode: parsedErrorCode !== null && parsedErrorCode > 0 && parsedErrorCode <= 65535
       ? parsedErrorCode
       : null,
-    sharedMemoryLogLines: summarizeSharedMemoryLogLines(recentLogs),
+    sharedMemoryLogLines,
   };
 }
 
@@ -111,7 +116,7 @@ export function classifyEmbeddedPostgresStartIssue(recentLogs: string[]): Embedd
   if (/invalid locale|locale.*not supported|could not set locale/i.test(haystack)) return "POSTGRES_START_LOCALE_INVALID";
   if (/pg_trgm|fuzzystrmatch|extension control file|extension script file|could not access file.*extension/i.test(haystack)) return "POSTGRES_START_EXTENSION_MISSING";
   if (/could not load library|entry point.*not found|module could not be found|could not open.*\.(?:dll|so|dylib)/i.test(haystack)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
-  if (/shared memory|could not create.*memory/i.test(haystack)) {
+  if (hasSharedMemoryFailure(haystack)) {
     const osError = haystack.match(/shared memory[\s\S]{0,256}?error code\s+(\d{1,5})\b/i)?.[1];
     if (osError && Number(osError) > 0 && Number(osError) <= 65535) {
       return `POSTGRES_START_SHARED_MEMORY_OS_ERROR_${Number(osError)}`;

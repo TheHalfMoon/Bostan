@@ -6,6 +6,7 @@ describe("classifyEmbeddedPostgresStartIssue", () => {
     const cases = [
       [[], "POSTGRES_START_LOGS_EMPTY"],
       [["FATAL: could not bind IPv4 address: Address already in use"], "POSTGRES_START_ADDRESS_IN_USE"],
+      [["LOG:  selecting dynamic shared memory implementation \"windows\""], "POSTGRES_START_LOGS_UNCLASSIFIED"],
       [["FATAL: could not create shared memory segment"], "POSTGRES_START_SHARED_MEMORY_FAILED"],
       [["LOG: could not create shared memory segment: error code 1455"], "POSTGRES_START_SHARED_MEMORY_OS_ERROR_1455"],
       [["LOG: could not create shared memory segment: error code 8 (paging file limit)"], "POSTGRES_START_SHARED_MEMORY_OS_ERROR_8"],
@@ -67,6 +68,18 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
         { severity: "FATAL", kind: "MENTION_ONLY" },
         { severity: "DETAIL", kind: "SYSTEM_CALL" },
       ],
+    });
+  });
+
+  it("keeps informational dynamic shared-memory logs without calling them a failure", () => {
+    expect(summarizeEmbeddedPostgresStartDiagnostic([
+      "LOG:  selecting dynamic shared memory implementation \"windows\"",
+    ])).toEqual({
+      sharedMemoryFailureKind: null,
+      sharedMemoryEvidence: [],
+      sharedMemorySystemCall: null,
+      sharedMemoryOsErrorCode: null,
+      sharedMemoryLogLines: [{ severity: "LOG", kind: "DYNAMIC_SHARED_MEMORY" }],
     });
   });
 

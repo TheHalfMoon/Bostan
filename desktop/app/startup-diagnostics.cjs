@@ -73,8 +73,13 @@ function startupFailureIssue(error, fallbackCode) {
   if (failureCode === "STARTUP_FAILED") return "SERVER_STARTUP_UNCLASSIFIED";
   if (failureCode !== "POSTGRES_START_FAILED") return null;
   try {
-    if (postgresStartupIssues.has(error?.postgresStartupIssue) || isSharedMemoryOsErrorIssue(error?.postgresStartupIssue)) return error.postgresStartupIssue;
     const message = typeof error?.message === "string" ? error.message.slice(0, 65536) : "";
+    // A normal PostgreSQL startup log mentions dynamic shared memory. Prefer
+    // the child's bounded exit receipt over a broad log classifier so that
+    // informational startup lines cannot mask the actual process outcome.
+    const processExit = message.match(/Postgres server exited before readiness \(exitCode=(null|0|[1-9]\d{0,2}), signal=(?:none|SIG[A-Z]+)\)/);
+    if (processExit) return `POSTGRES_START_PROCESS_EXIT_CODE_${processExit[1]}`;
+    if (postgresStartupIssues.has(error?.postgresStartupIssue) || isSharedMemoryOsErrorIssue(error?.postgresStartupIssue)) return error.postgresStartupIssue;
     // The backend attaches only a bounded in-memory tail of PostgreSQL output
     // to its startup error. Convert recognized causes to fixed codes here;
     // never include log text, paths, or connection details in the receipt.
@@ -89,8 +94,6 @@ function startupFailureIssue(error, fallbackCode) {
     if (/database files are incompatible with server|database system identifier differs|wrong database system identifier/i.test(message)) return "POSTGRES_START_CLUSTER_INCOMPATIBLE";
     if (/invalid value for parameter|unrecognized configuration parameter|could not open configuration file|configuration file contains errors/i.test(message)) return "POSTGRES_START_CONFIGURATION_INVALID";
     if (/could not locate a valid checkpoint record|invalid primary checkpoint record|redo is not required/i.test(message)) return "POSTGRES_START_RECOVERY_FAILED";
-    const processExit = message.match(/Postgres server exited before readiness \(exitCode=(null|0|[1-9]\d{0,2}), signal=(?:none|SIG[A-Z]+)\)/);
-    if (processExit) return `POSTGRES_START_PROCESS_EXIT_CODE_${processExit[1]}`;
     if (/Postgres server failed to spawn \(code ENOENT\)/i.test(message)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
     if (/Postgres server failed to spawn \(code (?:EACCES|EPERM)\)/i.test(message)) return "POSTGRES_START_PROCESS_LAUNCH_FAILED";
     if (/start script exited|process exited before|server process.*exited|server exited before readiness/i.test(message)) return "POSTGRES_START_PROCESS_EXITED";
