@@ -6,7 +6,7 @@ import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
-import { embeddedPostgresProcessHasExited, isOwnedProbeDirectory, unhookEmbeddedPostgresExitEvents } from "./bostan-windows-embedded-postgres-node-probe.mjs";
+import { embeddedPostgresProcessHasExited, isOwnedProbeDirectory, shouldRemoveProbeDirectory, unhookEmbeddedPostgresExitEvents } from "./bostan-windows-embedded-postgres-node-probe.mjs";
 
 test("PostgreSQL node probe cleanup is limited to its dedicated temp child", () => {
   const tempRoot = path.resolve("C:/runner/temp");
@@ -15,6 +15,10 @@ test("PostgreSQL node probe cleanup is limited to its dedicated temp child", () 
   assert.equal(isOwnedProbeDirectory(path.join(tempRoot, "other-data"), tempRoot), false);
   assert.equal(isOwnedProbeDirectory(path.join(tempRoot, "bostan-postgres-node-probe-abcd-", "nested"), tempRoot), false);
   assert.equal(isOwnedProbeDirectory(path.resolve(tempRoot, "..", "outside", "bostan-postgres-node-probe-abcd-"), tempRoot), false);
+  const ownedChild = path.join(tempRoot, "bostan-postgres-node-probe-abcd-");
+  assert.equal(shouldRemoveProbeDirectory(ownedChild, tempRoot, false), true);
+  assert.equal(shouldRemoveProbeDirectory(ownedChild, tempRoot, true), false);
+  assert.equal(shouldRemoveProbeDirectory(path.join(tempRoot, "unrelated"), tempRoot, false), false);
 });
 
 test("failed PostgreSQL startup does not await a child exit event that already fired", () => {

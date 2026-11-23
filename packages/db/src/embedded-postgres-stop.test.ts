@@ -27,4 +27,13 @@ describe("embedded PostgreSQL stop after failed spawn", () => {
       await rm(root, { recursive: true, force: false });
     }
   });
+
+  it("uses a bounded cluster shutdown on Windows and waits for all child streams to close", async () => {
+    const dependencySource = await readFile(new URL(import.meta.resolve("embedded-postgres")), "utf8");
+
+    expect(dependencySource).toMatch(/const pgCtlPath = platform\(\) === 'win32' \? \(yield bin\)\.pg_ctl : undefined/);
+    expect(dependencySource).toMatch(/spawn\(pgCtlPath, \['stop', '-D', this\.options\.databaseDir, '-m', 'fast', '-w', '-t', '15'\]/);
+    expect(dependencySource).toContain("processClosed = true;");
+    expect(dependencySource).toContain("shutdown.once('close'");
+  });
 });

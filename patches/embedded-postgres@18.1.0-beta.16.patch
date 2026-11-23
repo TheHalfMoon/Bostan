@@ -48,12 +48,20 @@ diff --git a/dist/index.js b/dist/index.js
                      }
                  });
              });
-@@ -177,7 +186,7 @@
+@@ -177,7 +186,15 @@
                      '-p',
                      this.options.port.toString(),
                      ...this.options.postgresFlags,
 -                ], Object.assign(Object.assign({}, permissionIds), { env: { LC_MESSAGES: LC_MESSAGES_LOCALE } }));
 +                ], Object.assign(Object.assign({}, permissionIds), { env: Object.assign(Object.assign({}, globalThis.process.env), { LC_MESSAGES: LC_MESSAGES_LOCALE }) }));
++                // PostgreSQL may write startup diagnostics to stdout on Windows.
++                this.process.stdout?.on('data', (chunk) => {
++                    const message = chunk.toString('utf-8');
++                    this.options.onLog(message);
++                    if (message.includes('database system is ready to accept connections')) {
++                        resolve();
++                    }
++                });
                  // Connect to stderr, as that is where the messages get sent
                  (_a = this.process.stderr) === null || _a === void 0 ? void 0 : _a.on('data', (chunk) => {
                      // Parse the data as a string and log it
@@ -78,7 +86,7 @@ diff --git a/dist/index.js b/dist/index.js
 +                this.process.on('close', (code, signal) => {
 +                    reject(new Error(`Postgres server exited before readiness (exitCode=${code === null ? 'null' : code}, signal=${signal ?? 'none'}).`));
                  });
-@@ -204,8 +220,15 @@
+@@ -204,25 +220,50 @@
      stop() {
          return __awaiter(this, void 0, void 0, function* () {
              // GUARD: If no database is running, immdiately return the function.
@@ -93,4 +101,57 @@ diff --git a/dist/index.js b/dist/index.js
 +                return;
 +            }
              // Kill the existing postgres process
-             yield new Promise((resolve) => {
+-            yield new Promise((resolve) => {
+-                var _a, _b, _c;
+-                // Register a handler for when the process finally exists
+-                (_a = this.process) === null || _a === void 0 ? void 0 : _a.on('exit', resolve);
+-                // GUARD: Check if we're on Windows, since Windows doesn't support SIGINT
+-                if (platform() === 'win32') {
+-                    // GUARD: Double check the pid is there to keep TypeScript happy
+-                    if (!((_b = this.process) === null || _b === void 0 ? void 0 : _b.pid)) {
+-                        throw new Error('Could not find process PID');
+-                    }
+-                    // Actually kill the process using the Windows taskkill command
+-                    spawn('taskkill', ['/pid', this.process.pid.toString(), '/f', '/t']);
+-                }
+-                else {
+-                    // If on a sane OS, simply kill using SIGINT
+-                    (_c = this.process) === null || _c === void 0 ? void 0 : _c.kill('SIGINT');
+-                }
+-            });
++            const pgCtlPath = platform() === 'win32' ? (yield bin).pg_ctl : undefined;
++            yield new Promise((resolve, reject) => {
++                var _a, _b;
++                let processClosed = false;
++                let shutdownCommandClosed = platform() !== 'win32';
++                const finishWhenClosed = () => {
++                    if (processClosed && shutdownCommandClosed) resolve();
++                };
++                // Wait for stdio to close too; PostgreSQL may have forked workers.
++                (_a = this.process) === null || _a === void 0 ? void 0 : _a.once('close', () => {
++                    processClosed = true;
++                    finishWhenClosed();
++                });
++                // GUARD: Check if we're on Windows, since Windows does not support SIGINT.
++                if (platform() === 'win32') {
++                    if (!pgCtlPath) {
++                        reject(new Error('PostgreSQL shutdown utility is unavailable.'));
++                        return;
++                    }
++                    // Ask PostgreSQL to stop its cluster so forked workers shut down too.
++                    const shutdown = spawn(pgCtlPath, ['stop', '-D', this.options.databaseDir, '-m', 'fast', '-w', '-t', '15'], { stdio: 'ignore' });
++                    shutdown.once('error', () => reject(new Error('Could not start PostgreSQL shutdown utility.')));
++                    shutdown.once('close', (code) => {
++                        if (code !== 0) {
++                            reject(new Error('Could not stop PostgreSQL cleanly.'));
++                            return;
++                        }
++                        shutdownCommandClosed = true;
++                        finishWhenClosed();
++                    });
++                }
++                else {
++                    // If on a sane OS, simply kill using SIGINT.
++                    (_b = this.process) === null || _b === void 0 ? void 0 : _b.kill('SIGINT');
++                }
++            });

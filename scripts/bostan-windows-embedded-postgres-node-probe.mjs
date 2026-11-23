@@ -18,6 +18,10 @@ export function isOwnedProbeDirectory(candidate, tempRoot) {
     && path.basename(relative).startsWith(PROBE_DIRECTORY_PREFIX);
 }
 
+export function shouldRemoveProbeDirectory(probeRoot, tempRoot, cleanupFailed) {
+  return !cleanupFailed && Boolean(probeRoot && tempRoot && isOwnedProbeDirectory(probeRoot, tempRoot));
+}
+
 export function embeddedPostgresProcessHasExited(instance) {
   const process = instance?.process;
   return Boolean(process && (typeof process.exitCode === "number" || typeof process.signalCode === "string"));
@@ -142,7 +146,7 @@ async function runProbe() {
       try { await instance.stop(); }
       catch { cleanupFailed = true; }
     }
-    if (probeRoot && tempRoot && isOwnedProbeDirectory(probeRoot, tempRoot)) {
+    if (shouldRemoveProbeDirectory(probeRoot, tempRoot, cleanupFailed)) {
       try {
         const [rootInfo, realTempRoot, realParent] = await Promise.all([
           fs.lstat(probeRoot),
