@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 import test from "node:test";
-import { embeddedPostgresProcessHasExited, isOwnedProbeDirectory } from "./bostan-windows-embedded-postgres-node-probe.mjs";
+import { embeddedPostgresProcessHasExited, isOwnedProbeDirectory, unhookEmbeddedPostgresExitEvents } from "./bostan-windows-embedded-postgres-node-probe.mjs";
 
 test("PostgreSQL node probe cleanup is limited to its dedicated temp child", () => {
   const tempRoot = path.resolve("C:/runner/temp");
@@ -20,6 +22,25 @@ test("failed PostgreSQL startup does not await a child exit event that already f
   assert.equal(embeddedPostgresProcessHasExited({ process: { exitCode: null, signalCode: "SIGTERM" } }), true);
   assert.equal(embeddedPostgresProcessHasExited({ process: { exitCode: null, signalCode: null } }), false);
   assert.equal(embeddedPostgresProcessHasExited({}), false);
+});
+
+test("the probe preserves its failure exit code after embedded-postgres cleanup", () => {
+  const dbRequire = createRequire(path.resolve("packages/db/package.json"));
+  const embeddedPostgresEntry = dbRequire.resolve("embedded-postgres");
+  const embeddedPostgresUrl = pathToFileURL(embeddedPostgresEntry).href;
+  const probeModuleUrl = new URL("./bostan-windows-embedded-postgres-node-probe.mjs", import.meta.url).href;
+  const script = [
+    `import ${JSON.stringify(embeddedPostgresUrl)};`,
+    `import { createRequire } from "node:module";`,
+    `import { unhookEmbeddedPostgresExitEvents } from ${JSON.stringify(probeModuleUrl)};`,
+    `const exitHook = createRequire(${JSON.stringify(embeddedPostgresEntry)})("async-exit-hook");`,
+    "if (!unhookEmbeddedPostgresExitEvents(exitHook)) process.exit(2);",
+    "process.exitCode = 7;",
+  ].join("\n");
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", script], { encoding: "utf8" });
+
+  assert.equal(result.error, undefined, result.error?.message);
+  assert.equal(result.status, 7, result.stderr);
 });
 
 test("Windows native workflow propagates a failed Node PostgreSQL probe", async () => {

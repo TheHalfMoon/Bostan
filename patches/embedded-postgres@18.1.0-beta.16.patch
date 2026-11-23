@@ -78,3 +78,19 @@ diff --git a/dist/index.js b/dist/index.js
 +                this.process.on('close', (code, signal) => {
 +                    reject(new Error(`Postgres server exited before readiness (exitCode=${code === null ? 'null' : code}, signal=${signal ?? 'none'}).`));
                  });
+@@ -204,8 +220,15 @@
+     stop() {
+         return __awaiter(this, void 0, void 0, function* () {
+             // GUARD: If no database is running, immdiately return the function.
+             if (!this.process) {
+                 return;
+             }
++            // A failed startup can reject from `close` after the child's `exit`
++            // event already fired. Do not wait for an event that cannot fire again.
++            if (!this.process.pid || this.process.exitCode !== null || this.process.signalCode !== null) {
++                this.process = undefined;
++                if (this.options.persistent === false) yield fs.rm(this.options.databaseDir, { recursive: true, force: true });
++                return;
++            }
+             // Kill the existing postgres process
+             yield new Promise((resolve) => {

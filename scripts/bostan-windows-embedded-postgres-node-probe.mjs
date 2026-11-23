@@ -23,6 +23,12 @@ export function embeddedPostgresProcessHasExited(instance) {
   return Boolean(process && (typeof process.exitCode === "number" || typeof process.signalCode === "string"));
 }
 
+export function unhookEmbeddedPostgresExitEvents(exitHook) {
+  if (typeof exitHook?.hookedEvents !== "function" || typeof exitHook?.unhookEvent !== "function") return false;
+  for (const event of exitHook.hookedEvents()) exitHook.unhookEvent(event);
+  return true;
+}
+
 async function findAvailablePort() {
   const server = createServer();
   server.unref();
@@ -56,12 +62,14 @@ async function runProbe() {
   let tempRoot;
   let cleanupFailed = false;
   let startupFailed = false;
+  let embeddedPostgresExitHook;
 
   try {
     const [{ prepareEmbeddedPostgresNativeRuntime }] = await Promise.all([
       import(pathToFileURL(runtimeModulePath).href),
     ]);
     const embeddedPostgresEntry = dbRequire.resolve("embedded-postgres");
+    embeddedPostgresExitHook = createRequire(embeddedPostgresEntry)("async-exit-hook");
     const EmbeddedPostgres = (await import(pathToFileURL(embeddedPostgresEntry).href)).default;
     // Match the packaged QA harness, which creates its disposable profile in
     // os.tmpdir(); RUNNER_TEMP may be a different volume with different ACLs.
@@ -151,6 +159,17 @@ async function runProbe() {
       }
     } else if (probeRoot) {
       cleanupFailed = true;
+    }
+    // embedded-postgres' async-exit-hook forces process.exit(0) after beforeExit,
+    // which masks the probe's nonzero exitCode. Once this probe's owned child
+    // is confirmed stopped, its own cleanup is complete and the hook is no
+    // longer needed in this short-lived, single-cluster process.
+    if (!cleanupFailed && !instance?.process) {
+      try {
+        if (embeddedPostgresExitHook && !unhookEmbeddedPostgresExitEvents(embeddedPostgresExitHook)) cleanupFailed = true;
+      } catch {
+        cleanupFailed = true;
+      }
     }
   }
 
