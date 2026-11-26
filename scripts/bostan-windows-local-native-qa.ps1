@@ -6,11 +6,16 @@ $ollamaRoot = Join-Path $env:RUNNER_TEMP 'bostan-native-ollama'
 $zipPath = Join-Path $env:RUNNER_TEMP 'ollama-windows-amd64.zip'
 $modelRoot = Join-Path $ollamaRoot 'models'
 $server = $null
+$modelPull = $null
+$stage = 'ollama_download'
 
 try {
   New-Item -ItemType Directory -Path $ollamaRoot -Force | Out-Null
+  Write-Output 'BOSTAN_NATIVE_WINDOWS_PHASE ollama_download_begin'
   $zipUrl = "https://github.com/ollama/ollama/releases/download/v$ollamaVersion/ollama-windows-amd64.zip"
   Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath
+  Write-Output 'BOSTAN_NATIVE_WINDOWS_PHASE ollama_download_complete'
+  $stage = 'ollama_archive_verify'
   if ((Get-FileHash -Algorithm SHA256 -LiteralPath $zipPath).Hash.ToLowerInvariant() -ne $ollamaSha256) {
     throw 'Pinned Ollama Windows archive digest mismatch'
   }
@@ -22,9 +27,11 @@ try {
   if ($LASTEXITCODE -ne 0 -or $versionOutput -notmatch [regex]::Escape($ollamaVersion)) {
     throw 'Unexpected Ollama runtime version'
   }
+  Write-Output 'BOSTAN_NATIVE_WINDOWS_PHASE ollama_archive_verified'
 
   $env:OLLAMA_HOST = 'http://127.0.0.1:11434'
   $env:OLLAMA_MODELS = $modelRoot
+  $stage = 'ollama_server_start'
   $server = Start-Process -FilePath $ollamaExe -ArgumentList 'serve' -PassThru -WindowStyle Hidden `
     -RedirectStandardOutput (Join-Path $ollamaRoot 'serve.stdout.log') `
     -RedirectStandardError (Join-Path $ollamaRoot 'serve.stderr.log')
@@ -38,19 +45,52 @@ try {
     } catch { Start-Sleep -Seconds 1 }
   }
   if (-not $ready) { throw 'Local Ollama loopback health did not become ready' }
+  Write-Output 'BOSTAN_NATIVE_WINDOWS_PHASE ollama_server_ready'
 
-  & $ollamaExe pull qwen2.5-coder:1.5b
-  if ($LASTEXITCODE -ne 0) { throw 'Pinned local Qwen model pull failed' }
+  $stage = 'qwen_model_pull'
+  $modelPullStdout = Join-Path $ollamaRoot 'model-pull.stdout.log'
+  $modelPullStderr = Join-Path $ollamaRoot 'model-pull.stderr.log'
+  Write-Output 'BOSTAN_NATIVE_WINDOWS_PHASE qwen_model_pull_begin'
+  $modelPull = Start-Process -FilePath $ollamaExe -ArgumentList @('pull', 'qwen2.5-coder:1.5b') `
+    -PassThru -WindowStyle Hidden -RedirectStandardOutput $modelPullStdout -RedirectStandardError $modelPullStderr
+  $modelPullStartedAt = Get-Date
+  $lastHeartbeat = 0
+  $lastOutputLength = 0L
+  do {
+    $modelPull.Refresh()
+    if ($modelPull.HasExited) { break }
+    Start-Sleep -Seconds 5
+    $outputLength = 0L
+    foreach ($outputPath in @($modelPullStdout, $modelPullStderr)) {
+      if (Test-Path -LiteralPath $outputPath) { $outputLength += (Get-Item -LiteralPath $outputPath).Length }
+    }
+    if ($outputLength -gt 1048576) { throw 'Local Qwen model pull diagnostics exceeded the bounded output cap' }
+    $elapsedSeconds = [int]((Get-Date) - $modelPullStartedAt).TotalSeconds
+    if ($elapsedSeconds -ge ($lastHeartbeat + 60)) {
+      $lastHeartbeat = $elapsedSeconds - ($elapsedSeconds % 60)
+      $outputProgress = if ($outputLength -gt $lastOutputLength) { 'advanced' } else { 'stalled' }
+      $lastOutputLength = $outputLength
+      Write-Output "BOSTAN_NATIVE_MODEL_PULL_WAIT elapsedSeconds=$lastHeartbeat outputProgress=$outputProgress"
+    }
+  } while (-not $modelPull.HasExited)
+  $modelPull.WaitForExit()
+  if ($modelPull.ExitCode -ne 0) { throw 'Pinned local Qwen model pull failed' }
+  Write-Output 'BOSTAN_NATIVE_WINDOWS_PHASE qwen_model_pull_complete'
+  $stage = 'qwen_model_manifest_verify'
   $modelInfo = Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/tags' -TimeoutSec 10
   $model = @($modelInfo.models | Where-Object { $_.name -eq 'qwen2.5-coder:1.5b' })
   if ($model.Count -ne 1 -or $model[0].digest -ne $modelManifestSha256) {
     throw 'Local Qwen model manifest digest mismatch'
   }
+  Write-Output 'BOSTAN_NATIVE_WINDOWS_PHASE qwen_model_manifest_verified'
+  $stage = 'qwen_model_license_verify'
   $showBody = @{ model = 'qwen2.5-coder:1.5b' } | ConvertTo-Json -Compress
   $show = Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:11434/api/show' `
     -ContentType 'application/json' -Body $showBody -TimeoutSec 20
   if ($show.license -notmatch 'Apache License') { throw 'Pinned local Qwen model license metadata is not Apache' }
+  Write-Output 'BOSTAN_NATIVE_WINDOWS_PHASE qwen_model_license_verified'
 
+  $stage = 'host_resource_verify'
   $resources = node -e "const os=require('node:os'),fs=require('node:fs');const d=fs.statfsSync(os.tmpdir());console.log(JSON.stringify({totalMemoryGiB:+(os.totalmem()/2**30).toFixed(2),freeMemoryGiB:+(os.freemem()/2**30).toFixed(2),tempFreeGiB:+(d.bavail*d.bsize/2**30).toFixed(2)}))"
   if ($LASTEXITCODE -ne 0) { throw 'Hosted Windows resource inspection failed' }
   Write-Output "BOSTAN_NATIVE_WINDOWS_RESOURCES_AFTER_MODEL_SETUP $resources"
@@ -60,9 +100,17 @@ try {
   $env:BOSTAN_E2E_MODEL_MODE = 'local-ollama'
   $env:BOSTAN_E2E_FREE_MODEL = 'ollama/qwen2.5-coder:1.5b'
   $env:BOSTAN_E2E_ENABLE_LOCAL_AGENT_QA = '1'
+  $stage = 'installed_app_qualification'
   node desktop/scripts/qualify-windows-installer.mjs
   if ($LASTEXITCODE -ne 0) { throw 'Packaged Windows native local-model acceptance failed' }
+} catch {
+  Write-Output "BOSTAN_NATIVE_WINDOWS_FAILURE $stage"
+  throw
 } finally {
+  if ($modelPull -and -not $modelPull.HasExited) {
+    & taskkill.exe /PID $modelPull.Id /T /F | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Owned model-pull process tree cleanup was not confirmed' }
+  }
   if ($server -and -not $server.HasExited) {
     & taskkill.exe /PID $server.Id /T /F | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Owned Ollama process tree cleanup was not confirmed' }
