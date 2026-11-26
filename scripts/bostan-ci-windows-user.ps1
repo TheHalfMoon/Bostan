@@ -88,6 +88,9 @@ function Get-AllowedInstallerReceipt([string]$line) {
   if ($line -match '^BOSTAN_PACKAGED_FIRST_AGENT_FAIL [a-z0-9_]{1,100}$') { return $line }
   if ($line -match '^BOSTAN_NATIVE_WINDOWS_PHASE (?:ollama_download_begin|ollama_download_complete|ollama_archive_verified|ollama_server_ready|qwen_model_pull_begin|qwen_model_pull_complete|qwen_model_manifest_verified|qwen_model_license_verified)$') { return $line }
   if ($line -match '^BOSTAN_NATIVE_WINDOWS_ARCHIVE_VERIFY sizeBytes=[0-9]{1,12} sha256=[a-f0-9]{64} sizeMatches=(?:true|false) digestMatches=(?:true|false)$') { return $line }
+  if ($line -match '^BOSTAN_NATIVE_WINDOWS_ARCHIVE_SIZE sizeBytes=[0-9]{1,12} sizeMatches=(?:true|false)$') { return $line }
+  if ($line -match '^BOSTAN_NATIVE_WINDOWS_ARCHIVE_STAT_FAILURE (?:access_denied|path_missing|io_error|invalid_argument|other)$') { return $line }
+  if ($line -match '^BOSTAN_NATIVE_WINDOWS_ARCHIVE_HASH_FAILURE (?:access_denied|path_missing|io_error|invalid_argument|other)$') { return $line }
   if ($line -match '^BOSTAN_NATIVE_WINDOWS_FAILURE (?:ollama_download|ollama_archive_verify|ollama_server_start|qwen_model_pull|qwen_model_manifest_verify|qwen_model_license_verify|host_resource_verify|installed_app_qualification)$') { return $line }
   if ($line -match '^BOSTAN_NATIVE_MODEL_PULL_WAIT elapsedSeconds=[0-9]{1,4} outputProgress=(?:advanced|stalled)$') { return $line }
   $nativeSuccessPrefix = 'BOSTAN_PACKAGED_DESKTOP_FIRST_FREE_AGENT_TASK_PASS '

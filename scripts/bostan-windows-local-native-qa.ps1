@@ -17,12 +17,42 @@ try {
   Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath
   Write-Output 'BOSTAN_NATIVE_WINDOWS_PHASE ollama_download_complete'
   $stage = 'ollama_archive_verify'
-  $archiveBytes = (Get-Item -LiteralPath $zipPath).Length
-  $archiveSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $zipPath).Hash.ToLowerInvariant()
+  try {
+    $archiveBytes = (Get-Item -LiteralPath $zipPath).Length
+  } catch {
+    $statFailure = switch ($_.Exception.GetType().Name) {
+      'UnauthorizedAccessException' { 'access_denied' }
+      'FileNotFoundException' { 'path_missing' }
+      'DirectoryNotFoundException' { 'path_missing' }
+      'IOException' { 'io_error' }
+      'ArgumentException' { 'invalid_argument' }
+      default { 'other' }
+    }
+    Write-Output "BOSTAN_NATIVE_WINDOWS_ARCHIVE_STAT_FAILURE $statFailure"
+    throw 'Pinned Ollama Windows archive size could not be read'
+  }
   $archiveSizeMatches = $archiveBytes -eq $ollamaArchiveBytes
+  Write-Output "BOSTAN_NATIVE_WINDOWS_ARCHIVE_SIZE sizeBytes=$archiveBytes sizeMatches=$($archiveSizeMatches.ToString().ToLowerInvariant())"
+  if (-not $archiveSizeMatches) {
+    throw 'Pinned Ollama Windows archive size mismatch'
+  }
+  try {
+    $archiveSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $zipPath).Hash.ToLowerInvariant()
+  } catch {
+    $hashFailure = switch ($_.Exception.GetType().Name) {
+      'UnauthorizedAccessException' { 'access_denied' }
+      'FileNotFoundException' { 'path_missing' }
+      'DirectoryNotFoundException' { 'path_missing' }
+      'IOException' { 'io_error' }
+      'ArgumentException' { 'invalid_argument' }
+      default { 'other' }
+    }
+    Write-Output "BOSTAN_NATIVE_WINDOWS_ARCHIVE_HASH_FAILURE $hashFailure"
+    throw 'Pinned Ollama Windows archive hash could not be verified'
+  }
   $archiveDigestMatches = $archiveSha256 -eq $ollamaSha256
-  Write-Output "BOSTAN_NATIVE_WINDOWS_ARCHIVE_VERIFY sizeBytes=$archiveBytes sha256=$archiveSha256 sizeMatches=$($archiveSizeMatches.ToString().ToLowerInvariant()) digestMatches=$($archiveDigestMatches.ToString().ToLowerInvariant())"
-  if (-not $archiveSizeMatches -or -not $archiveDigestMatches) {
+  Write-Output "BOSTAN_NATIVE_WINDOWS_ARCHIVE_VERIFY sizeBytes=$archiveBytes sha256=$archiveSha256 sizeMatches=true digestMatches=$($archiveDigestMatches.ToString().ToLowerInvariant())"
+  if (-not $archiveDigestMatches) {
     throw 'Pinned Ollama Windows archive digest mismatch'
   }
   Expand-Archive -LiteralPath $zipPath -DestinationPath $ollamaRoot -Force

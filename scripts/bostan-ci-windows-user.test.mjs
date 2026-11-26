@@ -38,14 +38,23 @@ test("native model setup exposes only bounded fixed phase, failure and progress 
   const failureMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_WINDOWS_FAILURE[^']*)'\) \{ return \$line \}$/m);
   const progressMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_MODEL_PULL_WAIT[^']*)'\) \{ return \$line \}$/m);
   const archiveMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_WINDOWS_ARCHIVE_VERIFY[^']*)'\) \{ return \$line \}$/m);
+  const archiveSizeMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_WINDOWS_ARCHIVE_SIZE[^']*)'\) \{ return \$line \}$/m);
+  const archiveStatFailureMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_WINDOWS_ARCHIVE_STAT_FAILURE[^']*)'\) \{ return \$line \}$/m);
+  const archiveHashFailureMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_WINDOWS_ARCHIVE_HASH_FAILURE[^']*)'\) \{ return \$line \}$/m);
   assert.ok(phaseMatch, "native setup phase allowlist is present");
   assert.ok(failureMatch, "native setup failure allowlist is present");
   assert.ok(progressMatch, "native model pull progress allowlist is present");
   assert.ok(archiveMatch, "native archive verification receipt allowlist is present");
+  assert.ok(archiveSizeMatch, "native archive size receipt allowlist is present");
+  assert.ok(archiveStatFailureMatch, "native archive stat failure allowlist is present");
+  assert.ok(archiveHashFailureMatch, "native archive hash failure receipt allowlist is present");
   const phasePattern = new RegExp(phaseMatch[1]);
   const failurePattern = new RegExp(failureMatch[1]);
   const progressPattern = new RegExp(progressMatch[1]);
   const archivePattern = new RegExp(archiveMatch[1]);
+  const archiveSizePattern = new RegExp(archiveSizeMatch[1]);
+  const archiveStatFailurePattern = new RegExp(archiveStatFailureMatch[1]);
+  const archiveHashFailurePattern = new RegExp(archiveHashFailureMatch[1]);
   for (const phase of [
     "ollama_download_begin", "ollama_download_complete", "ollama_archive_verified", "ollama_server_ready",
     "qwen_model_pull_begin", "qwen_model_pull_complete", "qwen_model_manifest_verified", "qwen_model_license_verified",
@@ -62,6 +71,16 @@ test("native model setup exposes only bounded fixed phase, failure and progress 
   assert.equal(archivePattern.test(`BOSTAN_NATIVE_WINDOWS_ARCHIVE_VERIFY sizeBytes=1618522644 sha256=${"a".repeat(64)} sizeMatches=true digestMatches=false`), true);
   assert.equal(archivePattern.test(`BOSTAN_NATIVE_WINDOWS_ARCHIVE_VERIFY sizeBytes=1618522644 sha256=${"A".repeat(64)} sizeMatches=true digestMatches=false`), false);
   assert.equal(archivePattern.test(`BOSTAN_NATIVE_WINDOWS_ARCHIVE_VERIFY sizeBytes=1618522644 sha256=${"a".repeat(64)} sizeMatches=true digestMatches=false C:\\secret`), false);
+  assert.equal(archiveSizePattern.test("BOSTAN_NATIVE_WINDOWS_ARCHIVE_SIZE sizeBytes=1618522644 sizeMatches=true"), true);
+  assert.equal(archiveSizePattern.test("BOSTAN_NATIVE_WINDOWS_ARCHIVE_SIZE sizeBytes=private sizeMatches=true"), false);
+  for (const failure of ["access_denied", "path_missing", "io_error", "invalid_argument", "other"]) {
+    assert.equal(archiveStatFailurePattern.test(`BOSTAN_NATIVE_WINDOWS_ARCHIVE_STAT_FAILURE ${failure}`), true, failure);
+  }
+  assert.equal(archiveStatFailurePattern.test("BOSTAN_NATIVE_WINDOWS_ARCHIVE_STAT_FAILURE C:\\secret"), false);
+  for (const failure of ["access_denied", "path_missing", "io_error", "invalid_argument", "other"]) {
+    assert.equal(archiveHashFailurePattern.test(`BOSTAN_NATIVE_WINDOWS_ARCHIVE_HASH_FAILURE ${failure}`), true, failure);
+  }
+  assert.equal(archiveHashFailurePattern.test("BOSTAN_NATIVE_WINDOWS_ARCHIVE_HASH_FAILURE C:\\secret"), false);
   for (const phase of [
     "ollama_download_begin", "ollama_download_complete", "ollama_archive_verified", "ollama_server_ready",
     "qwen_model_pull_begin", "qwen_model_pull_complete", "qwen_model_manifest_verified", "qwen_model_license_verified",
