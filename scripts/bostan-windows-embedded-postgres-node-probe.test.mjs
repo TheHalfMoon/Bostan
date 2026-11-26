@@ -6,7 +6,7 @@ import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
-import { embeddedPostgresProcessHasExited, isOwnedProbeDirectory, shouldRemoveProbeDirectory, unhookEmbeddedPostgresExitEvents } from "./bostan-windows-embedded-postgres-node-probe.mjs";
+import { embeddedPostgresProcessHasExited, isOwnedProbeDirectory, sanitizePostgresProbeDiagnostic, shouldRemoveProbeDirectory, unhookEmbeddedPostgresExitEvents } from "./bostan-windows-embedded-postgres-node-probe.mjs";
 
 test("PostgreSQL node probe cleanup is limited to its dedicated temp child", () => {
   const tempRoot = path.resolve("C:/runner/temp");
@@ -41,8 +41,17 @@ test("the probe reports bounded PostgreSQL child process evidence without raw ou
   assert.match(probe, /POSTGRES_CHILD_SPAWN_ERROR code=\(\[A-Z0-9_\]\{1,32\}\)/);
   assert.match(probe, /stdoutBytes: Number\(closed\[3\]\), stderrBytes: Number\(closed\[4\]\)/);
   assert.match(probe, /summarizeEmbeddedPostgresRuntimeDependency\(recentLogs\)/);
-  assert.match(probe, /JSON\.stringify\(\{ failureIssue, diagnostic, runtimeDependency, processEvidence \}\)/);
+  assert.match(probe, /JSON\.stringify\(\{ failureIssue, diagnostic, runtimeDependency, processEvidence, sanitizedPostgresLines \}\)/);
   assert.doesNotMatch(probe, /console\.log\([^\n]*(?:error\.message|process\.stderr)/);
+});
+
+test("PostgreSQL probe stderr excerpts redact paths and credential-like values", () => {
+  const sanitized = sanitizePostgresProbeDiagnostic('FATAL: access to "C:\\Users\\runneradmin\\private\\db" denied; password=secret https://user:secret@example.test');
+  assert.match(sanitized, /<path>\/db/);
+  assert.match(sanitized, /password=<redacted>/);
+  assert.match(sanitized, /<url>/);
+  assert.doesNotMatch(sanitized, /runneradmin|private|secret|example\.test/);
+  assert.equal(sanitizePostgresProbeDiagnostic(`FATAL ${"x".repeat(400)}`).length, 180);
 });
 
 test("the probe preserves its failure exit code after embedded-postgres cleanup", () => {

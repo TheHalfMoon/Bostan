@@ -33,6 +33,22 @@ export function unhookEmbeddedPostgresExitEvents(exitHook) {
   return true;
 }
 
+export function sanitizePostgresProbeDiagnostic(value) {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(/\u001b\[[0-9;]*m/g, "")
+    .replace(/\b(?:https?|postgres(?:ql)?):\/\/[^\s"'<>]+/gi, "<url>")
+    .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "<email>")
+    .replace(/\b(password|passwd|token|secret|authorization)(\s*[:=]\s*)[^\s,;]+/gi, "$1$2<redacted>")
+    .replace(/\b[A-Za-z]:\\[^\s"'<>]+/g, (match) => `<path>/${match.split(/[\\/]/).filter(Boolean).at(-1) ?? ""}`)
+    .replace(/\\\\[^\s"'<>]+/g, (match) => `<path>/${match.split(/[\\/]/).filter(Boolean).at(-1) ?? ""}`)
+    .replace(/\/[^\s"'<>]+/g, (match) => `<path>/${match.split("/").filter(Boolean).at(-1) ?? ""}`)
+    .replace(/[^\x20-\x7e]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 180);
+}
+
 async function findAvailablePort() {
   const server = createServer();
   server.unref();
@@ -129,7 +145,12 @@ async function runProbe() {
         return [];
       }).slice(-4);
       const runtimeDependency = summarizeEmbeddedPostgresRuntimeDependency(recentLogs);
-      console.log(`BOSTAN_NODE_POSTGRES_PROBE_DIAGNOSTIC ${JSON.stringify({ failureIssue, diagnostic, runtimeDependency, processEvidence })}`);
+      const sanitizedPostgresLines = recentLogs
+        .filter(line => !/^POSTGRES_CHILD_(?:SPAWN_ERROR|CLOSED)\b/.test(line))
+        .slice(-4)
+        .map(sanitizePostgresProbeDiagnostic)
+        .filter(Boolean);
+      console.log(`BOSTAN_NODE_POSTGRES_PROBE_DIAGNOSTIC ${JSON.stringify({ failureIssue, diagnostic, runtimeDependency, processEvidence, sanitizedPostgresLines })}`);
     } catch {
       failureIssue = "POSTGRES_START_UNCLASSIFIED";
     }
