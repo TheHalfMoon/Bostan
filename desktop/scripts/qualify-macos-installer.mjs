@@ -80,7 +80,8 @@ try {
   const source = path.join(mount, "Bostan.app");
   assert.ok(fs.lstatSync(source).isDirectory() && !fs.lstatSync(source).isSymbolicLink());
   phase("install_begin");
-  execFileSync("/usr/bin/ditto", [source, installedApp], { stdio: "pipe", timeout: 120000 });
+  const { copyMacInstalledApp } = await import("./macos-installed-copy.mjs");
+  await copyMacInstalledApp(source, installedApp, { onProgress: receipt => console.log(receipt) });
   phase("install_complete");
   installedIdentity = fs.lstatSync(installedApp);
   execFileSync("/usr/bin/hdiutil", ["detach", mount], { stdio: "pipe", timeout: 60000 });
