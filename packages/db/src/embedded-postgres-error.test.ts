@@ -45,9 +45,9 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
         { severity: "DETAIL", kind: "SYSTEM_CALL" },
       ],
       postgresLogLines: [
-        { severity: "FATAL", kind: "SHARED_MEMORY" },
-        { severity: "DETAIL", kind: "OTHER" },
-        { severity: "DETAIL", kind: "OTHER" },
+        { severity: "FATAL", kind: "SHARED_MEMORY", dataDirectoryCause: null },
+        { severity: "DETAIL", kind: "OTHER", dataDirectoryCause: null },
+        { severity: "DETAIL", kind: "OTHER", dataDirectoryCause: null },
       ],
     });
     expect(JSON.stringify(summary)).not.toContain("Users");
@@ -76,8 +76,8 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
         { severity: "DETAIL", kind: "SYSTEM_CALL" },
       ],
       postgresLogLines: [
-        { severity: "FATAL", kind: "SHARED_MEMORY" },
-        { severity: "DETAIL", kind: "OTHER" },
+        { severity: "FATAL", kind: "SHARED_MEMORY", dataDirectoryCause: null },
+        { severity: "DETAIL", kind: "OTHER", dataDirectoryCause: null },
       ],
     });
   });
@@ -91,7 +91,7 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
       sharedMemorySystemCall: null,
       sharedMemoryOsErrorCode: null,
       sharedMemoryLogLines: [{ severity: "LOG", kind: "DYNAMIC_SHARED_MEMORY" }],
-      postgresLogLines: [{ severity: "LOG", kind: "SHARED_MEMORY" }],
+      postgresLogLines: [{ severity: "LOG", kind: "SHARED_MEMORY", dataDirectoryCause: null }],
     });
   });
 
@@ -104,7 +104,7 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
       sharedMemorySystemCall: null,
       sharedMemoryOsErrorCode: null,
       sharedMemoryLogLines: [{ severity: "FATAL", kind: "ALLOCATION" }],
-      postgresLogLines: [{ severity: "FATAL", kind: "SHARED_MEMORY" }],
+      postgresLogLines: [{ severity: "FATAL", kind: "SHARED_MEMORY", dataDirectoryCause: null }],
     });
   });
 
@@ -112,9 +112,22 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
     const summary = summarizeEmbeddedPostgresStartDiagnostic([
       "2026-11-23 00:00:00 UTC [42] FATAL: private failure at C:\\Users\\secret\\db",
     ]);
-    expect(summary.postgresLogLines).toEqual([{ severity: "FATAL", kind: "ERROR_OTHER" }]);
+    expect(summary.postgresLogLines).toEqual([{ severity: "FATAL", kind: "ERROR_OTHER", dataDirectoryCause: null }]);
     expect(JSON.stringify(summary)).not.toContain("Users");
     expect(JSON.stringify(summary)).not.toContain("private");
+  });
+
+  it("reports fixed data-directory causes without exposing the directory path", () => {
+    const summary = summarizeEmbeddedPostgresStartDiagnostic([
+      'FATAL: data directory "C:\\Users\\secret\\data" has invalid permissions',
+    ]);
+    expect(summary.postgresLogLines).toEqual([{
+      severity: "FATAL",
+      kind: "DATA_DIRECTORY",
+      dataDirectoryCause: "INVALID_PERMISSIONS",
+    }]);
+    expect(JSON.stringify(summary)).not.toContain("Users");
+    expect(JSON.stringify(summary)).not.toContain("secret");
   });
 });
 

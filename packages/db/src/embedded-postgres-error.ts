@@ -29,6 +29,7 @@ export interface EmbeddedPostgresStartDiagnostic {
   postgresLogLines: Array<{
     severity: "PANIC" | "FATAL" | "ERROR" | "WARNING" | "LOG" | "DETAIL" | "HINT" | "OTHER";
     kind: "ADDRESS_BIND" | "SHARED_MEMORY" | "PERMISSION" | "EXTENSION" | "RUNTIME_DEPENDENCY" | "CONFIGURATION" | "DATA_DIRECTORY" | "LOCALE" | "RECOVERY" | "DISK" | "ERROR_OTHER" | "OTHER";
+    dataDirectoryCause: "INVALID_PERMISSIONS" | "MISSING" | "ACCESS_DENIED" | "LOCK_FILE" | "CONFIGURATION" | null;
   }>;
 }
 
@@ -61,7 +62,18 @@ function summarizePostgresLogLines(recentLogs: string[]): EmbeddedPostgresStartD
                         : ["PANIC", "FATAL", "ERROR"].includes(severity)
                           ? "ERROR_OTHER"
                           : "OTHER";
-    summaries.push({ severity, kind });
+    const dataDirectoryCause: EmbeddedPostgresStartDiagnostic["postgresLogLines"][number]["dataDirectoryCause"] = /data directory.{0,128}(?:has )?invalid permissions|invalid permissions.{0,128}data directory/i.test(line)
+      ? "INVALID_PERMISSIONS"
+      : /data directory.{0,128}(?:does not exist|no such file|not found)|(?:does not exist|no such file|not found).{0,128}data directory/i.test(line)
+        ? "MISSING"
+        : /permission denied|access is denied|could not access the data directory/i.test(line)
+          ? "ACCESS_DENIED"
+          : /postmaster\.pid|lock file/i.test(line)
+            ? "LOCK_FILE"
+            : /configuration file|postgresql\.conf/i.test(line)
+              ? "CONFIGURATION"
+              : null;
+    summaries.push({ severity, kind, dataDirectoryCause });
     if (summaries.length > 8) summaries.shift();
   }
   return summaries;

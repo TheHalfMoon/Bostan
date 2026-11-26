@@ -121,7 +121,14 @@ async function runProbe() {
       const recentLogs = logBuffer?.getRecentLogs() ?? [];
       failureIssue = classifyEmbeddedPostgresStartIssue(recentLogs);
       const diagnostic = summarizeEmbeddedPostgresStartDiagnostic(recentLogs);
-      console.log(`BOSTAN_NODE_POSTGRES_PROBE_DIAGNOSTIC ${JSON.stringify({ failureIssue, diagnostic })}`);
+      const processEvidence = recentLogs.flatMap((line) => {
+        const spawn = /^POSTGRES_CHILD_SPAWN_ERROR code=([A-Z0-9_]{1,32})$/.exec(line);
+        if (spawn) return [{ event: "spawn_error", code: spawn[1] }];
+        const closed = /^POSTGRES_CHILD_CLOSED exitCode=(null|0|[1-9]\d{0,2}) signal=(none|SIG[A-Z]{1,12}) stdoutBytes=(0|[1-9]\d{0,8}) stderrBytes=(0|[1-9]\d{0,8})$/.exec(line);
+        if (closed) return [{ event: "closed", exitCode: closed[1], signal: closed[2], stdoutBytes: Number(closed[3]), stderrBytes: Number(closed[4]) }];
+        return [];
+      }).slice(-4);
+      console.log(`BOSTAN_NODE_POSTGRES_PROBE_DIAGNOSTIC ${JSON.stringify({ failureIssue, diagnostic, processEvidence })}`);
     } catch {
       failureIssue = "POSTGRES_START_UNCLASSIFIED";
     }

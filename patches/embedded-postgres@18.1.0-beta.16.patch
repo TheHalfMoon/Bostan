@@ -48,14 +48,17 @@ diff --git a/dist/index.js b/dist/index.js
                      }
                  });
              });
-@@ -177,7 +186,15 @@
+@@ -177,7 +186,19 @@
                      '-p',
                      this.options.port.toString(),
                      ...this.options.postgresFlags,
 -                ], Object.assign(Object.assign({}, permissionIds), { env: { LC_MESSAGES: LC_MESSAGES_LOCALE } }));
 +                ], Object.assign(Object.assign({}, permissionIds), { env: Object.assign(Object.assign({}, globalThis.process.env), { LC_MESSAGES: LC_MESSAGES_LOCALE }) }));
++                let stdoutBytes = 0;
++                let stderrBytes = 0;
 +                // PostgreSQL may write startup diagnostics to stdout on Windows.
 +                this.process.stdout?.on('data', (chunk) => {
++                    stdoutBytes += chunk.length;
 +                    const message = chunk.toString('utf-8');
 +                    this.options.onLog(message);
 +                    if (message.includes('database system is ready to accept connections')) {
@@ -64,8 +67,9 @@ diff --git a/dist/index.js b/dist/index.js
 +                });
                  // Connect to stderr, as that is where the messages get sent
                  (_a = this.process.stderr) === null || _a === void 0 ? void 0 : _a.on('data', (chunk) => {
++                    stderrBytes += chunk.length;
                      // Parse the data as a string and log it
-@@ -193,11 +202,18 @@
+@@ -193,11 +206,21 @@
                      const message = chunk.toString('utf-8');
                      this.options.onLog(message);
                      // GUARD: Check for the right message to determine server start
@@ -81,12 +85,15 @@ diff --git a/dist/index.js b/dist/index.js
 +                    const code = typeof error?.code === 'string' && /^[A-Z0-9_]{1,32}$/.test(error.code)
 +                        ? error.code
 +                        : 'UNKNOWN';
++                    this.options.onError(`POSTGRES_CHILD_SPAWN_ERROR code=${code}`);
 +                    reject(new Error(`Postgres server failed to spawn (code ${code}).`));
 +                });
 +                this.process.on('close', (code, signal) => {
++                    const safeSignal = typeof signal === 'string' && /^SIG[A-Z]{1,12}$/.test(signal) ? signal : 'none';
++                    this.options.onError(`POSTGRES_CHILD_CLOSED exitCode=${code === null ? 'null' : code} signal=${safeSignal} stdoutBytes=${stdoutBytes} stderrBytes=${stderrBytes}`);
 +                    reject(new Error(`Postgres server exited before readiness (exitCode=${code === null ? 'null' : code}, signal=${signal ?? 'none'}).`));
                  });
-@@ -204,25 +220,50 @@
+@@ -204,25 +227,50 @@
      stop() {
          return __awaiter(this, void 0, void 0, function* () {
              // GUARD: If no database is running, immdiately return the function.

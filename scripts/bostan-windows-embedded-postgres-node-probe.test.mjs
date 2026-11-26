@@ -33,6 +33,17 @@ test("the PostgreSQL start diagnostic excludes successful initdb output", async 
   assert.match(probe, /phase = "start";\s*logBuffer\.clear\(\);\s*await instance\.start\(\)/);
 });
 
+test("the probe reports bounded PostgreSQL child process evidence without raw output", async () => {
+  const probe = await readFile(new URL("./bostan-windows-embedded-postgres-node-probe.mjs", import.meta.url), "utf8");
+  const patch = await readFile(new URL("../patches/embedded-postgres@18.1.0-beta.16.patch", import.meta.url), "utf8");
+  assert.match(patch, /POSTGRES_CHILD_SPAWN_ERROR code=\$\{code\}/);
+  assert.match(patch, /POSTGRES_CHILD_CLOSED exitCode=/);
+  assert.match(probe, /POSTGRES_CHILD_SPAWN_ERROR code=\(\[A-Z0-9_\]\{1,32\}\)/);
+  assert.match(probe, /stdoutBytes: Number\(closed\[3\]\), stderrBytes: Number\(closed\[4\]\)/);
+  assert.match(probe, /JSON\.stringify\(\{ failureIssue, diagnostic, processEvidence \}\)/);
+  assert.doesNotMatch(probe, /console\.log\([^\n]*(?:error\.message|process\.stderr)/);
+});
+
 test("the probe preserves its failure exit code after embedded-postgres cleanup", () => {
   const dbRequire = createRequire(path.resolve("packages/db/package.json"));
   const embeddedPostgresEntry = dbRequire.resolve("embedded-postgres");
