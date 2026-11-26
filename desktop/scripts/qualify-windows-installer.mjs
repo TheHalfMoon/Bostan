@@ -156,6 +156,25 @@ try {
   }
   console.log("BOSTAN_WINDOWS_INSTALLER_PHASE signature_check_complete");
 
+  if (process.env.BOSTAN_E2E_ENABLE_LOCAL_AGENT_QA === "1") {
+    assert.equal(process.env.BOSTAN_E2E_MODEL_MODE, "local-ollama", "Installed native QA must use the authorized local model");
+    assert.equal(process.env.BOSTAN_E2E_ALLOW_LOCAL_MODEL, "1", "Installed native QA requires explicit local model opt-in");
+    assert.notEqual(process.env.BOSTAN_E2E_ALLOW_FREE_REMOTE_MODEL, "1", "Installed native QA cannot enable remote inference");
+    const nativeOpenCode = path.join(install, "resources", "runtime", "node_modules", ".pnpm",
+      "opencode-windows-x64-baseline@1.18.34", "node_modules", "opencode-windows-x64-baseline", "bin", "opencode.exe");
+    assert.equal(fs.lstatSync(nativeOpenCode, { throwIfNoEntry: false })?.isFile(), true,
+      "Installed application is missing its pinned native OpenCode executable");
+    console.log("BOSTAN_WINDOWS_INSTALLER_PHASE native_agent_begin");
+    const nativeQa = spawnSync(process.execPath, [path.join(repo, "scripts", "bostan-windows-packaged-free-first-agent-qa.mjs")], {
+      cwd: repo,
+      env: { ...process.env, BOSTAN_E2E_APP_EXE: executable, BOSTAN_E2E_OPENCODE_EXE: nativeOpenCode },
+      windowsHide: true,
+      stdio: "inherit",
+    });
+    if (nativeQa.error || nativeQa.status !== 0) throw new Error("installed_native_agent_qualification_failed");
+    console.log("BOSTAN_WINDOWS_INSTALLER_PHASE native_agent_complete");
+  }
+
   async function launch() {
     console.log("BOSTAN_WINDOWS_INSTALLER_PHASE electron_launch_begin");
     application = await _electron.launch({ executablePath: executable, env, timeout: 180000 });

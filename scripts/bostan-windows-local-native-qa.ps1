@@ -59,9 +59,8 @@ try {
   $env:BOSTAN_E2E_ALLOW_LOCAL_MODEL = '1'
   $env:BOSTAN_E2E_MODEL_MODE = 'local-ollama'
   $env:BOSTAN_E2E_FREE_MODEL = 'ollama/qwen2.5-coder:1.5b'
-  $env:BOSTAN_E2E_APP_EXE = (Resolve-Path 'desktop/dist/win-unpacked/Bostan.exe').Path
-  $env:BOSTAN_E2E_OPENCODE_EXE = (Resolve-Path 'desktop/dist/win-unpacked/resources/runtime/node_modules/.pnpm/opencode-windows-x64-baseline@1.18.34/node_modules/opencode-windows-x64-baseline/bin/opencode.exe').Path
-  node scripts/bostan-windows-packaged-free-first-agent-qa.mjs
+  $env:BOSTAN_E2E_ENABLE_LOCAL_AGENT_QA = '1'
+  node desktop/scripts/qualify-windows-installer.mjs
   if ($LASTEXITCODE -ne 0) { throw 'Packaged Windows native local-model acceptance failed' }
 } finally {
   if ($server -and -not $server.HasExited) {

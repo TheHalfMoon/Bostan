@@ -89,6 +89,7 @@ test("Windows native workflow probes PostgreSQL under a standard user before pac
   assert.match(wrapper, /ValidateSet\('Server','Installer','PostgresProbe','Native'\)/);
   assert.match(wrapper, /if \(\$Mode -in @\('Installer','PostgresProbe','Native'\)\)/);
   assert.match(wrapper, /BOSTAN_NODE_POSTGRES_PROBE_FAIL/);
+  assert.match(wrapper, /native_agent_begin\|native_agent_complete/);
   assert.match(wrapper, /\$record\.costUsd -eq 0/);
   assert.match(wrapper, /1048576 - \$script:BostanInstallerOutputOffset/);
   assert.match(worker, /ValidateSet\('Server','Installer','PostgresProbe','Native'\)/);

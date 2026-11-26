@@ -27,6 +27,7 @@ if ($Mode -eq 'Server') {
 } elseif ($Mode -eq 'Native') {
   & $NodeBinary (Join-Path $repo 'scripts\bostan-windows-embedded-postgres-node-probe.mjs') 2>&1
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+  $env:BOSTAN_DESKTOP_INSTALLER_QA = '1'
   & (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe') -NoProfile -NonInteractive -File (Join-Path $repo 'scripts\bostan-windows-local-native-qa.ps1') 2>&1
 } else {
   $env:BOSTAN_DESKTOP_INSTALLER_QA = '1'

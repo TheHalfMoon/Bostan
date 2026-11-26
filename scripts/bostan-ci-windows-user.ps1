@@ -23,7 +23,7 @@ $qaScratch = Join-Path $env:RUNNER_TEMP ('bostan-standard-user-' + $nonce)
 New-Item -ItemType Directory -Path $qaScratch | Out-Null
 $exitCode = 1
 function Get-AllowedInstallerReceipt([string]$line) {
-  if ($line -match '^BOSTAN_WINDOWS_INSTALLER_PHASE (?:pre_init|multiuser_ready|extraction_direct_complete|install_begin|install_failed|install_complete|receipt_check_begin|receipt_check_complete|registration_check_begin|registration_check_complete|signature_check_begin|signature_check_complete|electron_launch_begin|electron_connected|data_path_verified|first_window|backend_page_ready|forced_stop_failure)$') { return $line }
+  if ($line -match '^BOSTAN_WINDOWS_INSTALLER_PHASE (?:pre_init|multiuser_ready|extraction_direct_complete|install_begin|install_failed|install_complete|receipt_check_begin|receipt_check_complete|registration_check_begin|registration_check_complete|signature_check_begin|signature_check_complete|native_agent_begin|native_agent_complete|electron_launch_begin|electron_connected|data_path_verified|first_window|backend_page_ready|forced_stop_failure)$') { return $line }
   if ($line -match '^BOSTAN_WINDOWS_INSTALLER_TIMING \{"elapsedMs":[0-9]+,"budgetMs":300000\}$') { return $line }
   if ($line -match '^BOSTAN_WINDOWS_INSTALLER_FAILURE (?:qualification_failed|signature_check_failed)$') { return $line }
   $failurePrefix = 'BOSTAN_WINDOWS_INSTALLER_FAILURE '
