@@ -1,5 +1,10 @@
 const DEFAULT_RECENT_LOG_LIMIT = 40;
 const RECENT_LOG_SUMMARY_LINES = 8;
+const PROCESS_DIAGNOSTIC_LINE = /^POSTGRES_CHILD_(?:SPAWN_ERROR code=[A-Z0-9_]{1,32}|CLOSED exitCode=(?:null|0|[1-9]\d{0,2}) signal=(?:none|SIG[A-Z]{1,12}) stdoutBytes=(?:0|[1-9]\d{0,8}) stderrBytes=(?:0|[1-9]\d{0,8}))$/;
+
+function postgresOutputLines(recentLogs: string[]): string[] {
+  return recentLogs.filter(line => !PROCESS_DIAGNOSTIC_LINE.test(line));
+}
 
 export type EmbeddedPostgresStartIssue =
   | "POSTGRES_START_ADDRESS_IN_USE"
@@ -40,7 +45,7 @@ export interface EmbeddedPostgresRuntimeDependencyDiagnostic {
 
 /** Extract only known Windows loader failures and an optional DLL basename. */
 export function summarizeEmbeddedPostgresRuntimeDependency(recentLogs: string[]): EmbeddedPostgresRuntimeDependencyDiagnostic | null {
-  const haystack = recentLogs.slice(-DEFAULT_RECENT_LOG_LIMIT).join("\n").slice(-65536);
+  const haystack = postgresOutputLines(recentLogs).slice(-DEFAULT_RECENT_LOG_LIMIT).join("\n").slice(-65536);
   const kind: EmbeddedPostgresRuntimeDependencyDiagnostic["kind"] | null = /(?:0xc0000135|\.dll.{0,100}(?:was not found|could not be found|not found)|(?:was not found|could not be found).{0,100}\.dll)/i.test(haystack)
     ? "MISSING_DLL"
     : /(?:0xc0000139|entry point.{0,100}(?:not found|could not be located)|procedure.{0,100}entry point.{0,100}(?:not found|could not be located))/i.test(haystack)
@@ -135,10 +140,11 @@ function hasSharedMemoryFailure(haystack: string): boolean {
 
 /** Extract only allowlisted shared-memory facts; never return PostgreSQL log text. */
 export function summarizeEmbeddedPostgresStartDiagnostic(recentLogs: string[]): EmbeddedPostgresStartDiagnostic {
-  const haystack = recentLogs.join("\n").slice(-65536);
-  const sharedMemoryLogLines = summarizeSharedMemoryLogLines(recentLogs);
+  const postgresLogs = postgresOutputLines(recentLogs);
+  const haystack = postgresLogs.join("\n").slice(-65536);
+  const sharedMemoryLogLines = summarizeSharedMemoryLogLines(postgresLogs);
   if (!hasSharedMemoryFailure(haystack)) {
-    return { sharedMemoryFailureKind: null, sharedMemoryEvidence: [], sharedMemorySystemCall: null, sharedMemoryOsErrorCode: null, sharedMemoryLogLines, postgresLogLines: summarizePostgresLogLines(recentLogs) };
+    return { sharedMemoryFailureKind: null, sharedMemoryEvidence: [], sharedMemorySystemCall: null, sharedMemoryOsErrorCode: null, sharedMemoryLogLines, postgresLogLines: summarizePostgresLogLines(postgresLogs) };
   }
 
   const errorMatch = haystack.match(/shared memory[\s\S]{0,256}?error code\s+(\d{1,5})\b/i);
@@ -175,15 +181,16 @@ export function summarizeEmbeddedPostgresStartDiagnostic(recentLogs: string[]): 
       ? parsedErrorCode
       : null,
     sharedMemoryLogLines,
-    postgresLogLines: summarizePostgresLogLines(recentLogs),
+    postgresLogLines: summarizePostgresLogLines(postgresLogs),
   };
 }
 
 /** Classify bounded PostgreSQL startup output without returning any log text. */
 export function classifyEmbeddedPostgresStartIssue(recentLogs: string[]): EmbeddedPostgresStartIssue {
-  const haystack = recentLogs.join("\n").slice(-65536);
+  const postgresLogs = postgresOutputLines(recentLogs);
+  const haystack = postgresLogs.join("\n").slice(-65536);
   if (!haystack.trim()) return "POSTGRES_START_LOGS_EMPTY";
-  if (summarizeEmbeddedPostgresRuntimeDependency(recentLogs)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
+  if (summarizeEmbeddedPostgresRuntimeDependency(postgresLogs)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
   if (/address already in use|could not bind.*(?:socket|address)|could not create any tcp\/ip sockets/i.test(haystack)) return "POSTGRES_START_ADDRESS_IN_USE";
   if (/permission denied|access is denied|could not access the data directory|could not open.*(?:directory|postmaster\.pid)/i.test(haystack)) return "POSTGRES_START_DATA_DIRECTORY_DENIED";
   if (/invalid locale|locale.*not supported|could not set locale/i.test(haystack)) return "POSTGRES_START_LOCALE_INVALID";

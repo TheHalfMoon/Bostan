@@ -6,6 +6,7 @@ describe("classifyEmbeddedPostgresStartIssue", () => {
   it("returns only fixed startup issues and distinguishes absent from unknown logs", () => {
     const cases = [
       [[], "POSTGRES_START_LOGS_EMPTY"],
+      [["POSTGRES_CHILD_CLOSED exitCode=1 signal=none stdoutBytes=0 stderrBytes=276"], "POSTGRES_START_LOGS_EMPTY"],
       [["FATAL: could not bind IPv4 address: Address already in use"], "POSTGRES_START_ADDRESS_IN_USE"],
       [["LOG:  selecting dynamic shared memory implementation \"windows\""], "POSTGRES_START_LOGS_UNCLASSIFIED"],
       [["FATAL: could not create shared memory segment"], "POSTGRES_START_SHARED_MEMORY_FAILED"],
@@ -80,6 +81,19 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
         { severity: "DETAIL", kind: "OTHER", dataDirectoryCause: null },
       ],
     });
+  });
+
+  it("excludes bounded child process receipts from PostgreSQL log classification", () => {
+    const marker = "POSTGRES_CHILD_CLOSED exitCode=1 signal=none stdoutBytes=0 stderrBytes=276";
+    expect(summarizeEmbeddedPostgresStartDiagnostic([marker])).toEqual({
+      sharedMemoryFailureKind: null,
+      sharedMemoryEvidence: [],
+      sharedMemorySystemCall: null,
+      sharedMemoryOsErrorCode: null,
+      sharedMemoryLogLines: [],
+      postgresLogLines: [],
+    });
+    expect(summarizeEmbeddedPostgresRuntimeDependency([marker])).toBeNull();
   });
 
   it("keeps informational dynamic shared-memory logs without calling them a failure", () => {
