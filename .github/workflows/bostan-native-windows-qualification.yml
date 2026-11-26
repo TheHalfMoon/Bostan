@@ -33,43 +33,13 @@ jobs:
       - run: npm --prefix desktop ci
       - run: node desktop/node_modules/electron/install.js
       - run: pnpm --filter @bostan/server... --workspace-concurrency=1 build
-      - name: Probe embedded PostgreSQL before packaging or model setup
+      - name: Probe embedded PostgreSQL as a standard user before packaging
         shell: pwsh
-        run: |
-          try {
-            $windowsOs = Get-CimInstance Win32_OperatingSystem
-            $memory = [ordered]@{
-              freePhysicalMemoryGiB = [math]::Round(([double]$windowsOs.FreePhysicalMemory / 1MB), 2)
-              freeVirtualMemoryGiB = [math]::Round(([double]$windowsOs.FreeVirtualMemory / 1MB), 2)
-              totalVirtualMemoryGiB = [math]::Round(([double]$windowsOs.TotalVirtualMemorySize / 1MB), 2)
-            }
-            Write-Host "BOSTAN_POSTGRES_HOST_MEMORY $($memory | ConvertTo-Json -Compress)"
-          } catch {
-            Write-Host "BOSTAN_POSTGRES_HOST_MEMORY unavailable"
-          }
-          node scripts/bostan-windows-embedded-postgres-node-probe.mjs
-          $probeExitCode = $LASTEXITCODE
-          Write-Host "BOSTAN_NODE_POSTGRES_PROBE_SHELL_EXIT $probeExitCode"
-          if ($probeExitCode -ne 0) {
-            try {
-              $events = @(Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = (Get-Date).AddMinutes(-30) } -MaxEvents 50 -ErrorAction SilentlyContinue | Where-Object { $_.ProviderName -in @('Application Error', 'Windows Error Reporting') -and $_.Message -match '(?i)postgres\.exe' } | Select-Object -First 3)
-              foreach ($event in $events) {
-                $faultingModule = $null
-                $exceptionCode = $null
-                if ($event.Message -match '(?im)Faulting module name:\s*([A-Za-z0-9_.-]{1,100})') { $faultingModule = $Matches[1] }
-                if ($event.Message -match '(?im)Exception code:\s*(0x[0-9a-f]{8})') { $exceptionCode = $Matches[1].ToUpperInvariant() }
-                $facts = [ordered]@{ eventId = $event.Id; provider = $event.ProviderName; faultingModule = $faultingModule; exceptionCode = $exceptionCode }
-                Write-Host "BOSTAN_POSTGRES_WINDOWS_EVENT $($facts | ConvertTo-Json -Compress)"
-              }
-            } catch {
-              Write-Host "BOSTAN_POSTGRES_WINDOWS_EVENT unavailable"
-            }
-            throw "Embedded PostgreSQL probe failed (exit code $probeExitCode)"
-          }
+        run: ./scripts/bostan-ci-windows-user.ps1 -Mode PostgresProbe
       - run: pnpm --filter @bostan/ui build
         env:
           NODE_OPTIONS: --max-old-space-size=6144
       - run: npm --prefix desktop run package
       - name: Run packaged Windows native agent with local Qwen model
         shell: pwsh
-        run: ./scripts/bostan-windows-local-native-qa.ps1
+        run: ./scripts/bostan-ci-windows-user.ps1 -Mode Native

@@ -22,6 +22,7 @@ const codes = new Set([
 ]);
 const postgresStartupIssues = new Set([
   "POSTGRES_START_ADDRESS_IN_USE", "POSTGRES_START_DATA_DIRECTORY_DENIED",
+  "POSTGRES_START_ROOT_REFUSED",
   "POSTGRES_START_LOCALE_INVALID", "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING",
   "POSTGRES_START_EXTENSION_MISSING", "POSTGRES_START_SHARED_MEMORY_FAILED",
   "POSTGRES_START_CONFIGURATION_INVALID", "POSTGRES_START_CLUSTER_INCOMPATIBLE",
@@ -94,6 +95,7 @@ function startupFailureIssue(error, fallbackCode) {
     // to its startup error. Convert recognized causes to fixed codes here;
     // never include log text, paths, or connection details in the receipt.
     if (/address already in use|could not bind.*(?:socket|address)/i.test(message)) return "POSTGRES_START_ADDRESS_IN_USE";
+    if (/server must be started under an unprivileged user id|cannot be run as root|must not be run as root/i.test(message)) return "POSTGRES_START_ROOT_REFUSED";
     if (/permission denied|access is denied|could not access the data directory|could not open.*(?:directory|postmaster\.pid)/i.test(message)) return "POSTGRES_START_DATA_DIRECTORY_DENIED";
     if (/invalid locale|locale.*not supported|could not set locale/i.test(message)) return "POSTGRES_START_LOCALE_INVALID";
     if (/could not load library|could not access file|entry point.*not found|module could not be found/i.test(message)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";

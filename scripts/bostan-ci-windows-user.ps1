@@ -1,5 +1,5 @@
 param(
-  [ValidateSet('Server','Installer')][string]$Mode = 'Server'
+  [ValidateSet('Server','Installer','PostgresProbe','Native')][string]$Mode = 'Server'
 )
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true' -or $env:CI -ne 'true' -or -not $env:RUNNER_TEMP) {
@@ -78,6 +78,28 @@ function Get-AllowedInstallerReceipt([string]$line) {
   if ($line -match '^BOSTAN_DESKTOP_STARTUP_MIGRATION \d{4}_[a-z0-9_]+\.sql$') { return $line }
   if ($line -match '^BOSTAN_DESKTOP_STARTUP_MIGRATION_ISSUE POSTGRES_(?:EXTENSION_CONTROL_FILE_MISSING|EXTENSION_SQL_FILE_MISSING|EXTENSION_LIBRARY_MISSING|MIGRATION_FILE_MISSING|EXTENSION_FILE_LOOKUP_FAILED)$') { return $line }
   if ($line -match '^BOSTAN_DESKTOP_STARTUP_SITE (?:server|config|signing):[1-9][0-9]{0,5}:[1-9][0-9]{0,5}$') { return $line }
+  if ($line -match '^BOSTAN_NODE_POSTGRES_PROBE_(?:PASS|CLEANUP_PASS|CLEANUP_FAIL|PROCESS_EXIT [01]|PROCESS_EXIT_CODE (?:null|0|[1-9][0-9]{0,2}))$') { return $line }
+  if ($line -match '^BOSTAN_NODE_POSTGRES_PROBE_FAIL (?:runtime_prepare|initialize|start|stop) POSTGRES_START_[A-Z0-9_]{1,80}$') { return $line }
+  if ($line -match '^BOSTAN_PACKAGED_STARTUP_PHASE (?:window_loaded|data_protected|runtime_valid|child_spawned|utility_bootstrap|importing_server|starting_server|ready)$') { return $line }
+  if ($line -match '^BOSTAN_PACKAGED_STARTUP_FAILURE [A-Z0-9_]{1,80}$') { return $line }
+  if ($line -match '^BOSTAN_PACKAGED_STARTUP_ISSUE POSTGRES_START_[A-Z0-9_]{1,80}$') { return $line }
+  if ($line -match '^BOSTAN_PACKAGED_DESKTOP_(?:PRIVATE_HEALTH|FIRST_ADMIN|NATIVE_AGENT_READY|RESTART_READY|FIRST_TASK_PERSISTENCE|NATIVE_QA_GRACEFUL_SHUTDOWN|NATIVE_QA_TEMP_PROFILE_CLEANUP)_PASS$') { return $line }
+  if ($line -match '^BOSTAN_PACKAGED_FIRST_AGENT_FAIL [a-z0-9_]{1,100}$') { return $line }
+  $nativeSuccessPrefix = 'BOSTAN_PACKAGED_DESKTOP_FIRST_FREE_AGENT_TASK_PASS '
+  if ($line.StartsWith($nativeSuccessPrefix)) {
+    try {
+      $record = ConvertFrom-Json -InputObject $line.Substring($nativeSuccessPrefix.Length) -ErrorAction Stop
+      $validNativeSuccess = $record.model -eq 'ollama/qwen2.5-coder:1.5b'
+      $validNativeSuccess = $validNativeSuccess -and $record.runStatus -eq 'succeeded'
+      $validNativeSuccess = $validNativeSuccess -and ($record.exitCode -in @($null, 0))
+      $validNativeSuccess = $validNativeSuccess -and $record.costUsd -eq 0 -and $record.taskStatus -eq 'done'
+      $validNativeSuccess = $validNativeSuccess -and $record.runAttributedCommentPersisted -eq $true
+      $validNativeSuccess = $validNativeSuccess -and $record.gracefulShutdown -eq $true
+      $validNativeSuccess = $validNativeSuccess -and $record.temporaryProfileCleanupVerified -eq $true
+      if (-not $validNativeSuccess) { return $false }
+      return $nativeSuccessPrefix + '{"model":"ollama/qwen2.5-coder:1.5b","runStatus":"succeeded","costUsd":0,"taskStatus":"done","runAttributedCommentPersisted":true,"gracefulShutdown":true,"temporaryProfileCleanupVerified":true}'
+    } catch { return $false }
+  }
   return $null
 }
 function Read-InstallerWorkerOutput {
@@ -85,7 +107,7 @@ function Read-InstallerWorkerOutput {
   if (-not (Test-Path -LiteralPath $stdout)) { return }
   $stream = [IO.File]::Open($stdout, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
   try {
-    $remaining = $stream.Length - $script:BostanInstallerOutputOffset
+    $remaining = [Math]::Min($stream.Length - $script:BostanInstallerOutputOffset, [Math]::Max(0, 1048576 - $script:BostanInstallerOutputOffset))
     if ($remaining -le 0) { return }
     $limit = [int][Math]::Min($remaining, 65536)
     $bytes = New-Object byte[] $limit
@@ -128,9 +150,9 @@ try {
   $arguments = @('-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',('"'+$worker+'"'),'-Mode',$Mode,'-NodeBinary',('"'+$nodeBinary+'"'))
   Write-Output ('BOSTAN_WINDOWS_USER_WORKER_BEGIN mode=' + $Mode)
   $process = Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe') -ArgumentList $arguments -Credential $credential -LoadUserProfile -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
-  if ($Mode -eq 'Installer') {
-    # Stream only fixed-format installer/task phase receipts while the standard
-    # user worker is active. Its raw stderr and arbitrary stdout stay private.
+  if ($Mode -in @('Installer','PostgresProbe','Native')) {
+    # Stream only bounded, validated qualification receipts. Raw stderr and
+    # arbitrary stdout stay private to this disposable runner invocation.
     $script:BostanInstallerOutputOffset = [long]0
     $script:BostanInstallerPending = ''
     $script:BostanInstallerDroppingLine = $false

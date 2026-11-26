@@ -73,21 +73,29 @@ test("the probe preserves its failure exit code after embedded-postgres cleanup"
   assert.equal(result.status, 7, result.stderr);
 });
 
-test("Windows native workflow propagates a failed Node PostgreSQL probe", async () => {
+test("Windows native workflow probes PostgreSQL under a standard user before packaging", async () => {
   const workflowPath = new URL("../.github/workflows/bostan-native-windows-qualification.yml", import.meta.url);
   const workflow = await readFile(workflowPath, "utf8");
-  const probeStep = workflow.match(/- name: Probe embedded PostgreSQL before packaging or model setup([\s\S]*?)(?=\n      - name:|\n      - run:|\n      - uses:|$)/)?.[1];
+  const probeStep = workflow.match(/- name: Probe embedded PostgreSQL as a standard user before packaging([\s\S]*?)(?=\n      - name:|\n      - run:|\n      - uses:|$)/)?.[1];
 
   assert.ok(probeStep, "expected the PostgreSQL preflight step");
   assert.match(probeStep, /shell:\s*pwsh/);
-  assert.match(probeStep, /BOSTAN_POSTGRES_HOST_MEMORY/);
-  assert.match(probeStep, /FreeVirtualMemory/);
-  assert.match(probeStep, /\$probeExitCode = \$LASTEXITCODE/);
-  assert.match(probeStep, /Write-Host "BOSTAN_NODE_POSTGRES_PROBE_SHELL_EXIT \$probeExitCode"/);
-  assert.match(probeStep, /BOSTAN_POSTGRES_WINDOWS_EVENT/);
-  assert.match(probeStep, /faultingModule = \$faultingModule; exceptionCode = \$exceptionCode/);
-  assert.match(probeStep, /if \(\$probeExitCode -ne 0\) \{/);
-  assert.match(probeStep, /throw "Embedded PostgreSQL probe failed \(exit code \$probeExitCode\)"/);
+  assert.match(probeStep, /bostan-ci-windows-user\.ps1 -Mode PostgresProbe/);
+  assert.ok(workflow.indexOf("-Mode PostgresProbe") < workflow.indexOf("pnpm --filter @bostan/ui build"));
+  assert.match(workflow, /bostan-ci-windows-user\.ps1 -Mode Native/);
+
+  const wrapper = await readFile(new URL("./bostan-ci-windows-user.ps1", import.meta.url), "utf8");
+  const worker = await readFile(new URL("./bostan-ci-windows-user-worker.ps1", import.meta.url), "utf8");
+  assert.match(wrapper, /ValidateSet\('Server','Installer','PostgresProbe','Native'\)/);
+  assert.match(wrapper, /if \(\$Mode -in @\('Installer','PostgresProbe','Native'\)\)/);
+  assert.match(wrapper, /BOSTAN_NODE_POSTGRES_PROBE_FAIL/);
+  assert.match(wrapper, /\$record\.costUsd -eq 0/);
+  assert.match(wrapper, /1048576 - \$script:BostanInstallerOutputOffset/);
+  assert.match(worker, /ValidateSet\('Server','Installer','PostgresProbe','Native'\)/);
+  assert.match(worker, /\$env:RUNNER_TEMP = \$env:TEMP/);
+  assert.match(worker, /bostan-windows-embedded-postgres-node-probe\.mjs/);
+  assert.match(worker, /bostan-windows-local-native-qa\.ps1/);
+  assert.match(worker, /IsInRole\(\[Security\.Principal\.WindowsBuiltInRole\]::Administrator\)/);
 });
 
 test("PowerShell dot-sourced workflow script propagates native Node exit codes", { skip: process.platform !== "win32" }, async () => {

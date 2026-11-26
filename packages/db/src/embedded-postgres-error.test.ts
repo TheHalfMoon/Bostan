@@ -8,6 +8,7 @@ describe("classifyEmbeddedPostgresStartIssue", () => {
       [[], "POSTGRES_START_LOGS_EMPTY"],
       [["POSTGRES_CHILD_CLOSED exitCode=1 signal=none stdoutBytes=0 stderrBytes=276"], "POSTGRES_START_LOGS_EMPTY"],
       [["FATAL: could not bind IPv4 address: Address already in use"], "POSTGRES_START_ADDRESS_IN_USE"],
+      [["FATAL: The server must be started under an unprivileged user ID to prevent possible system security compromises."], "POSTGRES_START_ROOT_REFUSED"],
       [["LOG:  selecting dynamic shared memory implementation \"windows\""], "POSTGRES_START_LOGS_UNCLASSIFIED"],
       [["FATAL: could not create shared memory segment"], "POSTGRES_START_SHARED_MEMORY_FAILED"],
       [["LOG: could not create shared memory segment: error code 1455"], "POSTGRES_START_SHARED_MEMORY_OS_ERROR_1455"],
@@ -159,6 +160,20 @@ describe("summarizeEmbeddedPostgresRuntimeDependency", () => {
     expect(summarizeEmbeddedPostgresRuntimeDependency(["The application is not designed to run on Windows. 0xc000007b"]))
       .toEqual({ kind: "INVALID_IMAGE", libraryBasename: null });
     expect(summarizeEmbeddedPostgresRuntimeDependency(["generic startup failure"])).toBeNull();
+  });
+});
+
+describe("summarizeEmbeddedPostgresStartDiagnostic root refusal", () => {
+  it("reports the root-refusal category without the raw message", () => {
+    const summary = summarizeEmbeddedPostgresStartDiagnostic([
+      "FATAL: The server must be started under an unprivileged user ID at C:\\private\\data.",
+    ]);
+    expect(summary.postgresLogLines).toEqual([{
+      severity: "FATAL",
+      kind: "ROOT_REFUSAL",
+      dataDirectoryCause: null,
+    }]);
+    expect(JSON.stringify(summary)).not.toContain("private");
   });
 });
 

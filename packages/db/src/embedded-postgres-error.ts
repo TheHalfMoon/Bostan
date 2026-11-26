@@ -9,6 +9,7 @@ function postgresOutputLines(recentLogs: string[]): string[] {
 export type EmbeddedPostgresStartIssue =
   | "POSTGRES_START_ADDRESS_IN_USE"
   | "POSTGRES_START_DATA_DIRECTORY_DENIED"
+  | "POSTGRES_START_ROOT_REFUSED"
   | "POSTGRES_START_LOCALE_INVALID"
   | "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING"
   | "POSTGRES_START_EXTENSION_MISSING"
@@ -33,7 +34,7 @@ export interface EmbeddedPostgresStartDiagnostic {
   }>;
   postgresLogLines: Array<{
     severity: "PANIC" | "FATAL" | "ERROR" | "WARNING" | "LOG" | "DETAIL" | "HINT" | "OTHER";
-    kind: "ADDRESS_BIND" | "SHARED_MEMORY" | "PERMISSION" | "EXTENSION" | "RUNTIME_DEPENDENCY" | "CONFIGURATION" | "DATA_DIRECTORY" | "LOCALE" | "RECOVERY" | "DISK" | "ERROR_OTHER" | "OTHER";
+    kind: "ADDRESS_BIND" | "SHARED_MEMORY" | "PERMISSION" | "ROOT_REFUSAL" | "EXTENSION" | "RUNTIME_DEPENDENCY" | "CONFIGURATION" | "DATA_DIRECTORY" | "LOCALE" | "RECOVERY" | "DISK" | "ERROR_OTHER" | "OTHER";
     dataDirectoryCause: "INVALID_PERMISSIONS" | "MISSING" | "ACCESS_DENIED" | "LOCK_FILE" | "CONFIGURATION" | null;
   }>;
 }
@@ -68,6 +69,8 @@ function summarizePostgresLogLines(recentLogs: string[]): EmbeddedPostgresStartD
       ? "ADDRESS_BIND"
       : /shared memory/i.test(line)
         ? "SHARED_MEMORY"
+        : /server must be started under an unprivileged user id|cannot be run as root|must not be run as root/i.test(line)
+          ? "ROOT_REFUSAL"
         : /permission denied|access is denied|could not access the data directory/i.test(line)
           ? "PERMISSION"
           : /extension/i.test(line)
@@ -191,6 +194,7 @@ export function classifyEmbeddedPostgresStartIssue(recentLogs: string[]): Embedd
   const haystack = postgresLogs.join("\n").slice(-65536);
   if (!haystack.trim()) return "POSTGRES_START_LOGS_EMPTY";
   if (summarizeEmbeddedPostgresRuntimeDependency(postgresLogs)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
+  if (/server must be started under an unprivileged user id|cannot be run as root|must not be run as root/i.test(haystack)) return "POSTGRES_START_ROOT_REFUSED";
   if (/address already in use|could not bind.*(?:socket|address)|could not create any tcp\/ip sockets/i.test(haystack)) return "POSTGRES_START_ADDRESS_IN_USE";
   if (/permission denied|access is denied|could not access the data directory|could not open.*(?:directory|postmaster\.pid)/i.test(haystack)) return "POSTGRES_START_DATA_DIRECTORY_DENIED";
   if (/invalid locale|locale.*not supported|could not set locale/i.test(haystack)) return "POSTGRES_START_LOCALE_INVALID";

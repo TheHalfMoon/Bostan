@@ -49,6 +49,7 @@ test("startup receipts accept only fixed phases and failure codes", () => {
     code: "POSTGRES_START_FAILED", postgresStartupIssue: "POSTGRES_START_LOGS_EMPTY",
   }), "POSTGRES_START_FAILED"), "POSTGRES_START_PROCESS_EXIT_CODE_1");
   const postgresLogCases = [
+    ["Recent embedded Postgres logs: FATAL: The server must be started under an unprivileged user ID", "POSTGRES_START_ROOT_REFUSED"],
     ['Recent embedded Postgres logs: FATAL: could not access file "$libdir/private-extension"', "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING"],
     ["Recent embedded Postgres logs: FATAL: could not create shared memory segment", "POSTGRES_START_SHARED_MEMORY_FAILED"],
     ["Recent embedded Postgres logs: FATAL: invalid value for parameter \"private_setting\"", "POSTGRES_START_CONFIGURATION_INVALID"],
