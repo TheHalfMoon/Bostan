@@ -102,6 +102,8 @@ else {
         } else if (message?.type === "ready" && Number.isSafeInteger(message.port) && message.port > 0 && message.port <= 65535) {
           clearTimeout(timer); resolve(message.port);
         } else if (message?.type === "startup-failed") {
+          const stageLine = diagnostics.startupFailureStageLine(message.stage);
+          if (stageLine) console.error(stageLine);
           const libraryLine = diagnostics.startupFailureLibraryLine(message.library);
           if (libraryLine) console.error(libraryLine);
           const issueLine = diagnostics.startupFailureIssueLine(message.issue);

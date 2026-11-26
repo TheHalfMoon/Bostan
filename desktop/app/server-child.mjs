@@ -84,5 +84,5 @@ try {
     startupFailureAckTimer = null;
     process.exit(1);
   }, 5000);
-  process.parentPort.postMessage({ type: "startup-failed", code, library, site, issue: startupFailureIssue, migration: startupFailureMigration, migrationIssue: startupFailureMigrationIssue });
+  process.parentPort.postMessage({ type: "startup-failed", code, stage: startupFailureCode, library, site, issue: startupFailureIssue, migration: startupFailureMigration, migrationIssue: startupFailureMigrationIssue });
 }

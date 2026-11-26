@@ -73,6 +73,7 @@ function startupErrorCode(error, fallbackCode) {
   return stageCode === "STARTUP_FAILED" ? code : stageCode;
 }
 function startupFailureLine(code) { return `BOSTAN_DESKTOP_STARTUP_FAILURE ${startupCode(code)}`; }
+function startupFailureStageLine(code) { return `BOSTAN_DESKTOP_STARTUP_STAGE ${startupCode(code)}`; }
 function startupFailureIssue(error, fallbackCode) {
   const failureCode = startupCode(error?.code ?? fallbackCode);
   if (failureCode === "STARTUP_FAILED") {
@@ -197,7 +198,9 @@ function isStartupDiagnosticLine(line) {
   if (phase !== null) return phases.has(phase);
   const prefix = "BOSTAN_DESKTOP_STARTUP_FAILURE ";
   if (line.startsWith(prefix) && codes.has(line.slice(prefix.length))) return true;
+  const stagePrefix = "BOSTAN_DESKTOP_STARTUP_STAGE ";
+  if (line.startsWith(stagePrefix) && codes.has(line.slice(stagePrefix.length))) return true;
   const libraryPrefix = "BOSTAN_DESKTOP_STARTUP_LIBRARY ";
   return line.startsWith(libraryPrefix) && startupFailureLibraryLine(line.slice(libraryPrefix.length)) === line;
 }
-module.exports = { startupPhaseLine, startupCode, startupErrorCode, startupFailureLine, startupFailureIssue, startupFailureIssueLine, startupFailureLibrary, startupFailureLibraryLine, startupMigrationLine, startupMigrationIssue, startupMigrationIssueLine, startupFailureSite, isStartupSiteLine, isStartupDiagnosticLine };
+module.exports = { startupPhaseLine, startupCode, startupErrorCode, startupFailureLine, startupFailureStageLine, startupFailureIssue, startupFailureIssueLine, startupFailureLibrary, startupFailureLibraryLine, startupMigrationLine, startupMigrationIssue, startupMigrationIssueLine, startupFailureSite, isStartupSiteLine, isStartupDiagnosticLine };

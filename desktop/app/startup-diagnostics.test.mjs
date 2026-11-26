@@ -29,6 +29,10 @@ test("startup receipts accept only fixed phases and failure codes", () => {
   assert.equal(diagnostics.isStartupDiagnosticLine(diagnostics.startupFailureLine("EPERM")), true);
   assert.equal(diagnostics.startupFailureLine("POSTGRES_START_FAILED"), "BOSTAN_DESKTOP_STARTUP_FAILURE POSTGRES_START_FAILED");
   assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_FAILURE POSTGRES_START_FAILED"), true);
+  assert.equal(diagnostics.startupFailureStageLine("SERVER_CONFIG_FAILED"), "BOSTAN_DESKTOP_STARTUP_STAGE SERVER_CONFIG_FAILED");
+  assert.equal(diagnostics.startupFailureStageLine("private stage"), "BOSTAN_DESKTOP_STARTUP_STAGE STARTUP_FAILED");
+  assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_STAGE SERVER_CONFIG_FAILED"), true);
+  assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_STAGE SERVER_CONFIG_FAILED\nprivate"), false);
   const postgresIssue = diagnostics.startupFailureIssue(Object.assign(
     new Error('Failed to start embedded PostgreSQL. Recent logs: FATAL: could not bind IPv4 address "127.0.0.1": Address already in use'),
     { code: "POSTGRES_START_FAILED" },

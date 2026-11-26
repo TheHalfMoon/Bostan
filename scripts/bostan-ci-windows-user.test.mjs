@@ -7,8 +7,11 @@ import { test } from "node:test";
 test("Windows CI receipt allowlist admits only fixed startup failure codes", () => {
   const source = fs.readFileSync(path.join(import.meta.dirname, "bostan-ci-windows-user.ps1"), "utf8");
   const match = source.match(/^\s*if \(\$line -match '([^']*BOSTAN_DESKTOP_STARTUP_FAILURE[^']*)'\) \{ return \$line \}$/m);
+  const stageMatch = source.match(/^\s*if \(\$line -match '([^']*BOSTAN_DESKTOP_STARTUP_STAGE[^']*)'\) \{ return \$line \}$/m);
   assert.ok(match, "Windows CI startup failure receipt allowlist is present");
+  assert.ok(stageMatch, "Windows CI startup stage receipt allowlist is present");
   const receiptPattern = new RegExp(match[1]);
+  const stagePattern = new RegExp(stageMatch[1]);
   for (const code of [
     "STARTUP_FAILED", "STARTUP_TIMEOUT", "BACKEND_EXITED", "RUNTIME_MISSING", "ERR_MODULE_NOT_FOUND",
     "ERR_PACKAGE_PATH_NOT_EXPORTED", "ERR_UNKNOWN_FILE_EXTENSION", "ERR_DLOPEN_FAILED", "ERR_REQUIRE_ESM",
@@ -20,8 +23,12 @@ test("Windows CI receipt allowlist admits only fixed startup failure codes", () 
     "POSTGRES_BOOTSTRAP_FAILED", "DATABASE_BOOTSTRAP_FAILED", "DATABASE_MIGRATION_FAILED",
     "SERVER_INSTRUMENTATION_FAILED", "SERVER_ERROR_MONITORING_FAILED", "SERVER_SIGNING_SECRET_FAILED",
     "SERVER_CONFIG_FAILED", "SERVER_RUNTIME_INITIALIZATION_FAILED", "SERVER_STARTUP_FAILED",
-  ]) assert.equal(receiptPattern.test(`BOSTAN_DESKTOP_STARTUP_FAILURE ${code}`), true, code);
+  ]) {
+    assert.equal(receiptPattern.test(`BOSTAN_DESKTOP_STARTUP_FAILURE ${code}`), true, code);
+    assert.equal(stagePattern.test(`BOSTAN_DESKTOP_STARTUP_STAGE ${code}`), true, code);
+  }
   assert.equal(receiptPattern.test("BOSTAN_DESKTOP_STARTUP_FAILURE PRIVATE_SECRET"), false);
+  assert.equal(stagePattern.test("BOSTAN_DESKTOP_STARTUP_STAGE PRIVATE_SECRET"), false);
 });
 
 test("native model setup exposes only bounded fixed phase, failure and progress receipts", () => {
