@@ -40,7 +40,8 @@ test("the probe reports bounded PostgreSQL child process evidence without raw ou
   assert.match(patch, /POSTGRES_CHILD_CLOSED exitCode=/);
   assert.match(probe, /POSTGRES_CHILD_SPAWN_ERROR code=\(\[A-Z0-9_\]\{1,32\}\)/);
   assert.match(probe, /stdoutBytes: Number\(closed\[3\]\), stderrBytes: Number\(closed\[4\]\)/);
-  assert.match(probe, /JSON\.stringify\(\{ failureIssue, diagnostic, processEvidence \}\)/);
+  assert.match(probe, /summarizeEmbeddedPostgresRuntimeDependency\(recentLogs\)/);
+  assert.match(probe, /JSON\.stringify\(\{ failureIssue, diagnostic, runtimeDependency, processEvidence \}\)/);
   assert.doesNotMatch(probe, /console\.log\([^\n]*(?:error\.message|process\.stderr)/);
 });
 

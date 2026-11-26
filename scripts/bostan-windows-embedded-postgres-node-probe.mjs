@@ -117,7 +117,7 @@ async function runProbe() {
     if (processExit) console.log(`BOSTAN_NODE_POSTGRES_PROBE_PROCESS_EXIT_CODE ${processExit[1]}`);
     try {
       postgresDiagnostics ??= await import(pathToFileURL(errorModulePath).href);
-      const { classifyEmbeddedPostgresStartIssue, summarizeEmbeddedPostgresStartDiagnostic } = postgresDiagnostics;
+      const { classifyEmbeddedPostgresStartIssue, summarizeEmbeddedPostgresRuntimeDependency, summarizeEmbeddedPostgresStartDiagnostic } = postgresDiagnostics;
       const recentLogs = logBuffer?.getRecentLogs() ?? [];
       failureIssue = classifyEmbeddedPostgresStartIssue(recentLogs);
       const diagnostic = summarizeEmbeddedPostgresStartDiagnostic(recentLogs);
@@ -128,7 +128,8 @@ async function runProbe() {
         if (closed) return [{ event: "closed", exitCode: closed[1], signal: closed[2], stdoutBytes: Number(closed[3]), stderrBytes: Number(closed[4]) }];
         return [];
       }).slice(-4);
-      console.log(`BOSTAN_NODE_POSTGRES_PROBE_DIAGNOSTIC ${JSON.stringify({ failureIssue, diagnostic, processEvidence })}`);
+      const runtimeDependency = summarizeEmbeddedPostgresRuntimeDependency(recentLogs);
+      console.log(`BOSTAN_NODE_POSTGRES_PROBE_DIAGNOSTIC ${JSON.stringify({ failureIssue, diagnostic, runtimeDependency, processEvidence })}`);
     } catch {
       failureIssue = "POSTGRES_START_UNCLASSIFIED";
     }

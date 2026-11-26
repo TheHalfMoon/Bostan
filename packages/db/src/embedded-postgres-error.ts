@@ -33,6 +33,26 @@ export interface EmbeddedPostgresStartDiagnostic {
   }>;
 }
 
+export interface EmbeddedPostgresRuntimeDependencyDiagnostic {
+  kind: "MISSING_DLL" | "MISSING_ENTRY_POINT" | "INVALID_IMAGE";
+  libraryBasename: string | null;
+}
+
+/** Extract only known Windows loader failures and an optional DLL basename. */
+export function summarizeEmbeddedPostgresRuntimeDependency(recentLogs: string[]): EmbeddedPostgresRuntimeDependencyDiagnostic | null {
+  const haystack = recentLogs.slice(-DEFAULT_RECENT_LOG_LIMIT).join("\n").slice(-65536);
+  const kind: EmbeddedPostgresRuntimeDependencyDiagnostic["kind"] | null = /(?:0xc0000135|\.dll.{0,100}(?:was not found|could not be found|not found)|(?:was not found|could not be found).{0,100}\.dll)/i.test(haystack)
+    ? "MISSING_DLL"
+    : /(?:0xc0000139|entry point.{0,100}(?:not found|could not be located)|procedure.{0,100}entry point.{0,100}(?:not found|could not be located))/i.test(haystack)
+      ? "MISSING_ENTRY_POINT"
+      : /(?:0xc000007b|not designed to run on windows|bad image format)/i.test(haystack)
+        ? "INVALID_IMAGE"
+        : null;
+  if (!kind) return null;
+  const libraryBasename = haystack.match(/\b([A-Za-z0-9_.+-]{1,100}\.dll)\b/i)?.[1] ?? null;
+  return { kind, libraryBasename };
+}
+
 function summarizePostgresLogLines(recentLogs: string[]): EmbeddedPostgresStartDiagnostic["postgresLogLines"] {
   const summaries: EmbeddedPostgresStartDiagnostic["postgresLogLines"] = [];
   for (const line of recentLogs.slice(-DEFAULT_RECENT_LOG_LIMIT)) {
@@ -163,6 +183,7 @@ export function summarizeEmbeddedPostgresStartDiagnostic(recentLogs: string[]): 
 export function classifyEmbeddedPostgresStartIssue(recentLogs: string[]): EmbeddedPostgresStartIssue {
   const haystack = recentLogs.join("\n").slice(-65536);
   if (!haystack.trim()) return "POSTGRES_START_LOGS_EMPTY";
+  if (summarizeEmbeddedPostgresRuntimeDependency(recentLogs)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
   if (/address already in use|could not bind.*(?:socket|address)|could not create any tcp\/ip sockets/i.test(haystack)) return "POSTGRES_START_ADDRESS_IN_USE";
   if (/permission denied|access is denied|could not access the data directory|could not open.*(?:directory|postmaster\.pid)/i.test(haystack)) return "POSTGRES_START_DATA_DIRECTORY_DENIED";
   if (/invalid locale|locale.*not supported|could not set locale/i.test(haystack)) return "POSTGRES_START_LOCALE_INVALID";

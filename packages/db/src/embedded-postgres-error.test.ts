@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { classifyEmbeddedPostgresStartIssue, createEmbeddedPostgresLogBuffer, formatEmbeddedPostgresError, summarizeEmbeddedPostgresStartDiagnostic } from "./embedded-postgres-error.js";
+import { classifyEmbeddedPostgresStartIssue, createEmbeddedPostgresLogBuffer, formatEmbeddedPostgresError, summarizeEmbeddedPostgresRuntimeDependency, summarizeEmbeddedPostgresStartDiagnostic } from "./embedded-postgres-error.js";
 
 describe("classifyEmbeddedPostgresStartIssue", () => {
   it("returns only fixed startup issues and distinguishes absent from unknown logs", () => {
@@ -128,6 +128,23 @@ describe("summarizeEmbeddedPostgresStartDiagnostic", () => {
     }]);
     expect(JSON.stringify(summary)).not.toContain("Users");
     expect(JSON.stringify(summary)).not.toContain("secret");
+  });
+});
+
+describe("summarizeEmbeddedPostgresRuntimeDependency", () => {
+  it("classifies Windows loader failures using only a safe DLL basename", () => {
+    const logs = ["The code execution cannot proceed because C:\\private\\runtime\\VCRUNTIME140.dll was not found."];
+    expect(classifyEmbeddedPostgresStartIssue(logs)).toBe("POSTGRES_START_RUNTIME_DEPENDENCY_MISSING");
+    expect(summarizeEmbeddedPostgresRuntimeDependency(logs)).toEqual({
+      kind: "MISSING_DLL",
+      libraryBasename: "VCRUNTIME140.dll",
+    });
+    expect(JSON.stringify(summarizeEmbeddedPostgresRuntimeDependency(logs))).not.toContain("private");
+    expect(summarizeEmbeddedPostgresRuntimeDependency(["The procedure entry point was not found. 0xc0000139"]))
+      .toEqual({ kind: "MISSING_ENTRY_POINT", libraryBasename: null });
+    expect(summarizeEmbeddedPostgresRuntimeDependency(["The application is not designed to run on Windows. 0xc000007b"]))
+      .toEqual({ kind: "INVALID_IMAGE", libraryBasename: null });
+    expect(summarizeEmbeddedPostgresRuntimeDependency(["generic startup failure"])).toBeNull();
   });
 });
 
