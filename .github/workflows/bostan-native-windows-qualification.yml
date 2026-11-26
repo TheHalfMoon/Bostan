@@ -16,7 +16,9 @@ jobs:
   native-agent:
     if: github.repository == 'TheHalfMoon/Bostan'
     runs-on: windows-latest
-    timeout-minutes: 90
+    # Measured cold build (49m) plus the verified Ollama archive download (34m)
+    # already consumed 83m before local model preparation or installed QA.
+    timeout-minutes: 120
     steps:
       - run: git config --global core.autocrlf false
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2

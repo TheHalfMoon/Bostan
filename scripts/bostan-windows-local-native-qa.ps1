@@ -1,6 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $ollamaVersion = '0.40.17'
 $ollamaSha256 = '3dd80f6e3a9699f2eadf4ac418f00529cee594df9557541806eda1f1f3f5588a'
+$ollamaArchiveBytes = 1618522644L
 $modelManifestSha256 = 'd7372fd828518a4d38b1eb196c673c31a85f2ed302b3d1e406c4c2d1b64a0668'
 $ollamaRoot = Join-Path $env:RUNNER_TEMP 'bostan-native-ollama'
 $zipPath = Join-Path $env:RUNNER_TEMP 'ollama-windows-amd64.zip'
@@ -16,7 +17,12 @@ try {
   Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath
   Write-Output 'BOSTAN_NATIVE_WINDOWS_PHASE ollama_download_complete'
   $stage = 'ollama_archive_verify'
-  if ((Get-FileHash -Algorithm SHA256 -LiteralPath $zipPath).Hash.ToLowerInvariant() -ne $ollamaSha256) {
+  $archiveBytes = (Get-Item -LiteralPath $zipPath).Length
+  $archiveSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $zipPath).Hash.ToLowerInvariant()
+  $archiveSizeMatches = $archiveBytes -eq $ollamaArchiveBytes
+  $archiveDigestMatches = $archiveSha256 -eq $ollamaSha256
+  Write-Output "BOSTAN_NATIVE_WINDOWS_ARCHIVE_VERIFY sizeBytes=$archiveBytes sha256=$archiveSha256 sizeMatches=$($archiveSizeMatches.ToString().ToLowerInvariant()) digestMatches=$($archiveDigestMatches.ToString().ToLowerInvariant())"
+  if (-not $archiveSizeMatches -or -not $archiveDigestMatches) {
     throw 'Pinned Ollama Windows archive digest mismatch'
   }
   Expand-Archive -LiteralPath $zipPath -DestinationPath $ollamaRoot -Force
