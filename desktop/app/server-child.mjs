@@ -64,6 +64,7 @@ startup = (async () => {
   const { startServer } = await import(pathToFileURL(entry).href);
   process.parentPort.postMessage({ type: "startup-phase", phase: "starting_server" });
   runtime = await startServer({
+    ...(process.env.BOSTAN_DESKTOP_PACKAGED === "1" ? { embeddedPostgresRuntimeRoot: serverRoot } : {}),
     onStartupProgress: stage => {
       const line = diagnostics.startupEntryLine(stage);
       if (!line) return;

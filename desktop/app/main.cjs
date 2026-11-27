@@ -74,7 +74,11 @@ else {
     if (quitting) return;
     child = utilityProcess.fork(path.join(__dirname, "server-child.mjs"), [], {
       cwd: runtimeRoot,
-      env: { ...desktopEnvironment({ dataDir, port }), BOSTAN_DESKTOP_SERVER_ROOT: runtimeRoot },
+      env: {
+        ...desktopEnvironment({ dataDir, port }),
+        BOSTAN_DESKTOP_SERVER_ROOT: runtimeRoot,
+        BOSTAN_DESKTOP_PACKAGED: app.isPackaged ? "1" : "0",
+      },
       stdio: "ignore", serviceName: "Bostan local server",
     });
     console.info(diagnostics.startupPhaseLine("child_spawned"));

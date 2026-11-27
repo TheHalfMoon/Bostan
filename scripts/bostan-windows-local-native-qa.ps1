@@ -117,6 +117,9 @@ try {
   $modelPullStdout = Join-Path $ollamaRoot 'model-pull.stdout.log'
   $modelPullStderr = Join-Path $ollamaRoot 'model-pull.stderr.log'
   Write-Output 'BOSTAN_NATIVE_WINDOWS_PHASE qwen_model_pull_begin'
+  $modelPull = $null
+  $modelPullResultReported = $false
+  try {
   $modelPull = Start-Process -FilePath $ollamaExe -ArgumentList @('pull', 'qwen2.5-coder:1.5b') `
     -PassThru -WindowStyle Hidden -RedirectStandardOutput $modelPullStdout -RedirectStandardError $modelPullStderr
   $modelPullStartedAt = Get-Date
@@ -159,9 +162,31 @@ try {
     elseif ($diagnosticText -match '(?i)(resolve|dns|proxy|network|tls|certificate|timed out|connection (?:refused|reset|closed))') { $diagnostic = 'network' }
     elseif ($diagnosticText -match '(?i)(out of memory|allocation failed|resource exhausted)') { $diagnostic = 'resource' }
     Write-Output "BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=$($modelPull.ExitCode) diagnostic=$diagnostic outputBytes=$outputLength"
+    $modelPullResultReported = $true
     throw 'Pinned local Qwen model pull failed'
   }
   Write-Output 'BOSTAN_NATIVE_WINDOWS_PHASE qwen_model_pull_complete'
+  } catch {
+    if (-not $modelPullResultReported) {
+      $cause = 'other'
+      $exceptionType = $_.Exception.GetType().FullName
+      if ($exceptionType -match '^(System\.ComponentModel\.Win32Exception|System\.IO\.FileNotFoundException)$') { $cause = 'process_launch' }
+      elseif ($exceptionType -match '^System\.UnauthorizedAccessException$') { $cause = 'access_denied' }
+      elseif ($exceptionType -match '^System\.IO\.(IOException|DirectoryNotFoundException)$') { $cause = 'io_error' }
+      elseif ($exceptionType -match '^System\.InvalidOperationException$') { $cause = 'process_state' }
+      $childAlive = $false
+      if ($null -ne $modelPull) {
+        try { $modelPull.Refresh(); $childAlive = -not $modelPull.HasExited } catch { $childAlive = $false }
+      }
+      $boundedOutputBytes = 0L
+      foreach ($outputPath in @($modelPullStdout, $modelPullStderr)) {
+        try { if (Test-Path -LiteralPath $outputPath) { $boundedOutputBytes += (Get-Item -LiteralPath $outputPath -ErrorAction Stop).Length } } catch { $cause = 'io_error' }
+      }
+      if ($boundedOutputBytes -gt 1048576) { $boundedOutputBytes = 1048576; $cause = 'output_limit' }
+      Write-Output "BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=$cause childAlive=$($childAlive.ToString().ToLowerInvariant()) outputBytes=$boundedOutputBytes"
+    }
+    throw 'Local Qwen model pull operation failed'
+  }
   $stage = 'qwen_model_manifest_verify'
   $modelInfo = Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/tags' -TimeoutSec 10
   $model = @($modelInfo.models | Where-Object { $_.name -eq 'qwen2.5-coder:1.5b' })

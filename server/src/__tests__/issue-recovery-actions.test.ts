@@ -18,6 +18,7 @@ import {
   caseHandoffs,
   cases,
   companies,
+  companySkills,
   createDb,
   documentRevisions,
   documents,
@@ -186,6 +187,7 @@ describeEmbeddedPostgres("issue recovery actions", () => {
     await db.delete(issues);
     await db.delete(agentRuntimeState);
     await db.delete(agents);
+    await db.delete(companySkills);
     await db.delete(companies);
     await db.delete(authUsers);
   });

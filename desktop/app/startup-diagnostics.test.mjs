@@ -112,6 +112,11 @@ test("startup receipts accept only fixed phases and failure codes", () => {
   assert.equal(diagnostics.startupFailureIssueLine("SERVER_STARTUP_UNCLASSIFIED"), "BOSTAN_DESKTOP_STARTUP_ISSUE SERVER_STARTUP_UNCLASSIFIED");
   assert.equal(diagnostics.startupFailureIssueLine("POSTGRES_START_UNCLASSIFIED\nC:\\private"), null);
   assert.equal(diagnostics.startupErrorCode(Object.assign(new Error("private database detail"), { code: "POSTGRES_DATABASE_FAILED" })), "POSTGRES_DATABASE_FAILED");
+  assert.equal(diagnostics.startupErrorCode(Object.assign(new Error("private runtime path"), { code: "POSTGRES_RUNTIME_PACKAGE_UNSAFE" })), "POSTGRES_RUNTIME_PACKAGE_UNSAFE");
+  const aliasCollision = Object.assign(new Error("private runtime path"), { code: "POSTGRES_DARWIN_ALIAS_DESTINATION_OCCUPIED", library: "libicudata.77.dylib" });
+  assert.equal(diagnostics.startupFailureLibrary(aliasCollision), "libicudata.77.dylib");
+  assert.equal(diagnostics.startupFailureLibraryLine(diagnostics.startupFailureLibrary(aliasCollision)), "BOSTAN_DESKTOP_STARTUP_LIBRARY libicudata.77.dylib");
+  assert.equal(diagnostics.startupFailureLibraryLine("C:\\private\\libicudata.dylib"), null);
   assert.equal(diagnostics.startupFailureLine("POSTGRES_MIGRATION_FAILED"), "BOSTAN_DESKTOP_STARTUP_FAILURE POSTGRES_MIGRATION_FAILED");
   const migrationLine = diagnostics.startupMigrationLine("0123_safe_name.sql");
   assert.equal(migrationLine, "BOSTAN_DESKTOP_STARTUP_MIGRATION 0123_safe_name.sql");
@@ -140,7 +145,13 @@ test("startup context receipts expose only bounded allowlisted entry and excepti
   const entry = diagnostics.startupEntryLine("server_start_entered");
   assert.equal(entry, "BOSTAN_DESKTOP_STARTUP_ENTRY server_start_entered");
   assert.equal(diagnostics.isStartupDiagnosticLine(entry), true);
+  for (const stage of ["instrumentation_starting", "instrumentation_ready", "config_loaded", "postgres_native_runtime_preparing", "postgres_started", "postgres_migrations_ready"]) {
+    const line = diagnostics.startupEntryLine(stage);
+    assert.equal(line, `BOSTAN_DESKTOP_STARTUP_ENTRY ${stage}`);
+    assert.equal(diagnostics.isStartupDiagnosticLine(line), true);
+  }
   assert.equal(diagnostics.startupEntryLine("C:\\private"), null);
+  assert.equal(diagnostics.startupEntryLine("database_password=secret"), null);
   assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_ENTRY C:\\private"), false);
 
   const root = Object.assign(new Error("password URL https://user:secret@example.test C:\\private"), { code: "ERR_MODULE_NOT_FOUND" });

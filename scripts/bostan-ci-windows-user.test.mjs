@@ -38,6 +38,7 @@ test("native model setup exposes only bounded fixed phase, failure and progress 
   const failureMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_WINDOWS_FAILURE[^']*)'\) \{ return \$line \}$/m);
   const progressMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_MODEL_PULL_WAIT[^']*)'\) \{ return \$line \}$/m);
   const resultMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_MODEL_PULL_RESULT[^']*)'\) \{ return \$line \}$/m);
+  const operationFailureMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE[^']*)'\) \{ return \$line \}$/m);
   const archiveMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_WINDOWS_ARCHIVE_VERIFY[^']*)'\) \{ return \$line \}$/m);
   const archiveSizeMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_WINDOWS_ARCHIVE_SIZE[^']*)'\) \{ return \$line \}$/m);
   const archiveStatFailureMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_WINDOWS_ARCHIVE_STAT_FAILURE[^']*)'\) \{ return \$line \}$/m);
@@ -46,6 +47,7 @@ test("native model setup exposes only bounded fixed phase, failure and progress 
   assert.ok(failureMatch, "native setup failure allowlist is present");
   assert.ok(progressMatch, "native model pull progress allowlist is present");
   assert.ok(resultMatch, "native model pull result allowlist is present");
+  assert.ok(operationFailureMatch, "native model pull operation failure receipt allowlist is present");
   assert.ok(archiveMatch, "native archive verification receipt allowlist is present");
   assert.ok(archiveSizeMatch, "native archive size receipt allowlist is present");
   assert.ok(archiveStatFailureMatch, "native archive stat failure allowlist is present");
@@ -54,6 +56,7 @@ test("native model setup exposes only bounded fixed phase, failure and progress 
   const failurePattern = new RegExp(failureMatch[1]);
   const progressPattern = new RegExp(progressMatch[1]);
   const resultPattern = new RegExp(resultMatch[1]);
+  const operationFailurePattern = new RegExp(operationFailureMatch[1]);
   const archivePattern = new RegExp(archiveMatch[1]);
   const archiveSizePattern = new RegExp(archiveSizeMatch[1]);
   const archiveStatFailurePattern = new RegExp(archiveStatFailureMatch[1]);
@@ -76,6 +79,10 @@ test("native model setup exposes only bounded fixed phase, failure and progress 
   }
   assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 diagnostic=secret outputBytes=24"), false);
   assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 diagnostic=network outputBytes=token-secret"), false);
+  for (const cause of ["access_denied", "io_error", "other", "output_limit", "process_launch", "process_state"]) {
+    assert.equal(operationFailurePattern.test(`BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=${cause} childAlive=false outputBytes=1024`), true, cause);
+  }
+  assert.equal(operationFailurePattern.test("BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=secret childAlive=false outputBytes=1024"), false);
   assert.equal(archivePattern.test(`BOSTAN_NATIVE_WINDOWS_ARCHIVE_VERIFY sizeBytes=1618522644 sha256=${"a".repeat(64)} sizeMatches=true digestMatches=false`), true);
   assert.equal(archivePattern.test(`BOSTAN_NATIVE_WINDOWS_ARCHIVE_VERIFY sizeBytes=1618522644 sha256=${"A".repeat(64)} sizeMatches=true digestMatches=false`), false);
   assert.equal(archivePattern.test(`BOSTAN_NATIVE_WINDOWS_ARCHIVE_VERIFY sizeBytes=1618522644 sha256=${"a".repeat(64)} sizeMatches=true digestMatches=false C:\\secret`), false);
@@ -100,6 +107,7 @@ test("native model setup exposes only bounded fixed phase, failure and progress 
   assert.ok(setup.includes('Write-Output "BOSTAN_NATIVE_WINDOWS_FAILURE $stage"'));
   assert.match(setup, /outputLength -gt 1048576/, "model pull log collection stays capped");
   assert.match(setup, /BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=.*diagnostic=.*outputBytes=/, "model pull failures emit bounded sanitized classification");
+  assert.match(setup, /BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=\$cause childAlive=.*outputBytes=/, "model pull operation exceptions emit bounded sanitized classification");
   for (const diagnostic of ["disk_space", "authorization", "model_unavailable", "network", "resource"]) {
     assert.ok(setup.includes(`$diagnostic = '${diagnostic}'`), `model pull classifier detects ${diagnostic}`);
   }

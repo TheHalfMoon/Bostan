@@ -1,5 +1,5 @@
 import { promises as fs } from "node:fs";
-import { constants as fsConstants } from "node:fs";
+import { constants as fsConstants, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
@@ -40,16 +40,54 @@ async function pathExists(value: string): Promise<boolean> {
   }
 }
 
-export function resolveEmbeddedPostgresNativePackageRoot(embeddedPostgresEntry: string, nativePackageName: string): string | null {
+export function resolveEmbeddedPostgresNativePackageRoot(embeddedPostgresEntry: string, nativePackageName: string, runtimeRoot?: string): string | null {
   try {
     // pnpm deploy can nest embedded-postgres inside an injected workspace
     // package while hoisting its native dependency farther up node_modules.
     // Resolve from the dependency itself, as its binary loader does.
     const entry = createRequire(embeddedPostgresEntry).resolve(`@embedded-postgres/${nativePackageName}`);
-    return path.dirname(path.dirname(entry));
+    const nativeEntry = realpathSync(entry);
+    const packageRoot = path.dirname(path.dirname(nativeEntry));
+    if (runtimeRoot && !isInside(realpathSync(runtimeRoot), packageRoot)) return null;
+    return packageRoot;
   } catch {
     return null;
   }
+}
+
+function isInside(root: string, target: string): boolean {
+  const relative = path.relative(root, target);
+  return relative === "" || (!path.isAbsolute(relative) && relative !== ".." && !relative.startsWith(".." + path.sep));
+}
+
+/** Resolve embedded-postgres from an installed Bostan runtime. Bundled code
+ * preserves its source import.meta.url for workspace tools, so that URL must
+ * not be used to locate dependencies in a packaged desktop application. */
+export async function resolvePackagedEmbeddedPostgresEntry(runtimeRoot: string): Promise<string> {
+  const root = await fs.realpath(runtimeRoot);
+  // The server imports embedded-postgres directly. Resolve from that same
+  // package so native aliases are prepared beside the copy that starts PG.
+  const serverPackageRoot = await fs.realpath(path.join(root, "node_modules", "@bostan", "server"));
+  if (!isInside(root, serverPackageRoot)) {
+    throw Object.assign(new Error("Packaged server dependency escapes the installed runtime"), { code: "POSTGRES_RUNTIME_PACKAGE_UNSAFE" });
+  }
+  const manifestPath = path.join(serverPackageRoot, "package.json");
+  const manifestInfo = await fs.lstat(manifestPath);
+  if (!manifestInfo.isFile() || manifestInfo.isSymbolicLink() || manifestInfo.size > 256_000) {
+    throw Object.assign(new Error("Packaged database dependency manifest is unsafe"), { code: "POSTGRES_RUNTIME_PACKAGE_UNSAFE" });
+  }
+  let metadata: unknown;
+  try { metadata = JSON.parse(await fs.readFile(manifestPath, "utf8")); }
+  catch { throw Object.assign(new Error("Packaged database dependency manifest is invalid"), { code: "POSTGRES_RUNTIME_PACKAGE_INVALID" }); }
+  if (!metadata || typeof metadata !== "object" || !("name" in metadata) || metadata.name !== "@bostan/server") {
+    throw Object.assign(new Error("Unexpected packaged server dependency identity"), { code: "POSTGRES_RUNTIME_PACKAGE_INVALID" });
+  }
+  const entry = createRequire(manifestPath).resolve("embedded-postgres");
+  const resolvedEntry = await fs.realpath(entry);
+  if (!isInside(root, resolvedEntry)) {
+    throw Object.assign(new Error("Packaged PostgreSQL dependency escapes the installed runtime"), { code: "POSTGRES_RUNTIME_PACKAGE_UNSAFE" });
+  }
+  return resolvedEntry;
 }
 
 function prependPathEnv(name: string, value: string): void {
@@ -130,7 +168,10 @@ export async function ensureDarwinSharedLibraryAliases(libDir: string): Promise<
     });
     if (existing) {
       if (!existing.isSymbolicLink() || await fs.realpath(aliasPath) !== await fs.realpath(sourcePath)) {
-        throw fail("POSTGRES_DARWIN_ALIAS_DESTINATION_OCCUPIED", "Embedded PostgreSQL alias destination is occupied");
+        throw Object.assign(
+          fail("POSTGRES_DARWIN_ALIAS_DESTINATION_OCCUPIED", "Embedded PostgreSQL alias destination is occupied"),
+          { library: path.posix.basename(target) },
+        );
       }
       continue;
     }
@@ -228,13 +269,17 @@ export async function prepareWindowsPostgresExtensionRuntime(nativeRoot: string,
   ];
 }
 
-export async function prepareEmbeddedPostgresNativeRuntime(dataDirectory?: string): Promise<string[]> {
+export async function prepareEmbeddedPostgresNativeRuntime(dataDirectory?: string, runtimeRoot?: string): Promise<string[]> {
   const nativePackageName = resolveNativePackageName();
   if (!nativePackageName) return [];
   let embeddedPostgresEntry: string;
-  try { embeddedPostgresEntry = require.resolve("embedded-postgres"); }
-  catch { return []; }
-  const nativeRoot = resolveEmbeddedPostgresNativePackageRoot(embeddedPostgresEntry, nativePackageName);
+  if (runtimeRoot) {
+    embeddedPostgresEntry = await resolvePackagedEmbeddedPostgresEntry(runtimeRoot);
+  } else {
+    try { embeddedPostgresEntry = require.resolve("embedded-postgres"); }
+    catch { return []; }
+  }
+  const nativeRoot = resolveEmbeddedPostgresNativePackageRoot(embeddedPostgresEntry, nativePackageName, runtimeRoot);
   if (!nativeRoot) return [];
 
   if (process.platform === "win32") {

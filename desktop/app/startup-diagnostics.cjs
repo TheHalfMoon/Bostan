@@ -4,7 +4,21 @@ const phases = new Set([
   "window_loaded", "data_protected", "runtime_valid", "child_spawned",
   "utility_bootstrap", "importing_server", "starting_server", "ready",
 ]);
-const startupEntryStages = new Set(["server_start_entered"]);
+const startupEntryStages = new Set([
+  "server_start_entered",
+  "instrumentation_starting", "instrumentation_ready",
+  "error_monitoring_starting", "error_monitoring_ready",
+  "signing_secret_starting", "signing_secret_ready",
+  "config_loading", "config_loaded",
+  "database_contract_checking", "database_contract_ready",
+  "external_database_migrations_starting", "external_database_migrations_ready",
+  "postgres_dependency_importing", "postgres_dependency_imported",
+  "postgres_native_runtime_preparing", "postgres_native_runtime_prepared",
+  "postgres_initializing", "postgres_initialized",
+  "postgres_starting", "postgres_started",
+  "postgres_database_checking", "postgres_database_ready",
+  "postgres_migrations_starting", "postgres_migrations_ready",
+]);
 // Primary error plus at most two causes bounds the chain to three nodes total.
 const startupFailureChainMaxNodes = 3;
 const startupErrorClasses = new Set([
@@ -19,6 +33,7 @@ const codes = new Set([
   "EACCES", "EPERM", "ENOENT", "EADDRINUSE",
   "POSTGRES_LIBRARY_MISSING", "POSTGRES_SIGNATURE_INVALID", "POSTGRES_LOCALE_INVALID",
   "POSTGRES_PERMISSION_DENIED", "POSTGRES_ROOT_REFUSED", "POSTGRES_INIT_FAILED",
+  "POSTGRES_RUNTIME_PACKAGE_UNSAFE", "POSTGRES_RUNTIME_PACKAGE_INVALID",
   "POSTGRES_START_FAILED", "POSTGRES_DATABASE_FAILED", "POSTGRES_MIGRATION_FAILED",
   "POSTGRES_MIGRATION_CONNECTION_FAILED", "POSTGRES_MIGRATION_AUTH_FAILED",
   "POSTGRES_MIGRATION_SCHEMA_FAILED", "POSTGRES_MIGRATION_CONSTRAINT_FAILED",
@@ -42,6 +57,7 @@ const postgresStartupIssues = new Set([
   "POSTGRES_START_DISK_FULL", "POSTGRES_START_RECOVERY_FAILED",
   "POSTGRES_START_SHARED_MEMORY_RESOURCE_LIMIT",
   "POSTGRES_START_LOGS_EMPTY", "POSTGRES_START_LOGS_UNCLASSIFIED",
+  "POSTGRES_RUNTIME_PACKAGE_UNSAFE", "POSTGRES_RUNTIME_PACKAGE_INVALID",
   "SERVER_STARTUP_UNCLASSIFIED",
   "SERVER_STARTUP_ERROR_ERROR", "SERVER_STARTUP_ERROR_TYPEERROR",
   "SERVER_STARTUP_ERROR_RANGEERROR", "SERVER_STARTUP_ERROR_REFERENCEERROR",
@@ -180,6 +196,12 @@ function isSharedMemoryOsErrorIssue(issue) {
   return Boolean(match && Number(match[1]) > 0 && Number(match[1]) <= 65535);
 }
 function startupFailureLibrary(error) {
+  if (startupErrorCode(error) === "POSTGRES_DARWIN_ALIAS_DESTINATION_OCCUPIED") {
+    try {
+      const alias = error?.library;
+      return typeof alias === "string" && /^lib[A-Za-z0-9_.+-]{1,100}\.dylib$/.test(alias) ? alias : null;
+    } catch { return null; }
+  }
   if (startupErrorCode(error) !== "POSTGRES_LIBRARY_MISSING") return null;
   try {
     const text = typeof error?.message === "string" ? error.message.slice(0, 65536) : "";

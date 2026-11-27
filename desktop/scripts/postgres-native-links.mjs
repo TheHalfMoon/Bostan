@@ -16,7 +16,7 @@ function safeManifestPath(value) {
 
 /**
  * Recreate only the Darwin PostgreSQL dylib aliases declared by the native
- * dependency resolved from @bostan/db, which owns runtime preparation. pnpm deploy intentionally skips postinstall
+ * dependency resolved from @bostan/server, which imports and prepares it. pnpm deploy intentionally skips postinstall
  * scripts, so doing this while staging keeps the installed app bundle
  * complete before signing and avoids mutating Resources at application start.
  */
@@ -25,7 +25,7 @@ export function prepareDarwinPostgresNativeLinks(runtimeRoot, architecture = pro
     : architecture === "x64" ? "darwin-x64" : null;
   if (!nativePackageName) throw new Error("Unsupported packaged Darwin PostgreSQL architecture");
 
-  const { root, embeddedEntry } = resolveDbEmbeddedPostgresEntry(runtimeRoot);
+  const { root, embeddedEntry } = resolveServerEmbeddedPostgresEntry(runtimeRoot);
   const nativeEntry = createRequire(embeddedEntry).resolve(`@embedded-postgres/${nativePackageName}`);
   const packageRoot = path.dirname(path.dirname(nativeEntry));
   if (!inside(root, packageRoot)) throw new Error("Darwin PostgreSQL package escapes the staged runtime");
@@ -94,23 +94,23 @@ export function prepareDarwinPostgresNativeLinks(runtimeRoot, architecture = pro
   return created.sort();
 }
 
-/** Resolve the packaged DB dependency without evaluating its source export.
+/** Resolve the packaged server dependency without evaluating its source export.
  * pnpm deploy may retain a `default` export pointing at src/index.ts, which is
- * intentionally absent from the production stage. Runtime preparation owns
- * embedded-postgres, so resolve that dependency from the staged DB package. */
-export function resolveDbEmbeddedPostgresEntry(runtimeRoot) {
+ * intentionally absent from the production stage. The server imports
+ * embedded-postgres directly, so staging resolves from the staged server package. */
+export function resolveServerEmbeddedPostgresEntry(runtimeRoot) {
   const root = fs.realpathSync(runtimeRoot);
-  const dbPackageRoot = fs.realpathSync(path.join(root, "node_modules", "@bostan", "db"));
-  if (!inside(root, dbPackageRoot)) throw new Error("Staged DB package escapes the packaged runtime");
-  const dbPackageInfo = fs.statSync(dbPackageRoot);
-  if (!dbPackageInfo.isDirectory()) throw new Error("Staged DB package is not a directory");
-  const manifestPath = path.join(dbPackageRoot, "package.json");
+  const serverPackageRoot = fs.realpathSync(path.join(root, "node_modules", "@bostan", "server"));
+  if (!inside(root, serverPackageRoot)) throw new Error("Staged server package escapes the packaged runtime");
+  const serverPackageInfo = fs.statSync(serverPackageRoot);
+  if (!serverPackageInfo.isDirectory()) throw new Error("Staged server package is not a directory");
+  const manifestPath = path.join(serverPackageRoot, "package.json");
   const manifestInfo = fs.lstatSync(manifestPath);
   if (!manifestInfo.isFile() || manifestInfo.isSymbolicLink() || manifestInfo.size > 256_000) {
     throw new Error("Staged DB package manifest is unsafe");
   }
   const packageMetadata = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-  if (packageMetadata.name !== "@bostan/db") throw new Error("Unexpected staged DB package identity");
+  if (packageMetadata.name !== "@bostan/server") throw new Error("Unexpected staged server package identity");
   const embeddedEntry = createRequire(manifestPath).resolve("embedded-postgres");
   return { root, embeddedEntry };
 }

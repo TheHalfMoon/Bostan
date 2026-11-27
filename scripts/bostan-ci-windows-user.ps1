@@ -103,6 +103,7 @@ function Get-AllowedInstallerReceipt([string]$line) {
   if ($line -match '^BOSTAN_NATIVE_WINDOWS_FAILURE (?:ollama_download|ollama_archive_verify|ollama_archive_extract|ollama_executable_discovery|ollama_version_verify|ollama_server_start|qwen_model_pull|qwen_model_manifest_verify|qwen_model_license_verify|host_resource_verify|installed_app_qualification)$') { return $line }
   if ($line -match '^BOSTAN_NATIVE_MODEL_PULL_WAIT elapsedSeconds=[0-9]{1,4} outputProgress=(?:advanced|stalled)$') { return $line }
   if ($line -match '^BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=[1-9][0-9]{0,2} diagnostic=(?:authorization|disk_space|model_unavailable|network|other|resource) outputBytes=[0-9]{1,7}$') { return $line }
+  if ($line -match '^BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=(?:access_denied|io_error|other|output_limit|process_launch|process_state) childAlive=(?:true|false) outputBytes=[0-9]{1,7}$') { return $line }
   $nativeSuccessPrefix = 'BOSTAN_PACKAGED_DESKTOP_FIRST_FREE_AGENT_TASK_PASS '
   if ($line.StartsWith($nativeSuccessPrefix)) {
     try {

@@ -25,7 +25,9 @@ test(`actual Electron Node child preserves startup contract (bundled=${useBundle
       import fs from 'node:fs'; import path from 'node:path'; import {fileURLToPath} from 'node:url';
       import {spawnSync} from 'node:child_process'; import {value} from '@bostan/fixture';
       export async function startServer(options = {}) {
+        if (options.embeddedPostgresRuntimeRoot !== process.env.BOSTAN_DESKTOP_SERVER_ROOT) throw Error('Installed runtime root was not forwarded');
         options.onStartupProgress?.('server_start_entered');
+        options.onStartupProgress?.('config_loaded');
         ${failStartup === "postgres" ? 'const cause = Object.assign(new TypeError("SYNTHETIC_PRIVATE_CAUSE"), {code:"ENOENT"}); const error = Object.assign(new Error("Postgres init script exited with code 1. Recent embedded Postgres logs: Library not loaded: /private/SYNTHETIC_PRIVATE_BACKEND_MESSAGE/lib.dylib", {cause}), {code:"POSTGRES_INIT_FAILED"}); throw error;' : failStartup === true || failStartup === "shutdown-during-failure" || failStartup === "no-callback" ? 'const cause = Object.assign(new TypeError("SYNTHETIC_PRIVATE_CAUSE"), {code:"ENOENT"}); const error = Object.assign(new Error("SYNTHETIC_PRIVATE_BACKEND_MESSAGE", {cause}), {code:"SYNTHETIC_PRIVATE_CODE"}); if (' + JSON.stringify(failStartup !== "no-callback") + ') options.onStartupFailure?.("SERVER_STARTUP_FAILED", undefined, error); throw error;' : ''}
         if(value!=='compiled')throw Error('Wrong export');
         const sub=spawnSync(process.execPath,['--input-type=module','-e',"import {value} from '@bostan/fixture'; console.log(value,process.versions.node)"],{
@@ -52,7 +54,7 @@ test(`actual Electron Node child preserves startup contract (bundled=${useBundle
       app.whenReady().then(()=>{
         const child=utilityProcess.fork(${JSON.stringify(childModule)},[],{
           stdio:'pipe',
-          env:{...process.env,BOSTAN_DESKTOP_SERVER_ROOT:path.join(process.env.HOME,'runtime')}
+          env:{...process.env,BOSTAN_DESKTOP_SERVER_ROOT:path.join(process.env.HOME,'runtime'),BOSTAN_DESKTOP_PACKAGED:'1'}
         });
         child.stderr.on('data',chunk=>process.stderr.write(chunk));
         child.on('message',message=>{
@@ -79,7 +81,10 @@ test(`actual Electron Node child preserves startup contract (bundled=${useBundle
     const phases = output.split(/\r?\n/).filter(line => line.startsWith('{"type":"startup-phase"')).map(line => JSON.parse(line).phase);
     assert.deepEqual(phases, expectedFailure ? ["utility_bootstrap", "importing_server", "starting_server"] : ["utility_bootstrap", "importing_server", "starting_server", "ready"]);
     const entries = output.split(/\r?\n/).filter(line => line.startsWith('{"type":"startup-entry"')).map(line => JSON.parse(line));
-    assert.deepEqual(entries, [{ type: "startup-entry", stage: "server_start_entered" }]);
+      assert.deepEqual(entries, [
+        { type: "startup-entry", stage: "server_start_entered" },
+        { type: "startup-entry", stage: "config_loaded" },
+      ]);
     assert.equal(diagnostics.isStartupDiagnosticLine(diagnostics.startupEntryLine(entries[0].stage)), true);
     if (expectedFailure) {
       const failure = output.split(/\r?\n/).filter(line => line.startsWith('{"type":"startup-failed"')).map(line => JSON.parse(line));

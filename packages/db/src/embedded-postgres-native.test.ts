@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { afterEach, describe, expect, it } from "vitest";
-import { ensureDarwinSharedLibraryAliases, ensureLinuxSharedLibraryAliases, prepareEmbeddedPostgresNativeRuntime, prepareWindowsPostgresExtensionRuntime, resolveEmbeddedPostgresNativePackageRoot } from "./embedded-postgres-native.js";
+import { ensureDarwinSharedLibraryAliases, ensureLinuxSharedLibraryAliases, prepareEmbeddedPostgresNativeRuntime, prepareWindowsPostgresExtensionRuntime, resolveEmbeddedPostgresNativePackageRoot, resolvePackagedEmbeddedPostgresEntry } from "./embedded-postgres-native.js";
 
 const require = createRequire(import.meta.url);
 
@@ -37,6 +37,60 @@ describe("embedded Postgres native runtime", () => {
     expect(resolved).toBe(native);
     expect(fs.readFileSync(path.join(resolved!, "native/lib/libicudata.77.1.dylib"), "utf8")).toBe("synthetic");
     expect(resolveEmbeddedPostgresNativePackageRoot(path.join(embedded, "dist/index.js"), "missing-native-fixture")).toBeNull();
+  });
+
+  it("resolves embedded-postgres from the installed runtime instead of the bundled source module location", async () => {
+    const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "bostan-packaged-pg-resolution-"));
+    tempDirs.push(root);
+    const runtimeRoot = path.join(root, "installed-runtime");
+    const serverPackageRoot = path.join(runtimeRoot, "node_modules", "@bostan", "server");
+    const embedded = path.join(serverPackageRoot, "node_modules", "embedded-postgres");
+    const sourceDecoy = path.join(root, "workspace", "packages", "db", "node_modules", "embedded-postgres");
+    fs.mkdirSync(path.join(serverPackageRoot, "dist"), { recursive: true });
+    fs.mkdirSync(path.join(embedded, "dist"), { recursive: true });
+    fs.mkdirSync(path.join(sourceDecoy, "dist"), { recursive: true });
+    fs.writeFileSync(path.join(serverPackageRoot, "package.json"), JSON.stringify({ name: "@bostan/server", version: "0.3.1" }));
+    fs.writeFileSync(path.join(embedded, "package.json"), JSON.stringify({ name: "embedded-postgres", exports: "./dist/index.js" }));
+    fs.writeFileSync(path.join(embedded, "dist", "index.js"), "export default class InstalledPostgres {}\n");
+    fs.writeFileSync(path.join(sourceDecoy, "package.json"), JSON.stringify({ name: "embedded-postgres", exports: "./dist/index.js" }));
+    fs.writeFileSync(path.join(sourceDecoy, "dist", "index.js"), "export default class WorkspaceDecoy {}\n");
+
+    const resolved = await resolvePackagedEmbeddedPostgresEntry(runtimeRoot);
+
+    expect(resolved).toBe(fs.realpathSync(path.join(embedded, "dist", "index.js")));
+    expect(resolved).not.toBe(fs.realpathSync(path.join(sourceDecoy, "dist", "index.js")));
+  });
+
+  it("refuses an installed server package that resolves outside the runtime", async () => {
+    const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "bostan-packaged-pg-escape-"));
+    tempDirs.push(root);
+    const runtimeRoot = path.join(root, "installed-runtime");
+    const serverLink = path.join(runtimeRoot, "node_modules", "@bostan", "server");
+    const outside = path.join(root, "outside-server");
+    fs.mkdirSync(path.dirname(serverLink), { recursive: true });
+    fs.mkdirSync(outside, { recursive: true });
+    fs.symlinkSync(outside, serverLink, process.platform === "win32" ? "junction" : "dir");
+
+    await expect(resolvePackagedEmbeddedPostgresEntry(runtimeRoot)).rejects.toMatchObject({
+      code: "POSTGRES_RUNTIME_PACKAGE_UNSAFE",
+    });
+  });
+
+  it("rejects a native package resolved outside the installed runtime", () => {
+    const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "bostan-native-package-escape-"));
+    tempDirs.push(root);
+    const runtimeRoot = path.join(root, "runtime");
+    const embedded = path.join(runtimeRoot, "node_modules", "embedded-postgres", "dist", "index.js");
+    const outside = path.join(root, "outside-native");
+    fs.mkdirSync(path.dirname(embedded), { recursive: true });
+    fs.mkdirSync(path.join(outside, "dist"), { recursive: true });
+    fs.writeFileSync(embedded, "");
+    fs.writeFileSync(path.join(outside, "package.json"), JSON.stringify({ name: "@embedded-postgres/darwin-arm64", exports: "./dist/index.js" }));
+    fs.writeFileSync(path.join(outside, "dist", "index.js"), "");
+    const link = path.join(runtimeRoot, "node_modules", "@embedded-postgres", "darwin-arm64");
+    fs.mkdirSync(path.dirname(link), { recursive: true });
+    fs.symlinkSync(outside, link, process.platform === "win32" ? "junction" : "dir");
+    expect(resolveEmbeddedPostgresNativePackageRoot(embedded, "darwin-arm64", runtimeRoot)).toBeNull();
   });
 
   it.runIf(process.platform !== "win32")("creates soname aliases for bundled patch-level shared libraries", async () => {
