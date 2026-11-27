@@ -24,8 +24,8 @@ The latest completed native failure was run [46058240798](https://github.com/The
 - Sanitized receipt: `BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE
   cause=other childAlive=false outputBytes=7478`.
 - Task-owned temporary cleanup passed. No model manifest/license, installed
-  native-agent journey, persisted task, attributed comment, restart recovery,
-  or cost result was reached.
+  verification, installed native-agent journey, persisted task, attributed
+  comment, restart recovery, or cost result was reached.
 - This receipt does not expose an exit code or useful failure category. It does
   not establish the model-pull root cause.
 
