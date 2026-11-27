@@ -11,7 +11,7 @@ function fixture(t) {
   const runtime = path.join(root, "runtime");
   const embedded = path.join(runtime, "node_modules", "embedded-postgres");
   const native = path.join(embedded, "node_modules", "@embedded-postgres", "darwin-arm64");
-  const decoyEmbedded = path.join(runtime, "node_modules", "embedded-postgres");
+  const decoyEmbedded = path.join(runtime, "node_modules", "@bostan", "db", "node_modules", "embedded-postgres");
   const decoyNative = path.join(decoyEmbedded, "node_modules", "@embedded-postgres", "darwin-arm64");
   fs.mkdirSync(path.join(runtime, "dist"), { recursive: true });
   fs.writeFileSync(path.join(runtime, "dist", "index.js"), "");
@@ -57,6 +57,9 @@ test("refuses an embedded PostgreSQL dependency link that resolves outside the r
   const { runtime, embedded } = fixture(t);
   const external = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-darwin-native-outside-"));
   t.after(() => fs.rmSync(external, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(external, "dist"), { recursive: true });
+  fs.writeFileSync(path.join(external, "package.json"), JSON.stringify({ exports: "./dist/index.js" }));
+  fs.writeFileSync(path.join(external, "dist", "index.js"), "");
   fs.rmSync(embedded, { recursive: true, force: true });
   fs.symlinkSync(external, embedded, "dir");
   assert.throws(() => resolveServerEmbeddedPostgresEntry(runtime), /escapes the packaged runtime/);
