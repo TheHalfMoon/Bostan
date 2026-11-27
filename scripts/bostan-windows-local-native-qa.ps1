@@ -184,6 +184,7 @@ try {
       }
       if ($boundedOutputBytes -gt 1048576) { $boundedOutputBytes = 1048576; $cause = 'output_limit' }
       Write-Output "BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=$cause childAlive=$($childAlive.ToString().ToLowerInvariant()) outputBytes=$boundedOutputBytes"
+      $modelPullResultReported = $true
     }
     throw 'Local Qwen model pull operation failed'
   }
@@ -215,6 +216,25 @@ try {
   node desktop/scripts/qualify-windows-installer.mjs
   if ($LASTEXITCODE -ne 0) { throw 'Packaged Windows native local-model acceptance failed' }
 } catch {
+  if ($stage -eq 'qwen_model_pull' -and -not $modelPullResultReported) {
+    $fallbackCause = 'other'
+    $fallbackChildAlive = $false
+    if ($null -ne $modelPull) {
+      try { $modelPull.Refresh(); $fallbackChildAlive = -not $modelPull.HasExited }
+      catch { $fallbackChildAlive = $true }
+    }
+    $fallbackOutputBytes = 0L
+    foreach ($outputPath in @($modelPullStdout, $modelPullStderr)) {
+      try {
+        if (Test-Path -LiteralPath $outputPath) {
+          $fallbackOutputBytes += (Get-Item -LiteralPath $outputPath -ErrorAction Stop).Length
+        }
+      } catch { $fallbackCause = 'io_error' }
+    }
+    if ($fallbackOutputBytes -gt 1048576) { $fallbackOutputBytes = 1048576; $fallbackCause = 'output_limit' }
+    Write-Output "BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=$fallbackCause childAlive=$($fallbackChildAlive.ToString().ToLowerInvariant()) outputBytes=$fallbackOutputBytes"
+    $modelPullResultReported = $true
+  }
   Write-Output "BOSTAN_NATIVE_WINDOWS_FAILURE $stage"
   throw
 } finally {

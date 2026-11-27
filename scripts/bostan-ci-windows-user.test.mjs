@@ -108,6 +108,7 @@ test("native model setup exposes only bounded fixed phase, failure and progress 
   assert.match(setup, /outputLength -gt 1048576/, "model pull log collection stays capped");
   assert.match(setup, /BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=.*diagnostic=.*outputBytes=/, "model pull failures emit bounded sanitized classification");
   assert.match(setup, /BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=\$cause childAlive=.*outputBytes=/, "model pull operation exceptions emit bounded sanitized classification");
+  assert.match(setup, /if \(\$stage -eq 'qwen_model_pull' -and -not \$modelPullResultReported\)[\s\S]*?BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=\$fallbackCause/, "the outer stage handler preserves a fallback receipt if operation diagnostics fail");
   for (const diagnostic of ["disk_space", "authorization", "model_unavailable", "network", "resource"]) {
     assert.ok(setup.includes(`$diagnostic = '${diagnostic}'`), `model pull classifier detects ${diagnostic}`);
   }
