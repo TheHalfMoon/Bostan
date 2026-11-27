@@ -11,6 +11,7 @@ import {
   costEvents,
   agents,
   agentRuntimeState,
+  agentTaskSessions,
   authUsers,
   agentWakeupRequests,
   activityLog,
@@ -175,6 +176,8 @@ describeEmbeddedPostgres("issue recovery actions", () => {
     await db.delete(environmentLeases);
     await db.delete(activityLog);
     await db.delete(costEvents);
+    // These audit/session references are intentionally non-cascading.
+    await db.update(agentTaskSessions).set({ lastRunId: null });
     await db.delete(heartbeatRunEvents);
     await db.delete(heartbeatRuns);
     await db.delete(agentWakeupRequests);
