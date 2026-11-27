@@ -127,7 +127,6 @@ try {
   $modelPullStderr = Join-Path $ollamaRoot 'model-pull.stderr.log'
   Write-Output 'BOSTAN_NATIVE_WINDOWS_PHASE qwen_model_pull_begin'
   $modelPull = $null
-  $modelPullResultReported = $false
   try {
   $modelPull = Start-Process -FilePath $ollamaExe -ArgumentList @('pull', 'qwen2.5-coder:1.5b') `
     -PassThru -WindowStyle Hidden -RedirectStandardOutput $modelPullStdout -RedirectStandardError $modelPullStderr
@@ -157,44 +156,9 @@ try {
     if (Test-Path -LiteralPath $outputPath) { $outputLength += (Get-Item -LiteralPath $outputPath).Length }
   }
   if ($outputLength -gt 1048576) { throw 'Local Qwen model pull diagnostics exceeded the bounded output cap' }
-  if ($modelPull.ExitCode -ne 0) {
-    $diagnostic = 'other'
-    $diagnosticText = ''
-    foreach ($outputPath in @($modelPullStdout, $modelPullStderr)) {
-      if (Test-Path -LiteralPath $outputPath) {
-        $diagnosticText += [IO.File]::ReadAllText($outputPath) + "`n"
-      }
-    }
-    if ($diagnosticText -match '(?i)(no space left|not enough space|disk full)') { $diagnostic = 'disk_space' }
-    elseif ($diagnosticText -match '(?i)(unauthorized|forbidden|terms? (?:of )?service|license acceptance)') { $diagnostic = 'authorization' }
-    elseif ($diagnosticText -match '(?i)(manifest.*(?:unknown|not found)|model.*(?:unknown|not found))') { $diagnostic = 'model_unavailable' }
-    elseif ($diagnosticText -match '(?i)(resolve|dns|proxy|network|tls|certificate|timed out|connection (?:refused|reset|closed))') { $diagnostic = 'network' }
-    elseif ($diagnosticText -match '(?i)(out of memory|allocation failed|resource exhausted)') { $diagnostic = 'resource' }
-    Write-Output "BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=$($modelPull.ExitCode) diagnostic=$diagnostic outputBytes=$outputLength"
-    $modelPullResultReported = $true
-    throw 'Pinned local Qwen model pull failed'
-  }
+  if ($modelPull.ExitCode -ne 0) { throw 'Pinned local Qwen model pull failed' }
   Write-Output 'BOSTAN_NATIVE_WINDOWS_PHASE qwen_model_pull_complete'
   } catch {
-    if (-not $modelPullResultReported) {
-      $cause = 'other'
-      $exceptionType = $_.Exception.GetType().FullName
-      if ($exceptionType -match '^(System\.ComponentModel\.Win32Exception|System\.IO\.FileNotFoundException)$') { $cause = 'process_launch' }
-      elseif ($exceptionType -match '^System\.UnauthorizedAccessException$') { $cause = 'access_denied' }
-      elseif ($exceptionType -match '^System\.IO\.(IOException|DirectoryNotFoundException)$') { $cause = 'io_error' }
-      elseif ($exceptionType -match '^System\.InvalidOperationException$') { $cause = 'process_state' }
-      $childAlive = $false
-      if ($null -ne $modelPull) {
-        try { $modelPull.Refresh(); $childAlive = -not $modelPull.HasExited } catch { $childAlive = $false }
-      }
-      $boundedOutputBytes = 0L
-      foreach ($outputPath in @($modelPullStdout, $modelPullStderr)) {
-        try { if (Test-Path -LiteralPath $outputPath) { $boundedOutputBytes += (Get-Item -LiteralPath $outputPath -ErrorAction Stop).Length } } catch { $cause = 'io_error' }
-      }
-      if ($boundedOutputBytes -gt 1048576) { $boundedOutputBytes = 1048576; $cause = 'output_limit' }
-      Write-Output "BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=$cause childAlive=$($childAlive.ToString().ToLowerInvariant()) outputBytes=$boundedOutputBytes"
-      $modelPullResultReported = $true
-    }
     throw 'Local Qwen model pull operation failed'
   }
   $stage = 'qwen_model_manifest_verify'
@@ -225,24 +189,58 @@ try {
   node desktop/scripts/qualify-windows-installer.mjs
   if ($LASTEXITCODE -ne 0) { throw 'Packaged Windows native local-model acceptance failed' }
 } catch {
-  if ($stage -eq 'qwen_model_pull' -and -not $modelPullResultReported) {
-    $fallbackCause = 'other'
-    $fallbackChildAlive = $false
+  if ($stage -eq 'qwen_model_pull') {
+    $pullChildAlive = $false
+    $pullExitCode = $null
     if ($null -ne $modelPull) {
-      try { $modelPull.Refresh(); $fallbackChildAlive = -not $modelPull.HasExited }
-      catch { $fallbackChildAlive = $true }
+      try {
+        $modelPull.Refresh()
+        $pullChildAlive = -not $modelPull.HasExited
+        if (-not $pullChildAlive) { $pullExitCode = $modelPull.ExitCode }
+      } catch { $pullChildAlive = $true }
     }
-    $fallbackOutputBytes = 0L
+    $pullOutputBytes = 0L
+    $pullDiagnosticText = ''
+    $pullOutputReadFailed = $false
     foreach ($outputPath in @($modelPullStdout, $modelPullStderr)) {
       try {
         if (Test-Path -LiteralPath $outputPath) {
-          $fallbackOutputBytes += (Get-Item -LiteralPath $outputPath -ErrorAction Stop).Length
+          $file = [IO.File]::Open($outputPath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+          try {
+            $pullOutputBytes += $file.Length
+            if ($pullDiagnosticText.Length -lt 65536) {
+              $reader = New-Object IO.StreamReader($file, [Text.Encoding]::UTF8, $true, 4096, $true)
+              try {
+                $buffer = New-Object char[] ([Math]::Min(65536 - $pullDiagnosticText.Length, 8192))
+                while ($pullDiagnosticText.Length -lt 65536) {
+                  $read = $reader.Read($buffer, 0, $buffer.Length)
+                  if ($read -le 0) { break }
+                  $pullDiagnosticText += [System.String]::new($buffer, 0, $read)
+                }
+              } finally { $reader.Dispose() }
+            }
+          } finally { $file.Dispose() }
         }
-      } catch { $fallbackCause = 'io_error' }
+      } catch { $pullOutputReadFailed = $true }
     }
-    if ($fallbackOutputBytes -gt 1048576) { $fallbackOutputBytes = 1048576; $fallbackCause = 'output_limit' }
-    Write-Output "BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=$fallbackCause childAlive=$($fallbackChildAlive.ToString().ToLowerInvariant()) outputBytes=$fallbackOutputBytes"
-    $modelPullResultReported = $true
+    if ($pullOutputBytes -gt 1048576) { $pullOutputBytes = 1048576 }
+    if ($null -ne $pullExitCode -and $pullExitCode -ne 0) {
+      $pullDiagnostic = 'other'
+      if ($pullDiagnosticText -match '(?i)(no space left|not enough space|disk full)') { $pullDiagnostic = 'disk_space' }
+      elseif ($pullDiagnosticText -match '(?i)(unauthorized|forbidden|terms? (?:of )?service|license acceptance)') { $pullDiagnostic = 'authorization' }
+      elseif ($pullDiagnosticText -match '(?i)(manifest.*(?:unknown|not found)|model.*(?:unknown|not found))') { $pullDiagnostic = 'model_unavailable' }
+      elseif ($pullDiagnosticText -match '(?i)(resolve|dns|proxy|network|tls|certificate|timed out|connection (?:refused|reset|closed))') { $pullDiagnostic = 'network' }
+      elseif ($pullDiagnosticText -match '(?i)(out of memory|allocation failed|resource exhausted)') { $pullDiagnostic = 'resource' }
+      Write-Output "BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=$pullExitCode diagnostic=$pullDiagnostic outputBytes=$pullOutputBytes"
+    } else {
+      $pullCause = 'other'
+      if ($pullOutputReadFailed) { $pullCause = 'io_error' }
+      elseif ($null -eq $modelPull) { $pullCause = 'process_launch' }
+      elseif ($pullChildAlive) { $pullCause = 'process_state' }
+      elseif ($pullOutputBytes -ge 1048576) { $pullCause = 'output_limit' }
+      elseif ($pullExitCode -eq 0) { $pullCause = 'process_state' }
+      Write-Output "BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=$pullCause childAlive=$($pullChildAlive.ToString().ToLowerInvariant()) outputBytes=$pullOutputBytes"
+    }
   }
   Write-Output "BOSTAN_NATIVE_WINDOWS_FAILURE $stage"
   throw
