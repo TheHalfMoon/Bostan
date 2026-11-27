@@ -149,6 +149,7 @@ if (!embeddedPostgresSupport.supported) {
 describeEmbeddedPostgres("issue recovery actions", () => {
   let tempDb: Awaited<ReturnType<typeof startEmbeddedPostgresTestDatabase>> | null = null;
   let db: ReturnType<typeof createDb>;
+  let heartbeatServicesToDrain: Array<ReturnType<typeof heartbeatService>> = [];
   let operationLogRoot: string;
   const priorOperationLogRoot = process.env.WORKSPACE_OPERATION_LOG_BASE_PATH;
 
@@ -160,6 +161,8 @@ describeEmbeddedPostgres("issue recovery actions", () => {
   }, 30_000);
 
   afterEach(async () => {
+    await Promise.all(heartbeatServicesToDrain.map((heartbeat) => heartbeat.drainActiveRunExecutions()));
+    heartbeatServicesToDrain = [];
     await db.delete(caseHandoffs);
     await db.delete(cases);
     await db.delete(documentRevisions);
@@ -2075,6 +2078,7 @@ describeEmbeddedPostgres("issue recovery actions", () => {
     await request(app).post(`/api/issues/${sourceIssueId}/recovery-actions/resolve`).send(body).expect(200);
     expect((await db.select().from(issueRecoveryActions).where(eq(issueRecoveryActions.id, action!.id)))[0]).toEqual(recorded);
     const heartbeat = heartbeatService(db, { runtimeEnv: {} });
+    heartbeatServicesToDrain.push(heartbeat);
     await deliverReconciledExecutions(db, heartbeat.wakeup);
     await heartbeat.resumeTaskRetry(companyId, retry.requestId!);
     const continuations = await db.select().from(heartbeatRuns).where(and(
@@ -2150,11 +2154,13 @@ describeEmbeddedPostgres("issue recovery actions", () => {
         },
       })
       .returning();
+    const heartbeat = heartbeatService(db, { runtimeEnv: {} });
+    heartbeatServicesToDrain.push(heartbeat);
     return {
       ...fixture,
       previousRunId,
       action: action!,
-      heartbeat: heartbeatService(db, { runtimeEnv: {} }),
+      heartbeat,
     };
   }
 

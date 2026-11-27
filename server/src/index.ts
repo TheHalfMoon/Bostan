@@ -510,9 +510,10 @@ async function startServerWithDatabaseTeardown(
         () => import(moduleName),
       );
       EmbeddedPostgres = mod.default as EmbeddedPostgresCtor;
-    } catch {
+    } catch (cause) {
       throw new Error(
         "Embedded PostgreSQL mode requires dependency `embedded-postgres`. Reinstall dependencies (without omitting required packages), or set DATABASE_URL for external Postgres.",
+        { cause },
       );
     }
     const dataDir = resolve(config.embeddedPostgresDataDir);

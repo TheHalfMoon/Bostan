@@ -49,12 +49,37 @@ try {
   if (-not $archiveDigestMatches) {
     throw 'Pinned Ollama Windows archive digest mismatch'
   }
-  Expand-Archive -LiteralPath $zipPath -DestinationPath $ollamaRoot -Force
+  $stage = 'ollama_archive_extract'
+  try {
+    Expand-BostanVerifiedArchive -LiteralPath $zipPath -DestinationPath $ollamaRoot
+  } catch {
+    $extractFailure = Get-BostanArchiveFailureCategory -Exception $_.Exception
+    Write-Output "BOSTAN_NATIVE_WINDOWS_ARCHIVE_OPERATION_FAILURE step=extract cause=$extractFailure"
+    throw 'Verified Ollama archive extraction failed'
+  }
+  Write-Output 'BOSTAN_NATIVE_WINDOWS_ARCHIVE_OPERATION_PASS step=extract'
+  $stage = 'ollama_executable_discovery'
   $ollamaMatches = @(Get-ChildItem -LiteralPath $ollamaRoot -Filter ollama.exe -File -Recurse)
-  if ($ollamaMatches.Count -ne 1) { throw 'Expected one Ollama executable in the verified archive' }
+  Write-Output "BOSTAN_NATIVE_WINDOWS_ARCHIVE_EXECUTABLES count=$($ollamaMatches.Count)"
+  if ($ollamaMatches.Count -ne 1) {
+    Write-Output 'BOSTAN_NATIVE_WINDOWS_ARCHIVE_OPERATION_FAILURE step=executable_discovery cause=unexpected_count'
+    throw 'Expected one Ollama executable in the verified archive'
+  }
+  Write-Output 'BOSTAN_NATIVE_WINDOWS_ARCHIVE_OPERATION_PASS step=executable_discovery'
   $ollamaExe = $ollamaMatches[0].FullName
-  $versionOutput = (& $ollamaExe --version | Out-String).Trim()
-  if ($LASTEXITCODE -ne 0 -or $versionOutput -notmatch [regex]::Escape($ollamaVersion)) {
+  $stage = 'ollama_version_verify'
+  try {
+    $versionOutput = (& $ollamaExe --version | Out-String).Trim()
+    $versionExitSucceeded = $LASTEXITCODE -eq 0
+  } catch {
+    $versionFailure = Get-BostanArchiveFailureCategory -Exception $_.Exception
+    Write-Output "BOSTAN_NATIVE_WINDOWS_ARCHIVE_OPERATION_FAILURE step=version_verify cause=$versionFailure"
+    throw 'Verified Ollama runtime version check could not execute'
+  }
+  $versionMatches = $versionOutput -match [regex]::Escape($ollamaVersion)
+  Write-Output "BOSTAN_NATIVE_WINDOWS_OLLAMA_VERSION exit=$(if ($versionExitSucceeded) { 'success' } else { 'failure' }) versionMatches=$($versionMatches.ToString().ToLowerInvariant())"
+  if (-not $versionExitSucceeded -or -not $versionMatches) {
+    Write-Output 'BOSTAN_NATIVE_WINDOWS_ARCHIVE_OPERATION_FAILURE step=version_verify cause=version_mismatch'
     throw 'Unexpected Ollama runtime version'
   }
   Write-Output 'BOSTAN_NATIVE_WINDOWS_PHASE ollama_archive_verified'

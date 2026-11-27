@@ -16,7 +16,8 @@ test("native archive hashing streams bounded input and preserves the pinned veri
   assert.match(helper, /\$sha256\.ComputeHash\(\$stream\)/);
   assert.match(helper, /\$sha256\.Dispose\(\)/);
   assert.match(helper, /\$stream\.Dispose\(\)/);
-  assert.doesNotMatch(helper, /ReadAllBytes|Get-Content|Get-FileHash/);
+  assert.match(helper, /\$sourceStream\.CopyTo\(\$targetStream, 81920\)/);
+  assert.doesNotMatch(helper, /ReadAllBytes|Get-Content|Get-FileHash|Expand-Archive|ExtractToDirectory/);
   assert.match(nativeSetup, /\$ollamaSha256 = '3dd80f6e3a9699f2eadf4ac418f00529cee594df9557541806eda1f1f3f5588a'/);
   assert.match(nativeSetup, /\$ollamaArchiveBytes = 1618522644L/);
   assert.match(nativeSetup, /Get-BostanArchiveSha256 -LiteralPath \$zipPath/);
@@ -27,11 +28,20 @@ test("standard-user wrapper exposes bounded archive hash fixture receipts", () =
   const wrapper = fs.readFileSync(wrapperPath, "utf8");
   const worker = fs.readFileSync(workerPath, "utf8");
   const probe = fs.readFileSync(probePath, "utf8");
+  const helper = fs.readFileSync(helperPath, "utf8");
+  const nativeSetup = fs.readFileSync(nativeSetupPath, "utf8");
   assert.match(wrapper, /ArchiveHashProbe/);
   assert.equal(wrapper.includes("BOSTAN_NATIVE_WINDOWS_ARCHIVE_HASH_FIXTURE_PASS phase=(?:valid|corruption_detected|missing_file|access_denied|digest_mismatch|stream_disposed)"), true);
   assert.equal(wrapper.includes("BOSTAN_NATIVE_WINDOWS_ARCHIVE_HASH_PROBE_FAILURE phase=(?:standard_user|fixtures) cause=(?:access_denied|path_missing|io_error|invalid_argument|other)"), true);
   assert.match(worker, /bostan-windows-native-archive-hash-probe\.ps1'\) -RequireStandardUser/);
   assert.match(probe, /WindowsBuiltInRole\]::Administrator/);
+  assert.match(probe, /Test-BostanArchiveExtractionFixture/);
+  assert.match(helper, /step=reject_traversal/);
+  assert.match(helper, /step=reject_corrupt/);
+  assert.match(nativeSetup, /BOSTAN_NATIVE_WINDOWS_ARCHIVE_OPERATION_FAILURE step=extract cause=\$extractFailure/);
+  assert.match(nativeSetup, /BOSTAN_NATIVE_WINDOWS_ARCHIVE_EXECUTABLES count=/);
+  assert.match(nativeSetup, /BOSTAN_NATIVE_WINDOWS_OLLAMA_VERSION exit=/);
+  assert.match(wrapper, /ARCHIVE_OPERATION_FAILURE step=\(\?:extract\|executable_discovery\|version_verify\)/);
 });
 
 test("Windows PowerShell 5.1 hash fixtures classify failure cases under the current token", { skip: process.platform !== "win32" }, () => {

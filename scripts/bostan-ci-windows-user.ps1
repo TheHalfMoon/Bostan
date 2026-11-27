@@ -94,7 +94,11 @@ function Get-AllowedInstallerReceipt([string]$line) {
   if ($line -match '^BOSTAN_NATIVE_WINDOWS_ARCHIVE_HASH_FIXTURE_PASS phase=(?:valid|corruption_detected|missing_file|access_denied|digest_mismatch|stream_disposed)$') { return $line }
   if ($line -match '^BOSTAN_NATIVE_WINDOWS_ARCHIVE_HASH_(?:STANDARD_USER_PASS|PROBE_PASS)$') { return $line }
   if ($line -match '^BOSTAN_NATIVE_WINDOWS_ARCHIVE_HASH_PROBE_FAILURE phase=(?:standard_user|fixtures) cause=(?:access_denied|path_missing|io_error|invalid_argument|other)$') { return $line }
-  if ($line -match '^BOSTAN_NATIVE_WINDOWS_FAILURE (?:ollama_download|ollama_archive_verify|ollama_server_start|qwen_model_pull|qwen_model_manifest_verify|qwen_model_license_verify|host_resource_verify|installed_app_qualification)$') { return $line }
+  if ($line -match '^BOSTAN_NATIVE_WINDOWS_ARCHIVE_OPERATION_PASS step=(?:extract|executable_discovery|extract_fixture|reject_traversal|reject_corrupt)$') { return $line }
+  if ($line -match '^BOSTAN_NATIVE_WINDOWS_ARCHIVE_OPERATION_FAILURE step=(?:extract|executable_discovery|version_verify) cause=(?:access_denied|path_missing|io_error|path_too_long|invalid_archive|unsupported|invalid_argument|other|unexpected_count|version_mismatch)$') { return $line }
+  if ($line -match '^BOSTAN_NATIVE_WINDOWS_ARCHIVE_EXECUTABLES count=\d{1,4}$') { return $line }
+  if ($line -match '^BOSTAN_NATIVE_WINDOWS_OLLAMA_VERSION exit=(?:success|failure) versionMatches=(?:true|false)$') { return $line }
+  if ($line -match '^BOSTAN_NATIVE_WINDOWS_FAILURE (?:ollama_download|ollama_archive_verify|ollama_archive_extract|ollama_executable_discovery|ollama_version_verify|ollama_server_start|qwen_model_pull|qwen_model_manifest_verify|qwen_model_license_verify|host_resource_verify|installed_app_qualification)$') { return $line }
   if ($line -match '^BOSTAN_NATIVE_MODEL_PULL_WAIT elapsedSeconds=[0-9]{1,4} outputProgress=(?:advanced|stalled)$') { return $line }
   $nativeSuccessPrefix = 'BOSTAN_PACKAGED_DESKTOP_FIRST_FREE_AGENT_TASK_PASS '
   if ($line.StartsWith($nativeSuccessPrefix)) {

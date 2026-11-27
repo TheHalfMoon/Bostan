@@ -30,9 +30,22 @@ test("startup receipts accept only fixed phases and failure codes", () => {
   assert.equal(diagnostics.startupFailureLine("POSTGRES_START_FAILED"), "BOSTAN_DESKTOP_STARTUP_FAILURE POSTGRES_START_FAILED");
   assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_FAILURE POSTGRES_START_FAILED"), true);
   assert.equal(diagnostics.startupFailureStageLine("SERVER_CONFIG_FAILED"), "BOSTAN_DESKTOP_STARTUP_STAGE SERVER_CONFIG_FAILED");
+  assert.equal(diagnostics.startupFailureStageLine("POSTGRES_DEPENDENCY_IMPORT_FAILED"), "BOSTAN_DESKTOP_STARTUP_STAGE POSTGRES_DEPENDENCY_IMPORT_FAILED");
+  assert.equal(diagnostics.startupFailureStageLine("POSTGRES_NATIVE_RUNTIME_PREPARE_FAILED"), "BOSTAN_DESKTOP_STARTUP_STAGE POSTGRES_NATIVE_RUNTIME_PREPARE_FAILED");
   assert.equal(diagnostics.startupFailureStageLine("private stage"), "BOSTAN_DESKTOP_STARTUP_STAGE STARTUP_FAILED");
   assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_STAGE SERVER_CONFIG_FAILED"), true);
+  assert.equal(diagnostics.isStartupDiagnosticLine(diagnostics.startupFailureStageLine("POSTGRES_DEPENDENCY_IMPORT_FAILED")), true);
   assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_STAGE SERVER_CONFIG_FAILED\nprivate"), false);
+  const importCause = Object.assign(new Error("private native package path"), { code: "ERR_MODULE_NOT_FOUND" });
+  const importFailure = new Error("private import details", { cause: importCause });
+  const importContext = diagnostics.startupFailureContextLine({
+    serverStartEntered: true,
+    failureCallbackCalled: true,
+    error: importFailure,
+  });
+  assert.equal(importContext, "BOSTAN_DESKTOP_STARTUP_CONTEXT entry=yes callback=yes error=Error:OTHER causes=Error:ERR_MODULE_NOT_FOUND");
+  assert.equal(diagnostics.isStartupDiagnosticLine(importContext), true);
+  assert.equal(importContext.includes("private"), false);
   const postgresIssue = diagnostics.startupFailureIssue(Object.assign(
     new Error('Failed to start embedded PostgreSQL. Recent logs: FATAL: could not bind IPv4 address "127.0.0.1": Address already in use'),
     { code: "POSTGRES_START_FAILED" },

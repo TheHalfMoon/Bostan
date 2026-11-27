@@ -15,6 +15,7 @@ if ($RequireStandardUser) {
 
 try {
   Test-BostanArchiveHashFixtures
+  Test-BostanArchiveExtractionFixture
   if ($RequireStandardUser) {
     Write-Output 'BOSTAN_NATIVE_WINDOWS_ARCHIVE_HASH_STANDARD_USER_PASS'
   } else {
