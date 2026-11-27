@@ -32,6 +32,7 @@ test("startup receipts accept only fixed phases and failure codes", () => {
   assert.equal(diagnostics.startupFailureStageLine("SERVER_CONFIG_FAILED"), "BOSTAN_DESKTOP_STARTUP_STAGE SERVER_CONFIG_FAILED");
   assert.equal(diagnostics.startupFailureStageLine("POSTGRES_DEPENDENCY_IMPORT_FAILED"), "BOSTAN_DESKTOP_STARTUP_STAGE POSTGRES_DEPENDENCY_IMPORT_FAILED");
   assert.equal(diagnostics.startupFailureStageLine("POSTGRES_NATIVE_RUNTIME_PREPARE_FAILED"), "BOSTAN_DESKTOP_STARTUP_STAGE POSTGRES_NATIVE_RUNTIME_PREPARE_FAILED");
+  assert.equal(diagnostics.startupFailureLine("POSTGRES_DARWIN_ALIAS_DESTINATION_OCCUPIED"), "BOSTAN_DESKTOP_STARTUP_FAILURE POSTGRES_DARWIN_ALIAS_DESTINATION_OCCUPIED");
   assert.equal(diagnostics.startupFailureStageLine("private stage"), "BOSTAN_DESKTOP_STARTUP_STAGE STARTUP_FAILED");
   assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_STAGE SERVER_CONFIG_FAILED"), true);
   assert.equal(diagnostics.isStartupDiagnosticLine(diagnostics.startupFailureStageLine("POSTGRES_DEPENDENCY_IMPORT_FAILED")), true);
@@ -148,6 +149,14 @@ test("startup context receipts expose only bounded allowlisted entry and excepti
   const context = diagnostics.startupFailureContextLine({ serverStartEntered: true, failureCallbackCalled: false, error: root });
   assert.equal(context, "BOSTAN_DESKTOP_STARTUP_CONTEXT entry=yes callback=no error=Error:ERR_MODULE_NOT_FOUND causes=TypeError:ENOENT");
   assert.equal(diagnostics.isStartupDiagnosticLine(context), true);
+  const nativeAliasFailure = diagnostics.startupFailureContextLine({
+    serverStartEntered: true,
+    failureCallbackCalled: true,
+    error: Object.assign(new Error("private native path"), { code: "POSTGRES_DARWIN_ALIAS_DESTINATION_OCCUPIED" }),
+  });
+  assert.equal(nativeAliasFailure, "BOSTAN_DESKTOP_STARTUP_CONTEXT entry=yes callback=yes error=Error:POSTGRES_DARWIN_ALIAS_DESTINATION_OCCUPIED causes=none");
+  assert.equal(diagnostics.isStartupDiagnosticLine(nativeAliasFailure), true);
+  assert.equal(nativeAliasFailure.includes("private"), false);
   for (const secret of ["password", "https://", "user:secret", "C:\\\\private", "private cause message"]) {
     assert.equal(context.includes(secret), false, secret);
   }

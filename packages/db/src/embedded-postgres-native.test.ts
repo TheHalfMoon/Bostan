@@ -115,7 +115,9 @@ describe("embedded Postgres native runtime", () => {
       { source: "native/lib/libicudata.77.1.dylib", target: "native/lib/libicudata.77.dylib" },
       { source: "native/lib/libicudata.77.1.dylib", target: "native/lib/libicudata.dylib" },
     ]));
-    await expect(ensureDarwinSharedLibraryAliases(dir)).rejects.toThrow(/alias destination is occupied/);
+    await expect(ensureDarwinSharedLibraryAliases(dir)).rejects.toMatchObject({
+      code: "POSTGRES_DARWIN_ALIAS_DESTINATION_OCCUPIED",
+    });
     expect(fs.readFileSync(path.join(dir, "libicudata.77.dylib"), "utf8")).toBe("existing");
     expect(fs.existsSync(path.join(dir, "libicudata.dylib"))).toBe(false);
   });

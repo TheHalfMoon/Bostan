@@ -23,6 +23,7 @@ import {
   environmentLeases,
   environments,
   heartbeatRuns,
+  heartbeatRunEvents,
   issueComments,
   issueInboxArchives,
   issueRecoveryActions,
@@ -174,6 +175,7 @@ describeEmbeddedPostgres("issue recovery actions", () => {
     await db.delete(environmentLeases);
     await db.delete(activityLog);
     await db.delete(costEvents);
+    await db.delete(heartbeatRunEvents);
     await db.delete(heartbeatRuns);
     await db.delete(agentWakeupRequests);
     await db.delete(environments);

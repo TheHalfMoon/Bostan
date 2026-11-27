@@ -89,17 +89,22 @@ export async function ensureLinuxSharedLibraryAliases(libDir: string): Promise<s
 export async function ensureDarwinSharedLibraryAliases(libDir: string): Promise<string[]> {
   const packageRoot = path.resolve(libDir, "..", "..");
   const manifestPath = path.join(packageRoot, "native", "pg-symlinks.json");
+  const fail = (code: string, message: string): Error => Object.assign(new Error(message), { code });
   const manifestInfo = await fs.lstat(manifestPath);
   if (!manifestInfo.isFile() || manifestInfo.isSymbolicLink() || manifestInfo.size > 64_000) {
-    throw new Error("Embedded PostgreSQL alias manifest is unsafe");
+    throw fail("POSTGRES_DARWIN_ALIAS_MANIFEST_UNSAFE", "Embedded PostgreSQL alias manifest is unsafe");
   }
-  const aliases: unknown = JSON.parse(await fs.readFile(manifestPath, "utf8"));
-  if (!Array.isArray(aliases) || aliases.length > 128) throw new Error("Embedded PostgreSQL alias manifest is invalid");
+  let aliases: unknown;
+  try { aliases = JSON.parse(await fs.readFile(manifestPath, "utf8")); }
+  catch { throw fail("POSTGRES_DARWIN_ALIAS_MANIFEST_INVALID", "Embedded PostgreSQL alias manifest is invalid"); }
+  if (!Array.isArray(aliases) || aliases.length > 128) {
+    throw fail("POSTGRES_DARWIN_ALIAS_MANIFEST_INVALID", "Embedded PostgreSQL alias manifest is invalid");
+  }
   const created: string[] = [];
   const seen = new Set<string>();
   for (const value of aliases) {
     if (!value || typeof value !== "object" || !("source" in value) || !("target" in value)) {
-      throw new Error("Embedded PostgreSQL alias manifest entry is invalid");
+      throw fail("POSTGRES_DARWIN_ALIAS_ENTRY_INVALID", "Embedded PostgreSQL alias manifest entry is invalid");
     }
     const { source, target } = value as { source: unknown; target: unknown };
     const safePath = (entry: unknown): entry is string => typeof entry === "string"
@@ -110,24 +115,27 @@ export async function ensureDarwinSharedLibraryAliases(libDir: string): Promise<
         || !path.posix.basename(source).startsWith("lib") || !path.posix.basename(source).endsWith(".dylib")
         || !path.posix.basename(target).startsWith("lib") || !path.posix.basename(target).endsWith(".dylib")
         || source === target || seen.has(target)) {
-      throw new Error("Embedded PostgreSQL alias manifest path is invalid");
+      throw fail("POSTGRES_DARWIN_ALIAS_PATH_INVALID", "Embedded PostgreSQL alias manifest path is invalid");
     }
     seen.add(target);
     const sourcePath = path.join(packageRoot, source);
     const aliasPath = path.join(packageRoot, target);
     const sourceInfo = await fs.lstat(sourcePath);
-    if (!sourceInfo.isFile() || sourceInfo.isSymbolicLink()) throw new Error("Embedded PostgreSQL alias source is unsafe");
+    if (!sourceInfo.isFile() || sourceInfo.isSymbolicLink()) {
+      throw fail("POSTGRES_DARWIN_ALIAS_SOURCE_UNSAFE", "Embedded PostgreSQL alias source is unsafe");
+    }
     const existing = await fs.lstat(aliasPath).catch(error => {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
       throw error;
     });
     if (existing) {
       if (!existing.isSymbolicLink() || await fs.realpath(aliasPath) !== await fs.realpath(sourcePath)) {
-        throw new Error("Embedded PostgreSQL alias destination is occupied");
+        throw fail("POSTGRES_DARWIN_ALIAS_DESTINATION_OCCUPIED", "Embedded PostgreSQL alias destination is occupied");
       }
       continue;
     }
-    await fs.symlink(path.posix.basename(source), aliasPath);
+    try { await fs.symlink(path.posix.basename(source), aliasPath); }
+    catch { throw fail("POSTGRES_DARWIN_ALIAS_CREATE_FAILED", "Embedded PostgreSQL alias could not be created"); }
     created.push(aliasPath);
   }
   return created;
