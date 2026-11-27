@@ -15,8 +15,8 @@ function safeManifestPath(value) {
 }
 
 /**
- * Recreate only the Darwin PostgreSQL dylib aliases declared by the exact
- * packaged native dependency. pnpm deploy intentionally skips postinstall
+ * Recreate only the Darwin PostgreSQL dylib aliases declared by the native
+ * dependency resolved from @bostan/db, which owns runtime preparation. pnpm deploy intentionally skips postinstall
  * scripts, so doing this while staging keeps the installed app bundle
  * complete before signing and avoids mutating Resources at application start.
  */
@@ -27,7 +27,8 @@ export function prepareDarwinPostgresNativeLinks(runtimeRoot, architecture = pro
 
   const root = fs.realpathSync(runtimeRoot);
   const runtimeRequire = createRequire(path.join(root, "dist", "index.js"));
-  const embeddedEntry = runtimeRequire.resolve("embedded-postgres");
+  const dbEntry = runtimeRequire.resolve("@bostan/db");
+  const embeddedEntry = createRequire(dbEntry).resolve("embedded-postgres");
   const nativeEntry = createRequire(embeddedEntry).resolve(`@embedded-postgres/${nativePackageName}`);
   const packageRoot = path.dirname(path.dirname(nativeEntry));
   if (!inside(root, packageRoot)) throw new Error("Darwin PostgreSQL package escapes the staged runtime");
