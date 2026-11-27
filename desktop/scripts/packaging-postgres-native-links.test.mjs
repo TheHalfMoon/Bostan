@@ -55,7 +55,7 @@ test("resolves embedded-postgres from the staged DB manifest when its source exp
     error => /src[/\\]index\.ts/.test(error.message),
   );
   const { embeddedEntry } = resolveDbEmbeddedPostgresEntry(runtime);
-  assert.equal(embeddedEntry, path.join(embedded, "dist", "index.js"));
+  assert.equal(embeddedEntry, fs.realpathSync(path.join(embedded, "dist", "index.js")));
   assert.equal(fs.existsSync(path.join(runtime, "node_modules", "@bostan", "db", "src", "index.ts")), false);
 });
 
