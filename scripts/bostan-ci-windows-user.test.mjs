@@ -111,6 +111,8 @@ test("native model setup exposes only bounded fixed phase, failure and progress 
   assert.match(setup, /BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=.*diagnostic=.*outputBytes=/, "model pull failures emit bounded sanitized classification");
   assert.match(setup, /if \(\$stage -eq 'qwen_model_pull'\) \{[\s\S]*?BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=\$pullCause childAlive=.*outputBytes=/, "the outer stage handler emits the terminal receipt for every model-pull failure");
   assert.match(setup, /\[System\.String\]::new\(\$buffer, 0, \$read\)/, "failure classification reads model logs in bounded chunks");
+  assert.match(setup, /if \(\$pullOutputLimitExceeded\) \{[\s\S]*?BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=output_limit[\s\S]*?\} elseif \(\$pullOutputReadFailed\)/, "the output cap takes precedence over exit-code text classification");
+  assert.match(setup, /\$pullOutputLimitExceeded = \$pullOutputBytes -gt 1048576/, "an exactly 1 MiB log remains distinct from an exceeded cap");
   assert.doesNotMatch(setup, /modelPullResultReported/, "nested catches cannot suppress the outer terminal model-pull receipt");
   for (const diagnostic of ["disk_space", "authorization", "model_unavailable", "network", "resource"]) {
     assert.ok(setup.includes(`$pullDiagnostic = '${diagnostic}'`), `model pull classifier detects ${diagnostic}`);

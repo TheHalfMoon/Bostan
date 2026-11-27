@@ -223,8 +223,13 @@ try {
         }
       } catch { $pullOutputReadFailed = $true }
     }
-    if ($pullOutputBytes -gt 1048576) { $pullOutputBytes = 1048576 }
-    if ($null -ne $pullExitCode -and $pullExitCode -ne 0) {
+    $pullOutputLimitExceeded = $pullOutputBytes -gt 1048576
+    if ($pullOutputLimitExceeded) { $pullOutputBytes = 1048576 }
+    if ($pullOutputLimitExceeded) {
+      Write-Output "BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=output_limit childAlive=$($pullChildAlive.ToString().ToLowerInvariant()) outputBytes=$pullOutputBytes"
+    } elseif ($pullOutputReadFailed) {
+      Write-Output "BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=io_error childAlive=$($pullChildAlive.ToString().ToLowerInvariant()) outputBytes=$pullOutputBytes"
+    } elseif ($null -ne $pullExitCode -and $pullExitCode -ne 0) {
       $pullDiagnostic = 'other'
       if ($pullDiagnosticText -match '(?i)(no space left|not enough space|disk full)') { $pullDiagnostic = 'disk_space' }
       elseif ($pullDiagnosticText -match '(?i)(unauthorized|forbidden|terms? (?:of )?service|license acceptance)') { $pullDiagnostic = 'authorization' }
@@ -234,10 +239,8 @@ try {
       Write-Output "BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=$pullExitCode diagnostic=$pullDiagnostic outputBytes=$pullOutputBytes"
     } else {
       $pullCause = 'other'
-      if ($pullOutputReadFailed) { $pullCause = 'io_error' }
-      elseif ($null -eq $modelPull) { $pullCause = 'process_launch' }
+      if ($null -eq $modelPull) { $pullCause = 'process_launch' }
       elseif ($pullChildAlive) { $pullCause = 'process_state' }
-      elseif ($pullOutputBytes -ge 1048576) { $pullCause = 'output_limit' }
       elseif ($pullExitCode -eq 0) { $pullCause = 'process_state' }
       Write-Output "BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=$pullCause childAlive=$($pullChildAlive.ToString().ToLowerInvariant()) outputBytes=$pullOutputBytes"
     }
