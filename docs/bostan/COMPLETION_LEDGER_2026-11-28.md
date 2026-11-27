@@ -6,7 +6,7 @@ are a point-in-time snapshot; update them only when new evidence exists.
 
 ## Executive status
 
-**Overall: NO-GO / NOT COMPLETE.** PR #584 head 4bfa89b137d2268102414460c03d4ddf227b813a passed all 18 hosted source and desktop CI checks. The exact updated head 4ca245ba23c1ad056cebe4319c85a9a689a3d211 has new source and native qualification runs queued. The latest completed native qualification failed during Qwen model pull; no real inference, zero-cost agent execution, or release readiness is proven.
+**Overall: NO-GO / NOT COMPLETE.** PR #584 head 4bfa89b137d2268102414460c03d4ddf227b813a passed all 18 hosted source and desktop CI checks. At exact head 4ca245ba23c1ad056cebe4319c85a9a689a3d211, native run 46075821679 is still active in Windows packaging; source CI run 46075836375 is progressing with several jobs queued. The latest completed native qualification failed during Qwen model pull; no real inference, zero-cost agent execution, or release readiness is proven.
 
 The earlier completed native failure was run [46058240798](https://github.com/TheHalfMoon/Bostan/actions/runs/46058240798), built at parent commit `2f24d925cfe9d297dff28a59cc083c112c790ee5`:
 
@@ -27,16 +27,16 @@ The exact-head native rerun is [46058483810](https://github.com/TheHalfMoon/Bost
 
 At 2026-11-27T22:06:33.891Z, the Qwen pull began. Ten seconds later the child had exited and the old receipt was BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=other childAlive=false outputBytes=7012; the QA worker exited 1. The job cleaned its owned temporary files. The receipt did not include the child exit code or useful error class. Model manifest/license verification, installed-app onboarding, inference, task persistence, comment attribution, restart recovery and cost verification were not reached.
 
-The new qualification runs target exact head 4ca245ba23c1ad056cebe4319c85a9a689a3d211: native [46075821679](https://github.com/TheHalfMoon/Bostan/actions/runs/46075821679) and standard CI [46075836375](https://github.com/TheHalfMoon/Bostan/actions/runs/46075836375). They were queued after the prior native run terminated. The pushed diagnostics change is intended to capture the actual child exit code and a bounded sanitized category from both log tails.
+The exact-head qualification runs are native [46075821679](https://github.com/TheHalfMoon/Bostan/actions/runs/46075821679) and standard CI [46075836375](https://github.com/TheHalfMoon/Bostan/actions/runs/46075836375). The native run has passed the archive hash probe, server build, standard-user PostgreSQL probe, and UI build. At the latest check it was packaging the app; the model pull and first-agent stages have not started. The PostgreSQL probe took 6m52s and the server build 8m27s. The standard CI run has passed secret scan, typecheck and some test jobs while others remain queued or active. The diagnostics change is intended to capture the actual child exit code and a bounded sanitized category from both log tails; no new receipt is available until the native run completes.
 
 ## Mandatory acceptance gates
 
 | Gate | Status | Evidence and limit |
 |---|---|---|
-| Hosted source CI | **PASS on prior head; QUEUED on current head** | `4bfa89b1`: 18/18 checks passed. Current exact head `4ca245ba`: run `46075836375` queued. |
-| Windows installed-app CI | **PASS on prior head; QUEUED on current head** | Run `46058489615`, desktop Windows job passed (46m37s). It proves the CI install/startup path, not real inference. |
-| Apple Silicon macOS installed-app CI | **PASS on prior head; QUEUED on current head** | Run `46058489615`, `desktop (macos-15)` passed (25m21s). |
-| Intel macOS installed-app CI | **PASS on prior head; QUEUED on current head** | Run `46058489615`, `desktop (macos-15-intel)` passed (33m12s). |
+| Hosted source CI | **PASS on prior head; IN PROGRESS on current head** | `4bfa89b1`: 18/18 checks passed. Current exact head `4ca245ba`: run `46075836375` has passed secret scan, typecheck and some test jobs; the remainder are active or queued. |
+| Windows installed-app CI | **PASS on prior head; IN PROGRESS on current head** | Run `46058489615`, desktop Windows job passed (46m37s). Current run `46075836375` has a Windows job active. These prove install/startup paths, not real inference. |
+| Apple Silicon macOS installed-app CI | **PASS on prior head; IN PROGRESS on current head** | Run `46058489615`, `desktop (macos-15)` passed (25m21s). Current run `46075836375` is in its installed-app qualification step. |
+| Intel macOS installed-app CI | **PASS on prior head; IN PROGRESS on current head** | Run `46058489615`, `desktop (macos-15-intel)` passed (33m12s). Current run `46075836375` is packaging the app. |
 | Native Windows installer plus Ollama archive | **PASS, partial** | Run `46058483810`: package and archive pin, size, hash, extraction, version and loopback readiness passed. Qwen pull failed before installed-app first-agent qualification. |
 | Clean standard-user install, onboarding, workspace and agent creation in a native local-model journey | **NOT QUALIFIED** | The model pull failed before installed-app qualification. |
 | Real local-model inference and successful task execution | **FAIL / NOT QUALIFIED** | No inference or successful agent task was reached in the latest completed native run. |
@@ -66,7 +66,8 @@ The roadmap explicitly retains these unfinished requirements:
 PR [#584](https://github.com/TheHalfMoon/Bostan/pull/584) remains **OPEN / DRAFT**.
 The prior remote head `4bfa89b1` passed all 18 hosted CI checks. The current
 remote head is `4ca245ba`; its standard and native qualification runs are
-queued. Local commit
+in progress. The native run has completed the server build, standard-user
+PostgreSQL probe and UI build and is packaging the application. Local commit
 `2f7e01542012fc5da65248e8c7271fea64388048` improves classification precedence when model-pull logs exceed the 1 MiB cap. Commit `4ca245ba` adds bounded tail reads from both streams, captures the child exit state, and emits fixed categories only; focused tests pass 7/7, the PowerShell 5.1 probe passes, and the changed scripts parse under PowerShell 5.1. The local `desktop/dist-unpacked-qa/` directory is preserved and untracked.
 
 Independent review confirmed that the signed-exit-code filter could previously
@@ -88,9 +89,26 @@ zero license violations and one install-script flag. Findings still need
 package-path and runtime reachability review before changing dependency
 resolutions or declaring affected code reachable.
 
-The isolated local security branch `security/dependency-triage-20261128` has
-commit `aa2fbd5` with a focused fix for the confirmed critical advisory; it
-is not pushed while the current native qualification is queued.
+The isolated security branch `security/dependency-triage-20261128` has commit
+`aa2fbd5` with the focused `proxy-addr@2.0.8` fix and is published as draft
+PR #586; its checks are still in progress. Sibling branch
+`security/mcp-sdk-update-20261128` has local commit `6b4e42a0` adding the
+`@modelcontextprotocol/sdk@1.32.0` override. NPMScan reports four advisories
+(two high and two moderate) on 1.31.0 and none on 1.32.0. The affected MCP
+server suites passed 53 tests and all three package typechecks passed; frozen
+lockfile installation passed. This follow-up is local and has not been pushed.
+
+Read-only product reviews on 4ca245ba found no authorization bypass in the
+inspected ACPX approval and Paperclip tool-authority paths. They did find that
+ACPX `approve-reads` and `approve-paperclip` options are advertised for every
+provider, while automatic exact-tool rules are installed only for Claude;
+other providers escalate requests, which fails closed but differs from the
+advertised behavior. The reviews also identified remaining gates: installed
+local-model task completion and restart recovery; standalone Windows/macOS
+upgrade, backup, restore and rollback; real PostgreSQL force-crash/orphan
+recovery; recovery for missing runtime artifacts; and live multi-agent effect
+reconciliation, independent verification, interruption and consent/budget
+fence tests.
 
 - The available D1 local review is advisory only and warns that its small model
   can miss severe security issues. It is not used to satisfy any release or
@@ -105,14 +123,19 @@ is not pushed while the current native qualification is queued.
 
 ## Next actions
 
-1. Let native run `46075821679` finish and inspect its child exit and sanitized
-   log-category receipts.
-2. Identify and repair the actual Qwen pull failure from those receipts, then
-   rerun qualification serially.
+1. Let native run `46075821679` finish and inspect its child exit, bounded
+   sanitized log-category receipts and stage timings. It is currently
+   packaging; model pull has not started.
+2. Identify and repair any Qwen pull failure from the new evidence, then rerun
+   qualification serially.
 3. Complete actual local Qwen inference through the installed application;
    verify persisted task/comment, restart recovery and zero provider cost.
-4. Triage the partial dependency audit. A local branch contains a verified
-   `proxy-addr@2.0.8` fix for the critical IPv4 trust bypass; it awaits
-   publication after the current native run.
-5. Work through remaining B0–B6 roadmap gates. Keep PR #584 draft and update
-   this ledger only when evidence changes.
+4. Finish CI and review for draft PR #586, then publish the isolated SDK fix
+   branch after its base checks settle. Continue package-path and runtime
+   compatibility review for the partial undici findings.
+5. Resolve the ACPX permission-mode mismatch without weakening fail-closed
+   authority; add provider-specific behavior tests or clarify supported
+   behavior in the UI.
+6. Work through remaining B0–B6 installation, recovery, security, accessibility
+   and live agent/effect acceptance gates. Keep PR #584 draft and update this
+   ledger only when evidence changes.
