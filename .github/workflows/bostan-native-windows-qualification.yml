@@ -31,6 +31,9 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - name: Qualify PowerShell 5.1 streaming archive hashing as a standard user
+        shell: pwsh
+        run: ./scripts/bostan-ci-windows-user.ps1 -Mode ArchiveHashProbe
       - run: pnpm install --frozen-lockfile
       - run: npm --prefix desktop ci
       - run: node desktop/node_modules/electron/install.js

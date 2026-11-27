@@ -122,6 +122,62 @@ test("startup receipts accept only fixed phases and failure codes", () => {
   assert.equal(diagnostics.startupErrorCode({ code: "EACCES" }, "POSTGRES_MIGRATION_FAILED"), "EACCES");
 });
 
+test("startup context receipts expose only bounded allowlisted entry and exception details", () => {
+  const entry = diagnostics.startupEntryLine("server_start_entered");
+  assert.equal(entry, "BOSTAN_DESKTOP_STARTUP_ENTRY server_start_entered");
+  assert.equal(diagnostics.isStartupDiagnosticLine(entry), true);
+  assert.equal(diagnostics.startupEntryLine("C:\\private"), null);
+  assert.equal(diagnostics.isStartupDiagnosticLine("BOSTAN_DESKTOP_STARTUP_ENTRY C:\\private"), false);
+
+  const root = Object.assign(new Error("password URL https://user:secret@example.test C:\\private"), { code: "ERR_MODULE_NOT_FOUND" });
+  const cause = Object.assign(new TypeError("private cause message"), { code: "ENOENT" });
+  root.cause = cause;
+  const context = diagnostics.startupFailureContextLine({ serverStartEntered: true, failureCallbackCalled: false, error: root });
+  assert.equal(context, "BOSTAN_DESKTOP_STARTUP_CONTEXT entry=yes callback=no error=Error:ERR_MODULE_NOT_FOUND causes=TypeError:ENOENT");
+  assert.equal(diagnostics.isStartupDiagnosticLine(context), true);
+  for (const secret of ["password", "https://", "user:secret", "C:\\\\private", "private cause message"]) {
+    assert.equal(context.includes(secret), false, secret);
+  }
+
+  const unknown = Object.assign(new Error("safe to omit"), { code: "C:\\secret\\file" });
+  Object.defineProperty(unknown, "cause", { get() { throw new Error("private getter failure"); } });
+  const unknownContext = diagnostics.startupFailureContextLine({ serverStartEntered: false, failureCallbackCalled: true, error: unknown });
+  assert.equal(unknownContext, "BOSTAN_DESKTOP_STARTUP_CONTEXT entry=no callback=yes error=Error:OTHER causes=UNKNOWN:OTHER");
+  assert.equal(diagnostics.isStartupDiagnosticLine(unknownContext), true);
+  assert.equal(unknownContext.includes("secret"), false);
+
+  const custom = diagnostics.startupFailureContextLine({
+    serverStartEntered: false,
+    failureCallbackCalled: false,
+    error: { name: "SecretProviderError", code: "DATABASE_URL=private", cause: "raw secret" },
+  });
+  assert.equal(custom, "BOSTAN_DESKTOP_STARTUP_CONTEXT entry=no callback=no error=UNKNOWN:OTHER causes=UNKNOWN:OTHER");
+  assert.equal(diagnostics.isStartupDiagnosticLine(custom), true);
+
+  const deepError = new Error("private root");
+  deepError.cause = Object.assign(new Error("private cause one"), {
+    code: "EACCES",
+    cause: Object.assign(new TypeError("private cause two"), {
+      code: "ENOENT",
+      cause: Object.assign(new RangeError("private cause three"), { code: "EPERM" }),
+    }),
+  });
+  const deepContext = diagnostics.startupFailureContextLine({ serverStartEntered: true, failureCallbackCalled: true, error: deepError });
+  assert.match(deepContext, /causes=Error:EACCES\|TypeError:ENOENT$/);
+  assert.equal(deepContext.includes("RangeError"), false);
+  assert.equal(diagnostics.isStartupDiagnosticLine(deepContext), true);
+
+  for (const unsafe of [
+    context + "\nsecret",
+    context.replace("ERR_MODULE_NOT_FOUND", "DATABASE_URL=secret"),
+    context.replace("TypeError:ENOENT", "SecretProviderError:C:\\private"),
+    `BOSTAN_DESKTOP_STARTUP_CONTEXT entry=yes callback=no error=${"A".repeat(500)}:OTHER causes=none`,
+    context.replace("causes=TypeError:ENOENT", "causes=TypeError:ENOENT|Error:ERR_MODULE_NOT_FOUND|Error:ENOENT|Error:ENOENT"),
+  ]) {
+    assert.equal(diagnostics.isStartupDiagnosticLine(unsafe), false, unsafe);
+  }
+});
+
 test("wrapped PostgreSQL initialization failures disclose only a fixed reason", () => {
   const prefix = "Postgres init script exited with code 1. Recent embedded Postgres logs: ";
   const cases = [

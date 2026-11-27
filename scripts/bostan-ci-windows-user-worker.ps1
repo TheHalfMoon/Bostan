@@ -1,5 +1,5 @@
 param(
-  [Parameter(Mandatory=$true)][ValidateSet('Server','Installer','PostgresProbe','Native')][string]$Mode,
+  [Parameter(Mandatory=$true)][ValidateSet('Server','Installer','PostgresProbe','ArchiveHashProbe','Native')][string]$Mode,
   [Parameter(Mandatory=$true)][string]$NodeBinary
 )
 $ErrorActionPreference = 'Stop'
@@ -24,7 +24,11 @@ if ($Mode -eq 'Server') {
   & $NodeBinary (Join-Path $repo 'scripts\bostan-windows-server-journey.mjs') --compiled
 } elseif ($Mode -eq 'PostgresProbe') {
   & $NodeBinary (Join-Path $repo 'scripts\bostan-windows-embedded-postgres-node-probe.mjs') 2>&1
+} elseif ($Mode -eq 'ArchiveHashProbe') {
+  & (Join-Path $repo 'scripts\bostan-windows-native-archive-hash-probe.ps1') -RequireStandardUser
+  $LASTEXITCODE = 0
 } elseif ($Mode -eq 'Native') {
+  & (Join-Path $repo 'scripts\bostan-windows-native-archive-hash-probe.ps1') -RequireStandardUser
   & $NodeBinary (Join-Path $repo 'scripts\bostan-windows-embedded-postgres-node-probe.mjs') 2>&1
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
   $env:BOSTAN_DESKTOP_INSTALLER_QA = '1'

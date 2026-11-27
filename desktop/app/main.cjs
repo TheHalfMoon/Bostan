@@ -99,6 +99,9 @@ else {
         if (message?.type === "startup-phase") {
           const line = diagnostics.startupPhaseLine(message.phase);
           if (line) console.info(line);
+        } else if (message?.type === "startup-entry") {
+          const line = diagnostics.startupEntryLine(message.stage);
+          if (line) console.info(line);
         } else if (message?.type === "ready" && Number.isSafeInteger(message.port) && message.port > 0 && message.port <= 65535) {
           clearTimeout(timer); resolve(message.port);
         } else if (message?.type === "startup-failed") {
@@ -109,6 +112,8 @@ else {
           const issueLine = diagnostics.startupFailureIssueLine(message.issue);
           if (issueLine) console.error(issueLine);
           if (diagnostics.isStartupSiteLine(message.site)) console.error(message.site);
+          if (diagnostics.isStartupDiagnosticLine(message.context)
+              && message.context.startsWith("BOSTAN_DESKTOP_STARTUP_CONTEXT ")) console.error(message.context);
           const migrationLine = diagnostics.startupMigrationLine(message.migration);
           if (migrationLine) console.error(migrationLine);
           const migrationIssueLine = diagnostics.startupMigrationIssueLine(message.migration, message.migrationIssue);

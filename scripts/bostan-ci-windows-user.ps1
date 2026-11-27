@@ -1,5 +1,5 @@
 param(
-  [ValidateSet('Server','Installer','PostgresProbe','Native')][string]$Mode = 'Server'
+  [ValidateSet('Server','Installer','PostgresProbe','ArchiveHashProbe','Native')][string]$Mode = 'Server'
 )
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true' -or $env:CI -ne 'true' -or -not $env:RUNNER_TEMP) {
@@ -91,6 +91,9 @@ function Get-AllowedInstallerReceipt([string]$line) {
   if ($line -match '^BOSTAN_NATIVE_WINDOWS_ARCHIVE_SIZE sizeBytes=[0-9]{1,12} sizeMatches=(?:true|false)$') { return $line }
   if ($line -match '^BOSTAN_NATIVE_WINDOWS_ARCHIVE_STAT_FAILURE (?:access_denied|path_missing|io_error|invalid_argument|other)$') { return $line }
   if ($line -match '^BOSTAN_NATIVE_WINDOWS_ARCHIVE_HASH_FAILURE (?:access_denied|path_missing|io_error|invalid_argument|other)$') { return $line }
+  if ($line -match '^BOSTAN_NATIVE_WINDOWS_ARCHIVE_HASH_FIXTURE_PASS phase=(?:valid|corruption_detected|missing_file|access_denied|digest_mismatch|stream_disposed)$') { return $line }
+  if ($line -match '^BOSTAN_NATIVE_WINDOWS_ARCHIVE_HASH_(?:STANDARD_USER_PASS|PROBE_PASS)$') { return $line }
+  if ($line -match '^BOSTAN_NATIVE_WINDOWS_ARCHIVE_HASH_PROBE_FAILURE phase=(?:standard_user|fixtures) cause=(?:access_denied|path_missing|io_error|invalid_argument|other)$') { return $line }
   if ($line -match '^BOSTAN_NATIVE_WINDOWS_FAILURE (?:ollama_download|ollama_archive_verify|ollama_server_start|qwen_model_pull|qwen_model_manifest_verify|qwen_model_license_verify|host_resource_verify|installed_app_qualification)$') { return $line }
   if ($line -match '^BOSTAN_NATIVE_MODEL_PULL_WAIT elapsedSeconds=[0-9]{1,4} outputProgress=(?:advanced|stalled)$') { return $line }
   $nativeSuccessPrefix = 'BOSTAN_PACKAGED_DESKTOP_FIRST_FREE_AGENT_TASK_PASS '
@@ -158,7 +161,7 @@ try {
   $arguments = @('-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',('"'+$worker+'"'),'-Mode',$Mode,'-NodeBinary',('"'+$nodeBinary+'"'))
   Write-Output ('BOSTAN_WINDOWS_USER_WORKER_BEGIN mode=' + $Mode)
   $process = Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe') -ArgumentList $arguments -Credential $credential -LoadUserProfile -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
-  if ($Mode -in @('Installer','PostgresProbe','Native')) {
+  if ($Mode -in @('Installer','PostgresProbe','ArchiveHashProbe','Native')) {
     # Stream only bounded, validated qualification receipts. Raw stderr and
     # arbitrary stdout stay private to this disposable runner invocation.
     $script:BostanInstallerOutputOffset = [long]0

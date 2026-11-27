@@ -5,10 +5,11 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import diagnostics from "../app/startup-diagnostics.cjs";
 
-for (const useBundledEntry of [false, true]) for (const failStartup of [false, true, "postgres", "early-ack", "shutdown-during-failure"]) {
+for (const useBundledEntry of [false, true]) for (const failStartup of [false, true, "postgres", "no-callback", "early-ack", "shutdown-during-failure"]) {
 test(`actual Electron Node child preserves startup contract (bundled=${useBundledEntry}, case=${failStartup})`, { timeout: 30000 }, async () => {
-  const expectedFailure = failStartup === true || failStartup === "postgres" || failStartup === "shutdown-during-failure";
+  const expectedFailure = failStartup === true || failStartup === "postgres" || failStartup === "no-callback" || failStartup === "shutdown-during-failure";
   const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "bostan-electron-child-test-"));
   const desktop = path.resolve(import.meta.dirname, "..");
   const electronPackage = JSON.parse(fs.readFileSync(path.join(desktop, "node_modules/electron/package.json"), "utf8"));
@@ -23,8 +24,9 @@ test(`actual Electron Node child preserves startup contract (bundled=${useBundle
     const serverModule = `
       import fs from 'node:fs'; import path from 'node:path'; import {fileURLToPath} from 'node:url';
       import {spawnSync} from 'node:child_process'; import {value} from '@bostan/fixture';
-      export async function startServer() {
-        ${failStartup === "postgres" ? 'throw new Error("Postgres init script exited with code 1. Recent embedded Postgres logs: Library not loaded: /private/SYNTHETIC_PRIVATE_BACKEND_MESSAGE/lib.dylib");' : failStartup === true || failStartup === "shutdown-during-failure" ? 'throw new Error("SYNTHETIC_PRIVATE_BACKEND_MESSAGE");' : ''}
+      export async function startServer(options = {}) {
+        options.onStartupProgress?.('server_start_entered');
+        ${failStartup === "postgres" ? 'const cause = Object.assign(new TypeError("SYNTHETIC_PRIVATE_CAUSE"), {code:"ENOENT"}); const error = Object.assign(new Error("Postgres init script exited with code 1. Recent embedded Postgres logs: Library not loaded: /private/SYNTHETIC_PRIVATE_BACKEND_MESSAGE/lib.dylib", {cause}), {code:"POSTGRES_INIT_FAILED"}); throw error;' : failStartup === true || failStartup === "shutdown-during-failure" || failStartup === "no-callback" ? 'const cause = Object.assign(new TypeError("SYNTHETIC_PRIVATE_CAUSE"), {code:"ENOENT"}); const error = Object.assign(new Error("SYNTHETIC_PRIVATE_BACKEND_MESSAGE", {cause}), {code:"SYNTHETIC_PRIVATE_CODE"}); if (' + JSON.stringify(failStartup !== "no-callback") + ') options.onStartupFailure?.("SERVER_STARTUP_FAILED", undefined, error); throw error;' : ''}
         if(value!=='compiled')throw Error('Wrong export');
         const sub=spawnSync(process.execPath,['--input-type=module','-e',"import {value} from '@bostan/fixture'; console.log(value,process.versions.node)"],{
           cwd:path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),encoding:'utf8',timeout:5000,windowsHide:true
@@ -56,13 +58,13 @@ test(`actual Electron Node child preserves startup contract (bundled=${useBundle
         child.on('message',message=>{
           console.log(JSON.stringify(message));
           if(message?.type==='startup-failed')child.postMessage({type:'startup-failure-ack'});
+          if(message?.type==='ready')child.postMessage({type:'shutdown'});
           if(${JSON.stringify(failStartup === "early-ack")} && message?.type==='startup-phase' && message.phase==='importing_server')
             child.postMessage({type:'startup-failure-ack'});
           if(${JSON.stringify(failStartup === "shutdown-during-failure")} && message?.type==='startup-phase' && message.phase==='importing_server')
             child.postMessage({type:'shutdown'});
         });
         child.on('exit',code=>{console.log('CHILD_EXIT='+code);app.exit(code)});
-        setTimeout(()=>child.postMessage({type:'shutdown'}),50);
       });
     `);
     const env = { ...process.env, HOME: root, USERPROFILE: root, APPDATA: path.join(root, "AppData/Roaming"), LOCALAPPDATA: path.join(root, "AppData/Local") };
@@ -76,11 +78,23 @@ test(`actual Electron Node child preserves startup contract (bundled=${useBundle
     assert.equal(code, expectedFailure ? 1 : 0, output);
     const phases = output.split(/\r?\n/).filter(line => line.startsWith('{"type":"startup-phase"')).map(line => JSON.parse(line).phase);
     assert.deepEqual(phases, expectedFailure ? ["utility_bootstrap", "importing_server", "starting_server"] : ["utility_bootstrap", "importing_server", "starting_server", "ready"]);
+    const entries = output.split(/\r?\n/).filter(line => line.startsWith('{"type":"startup-entry"')).map(line => JSON.parse(line));
+    assert.deepEqual(entries, [{ type: "startup-entry", stage: "server_start_entered" }]);
+    assert.equal(diagnostics.isStartupDiagnosticLine(diagnostics.startupEntryLine(entries[0].stage)), true);
     if (expectedFailure) {
       const failure = output.split(/\r?\n/).filter(line => line.startsWith('{"type":"startup-failed"')).map(line => JSON.parse(line));
       assert.equal(failure.length, 1);
-      assert.equal(failure[0].code, failStartup === "postgres" ? "POSTGRES_LIBRARY_MISSING" : "STARTUP_FAILED");
+      assert.equal(failure[0].code, failStartup === "postgres" ? "POSTGRES_LIBRARY_MISSING" : failStartup === "no-callback" ? "STARTUP_FAILED" : "SERVER_STARTUP_FAILED");
       assert.match(failure[0].site, /^BOSTAN_DESKTOP_STARTUP_SITE server:[1-9]\d*:[1-9]\d*$/);
+      assert.match(failure[0].context, /^BOSTAN_DESKTOP_STARTUP_CONTEXT entry=yes callback=(?:yes|no) error=(?:Error:OTHER|Error:POSTGRES_INIT_FAILED) causes=TypeError:ENOENT$/);
+      assert.equal(diagnostics.isStartupDiagnosticLine(failure[0].context), true);
+      assert.equal(failure[0].context.includes("SYNTHETIC_PRIVATE"), false);
+      assert.equal(failure[0].context.includes("private"), false);
+      assert.equal(failure[0].context.includes("/private"), false);
+      assert.equal(failure[0].context.includes("SYNTHETIC_PRIVATE_CODE"), false);
+      assert.equal(failure[0].context.includes("SYNTHETIC_PRIVATE_CAUSE"), false);
+      assert.equal(failure[0].context.includes("ENOENT"), true);
+      assert.equal(failure[0].context.includes(`callback=${failStartup === "no-callback" || failStartup === "postgres" ? "no" : "yes"}`), true);
       assert.equal(output.includes('{"type":"shutdown-failed"}'), false);
       assert.equal(output.includes("SYNTHETIC_PRIVATE_BACKEND_MESSAGE"), false);
     } else {

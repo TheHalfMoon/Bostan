@@ -9,6 +9,7 @@ $modelRoot = Join-Path $ollamaRoot 'models'
 $server = $null
 $modelPull = $null
 $stage = 'ollama_download'
+. (Join-Path $PSScriptRoot 'bostan-windows-native-archive-hash.ps1')
 
 try {
   New-Item -ItemType Directory -Path $ollamaRoot -Force | Out-Null
@@ -37,16 +38,9 @@ try {
     throw 'Pinned Ollama Windows archive size mismatch'
   }
   try {
-    $archiveSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $zipPath).Hash.ToLowerInvariant()
+    $archiveSha256 = Get-BostanArchiveSha256 -LiteralPath $zipPath
   } catch {
-    $hashFailure = switch ($_.Exception.GetType().Name) {
-      'UnauthorizedAccessException' { 'access_denied' }
-      'FileNotFoundException' { 'path_missing' }
-      'DirectoryNotFoundException' { 'path_missing' }
-      'IOException' { 'io_error' }
-      'ArgumentException' { 'invalid_argument' }
-      default { 'other' }
-    }
+    $hashFailure = Get-BostanArchiveFailureCategory -Exception $_.Exception
     Write-Output "BOSTAN_NATIVE_WINDOWS_ARCHIVE_HASH_FAILURE $hashFailure"
     throw 'Pinned Ollama Windows archive hash could not be verified'
   }

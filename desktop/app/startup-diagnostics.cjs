@@ -4,6 +4,14 @@ const phases = new Set([
   "window_loaded", "data_protected", "runtime_valid", "child_spawned",
   "utility_bootstrap", "importing_server", "starting_server", "ready",
 ]);
+const startupEntryStages = new Set(["server_start_entered"]);
+// Primary error plus at most two causes bounds the chain to three nodes total.
+const startupFailureChainMaxNodes = 3;
+const startupErrorClasses = new Set([
+  "Error", "TypeError", "RangeError", "ReferenceError", "SyntaxError",
+  "EvalError", "URIError", "AggregateError", "AbortError", "StartupRefusalError",
+  "UNKNOWN",
+]);
 const codes = new Set([
   "STARTUP_FAILED", "STARTUP_TIMEOUT", "BACKEND_EXITED", "RUNTIME_MISSING",
   "ERR_MODULE_NOT_FOUND", "ERR_PACKAGE_PATH_NOT_EXPORTED", "ERR_UNKNOWN_FILE_EXTENSION",
@@ -40,7 +48,52 @@ const postgresStartupIssues = new Set([
 function startupPhaseLine(phase) {
   return phases.has(phase) ? `BOSTAN_DESKTOP_STARTUP_PHASE ${phase}` : null;
 }
+function startupEntryLine(stage) {
+  return startupEntryStages.has(stage) ? `BOSTAN_DESKTOP_STARTUP_ENTRY ${stage}` : null;
+}
 function startupCode(code) { return codes.has(code) ? code : "STARTUP_FAILED"; }
+function startupFailureContextLine({ serverStartEntered, failureCallbackCalled, error }) {
+  const node = value => {
+    if ((typeof value !== "object" && typeof value !== "function") || value === null) return "UNKNOWN:OTHER";
+    let name = "";
+    let code = "";
+    try { name = typeof value.name === "string" ? value.name : ""; } catch { /* Keep fixed fallback. */ }
+    try { code = typeof value.code === "string" ? value.code : ""; } catch { /* Keep fixed fallback. */ }
+    const safeClass = startupErrorClasses.has(name) ? name : "UNKNOWN";
+    const safeCode = codes.has(code) ? code : "OTHER";
+    return `${safeClass}:${safeCode}`;
+  };
+  const chain = [];
+  const seen = new Set();
+  let current = error;
+  for (let depth = 0; depth < startupFailureChainMaxNodes && current != null; depth++) {
+    if (typeof current !== "object" && typeof current !== "function") {
+      chain.push("UNKNOWN:OTHER");
+      break;
+    }
+    if (seen.has(current)) break;
+    seen.add(current);
+    chain.push(node(current));
+    try { current = current.cause; }
+    catch { chain.push("UNKNOWN:OTHER"); break; }
+  }
+  const primary = chain.shift() ?? "UNKNOWN:OTHER";
+  const causes = chain.join("|") || "none";
+  return `BOSTAN_DESKTOP_STARTUP_CONTEXT entry=${serverStartEntered === true ? "yes" : "no"} callback=${failureCallbackCalled === true ? "yes" : "no"} error=${primary} causes=${causes}`;
+}
+function isStartupFailureContextLine(line) {
+  if (typeof line !== "string" || line.length > 512 || /[\r\n]/.test(line)) return false;
+  const errorNode = "[A-Za-z]+:[A-Z0-9_]+";
+  const match = new RegExp(`^BOSTAN_DESKTOP_STARTUP_CONTEXT entry=(?:yes|no) callback=(?:yes|no) error=(${errorNode}) causes=(none|${errorNode}(?:\\|${errorNode}){0,${startupFailureChainMaxNodes - 2}})$`).exec(line);
+  if (!match) return false;
+  const isSafeNode = token => {
+    const separator = token.indexOf(":");
+    const errorClass = token.slice(0, separator);
+    const errorCode = token.slice(separator + 1);
+    return startupErrorClasses.has(errorClass) && (errorCode === "OTHER" || codes.has(errorCode));
+  };
+  return isSafeNode(match[1]) && (match[2] === "none" || match[2].split("|").every(isSafeNode));
+}
 function startupErrorCode(error, fallbackCode) {
   const code = startupCode(error?.code);
   if (code !== "STARTUP_FAILED" && code !== "POSTGRES_INIT_FAILED") return code;
@@ -188,6 +241,8 @@ function isStartupSiteLine(line) { return typeof line === "string" && !/[\r\n]/.
 function isStartupDiagnosticLine(line) {
   if (typeof line !== "string") return false;
   if (isStartupSiteLine(line)) return true;
+  if (startupEntryLine(line.startsWith("BOSTAN_DESKTOP_STARTUP_ENTRY ") ? line.slice("BOSTAN_DESKTOP_STARTUP_ENTRY ".length) : null) === line) return true;
+  if (isStartupFailureContextLine(line)) return true;
   if (line.startsWith("BOSTAN_DESKTOP_STARTUP_ISSUE ")
       && startupFailureIssueLine(line.slice("BOSTAN_DESKTOP_STARTUP_ISSUE ".length)) === line) return true;
   if (startupMigrationLine(line.startsWith("BOSTAN_DESKTOP_STARTUP_MIGRATION ") ? line.slice("BOSTAN_DESKTOP_STARTUP_MIGRATION ".length) : null) === line) return true;
@@ -203,4 +258,4 @@ function isStartupDiagnosticLine(line) {
   const libraryPrefix = "BOSTAN_DESKTOP_STARTUP_LIBRARY ";
   return line.startsWith(libraryPrefix) && startupFailureLibraryLine(line.slice(libraryPrefix.length)) === line;
 }
-module.exports = { startupPhaseLine, startupCode, startupErrorCode, startupFailureLine, startupFailureStageLine, startupFailureIssue, startupFailureIssueLine, startupFailureLibrary, startupFailureLibraryLine, startupMigrationLine, startupMigrationIssue, startupMigrationIssueLine, startupFailureSite, isStartupSiteLine, isStartupDiagnosticLine };
+module.exports = { startupPhaseLine, startupEntryLine, startupCode, startupErrorCode, startupFailureContextLine, startupFailureLine, startupFailureStageLine, startupFailureIssue, startupFailureIssueLine, startupFailureLibrary, startupFailureLibraryLine, startupMigrationLine, startupMigrationIssue, startupMigrationIssueLine, startupFailureSite, isStartupSiteLine, isStartupDiagnosticLine };

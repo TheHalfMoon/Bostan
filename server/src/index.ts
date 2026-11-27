@@ -233,7 +233,10 @@ async function endDatabaseClient(client: unknown, timeoutSeconds: number): Promi
 
 export async function startServer(options?: {
   onStartupFailure?: (failureCode: string, migrationFile?: string, error?: unknown) => void;
+  onStartupProgress?: (stage: "server_start_entered") => void;
 }): Promise<StartedServer> {
+  try { options?.onStartupProgress?.("server_start_entered"); }
+  catch { /* Diagnostic observers must not prevent server startup. */ }
   const startupDatabase: StartupDatabaseTeardown = {
     close: null,
     failureCode: "SERVER_STARTUP_FAILED",

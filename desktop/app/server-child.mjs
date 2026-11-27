@@ -28,6 +28,8 @@ let startupFailureCode = "STARTUP_FAILED";
 let startupFailureMigration = null;
 let startupFailureMigrationIssue = null;
 let startupFailureIssue = null;
+let serverStartEntered = false;
+let failureCallbackCalled = false;
 function stop() {
   return stopping ??= (async () => {
     // A quit request during migrations must wait for startup to settle before
@@ -61,12 +63,21 @@ startup = (async () => {
   process.parentPort.postMessage({ type: "startup-phase", phase: "importing_server" });
   const { startServer } = await import(pathToFileURL(entry).href);
   process.parentPort.postMessage({ type: "startup-phase", phase: "starting_server" });
-  runtime = await startServer({ onStartupFailure: (code, migrationFile, error) => {
-    startupFailureCode = code;
-    if (typeof migrationFile === "string" && /^\d{4}_[a-z0-9_]+\.sql$/.test(migrationFile)) startupFailureMigration = migrationFile;
-    startupFailureIssue = diagnostics.startupFailureIssue(error, code);
-    startupFailureMigrationIssue = diagnostics.startupMigrationIssue(error, migrationFile);
-  } });
+  runtime = await startServer({
+    onStartupProgress: stage => {
+      const line = diagnostics.startupEntryLine(stage);
+      if (!line) return;
+      serverStartEntered = true;
+      process.parentPort.postMessage({ type: "startup-entry", stage });
+    },
+    onStartupFailure: (code, migrationFile, error) => {
+      failureCallbackCalled = true;
+      startupFailureCode = code;
+      if (typeof migrationFile === "string" && /^\d{4}_[a-z0-9_]+\.sql$/.test(migrationFile)) startupFailureMigration = migrationFile;
+      startupFailureIssue = diagnostics.startupFailureIssue(error, code);
+      startupFailureMigrationIssue = diagnostics.startupMigrationIssue(error, migrationFile);
+    },
+  });
   process.parentPort.postMessage({ type: "startup-phase", phase: "ready" });
   if (!stopping) process.parentPort.postMessage({ type: "ready", port: runtime.listenPort });
 })();
@@ -77,6 +88,7 @@ try {
   const code = diagnostics.startupErrorCode(error, startupFailureCode);
   const library = diagnostics.startupFailureLibrary(error);
   const site = diagnostics.startupFailureSite(error, process.env.BOSTAN_DESKTOP_SERVER_ROOT);
+  const context = diagnostics.startupFailureContextLine({ serverStartEntered, failureCallbackCalled, error });
   // Utility-process messages are asynchronous. Wait for the application host
   // to receive this bounded receipt before exiting; retain a fixed fallback
   // for a host that has already disappeared.
@@ -84,5 +96,5 @@ try {
     startupFailureAckTimer = null;
     process.exit(1);
   }, 5000);
-  process.parentPort.postMessage({ type: "startup-failed", code, stage: startupFailureCode, library, site, issue: startupFailureIssue, migration: startupFailureMigration, migrationIssue: startupFailureMigrationIssue });
+  process.parentPort.postMessage({ type: "startup-failed", code, stage: startupFailureCode, library, site, issue: startupFailureIssue, migration: startupFailureMigration, migrationIssue: startupFailureMigrationIssue, context });
 }
