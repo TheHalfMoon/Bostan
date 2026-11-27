@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { prepareDarwinPostgresNativeLinks } from "./postgres-native-links.mjs";
+import { prepareDarwinPostgresNativeLinks, resolveDbEmbeddedPostgresEntry } from "./postgres-native-links.mjs";
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-darwin-native-stage-"));
@@ -17,7 +18,10 @@ function fixture(t) {
   fs.mkdirSync(path.join(runtime, "dist"), { recursive: true });
   fs.writeFileSync(path.join(runtime, "dist", "index.js"), "");
   fs.mkdirSync(path.join(db, "dist"), { recursive: true });
-  fs.writeFileSync(path.join(db, "package.json"), JSON.stringify({ name: "@bostan/db", exports: "./dist/index.js" }));
+  fs.writeFileSync(path.join(db, "package.json"), JSON.stringify({
+    name: "@bostan/db",
+    exports: { ".": { "bostan-compiled": "./dist/index.js", default: "./src/index.ts" } },
+  }));
   fs.writeFileSync(path.join(db, "dist", "index.js"), "");
   fs.mkdirSync(path.join(embedded, "dist"), { recursive: true });
   fs.writeFileSync(path.join(embedded, "package.json"), JSON.stringify({ exports: "./dist/index.js" }));
@@ -41,8 +45,28 @@ function fixture(t) {
   fs.writeFileSync(path.join(decoyNative, "native", "pg-symlinks.json"), JSON.stringify([
     { source: "native/lib/libicudata.77.1.dylib", target: "native/lib/libicudata.77.dylib" },
   ]));
-  return { runtime, native, decoyNative };
+  return { runtime, db, embedded, native, decoyNative };
 }
+
+test("resolves embedded-postgres from the staged DB manifest when its source export is absent", t => {
+  const { runtime, embedded } = fixture(t);
+  assert.throws(
+    () => createRequire(path.join(runtime, "dist", "index.js")).resolve("@bostan/db"),
+    error => /src[/\\]index\.ts/.test(error.message),
+  );
+  const { embeddedEntry } = resolveDbEmbeddedPostgresEntry(runtime);
+  assert.equal(embeddedEntry, path.join(embedded, "dist", "index.js"));
+  assert.equal(fs.existsSync(path.join(runtime, "node_modules", "@bostan", "db", "src", "index.ts")), false);
+});
+
+test("refuses a staged DB package link that resolves outside the runtime", { skip: process.platform === "win32" }, t => {
+  const { runtime, db } = fixture(t);
+  const external = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-darwin-native-outside-"));
+  t.after(() => fs.rmSync(external, { recursive: true, force: true }));
+  fs.rmSync(db, { recursive: true, force: true });
+  fs.symlinkSync(external, db, "dir");
+  assert.throws(() => resolveDbEmbeddedPostgresEntry(runtime), /escapes the packaged runtime/);
+});
 
 test("hydrates the pinned Darwin ICU alias before the staged runtime is packaged", { skip: process.platform === "win32" }, t => {
   const { runtime, native, decoyNative } = fixture(t);
