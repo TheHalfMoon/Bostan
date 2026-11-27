@@ -122,13 +122,13 @@ export const PAPERCLIP_RUNNER_PERMISSION_CAPABILITIES = {
         value: "approve-paperclip",
         label: "Automatic Bostan actions",
         description:
-          "Automatically run assigned Bostan planning and task tools, including reassignment. Company permissions and approval requirements still apply. Other operations require permission.",
+          "For Claude ACPX agents, automatically run assigned Bostan planning and task tools, including reassignment. Other ACPX agents use their supported approval flow when configured; otherwise the run fails closed. Company permissions and approval requirements still apply.",
       },
       {
         value: "approve-reads",
         label: "Allow Bostan reads",
         description:
-          "Automatically allow assigned Bostan read tools. Other operations request a supported permission decision. Company permissions and execution boundaries still apply.",
+          "For Claude ACPX agents, automatically allow assigned Bostan read tools. Other ACPX agents use their supported approval flow when configured; otherwise the run fails closed. Company permissions and execution boundaries still apply.",
       },
       {
         value: "deny-all",
