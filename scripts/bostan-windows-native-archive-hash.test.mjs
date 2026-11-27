@@ -17,6 +17,9 @@ test("native archive hashing streams bounded input and preserves the pinned veri
   assert.match(helper, /\$sha256\.Dispose\(\)/);
   assert.match(helper, /\$stream\.Dispose\(\)/);
   assert.match(helper, /\$sourceStream\.CopyTo\(\$targetStream, 81920\)/);
+  assert.match(helper, /\$sha256\.ComputeHash\(\$Stream\)/);
+  assert.match(helper, /\$ArchiveStream\.Position = 0/);
+  assert.match(helper, /ZipArchive\]::new\(\s*\$ArchiveStream/);
   assert.doesNotMatch(helper, /ReadAllBytes|Get-Content|Get-FileHash|Expand-Archive|ExtractToDirectory/);
   assert.match(helper, /archive_symlink_not_allowed/);
   assert.match(helper, /archive_destination_already_exists/);
@@ -26,7 +29,9 @@ test("native archive hashing streams bounded input and preserves the pinned veri
   assert.match(helper, /FileAttributes\]::ReparsePoint/);
   assert.match(nativeSetup, /\$ollamaSha256 = '3dd80f6e3a9699f2eadf4ac418f00529cee594df9557541806eda1f1f3f5588a'/);
   assert.match(nativeSetup, /\$ollamaArchiveBytes = 1618522644L/);
-  assert.match(nativeSetup, /Get-BostanArchiveSha256 -LiteralPath \$zipPath/);
+  assert.match(nativeSetup, /FileShare\]::Read/);
+  assert.match(nativeSetup, /Get-BostanArchiveSha256FromStream -Stream \$archiveStream/);
+  assert.match(nativeSetup, /Expand-BostanVerifiedArchive -ArchiveStream \$archiveStream/);
   assert.doesNotMatch(nativeSetup, /Get-FileHash/);
 });
 
@@ -42,6 +47,11 @@ test("standard-user wrapper exposes bounded archive hash fixture receipts", () =
   assert.match(worker, /bostan-windows-native-archive-hash-probe\.ps1'\) -RequireStandardUser/);
   assert.match(probe, /WindowsBuiltInRole\]::Administrator/);
   assert.match(probe, /Test-BostanArchiveExtractionFixture/);
+  assert.match(helper, /function Get-BostanArchiveSha256FromStream/);
+  assert.match(nativeSetup, /Get-BostanArchiveSha256FromStream -Stream \$archiveStream/);
+  assert.match(nativeSetup, /Expand-BostanVerifiedArchive -ArchiveStream \$archiveStream/);
+  assert.match(helper, /fixture_archive_replacement_was_not_blocked/);
+  assert.match(helper, /step=verified_handle/);
   assert.match(helper, /step=reject_traversal/);
   assert.match(helper, /step=reject_symlink/);
   assert.match(helper, /step=reject_existing_root/);

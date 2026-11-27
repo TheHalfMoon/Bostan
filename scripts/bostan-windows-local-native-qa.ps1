@@ -9,6 +9,7 @@ $zipPath = Join-Path $env:RUNNER_TEMP "ollama-windows-$runToken.zip"
 $modelRoot = Join-Path $ollamaRoot 'models'
 $server = $null
 $modelPull = $null
+$archiveStream = $null
 $ownsOllamaRoot = $false
 $ownsArchive = $false
 $stage = 'ollama_download'
@@ -26,7 +27,13 @@ try {
   Write-Output 'BOSTAN_NATIVE_WINDOWS_PHASE ollama_download_complete'
   $stage = 'ollama_archive_verify'
   try {
-    $archiveBytes = (Get-Item -LiteralPath $zipPath).Length
+    $archiveStream = [System.IO.File]::Open(
+      $zipPath,
+      [System.IO.FileMode]::Open,
+      [System.IO.FileAccess]::Read,
+      [System.IO.FileShare]::Read
+    )
+    $archiveBytes = $archiveStream.Length
   } catch {
     $statFailure = switch ($_.Exception.GetType().Name) {
       'UnauthorizedAccessException' { 'access_denied' }
@@ -45,7 +52,7 @@ try {
     throw 'Pinned Ollama Windows archive size mismatch'
   }
   try {
-    $archiveSha256 = Get-BostanArchiveSha256 -LiteralPath $zipPath
+    $archiveSha256 = Get-BostanArchiveSha256FromStream -Stream $archiveStream
   } catch {
     $hashFailure = Get-BostanArchiveFailureCategory -Exception $_.Exception
     Write-Output "BOSTAN_NATIVE_WINDOWS_ARCHIVE_HASH_FAILURE $hashFailure"
@@ -62,13 +69,15 @@ try {
     if ($existingRoot) { throw 'Refusing to extract into an existing Ollama root' }
     $null = New-Item -ItemType Directory -Path $ollamaRoot -ErrorAction Stop
     $ownsOllamaRoot = $true
-    Expand-BostanVerifiedArchive -LiteralPath $zipPath -DestinationPath $ollamaRoot -DestinationCreatedByCaller
+    Expand-BostanVerifiedArchive -ArchiveStream $archiveStream -DestinationPath $ollamaRoot -DestinationCreatedByCaller
   } catch {
     $extractFailure = Get-BostanArchiveFailureCategory -Exception $_.Exception
     Write-Output "BOSTAN_NATIVE_WINDOWS_ARCHIVE_OPERATION_FAILURE step=extract cause=$extractFailure"
     throw 'Verified Ollama archive extraction failed'
   }
   Write-Output 'BOSTAN_NATIVE_WINDOWS_ARCHIVE_OPERATION_PASS step=extract'
+  $archiveStream.Dispose()
+  $archiveStream = $null
   $stage = 'ollama_executable_discovery'
   $ollamaMatches = @(Get-ChildItem -LiteralPath $ollamaRoot -Filter ollama.exe -File -Recurse)
   Write-Output "BOSTAN_NATIVE_WINDOWS_ARCHIVE_EXECUTABLES count=$($ollamaMatches.Count)"
@@ -238,6 +247,10 @@ try {
   Write-Output "BOSTAN_NATIVE_WINDOWS_FAILURE $stage"
   throw
 } finally {
+  if ($archiveStream) {
+    $archiveStream.Dispose()
+    $archiveStream = $null
+  }
   if ($modelPull -and -not $modelPull.HasExited) {
     & taskkill.exe /PID $modelPull.Id /T /F | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Owned model-pull process tree cleanup was not confirmed' }

@@ -19,6 +19,24 @@ function Get-BostanArchiveSha256 {
   }
 }
 
+function Get-BostanArchiveSha256FromStream {
+  param([Parameter(Mandatory=$true)][System.IO.Stream]$Stream)
+
+  if (-not $Stream.CanRead -or -not $Stream.CanSeek) {
+    throw [System.ArgumentException]::new('archive_stream_must_be_readable_and_seekable')
+  }
+  $sha256 = $null
+  try {
+    $Stream.Position = 0
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    $digest = $sha256.ComputeHash($Stream)
+    return [System.BitConverter]::ToString($digest).Replace('-', '').ToLowerInvariant()
+  } finally {
+    if ($sha256) { $sha256.Dispose() }
+    if ($Stream.CanSeek) { $Stream.Position = 0 }
+  }
+}
+
 function Get-BostanArchiveFailureCategory {
   param([Parameter(Mandatory=$true)][System.Exception]$Exception)
 
@@ -39,8 +57,9 @@ function Get-BostanArchiveFailureCategory {
 
 function Expand-BostanVerifiedArchive {
   param(
-    [Parameter(Mandatory=$true)][ValidateNotNullOrEmpty()][string]$LiteralPath,
+    [Parameter()][ValidateNotNullOrEmpty()][string]$LiteralPath,
     [Parameter(Mandatory=$true)][ValidateNotNullOrEmpty()][string]$DestinationPath,
+    [Parameter()][System.IO.Stream]$ArchiveStream,
     [switch]$DestinationCreatedByCaller
   )
 
@@ -51,7 +70,24 @@ function Expand-BostanVerifiedArchive {
   $backslash = [char]92
   $rootPrefix = $destinationRoot.TrimEnd([char[]]@($backslash, [char]47)) + $separator
   $archive = $null
+  $ownsArchiveStream = $false
   try {
+    if (-not $ArchiveStream) {
+      if ([string]::IsNullOrWhiteSpace($LiteralPath)) {
+        throw [System.ArgumentException]::new('archive_path_or_stream_required')
+      }
+      $ArchiveStream = [System.IO.File]::Open(
+        $LiteralPath,
+        [System.IO.FileMode]::Open,
+        [System.IO.FileAccess]::Read,
+        [System.IO.FileShare]::Read
+      )
+      $ownsArchiveStream = $true
+    }
+    if (-not $ArchiveStream.CanRead -or -not $ArchiveStream.CanSeek) {
+      throw [System.ArgumentException]::new('archive_stream_must_be_readable_and_seekable')
+    }
+    $ArchiveStream.Position = 0
     $destinationAlreadyExists = [System.IO.File]::Exists($destinationRoot) -or [System.IO.Directory]::Exists($destinationRoot)
     if ($destinationAlreadyExists -and -not $DestinationCreatedByCaller) {
       throw [System.IO.InvalidDataException]::new('archive_destination_already_exists')
@@ -68,7 +104,11 @@ function Expand-BostanVerifiedArchive {
         throw [System.IO.InvalidDataException]::new('archive_destination_reparse_point')
       }
     }
-    $archive = [System.IO.Compression.ZipFile]::OpenRead($LiteralPath)
+    $archive = [System.IO.Compression.ZipArchive]::new(
+      $ArchiveStream,
+      [System.IO.Compression.ZipArchiveMode]::Read,
+      $true
+    )
     if ($archive.Entries.Count -gt 100000) { throw [System.IO.InvalidDataException]::new('archive_entry_limit') }
     if (-not $destinationAlreadyExists) { $null = [System.IO.Directory]::CreateDirectory($destinationRoot) }
     $rootAttributes = [System.IO.File]::GetAttributes($destinationRoot)
@@ -126,6 +166,7 @@ function Expand-BostanVerifiedArchive {
     }
   } finally {
     if ($archive) { $archive.Dispose() }
+    if ($ownsArchiveStream -and $ArchiveStream) { $ArchiveStream.Dispose() }
   }
 }
 
@@ -218,7 +259,27 @@ function Test-BostanArchiveExtractionFixture {
     [System.IO.File]::WriteAllText((Join-Path $sourceRoot 'ollama.exe'), $expected, [System.Text.Encoding]::UTF8)
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     [System.IO.Compression.ZipFile]::CreateFromDirectory($sourceRoot, $archivePath)
-    Expand-BostanVerifiedArchive -LiteralPath $archivePath -DestinationPath $extractRoot
+    $verifiedStream = [System.IO.File]::Open($archivePath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read)
+    try {
+      $verifiedDigest = Get-BostanArchiveSha256FromStream -Stream $verifiedStream
+      if ($verifiedDigest -notmatch '^[0-9a-f]{64}$' -or $verifiedStream.Position -ne 0) {
+        throw 'fixture_verified_stream_hash_failed'
+      }
+      $writeWasBlocked = $false
+      $replacementStream = $null
+      try {
+        $replacementStream = [System.IO.File]::Open($archivePath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+      } catch [System.IO.IOException] {
+        $writeWasBlocked = $true
+      } finally {
+        if ($replacementStream) { $replacementStream.Dispose() }
+      }
+      if (-not $writeWasBlocked) { throw 'fixture_archive_replacement_was_not_blocked' }
+      Expand-BostanVerifiedArchive -ArchiveStream $verifiedStream -DestinationPath $extractRoot
+      Write-Output 'BOSTAN_NATIVE_WINDOWS_ARCHIVE_OPERATION_PASS step=verified_handle'
+    } finally {
+      $verifiedStream.Dispose()
+    }
     $matches = @(Get-ChildItem -LiteralPath $extractRoot -Filter 'ollama.exe' -File -Recurse)
     if ($matches.Count -ne 1) { throw 'fixture_executable_discovery_failed' }
     if ([System.IO.File]::ReadAllText($matches[0].FullName).TrimStart([char]0xFEFF) -ne $expected) {
