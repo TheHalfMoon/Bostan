@@ -43,13 +43,12 @@ describe("embedded Postgres native runtime", () => {
     const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "bostan-packaged-pg-resolution-"));
     tempDirs.push(root);
     const runtimeRoot = path.join(root, "installed-runtime");
-    const serverPackageRoot = path.join(runtimeRoot, "node_modules", "@bostan", "server");
-    const embedded = path.join(serverPackageRoot, "node_modules", "embedded-postgres");
+    const embedded = path.join(runtimeRoot, "node_modules", "embedded-postgres");
     const sourceDecoy = path.join(root, "workspace", "packages", "db", "node_modules", "embedded-postgres");
-    fs.mkdirSync(path.join(serverPackageRoot, "dist"), { recursive: true });
+    fs.mkdirSync(path.join(runtimeRoot, "dist"), { recursive: true });
     fs.mkdirSync(path.join(embedded, "dist"), { recursive: true });
     fs.mkdirSync(path.join(sourceDecoy, "dist"), { recursive: true });
-    fs.writeFileSync(path.join(serverPackageRoot, "package.json"), JSON.stringify({ name: "@bostan/server", version: "0.3.1" }));
+    fs.writeFileSync(path.join(runtimeRoot, "package.json"), JSON.stringify({ name: "@bostan/server", version: "0.3.1" }));
     fs.writeFileSync(path.join(embedded, "package.json"), JSON.stringify({ name: "embedded-postgres", exports: "./dist/index.js" }));
     fs.writeFileSync(path.join(embedded, "dist", "index.js"), "export default class InstalledPostgres {}\n");
     fs.writeFileSync(path.join(sourceDecoy, "package.json"), JSON.stringify({ name: "embedded-postgres", exports: "./dist/index.js" }));
@@ -61,15 +60,20 @@ describe("embedded Postgres native runtime", () => {
     expect(resolved).not.toBe(fs.realpathSync(path.join(sourceDecoy, "dist", "index.js")));
   });
 
-  it("refuses an installed server package that resolves outside the runtime", async () => {
+  it("refuses an installed embedded-postgres dependency outside the runtime", async () => {
     const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "bostan-packaged-pg-escape-"));
     tempDirs.push(root);
     const runtimeRoot = path.join(root, "installed-runtime");
-    const serverLink = path.join(runtimeRoot, "node_modules", "@bostan", "server");
-    const outside = path.join(root, "outside-server");
-    fs.mkdirSync(path.dirname(serverLink), { recursive: true });
+    const manifest = path.join(runtimeRoot, "package.json");
+    const embeddedLink = path.join(runtimeRoot, "node_modules", "embedded-postgres");
+    const outside = path.join(root, "outside-embedded-postgres");
+    fs.mkdirSync(path.dirname(embeddedLink), { recursive: true });
     fs.mkdirSync(outside, { recursive: true });
-    fs.symlinkSync(outside, serverLink, process.platform === "win32" ? "junction" : "dir");
+    fs.writeFileSync(manifest, JSON.stringify({ name: "@bostan/server" }));
+    fs.mkdirSync(path.join(outside, "dist"), { recursive: true });
+    fs.writeFileSync(path.join(outside, "package.json"), JSON.stringify({ name: "embedded-postgres", exports: "./dist/index.js" }));
+    fs.writeFileSync(path.join(outside, "dist", "index.js"), "");
+    fs.symlinkSync(outside, embeddedLink, process.platform === "win32" ? "junction" : "dir");
 
     await expect(resolvePackagedEmbeddedPostgresEntry(runtimeRoot)).rejects.toMatchObject({
       code: "POSTGRES_RUNTIME_PACKAGE_UNSAFE",

@@ -100,17 +100,14 @@ export function prepareDarwinPostgresNativeLinks(runtimeRoot, architecture = pro
  * embedded-postgres directly, so staging resolves from the staged server package. */
 export function resolveServerEmbeddedPostgresEntry(runtimeRoot) {
   const root = fs.realpathSync(runtimeRoot);
-  const serverPackageRoot = fs.realpathSync(path.join(root, "node_modules", "@bostan", "server"));
-  if (!inside(root, serverPackageRoot)) throw new Error("Staged server package escapes the packaged runtime");
-  const serverPackageInfo = fs.statSync(serverPackageRoot);
-  if (!serverPackageInfo.isDirectory()) throw new Error("Staged server package is not a directory");
-  const manifestPath = path.join(serverPackageRoot, "package.json");
+  const manifestPath = path.join(root, "package.json");
   const manifestInfo = fs.lstatSync(manifestPath);
   if (!manifestInfo.isFile() || manifestInfo.isSymbolicLink() || manifestInfo.size > 256_000) {
-    throw new Error("Staged DB package manifest is unsafe");
+    throw new Error("Staged server package manifest is unsafe");
   }
   const packageMetadata = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
   if (packageMetadata.name !== "@bostan/server") throw new Error("Unexpected staged server package identity");
   const embeddedEntry = createRequire(manifestPath).resolve("embedded-postgres");
+  if (!inside(root, fs.realpathSync(embeddedEntry))) throw new Error("Staged PostgreSQL dependency escapes the packaged runtime");
   return { root, embeddedEntry };
 }

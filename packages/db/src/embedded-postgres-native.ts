@@ -65,22 +65,18 @@ function isInside(root: string, target: string): boolean {
  * not be used to locate dependencies in a packaged desktop application. */
 export async function resolvePackagedEmbeddedPostgresEntry(runtimeRoot: string): Promise<string> {
   const root = await fs.realpath(runtimeRoot);
-  // The server imports embedded-postgres directly. Resolve from that same
-  // package so native aliases are prepared beside the copy that starts PG.
-  const serverPackageRoot = await fs.realpath(path.join(root, "node_modules", "@bostan", "server"));
-  if (!isInside(root, serverPackageRoot)) {
-    throw Object.assign(new Error("Packaged server dependency escapes the installed runtime"), { code: "POSTGRES_RUNTIME_PACKAGE_UNSAFE" });
-  }
-  const manifestPath = path.join(serverPackageRoot, "package.json");
+  // pnpm deploy places @bostan/server at the runtime root. The server imports
+  // embedded-postgres directly, so resolve from its deployed manifest.
+  const manifestPath = path.join(root, "package.json");
   const manifestInfo = await fs.lstat(manifestPath);
   if (!manifestInfo.isFile() || manifestInfo.isSymbolicLink() || manifestInfo.size > 256_000) {
-    throw Object.assign(new Error("Packaged database dependency manifest is unsafe"), { code: "POSTGRES_RUNTIME_PACKAGE_UNSAFE" });
+    throw Object.assign(new Error("Packaged server manifest is unsafe"), { code: "POSTGRES_RUNTIME_PACKAGE_UNSAFE" });
   }
   let metadata: unknown;
   try { metadata = JSON.parse(await fs.readFile(manifestPath, "utf8")); }
-  catch { throw Object.assign(new Error("Packaged database dependency manifest is invalid"), { code: "POSTGRES_RUNTIME_PACKAGE_INVALID" }); }
+  catch { throw Object.assign(new Error("Packaged server manifest is invalid"), { code: "POSTGRES_RUNTIME_PACKAGE_INVALID" }); }
   if (!metadata || typeof metadata !== "object" || !("name" in metadata) || metadata.name !== "@bostan/server") {
-    throw Object.assign(new Error("Unexpected packaged server dependency identity"), { code: "POSTGRES_RUNTIME_PACKAGE_INVALID" });
+    throw Object.assign(new Error("Unexpected packaged server identity"), { code: "POSTGRES_RUNTIME_PACKAGE_INVALID" });
   }
   const entry = createRequire(manifestPath).resolve("embedded-postgres");
   const resolvedEntry = await fs.realpath(entry);

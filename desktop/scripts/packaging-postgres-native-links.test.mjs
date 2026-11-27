@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -10,19 +9,18 @@ function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-darwin-native-stage-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const runtime = path.join(root, "runtime");
-  const server = path.join(runtime, "node_modules", "@bostan", "server");
-  const embedded = path.join(server, "node_modules", "embedded-postgres");
+  const embedded = path.join(runtime, "node_modules", "embedded-postgres");
   const native = path.join(embedded, "node_modules", "@embedded-postgres", "darwin-arm64");
   const decoyEmbedded = path.join(runtime, "node_modules", "embedded-postgres");
   const decoyNative = path.join(decoyEmbedded, "node_modules", "@embedded-postgres", "darwin-arm64");
   fs.mkdirSync(path.join(runtime, "dist"), { recursive: true });
   fs.writeFileSync(path.join(runtime, "dist", "index.js"), "");
-  fs.mkdirSync(path.join(server, "dist"), { recursive: true });
-  fs.writeFileSync(path.join(server, "package.json"), JSON.stringify({
+  fs.mkdirSync(path.join(runtime, "dist"), { recursive: true });
+  fs.writeFileSync(path.join(runtime, "package.json"), JSON.stringify({
     name: "@bostan/server",
     exports: { ".": { "bostan-compiled": "./dist/index.js", default: "./src/index.ts" } },
   }));
-  fs.writeFileSync(path.join(server, "dist", "index.js"), "");
+  fs.writeFileSync(path.join(runtime, "dist", "index.js"), "");
   fs.mkdirSync(path.join(embedded, "dist"), { recursive: true });
   fs.writeFileSync(path.join(embedded, "package.json"), JSON.stringify({ exports: "./dist/index.js" }));
   fs.writeFileSync(path.join(embedded, "dist", "index.js"), "");
@@ -45,26 +43,22 @@ function fixture(t) {
   fs.writeFileSync(path.join(decoyNative, "native", "pg-symlinks.json"), JSON.stringify([
     { source: "native/lib/libicudata.77.1.dylib", target: "native/lib/libicudata.77.dylib" },
   ]));
-  return { runtime, server, embedded, native, decoyNative };
+  return { runtime, embedded, native, decoyNative };
 }
 
-test("resolves the server's embedded-postgres copy when its source export is absent", t => {
-  const { runtime, server, embedded } = fixture(t);
-  assert.throws(
-    () => createRequire(path.join(runtime, "dist", "index.js")).resolve("@bostan/server"),
-    error => /src[/\\]index\.ts/.test(error.message),
-  );
+test("resolves embedded-postgres from the deployed server runtime manifest", t => {
+  const { runtime, embedded } = fixture(t);
   const { embeddedEntry } = resolveServerEmbeddedPostgresEntry(runtime);
   assert.equal(embeddedEntry, fs.realpathSync(path.join(embedded, "dist", "index.js")));
-  assert.equal(fs.existsSync(path.join(server, "src", "index.ts")), false);
+  assert.equal(fs.existsSync(path.join(runtime, "src", "index.ts")), false);
 });
 
-test("refuses a staged server package link that resolves outside the runtime", { skip: process.platform === "win32" }, t => {
-  const { runtime, server } = fixture(t);
+test("refuses an embedded PostgreSQL dependency link that resolves outside the runtime", { skip: process.platform === "win32" }, t => {
+  const { runtime, embedded } = fixture(t);
   const external = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-darwin-native-outside-"));
   t.after(() => fs.rmSync(external, { recursive: true, force: true }));
-  fs.rmSync(server, { recursive: true, force: true });
-  fs.symlinkSync(external, server, "dir");
+  fs.rmSync(embedded, { recursive: true, force: true });
+  fs.symlinkSync(external, embedded, "dir");
   assert.throws(() => resolveServerEmbeddedPostgresEntry(runtime), /escapes the packaged runtime/);
 });
 
