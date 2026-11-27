@@ -77,6 +77,8 @@ test("native model setup exposes only bounded fixed phase, failure and progress 
   for (const diagnostic of ["authorization", "disk_space", "model_unavailable", "network", "other", "resource"]) {
     assert.equal(resultPattern.test(`BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 diagnostic=${diagnostic} outputBytes=24`), true, diagnostic);
   }
+  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=-1073741819 diagnostic=resource outputBytes=1048576"), true, "signed Windows process failure codes are preserved");
+  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=429496729600 diagnostic=other outputBytes=24"), false, "oversized process codes remain rejected");
   assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 diagnostic=secret outputBytes=24"), false);
   assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 diagnostic=network outputBytes=token-secret"), false);
   for (const cause of ["access_denied", "io_error", "other", "output_limit", "process_launch", "process_state"]) {
