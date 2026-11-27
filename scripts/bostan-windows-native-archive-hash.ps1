@@ -40,7 +40,8 @@ function Get-BostanArchiveFailureCategory {
 function Expand-BostanVerifiedArchive {
   param(
     [Parameter(Mandatory=$true)][ValidateNotNullOrEmpty()][string]$LiteralPath,
-    [Parameter(Mandatory=$true)][ValidateNotNullOrEmpty()][string]$DestinationPath
+    [Parameter(Mandatory=$true)][ValidateNotNullOrEmpty()][string]$DestinationPath,
+    [switch]$DestinationCreatedByCaller
   )
 
   Add-Type -AssemblyName System.IO.Compression
@@ -51,9 +52,29 @@ function Expand-BostanVerifiedArchive {
   $rootPrefix = $destinationRoot.TrimEnd([char[]]@($backslash, [char]47)) + $separator
   $archive = $null
   try {
+    $destinationAlreadyExists = [System.IO.File]::Exists($destinationRoot) -or [System.IO.Directory]::Exists($destinationRoot)
+    if ($destinationAlreadyExists -and -not $DestinationCreatedByCaller) {
+      throw [System.IO.InvalidDataException]::new('archive_destination_already_exists')
+    }
+    $existingAncestors = @()
+    $ancestor = [System.IO.Directory]::GetParent($destinationRoot)
+    while ($ancestor) {
+      if ([System.IO.Directory]::Exists($ancestor.FullName)) { $existingAncestors += $ancestor.FullName }
+      $ancestor = $ancestor.Parent
+    }
+    foreach ($ancestorPath in $existingAncestors) {
+      $ancestorAttributes = [System.IO.File]::GetAttributes($ancestorPath)
+      if (($ancestorAttributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw [System.IO.InvalidDataException]::new('archive_destination_reparse_point')
+      }
+    }
     $archive = [System.IO.Compression.ZipFile]::OpenRead($LiteralPath)
     if ($archive.Entries.Count -gt 100000) { throw [System.IO.InvalidDataException]::new('archive_entry_limit') }
-    $null = [System.IO.Directory]::CreateDirectory($destinationRoot)
+    if (-not $destinationAlreadyExists) { $null = [System.IO.Directory]::CreateDirectory($destinationRoot) }
+    $rootAttributes = [System.IO.File]::GetAttributes($destinationRoot)
+    if (($rootAttributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+      throw [System.IO.InvalidDataException]::new('archive_destination_reparse_point')
+    }
     foreach ($entry in $archive.Entries) {
       $name = [string]$entry.FullName
       if ([string]::IsNullOrEmpty($name) -or $name.IndexOf([char]0) -ge 0 -or [System.IO.Path]::IsPathRooted($name)) {
@@ -71,12 +92,27 @@ function Expand-BostanVerifiedArchive {
       $unixFileType = ([int64]$entry.ExternalAttributes -shr 16) -band 0xF000
       if ($unixFileType -eq 0xA000) { throw [System.IO.InvalidDataException]::new('archive_symlink_not_allowed') }
       $isDirectory = $name.EndsWith([string][char]47) -or $name.EndsWith([string]$backslash) -or $unixFileType -eq 0x4000
-      if ($isDirectory) {
-        $null = [System.IO.Directory]::CreateDirectory($targetPath)
-        continue
+      $directorySegments = @()
+      if ($isDirectory) { $directorySegments = @($segments) }
+      elseif ($segments.Count -gt 1) { $directorySegments = @($segments[0..($segments.Count - 2)]) }
+      $currentDirectory = $destinationRoot
+      foreach ($segment in $directorySegments) {
+        $currentDirectory = [System.IO.Path]::Combine($currentDirectory, $segment)
+        if ([System.IO.File]::Exists($currentDirectory)) {
+          throw [System.IO.InvalidDataException]::new('archive_destination_parent_not_directory')
+        }
+        if (-not [System.IO.Directory]::Exists($currentDirectory)) {
+          $null = [System.IO.Directory]::CreateDirectory($currentDirectory)
+        }
+        $directoryAttributes = [System.IO.File]::GetAttributes($currentDirectory)
+        if (($directoryAttributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+          throw [System.IO.InvalidDataException]::new('archive_destination_reparse_point')
+        }
+        if (($directoryAttributes -band [System.IO.FileAttributes]::Directory) -eq 0) {
+          throw [System.IO.InvalidDataException]::new('archive_destination_parent_not_directory')
+        }
       }
-      $parentPath = [System.IO.Path]::GetDirectoryName($targetPath)
-      $null = [System.IO.Directory]::CreateDirectory($parentPath)
+      if ($isDirectory) { continue }
       $sourceStream = $null
       $targetStream = $null
       try {
@@ -172,6 +208,9 @@ function Test-BostanArchiveExtractionFixture {
   $unsafeArchivePath = Join-Path $fixtureRoot 'unsafe.zip'
   $unsafeExtractRoot = Join-Path $fixtureRoot 'unsafe-extract'
   $outsidePath = Join-Path $fixtureRoot 'outside.txt'
+  $symlinkArchivePath = Join-Path $fixtureRoot 'symlink.zip'
+  $symlinkExtractRoot = Join-Path $fixtureRoot 'symlink-extract'
+  $existingExtractRoot = Join-Path $fixtureRoot 'existing-extract'
   $corruptArchivePath = Join-Path $fixtureRoot 'corrupt.zip'
   $expected = 'bostan-verified-archive-fixture-v1'
   $null = [System.IO.Directory]::CreateDirectory($sourceRoot)
@@ -211,6 +250,78 @@ function Test-BostanArchiveExtractionFixture {
       throw 'fixture_archive_traversal_rejection_failed'
     }
     Write-Output 'BOSTAN_NATIVE_WINDOWS_ARCHIVE_OPERATION_PASS step=reject_traversal'
+
+    $symlinkArchive = [System.IO.Compression.ZipFile]::Open($symlinkArchivePath, [System.IO.Compression.ZipArchiveMode]::Create)
+    try {
+      $symlinkEntry = $symlinkArchive.CreateEntry('symlink.txt')
+      $symlinkEntry.ExternalAttributes = -1610612736
+      $symlinkStream = $symlinkEntry.Open()
+      try {
+        $symlinkBytes = [System.Text.Encoding]::UTF8.GetBytes('symlink-target')
+        $symlinkStream.Write($symlinkBytes, 0, $symlinkBytes.Length)
+      } finally {
+        $symlinkStream.Dispose()
+      }
+    } finally {
+      $symlinkArchive.Dispose()
+    }
+    $symlinkCategory = $null
+    try {
+      Expand-BostanVerifiedArchive -LiteralPath $symlinkArchivePath -DestinationPath $symlinkExtractRoot
+      throw 'fixture_archive_symlink_was_not_rejected'
+    } catch {
+      $symlinkCategory = Get-BostanArchiveFailureCategory -Exception $_.Exception
+    }
+    if ($symlinkCategory -ne 'invalid_archive' -or [System.IO.File]::Exists((Join-Path $symlinkExtractRoot 'symlink.txt'))) {
+      throw 'fixture_archive_symlink_rejection_failed'
+    }
+    Write-Output 'BOSTAN_NATIVE_WINDOWS_ARCHIVE_OPERATION_PASS step=reject_symlink'
+
+    $null = [System.IO.Directory]::CreateDirectory($existingExtractRoot)
+    [System.IO.File]::WriteAllText((Join-Path $existingExtractRoot 'keep.txt'), 'fixture-owned')
+    $existingRootCategory = $null
+    try {
+      Expand-BostanVerifiedArchive -LiteralPath $archivePath -DestinationPath $existingExtractRoot
+      throw 'fixture_existing_destination_was_not_rejected'
+    } catch {
+      $existingRootCategory = Get-BostanArchiveFailureCategory -Exception $_.Exception
+    }
+    if ($existingRootCategory -ne 'invalid_archive' -or [System.IO.File]::ReadAllText((Join-Path $existingExtractRoot 'keep.txt')) -ne 'fixture-owned') {
+      throw 'fixture_existing_destination_rejection_failed'
+    }
+    Write-Output 'BOSTAN_NATIVE_WINDOWS_ARCHIVE_OPERATION_PASS step=reject_existing_root'
+
+    $reparseParent = Join-Path $fixtureRoot 'reparse-parent'
+    $reparseExtractRoot = Join-Path $reparseParent 'extract'
+    $reparseCreated = $false
+    try {
+      $mklinkCommand = 'mklink /J "' + $reparseParent + '" "' + $sourceRoot + '"'
+      $null = & $env:ComSpec /d /c $mklinkCommand 2>&1
+      $reparseCreated = [System.IO.Directory]::Exists($reparseParent)
+      if (-not $reparseCreated) { throw 'fixture_reparse_parent_creation_unavailable' }
+      $reparseAttributes = [System.IO.File]::GetAttributes($reparseParent)
+      if (($reparseAttributes -band [System.IO.FileAttributes]::ReparsePoint) -eq 0) { throw 'fixture_reparse_parent_creation_invalid' }
+      $reparseCategory = $null
+      try {
+        Expand-BostanVerifiedArchive -LiteralPath $archivePath -DestinationPath $reparseExtractRoot
+        throw 'fixture_reparse_parent_was_not_rejected'
+      } catch {
+        $reparseCategory = Get-BostanArchiveFailureCategory -Exception $_.Exception
+      }
+      if ($reparseCategory -ne 'invalid_archive' -or [System.IO.Directory]::Exists($reparseExtractRoot)) {
+        throw 'fixture_reparse_parent_rejection_failed'
+      }
+    } catch {
+      if ($_.Exception.Message -like 'fixture_*_failed' -or $_.Exception.Message -eq 'fixture_reparse_parent_was_not_rejected' -or $_.Exception.Message -eq 'fixture_reparse_parent_rejection_failed') { throw }
+      Write-Output 'BOSTAN_NATIVE_WINDOWS_ARCHIVE_OPERATION_SKIP step=reparse_parent_fixture_unavailable'
+    } finally {
+      if ($reparseCreated) {
+        $removeJunctionCommand = 'rmdir "' + $reparseParent + '"'
+        $null = & $env:ComSpec /d /c $removeJunctionCommand 2>&1
+        if ([System.IO.Directory]::Exists($reparseParent)) { throw 'fixture_reparse_parent_cleanup_failed' }
+      }
+    }
+    if ($reparseCreated) { Write-Output 'BOSTAN_NATIVE_WINDOWS_ARCHIVE_OPERATION_PASS step=reject_reparse_parent' }
 
     [System.IO.File]::WriteAllText($corruptArchivePath, 'not a zip archive')
     $corruptCategory = $null

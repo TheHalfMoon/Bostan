@@ -3,16 +3,23 @@ $ollamaVersion = '0.40.17'
 $ollamaSha256 = '3dd80f6e3a9699f2eadf4ac418f00529cee594df9557541806eda1f1f3f5588a'
 $ollamaArchiveBytes = 1618522644L
 $modelManifestSha256 = 'd7372fd828518a4d38b1eb196c673c31a85f2ed302b3d1e406c4c2d1b64a0668'
-$ollamaRoot = Join-Path $env:RUNNER_TEMP 'bostan-native-ollama'
-$zipPath = Join-Path $env:RUNNER_TEMP 'ollama-windows-amd64.zip'
+$runToken = [Guid]::NewGuid().ToString('N')
+$ollamaRoot = Join-Path $env:RUNNER_TEMP "bostan-native-ollama-$runToken"
+$zipPath = Join-Path $env:RUNNER_TEMP "ollama-windows-$runToken.zip"
 $modelRoot = Join-Path $ollamaRoot 'models'
 $server = $null
 $modelPull = $null
+$ownsOllamaRoot = $false
+$ownsArchive = $false
 $stage = 'ollama_download'
 . (Join-Path $PSScriptRoot 'bostan-windows-native-archive-hash.ps1')
 
 try {
-  New-Item -ItemType Directory -Path $ollamaRoot -Force | Out-Null
+  $existingArchive = Get-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue
+  if ($existingArchive) { throw 'Refusing to overwrite an existing Ollama archive path' }
+  $archiveReservation = [System.IO.File]::Open($zipPath, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+  $ownsArchive = $true
+  $archiveReservation.Dispose()
   Write-Output 'BOSTAN_NATIVE_WINDOWS_PHASE ollama_download_begin'
   $zipUrl = "https://github.com/ollama/ollama/releases/download/v$ollamaVersion/ollama-windows-amd64.zip"
   Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath
@@ -51,7 +58,11 @@ try {
   }
   $stage = 'ollama_archive_extract'
   try {
-    Expand-BostanVerifiedArchive -LiteralPath $zipPath -DestinationPath $ollamaRoot
+    $existingRoot = Get-Item -LiteralPath $ollamaRoot -Force -ErrorAction SilentlyContinue
+    if ($existingRoot) { throw 'Refusing to extract into an existing Ollama root' }
+    $null = New-Item -ItemType Directory -Path $ollamaRoot -ErrorAction Stop
+    $ownsOllamaRoot = $true
+    Expand-BostanVerifiedArchive -LiteralPath $zipPath -DestinationPath $ollamaRoot -DestinationCreatedByCaller
   } catch {
     $extractFailure = Get-BostanArchiveFailureCategory -Exception $_.Exception
     Write-Output "BOSTAN_NATIVE_WINDOWS_ARCHIVE_OPERATION_FAILURE step=extract cause=$extractFailure"
@@ -170,11 +181,34 @@ try {
     & taskkill.exe /PID $server.Id /T /F | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Owned Ollama process tree cleanup was not confirmed' }
   }
-  $tempRoot = [IO.Path]::GetFullPath($env:RUNNER_TEMP)
+  $tempRoot = [IO.Path]::GetFullPath($env:RUNNER_TEMP).TrimEnd([char[]]@([char]92, [char]47))
   $targetRoot = [IO.Path]::GetFullPath($ollamaRoot)
-  if ($targetRoot -ne [IO.Path]::GetFullPath((Join-Path $tempRoot 'bostan-native-ollama'))) {
+  $expectedRoot = [IO.Path]::GetFullPath((Join-Path $tempRoot "bostan-native-ollama-$runToken"))
+  if ($targetRoot -ne $expectedRoot -or -not $targetRoot.StartsWith($tempRoot + [IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
     throw 'Refusing Ollama cleanup outside its isolated runner TEMP directory'
   }
-  Remove-Item -LiteralPath $targetRoot -Recurse -Force -ErrorAction SilentlyContinue
-  Remove-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue
+  if ([System.IO.File]::Exists($targetRoot) -or [System.IO.Directory]::Exists($targetRoot)) {
+    if (-not $ownsOllamaRoot) { throw 'Refusing to remove an Ollama path not created by this invocation' }
+    if (-not [System.IO.Directory]::Exists($targetRoot)) { throw 'Owned Ollama root has an unexpected file type' }
+    $targetAttributes = [System.IO.File]::GetAttributes($targetRoot)
+    if (($targetAttributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+      throw 'Refusing Ollama cleanup through a reparse point'
+    }
+    Remove-Item -LiteralPath $targetRoot -Recurse -Force -ErrorAction Stop
+    if ([System.IO.File]::Exists($targetRoot) -or [System.IO.Directory]::Exists($targetRoot)) { throw 'Owned Ollama root cleanup did not complete' }
+  }
+  $expectedArchive = [IO.Path]::GetFullPath((Join-Path $tempRoot "ollama-windows-$runToken.zip"))
+  $archivePath = [IO.Path]::GetFullPath($zipPath)
+  if ($archivePath -ne $expectedArchive) { throw 'Refusing archive cleanup outside its isolated runner TEMP directory' }
+  if ([System.IO.File]::Exists($archivePath) -or [System.IO.Directory]::Exists($archivePath)) {
+    if (-not $ownsArchive) { throw 'Refusing to remove an archive path not created by this invocation' }
+    if (-not [System.IO.File]::Exists($archivePath)) { throw 'Owned archive path has an unexpected directory type' }
+    $archiveAttributes = [System.IO.File]::GetAttributes($archivePath)
+    if (($archiveAttributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+      throw 'Refusing archive cleanup through a reparse point'
+    }
+    Remove-Item -LiteralPath $archivePath -Force -ErrorAction Stop
+    if ([System.IO.File]::Exists($archivePath) -or [System.IO.Directory]::Exists($archivePath)) { throw 'Owned archive cleanup did not complete' }
+  }
+  Write-Output 'BOSTAN_NATIVE_WINDOWS_CLEANUP_PASS task_owned_temp=true'
 }
