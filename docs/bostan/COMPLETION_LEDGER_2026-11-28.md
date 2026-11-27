@@ -6,7 +6,7 @@ are a point-in-time snapshot; update them only when new evidence exists.
 
 ## Executive status
 
-**Overall: NO-GO / NOT COMPLETE.** PR #584 head 4bfa89b137d2268102414460c03d4ddf227b813a passed all 18 hosted source and desktop CI checks. At exact head 4ca245ba23c1ad056cebe4319c85a9a689a3d211, native run 46075821679 is still active in Windows packaging; source CI run 46075836375 is progressing with several jobs queued. The latest completed native qualification failed during Qwen model pull; no real inference, zero-cost agent execution, or release readiness is proven.
+**Overall: NO-GO / NOT COMPLETE.** PR #584 head 4bfa89b137d2268102414460c03d4ddf227b813a passed all 18 hosted source and desktop CI checks. At exact head 4ca245ba23c1ad056cebe4319c85a9a689a3d211, native run 46075821679 has completed packaging and is active in the packaged Windows native-agent step; source CI run 46075836375 has no failed jobs and its Windows package job is active. The latest completed native qualification failed during Qwen model pull; no real inference, zero-cost agent execution, or release readiness is proven.
 
 The earlier completed native failure was run [46058240798](https://github.com/TheHalfMoon/Bostan/actions/runs/46058240798), built at parent commit `2f24d925cfe9d297dff28a59cc083c112c790ee5`:
 
@@ -27,7 +27,7 @@ The exact-head native rerun is [46058483810](https://github.com/TheHalfMoon/Bost
 
 At 2026-11-27T22:06:33.891Z, the Qwen pull began. Ten seconds later the child had exited and the old receipt was BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=other childAlive=false outputBytes=7012; the QA worker exited 1. The job cleaned its owned temporary files. The receipt did not include the child exit code or useful error class. Model manifest/license verification, installed-app onboarding, inference, task persistence, comment attribution, restart recovery and cost verification were not reached.
 
-The exact-head qualification runs are native [46075821679](https://github.com/TheHalfMoon/Bostan/actions/runs/46075821679) and standard CI [46075836375](https://github.com/TheHalfMoon/Bostan/actions/runs/46075836375). The native run has passed the archive hash probe, server build, standard-user PostgreSQL probe, and UI build. At the latest check it was packaging the app; the model pull and first-agent stages have not started. The PostgreSQL probe took 6m52s and the server build 8m27s. The standard CI run has passed secret scan, typecheck and some test jobs while others remain queued or active. The diagnostics change is intended to capture the actual child exit code and a bounded sanitized category from both log tails; no new receipt is available until the native run completes.
+The exact-head qualification runs are native [46075821679](https://github.com/TheHalfMoon/Bostan/actions/runs/46075821679) and standard CI [46075836375](https://github.com/TheHalfMoon/Bostan/actions/runs/46075836375). The native run passed the archive hash probe, server build, standard-user PostgreSQL probe, UI build and package. Packaging took 13m50s; the PostgreSQL probe took 6m52s and server build 8m27s. The packaged Windows native-agent step began at `2026-11-27T22:51:34Z` and remains active; no model-pull receipt or first-agent outcome is available. The standard CI run has no failed jobs and its Windows package job remains active. The diagnostics change is intended to capture the actual child exit code and a bounded sanitized category from both log tails; no new receipt is available until the native run completes.
 
 ## Mandatory acceptance gates
 
@@ -110,11 +110,23 @@ recovery; recovery for missing runtime artifacts; and live multi-agent effect
 reconciliation, independent verification, interruption and consent/budget
 fence tests.
 
+Local branch `fix/acpx-permission-mode-parity-20261128` has commit
+`cafe36f2` clarifying that automatic ACPX read/action rules apply to Claude,
+while other providers use an approval flow when configured and fail closed
+without one. Its focused permission catalog suite passed 45 tests and the
+adapter-utils typecheck passed. An independent reviewer confirmed the wording
+matches the inspected runtime and caught a duplicate test before the commit was
+amended. This UX correction does not add permission parity to other providers.
+
 - The available D1 local review is advisory only and warns that its small model
   can miss severe security issues. It is not used to satisfy any release or
   security gate.
 - No Alibaba local code-review or PStack runtime/tool was available in this
   environment; no result from either is claimed.
+- The Codex Security workbench timed out after 300 seconds while enumerating
+  both the clean whole-repository worktree and the narrower `server/src` scope.
+  It returned no scan ID or findings; this is unavailable audit coverage, not
+  a clean security result.
 - Evidence from the Windows native hosted runner is sanitized. Raw model-pull
   stdout/stderr was kept in the task-owned temporary directory and cleaned up;
   the current failure receipt is insufficient to identify the exact model-pull
@@ -124,8 +136,8 @@ fence tests.
 ## Next actions
 
 1. Let native run `46075821679` finish and inspect its child exit, bounded
-   sanitized log-category receipts and stage timings. It is currently
-   packaging; model pull has not started.
+   sanitized log-category receipts and stage timings. It has entered the
+   packaged Windows native-agent step; model-pull outcome is pending.
 2. Identify and repair any Qwen pull failure from the new evidence, then rerun
    qualification serially.
 3. Complete actual local Qwen inference through the installed application;
@@ -133,9 +145,9 @@ fence tests.
 4. Finish CI and review for draft PR #586, then publish the isolated SDK fix
    branch after its base checks settle. Continue package-path and runtime
    compatibility review for the partial undici findings.
-5. Resolve the ACPX permission-mode mismatch without weakening fail-closed
-   authority; add provider-specific behavior tests or clarify supported
-   behavior in the UI.
+5. Keep the ACPX permissions clarification separate from #584 and decide
+   whether to implement provider-specific safe automatic rules after validating
+   each provider protocol and adding behavior tests.
 6. Work through remaining B0–B6 installation, recovery, security, accessibility
    and live agent/effect acceptance gates. Keep PR #584 draft and update this
    ledger only when evidence changes.
