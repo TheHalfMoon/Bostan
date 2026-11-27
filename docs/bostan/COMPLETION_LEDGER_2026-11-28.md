@@ -91,12 +91,13 @@ resolutions or declaring affected code reachable.
 
 The isolated security branch `security/dependency-triage-20261128` has commit
 `aa2fbd5` with the focused `proxy-addr@2.0.8` fix and is published as draft
-PR #586; its checks are still in progress. Sibling branch
-`security/mcp-sdk-update-20261128` has local commit `6b4e42a0` adding the
-`@modelcontextprotocol/sdk@1.32.0` override. NPMScan reports four advisories
-(two high and two moderate) on 1.31.0 and none on 1.32.0. The affected MCP
-server suites passed 53 tests and all three package typechecks passed; frozen
-lockfile installation passed. This follow-up is local and has not been pushed.
+PR #586; all 15 hosted checks pass. Sibling branch
+`security/mcp-sdk-update-20261128` has commit `745369b0` adding the
+`@modelcontextprotocol/sdk@1.32.0` override and is published as draft PR #587.
+NPMScan reports four advisories (two high and two moderate) on 1.31.0 and none
+on 1.32.0. The affected MCP server suites passed 53 tests and all three package
+typechecks passed; frozen-lockfile installation passed. PR #587 hosted CI is
+pending.
 
 Read-only product reviews on 4ca245ba found no authorization bypass in the
 inspected ACPX approval and Paperclip tool-authority paths. They did find that
