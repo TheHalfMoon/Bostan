@@ -142,6 +142,12 @@ describe("parseTrustProxyEnv", () => {
     ]);
   });
 
+  it("does not trust unrelated IPv4 peers for an IPv6 CIDR with zero leading bits", () => {
+    const app = appWithEnv("::/1");
+    const trustProxy = app.get("trust proxy fn") as (address: string, hop: number) => boolean;
+    expect(trustProxy("203.0.113.7", 0)).toBe(false);
+  });
+
   it("'bogus' throws with a helpful message naming the bad token", () => {
     expect(() => parseTrustProxyEnv("bogus")).toThrow(/bogus/);
     expect(() => parseTrustProxyEnv("bogus")).toThrow(/loopback/);
