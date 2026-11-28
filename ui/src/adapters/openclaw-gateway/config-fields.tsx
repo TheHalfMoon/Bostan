@@ -323,7 +323,7 @@ export function OpenClawGatewayConfigFields({
           }
           immediate
           className={inputClass}
-          placeholder="https://paperclip.example"
+          placeholder="https://bostan.example"
         />
       </Field>
 
