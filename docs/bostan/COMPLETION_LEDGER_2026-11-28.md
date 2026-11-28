@@ -6,7 +6,7 @@ are a point-in-time snapshot; update them only when new evidence exists.
 
 ## Executive status
 
-**Overall: NO-GO / NOT COMPLETE.** PR #584 remains OPEN/DRAFT. Its latest remote head is `bdec1690333d5e82e9afe561961b307e9a41cbf8`.
+**Overall: NO-GO / NOT COMPLETE.** PR #584 remains OPEN/DRAFT. Its latest remote head is `dabe465b654de81cb6c8a57dc8c9e7ba1c343b91`.
 
 ### Latest native qualification update
 
@@ -14,7 +14,7 @@ Native run [46107218941](https://github.com/TheHalfMoon/Bostan/actions/runs/4610
 
 Run [46115222987](https://github.com/TheHalfMoon/Bostan/actions/runs/46115222987), job 140887415573, completed **FAILURE** at 2026-11-28T07:35:22Z. The server build took 11m09s, standard-user PostgreSQL probe 9m34s, packaging 13m55s, and native qualification 39m08s. The pinned Ollama archive was downloaded and verified; Qwen pull exited 0 in 8 seconds, its child closed, and manifest/license checks passed. Post-pull measurements were 15.99 GiB RAM total, 12.04 GiB free, and 22.11 GiB temp disk free. Packaged startup reached `ready`; private health, first-admin bootstrap, and native-agent readiness passed. The first task failed 5s after readiness with `native_session_interrupted` at `preparing`; the bounded event counts showed no harness-ready, session, turn, or provider events. The run log had 8 JSON records and no recognized safe error signal. Graceful shutdown and disposable-profile/Ollama cleanup passed. This narrows the failure to native-session preparation before a provider session starts; it does not identify the cause. No inference, completed task/comment, restart recovery or cost evidence was produced.
 
-The prior code forwarded the run/resource summary but dropped the structured, redacted `failureDetail` on lifecycle events. A follow-up harness change is in local source review to allowlist the original source code, recovery mode, provider-session/event/checkpoint booleans, and safe message classification through the existing PowerShell 5.1 sanitizer. Another qualification must wait for focused tests and independent privacy review of that change.
+The prior code forwarded the run/resource summary but dropped the structured, redacted `failureDetail` on lifecycle events. Commit `dabe465b654de81cb6c8a57dc8c9e7ba1c343b91` adds allowlisted original source code, recovery mode, provider-session/event/checkpoint booleans, and safe message classification through the PowerShell 5.1 sanitizer. Focused tests passed 30/30; an independent privacy review found no concrete findings. Exact-head native run [46141357687](https://github.com/TheHalfMoon/Bostan/actions/runs/46141357687) and standard CI [46141361633](https://github.com/TheHalfMoon/Bostan/actions/runs/46141361633) are active. Do not launch another qualification until these reach terminal state.
 
 Standard CI [46115227162](https://github.com/TheHalfMoon/Bostan/actions/runs/46115227162) passed all 18 checks on exact PR head `bdec1690`. Completion-ledger CI [46115313898](https://github.com/TheHalfMoon/Bostan/actions/runs/46115313898) passed all 15 checks on commit `cc88c29c`. No real inference, completed task, persisted comment, restart recovery or verified $0 cost is proven.
 
@@ -59,13 +59,13 @@ The Codex Security diff-scan launcher rejected the PR #590 range on both attempt
 
 | Gate | Status | Evidence and limit |
 |---|---|---|
-| Hosted source CI | **PRIOR-HEAD PASS** | Run 46107222605 passed 18/18 on `7e70fcd3`; exact-head run 46115222987 is active for `bdec1690`. |
+| Hosted source CI | **PRIOR-HEAD PASS** | Run 46115227162 passed 18/18 on `bdec1690`; exact-head run 46141361633 is active for `dabe465b`. |
 | Windows installed-app CI | **IN PROGRESS, PRIOR-HEAD PASS** | Earlier exact-head run 46094528231 passed. Current exact-head run 46107222605 has its desktop (windows-latest) package job still in progress. |
 | Apple Silicon macOS installed-app CI | **IN PROGRESS, PRIOR-HEAD PASS** | Earlier run 46094528231 passed; current exact-head run 46107222605 desktop (macos-15) job is still active. |
 | Intel macOS installed-app CI | **IN PROGRESS, PRIOR-HEAD PASS** | Earlier run 46094528231 passed; current exact-head run 46107222605 desktop (macos-15-intel) job is still active. |
 | Native Windows installer plus Ollama archive | **PASS ON EXACT HEAD** | Run 46115222987 downloaded and verified Ollama, pulled Qwen, and verified manifest/license. |
 | Clean standard-user install, startup, auth health and first-admin bootstrap | **PASS ON EXACT HEAD** | Run 46115222987 packaged the application, reached `ready`, and passed private health, first-admin bootstrap, and native-agent readiness. |
-| Clean first-agent journey through persisted task completion | **FAILED, CAUSE UNDER INVESTIGATION** | Run 46115222987 failed during native-session preparation (`native_session_interrupted`), before harness/session/provider events. Shutdown and cleanup passed. |
+| Clean first-agent journey through persisted task completion | **FAILED, RETRY ACTIVE** | Run 46115222987 failed during native-session preparation (`native_session_interrupted`), before harness/session/provider events. Run 46141357687 exercises the reviewed structured failure-detail receipt. |
 | Real local-model inference and successful task execution | **NOT QUALIFIED** | No provider session started; no inference or completed-task evidence exists. |
 | Verified zero-cost execution | **NOT QUALIFIED** | No completed run with real inference and verified provider cost exists. |
 | Persisted result, restart and history recovery after real inference | **NOT QUALIFIED** | No real task result has been persisted or recovered after restart. |
@@ -91,11 +91,11 @@ The roadmap explicitly retains these unfinished requirements:
 
 ## Engineering packet in progress
 
-PR [#584](https://github.com/TheHalfMoon/Bostan/pull/584) remains **OPEN / DRAFT** at remote head `bdec1690333d5e82e9afe561961b307e9a41cbf8`.
+PR [#584](https://github.com/TheHalfMoon/Bostan/pull/584) remains **OPEN / DRAFT** at remote head `dabe465b654de81cb6c8a57dc8c9e7ba1c343b91`.
 
 Commits 67c71397 and 7e70fcd3 bind the local Ollama provider to native agent readiness/execution and surface safe shutdown/profile-cleanup receipts. The reviewed configuration is pinned to loopback port 11434 and qwen2.5-coder:1.5b; no paid or remote fallback was added. Focused tests passed 47/47 across script, adapter and server suites; adapter TypeScript check passed. Independent read-only security review found no introduced security issue.
 
-Native run 46115222987 failed during first-task native-session preparation; see the latest native qualification update above. Standard run 46115227162 passed 18/18 on exact PR head `bdec1690`. Do not launch another qualification until the structured lifecycle failure detail is safely surfaced and reviewed.
+Native run 46115222987 failed during first-task native-session preparation; see the latest native qualification update above. Corrected run 46141357687 is active; no duplicate should be started. Standard run 46115227162 passed 18/18 on prior head `bdec1690`; exact-head standard run 46141361633 is active.
 
 The preserved desktop/dist-unpacked-qa/ remains untouched in the primary checkout. Do not start a duplicate build or qualification run.
 
@@ -125,6 +125,23 @@ keyboard subset passed 6/6; UI typecheck, token gates, branding check, map
 validation and `git diff --check` passed. Independent review found no concrete
 issue. These are simulated keyboard events; live OS input methods and full
 product acceptance remain unqualified. The commit remains local and isolated.
+
+Commit `e5539ce14b3d51cfe91ca98a704068a40fa35689` on local branch
+`fix/organization-card-keyboard-20261128` separates organization selection from
+keyboard actions on a company card. Enter on the menu and rename controls no
+longer changes the active organization; a native selection button exposes the
+current choice. The pre-fix test reproduced the selection change. Focused UI
+tests passed 27/27, UI typecheck and token/map/catalog gates passed, 30 map and
+catalog tests passed, and Edge verified keyboard selection at desktop/mobile
+widths plus rename and unarchive. Independent review found no concrete issue.
+
+Commit `cf16f0114ad6ace9f2d4e2faa2770db0d2bb778c` on local branch
+`fix/interruption-recovery-20261128` corrects the recovery card and compact
+summary so queued work is not labeled “Attempt running now.” Two regressions
+reproduced the false state before the display-only fix. Recovery suites passed
+147/147 plus UI typecheck, token/branding checks and feature-map validation.
+Independent review found no concrete issue; exact-run identity, native-resume,
+expiry and durable-path predicates were unchanged. No live recovery is claimed.
 
 GitHub repository metadata identifies TheHalfMoon/Bostan as public. This conflicts with the PR template private-repository checklist and remains a governance/release blocker; no repository visibility setting was changed.
 
@@ -211,8 +228,8 @@ amended. This UX correction does not add permission parity to other providers.
 
 ## Next actions
 
-1. Let exact-head run 46115222987 reach terminal state; do not launch a duplicate. Capture the now-allowlisted task diagnostic, resource measurements, process exits and durations.
-2. Use the actual first failure signal to fix the agent execution boundary. Then qualify real installed-app Qwen inference through persisted task/comment, restart recovery and verified $0 provider cost.
+1. Let exact-head run 46141357687 reach terminal state; do not launch a duplicate. Capture the allowlisted native failure source, recovery fields, resource measurements, process exits and durations.
+2. Use that source to fix the actual agent execution boundary. Then qualify real installed-app Qwen inference through persisted task/comment, restart recovery and verified $0 provider cost.
 3. Qualify any corrected exact source commit without reusing stale artifacts. Keep PR #584 draft until real inference, persistence, restart and zero-cost acceptance pass.
 4. Keep other dependency, ACPX, UI, install/recovery and security packets isolated and follow repository review rules. No merge or public release without all required gates and authorization.
 5. Resolve the public-repository/private-checklist governance mismatch before creating additional public PRs; continue local engineering that does not require changing repository visibility.
