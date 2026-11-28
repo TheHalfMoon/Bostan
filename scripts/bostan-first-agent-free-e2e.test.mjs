@@ -298,6 +298,14 @@ test("packaged QA heartbeat diagnostics retain safe phase and provider failure s
       providerSessionEstablished: false, providerEventsExist: false, checkpointExists: false,
       safeSignal: "native_provider_process_exited" } });
   assert.doesNotMatch(JSON.stringify(events), /private|token|output|secret|hidden|Users/);
+  const nativeDiagnostic = safeHeartbeatQaEventDiagnostic([{ eventType: "native.failure_diagnostic", payload: { failureDetail: {
+    originalFailureCode: "native_session_interrupted", recoveryMode: "ambiguous_state", failureStage: "runner_backend_setup",
+    failureType: "TypeError", nativeErrorCode: "ECONNRESET", message: "private prompt C:\\Users\\secret",
+  } } }]);
+  assert.deepEqual(nativeDiagnostic.nativeFailure, { sourceFailureCode: "native_session_interrupted", recoveryMode: "ambiguous_state",
+    providerSessionEstablished: null, providerEventsExist: null, checkpointExists: null, safeSignal: null,
+    failureStage: "runner_backend_setup", failureType: "TypeError", nativeErrorCode: "ECONNRESET" });
+  assert.doesNotMatch(JSON.stringify(nativeDiagnostic), /private|prompt|secret|Users/);
   assert.deepEqual(safeHeartbeatQaEventDiagnostic(null), { available: false, harnessReady: 0,
     sessionStarted: 0, sessionResumed: 0, turnStarted: 0, turnCompleted: 0, turnFailed: 0,
     turnCancelled: 0, turnInterrupted: 0, providerEvents: 0, providerRpcResults: 0, nativeFailure: null });

@@ -350,6 +350,7 @@ import {
   retainedNativeCleanupJournalMatches,
   nativeProviderUsageLimitFromEvent,
   nativeSessionFailureSourceCode,
+  safeNativeSessionFailureDiagnostic,
   nativeSessionRecoveryProjection,
   nativeGovernedWaitResult,
   nativeConversationReplyResult,
@@ -9426,6 +9427,16 @@ describe("native session bounded recovery", () => {
         }),
       ),
     ).toBe("native_session_interrupted");
+  });
+
+  it("exposes only allowlisted native failure diagnostics", () => {
+    expect(safeNativeSessionFailureDiagnostic(
+      Object.assign(new TypeError("private prompt C:\\Users\\secret"), { code: "ECONNRESET" }),
+      "runner_backend_setup",
+    )).toEqual({ failureStage: "runner_backend_setup", failureType: "TypeError", nativeErrorCode: "ECONNRESET" });
+    expect(safeNativeSessionFailureDiagnostic(
+      Object.assign(new Error("private"), { code: "PRIVATE_CODE" }), "private_stage",
+    )).toEqual({ failureStage: "provider_setup", failureType: "Error", nativeErrorCode: null });
   });
 
   it.each([

@@ -6484,6 +6484,37 @@ export function nativeSessionFailureSourceCode(
   return "native_session_interrupted";
 }
 
+const NATIVE_FAILURE_TYPES = new Set([
+  "AbortError", "Error", "FetchError", "NativeCancellationPendingRecoveryError",
+  "NativeControllerDetachedForRestartError", "NativePermissionDeclinedError",
+  "NativeProviderTerminalFailure", "NativeResultPendingFinalizationError",
+  "NativeSessionCleanupQuarantinedError", "NativeSessionProtocolIntegrityError",
+  "PostgresError", "RangeError", "ReferenceError", "SyntaxError", "TypeError",
+]);
+const NATIVE_FAILURE_STAGES = new Set([
+  "controller_identity", "coordinator_claim", "native_session_execute",
+  "provider_setup", "remote_session_recovery", "result_finalize",
+  "runner_backend_setup", "runner_environment", "wake_context",
+]);
+const NATIVE_FAILURE_CODES = new Set([
+  "08001", "08006", "22P02", "23502", "23503", "23505", "23514",
+  "40001", "40P01", "57014", "EACCES", "EADDRINUSE", "ECONNREFUSED",
+  "ECONNRESET", "EPIPE", "ENOENT", "ERR_SOCKET_CLOSED", "ETIMEDOUT",
+]);
+
+export function safeNativeSessionFailureDiagnostic(error: unknown, stage: string) {
+  const name = error instanceof Error ? error.name : "";
+  const errorCode = record(error).code;
+  return {
+    failureStage: NATIVE_FAILURE_STAGES.has(stage) ? stage : "provider_setup",
+    failureType: NATIVE_FAILURE_TYPES.has(name) ? name : "unknown",
+    nativeErrorCode:
+      typeof errorCode === "string" && NATIVE_FAILURE_CODES.has(errorCode)
+        ? errorCode
+        : null,
+  };
+}
+
 const NATIVE_CLEANUP_OPERATOR_RECOVERY_MESSAGE =
   "Send a new message to continue after Paperclip verifies that the previous provider and its tools have stopped. If cleanup cannot be verified, inspect the run and its environment. Clearing a task session does not resolve this quarantine. Automatic retries are stopped.";
 
@@ -7956,11 +7987,13 @@ async function executePaperclipNativeSessionWithinScope(
   }
   const leaseOwner =
     input.leaseOwner ?? `${effectiveRunnerInstanceId}:${randomUUID()}`;
+  let failureStage = "controller_identity";
   const controller = await currentNativeControllerIdentity();
   const leaseNow = new Date();
   const leaseExpiresAt = new Date(leaseNow.getTime() + 20 * 60_000);
   let attempt: number;
   try {
+    failureStage = "coordinator_claim";
     attempt = await trace.measure(
       "native.coordinator.claim",
       () =>
@@ -8160,6 +8193,7 @@ async function executePaperclipNativeSessionWithinScope(
     await trace.finish("failed");
     throw error;
   }
+  failureStage = "provider_setup";
   const controlPlaneInstanceId = `${effectiveRunnerInstanceId}:control`;
   const planSynchronizations: PlanSynchronization[] = [];
   const upsertPlanSynchronization = (
@@ -8811,6 +8845,7 @@ async function executePaperclipNativeSessionWithinScope(
     controller,
   });
   try {
+    failureStage = "runner_environment";
     const usesPluginTask = input.runnerExecutionTarget?.kind === "remote" && input.runnerExecutionTarget.transport === "sandbox" && !!input.runnerExecutionTarget.runnerTask;
     const prepareRunnerEnvironment = async () => {
       if (!usesPluginTask && input.managedGitHub && input.execution.schema !== "paperclip.native-execution-input.v6" && input.execution.schema !== "paperclip.native-execution-input.v8") {
@@ -8833,11 +8868,13 @@ async function executePaperclipNativeSessionWithinScope(
       && input.execution.schema !== "paperclip.native-execution-input.v6"
       && input.execution.schema !== "paperclip.native-execution-input.v8";
     if (!overlapGitHubPreparation) await prepareRunnerEnvironment();
+    failureStage = "wake_context";
     const expectedCurrentWakeComments = await timeController("wake_binding", () => resolveCurrentWakeCommentsBinding(
       input.db,
       input.execution.binding,
     ));
     let remoteWarmRecoveryPending = remoteWarmRecovery !== undefined;
+    failureStage = "runner_backend_setup";
     let runnerdBackend =
       input.useRunnerd && input.backend === undefined
         ? await timeController("backend_setup", () => createRunnerdBackend({
@@ -8860,6 +8897,7 @@ async function executePaperclipNativeSessionWithinScope(
           }))
         : null;
     if (remoteWarmRecovery) {
+      failureStage = "remote_session_recovery";
       await remoteWarmRecovery.revalidate(leaseOwner);
       const recovered = await runnerdBackend?.recoverSession?.(remoteWarmRecovery.checkpoint, {
         signal: new AbortController().signal,
@@ -8888,6 +8926,7 @@ async function executePaperclipNativeSessionWithinScope(
           )).then(rows => rows[0])
       : null;
     nativeSessionExecuteStartedAtMs = Date.now();
+    failureStage = "native_session_execute";
     native = await trace.measure(
       "native.session.execute",
       async () => {
@@ -9190,6 +9229,7 @@ async function executePaperclipNativeSessionWithinScope(
       },
       { parentName: "task.provider_session" },
     );
+    failureStage = "result_finalize";
     // A detached consumer can resolve successfully after its stream closes.
     // Only the replacement controller may settle the run or certify accounting.
     assertControllerActive();
@@ -9368,6 +9408,22 @@ async function executePaperclipNativeSessionWithinScope(
           : providerUsageLimitObserved
             ? "native_provider_usage_limit"
             : classifiedFailureCode;
+      const safeFailureDiagnostic = safeNativeSessionFailureDiagnostic(error, failureStage);
+      await input.onEvent?.({
+        eventType: "native.failure_diagnostic",
+        level: "error",
+        message: "Native session failed before producing a result.",
+        payload: {
+          failureDetail: {
+            originalFailureCode: sourceFailureCode,
+            recoveryMode: "ambiguous_state",
+            providerSessionEstablished: null,
+            providerEventsExist: null,
+            checkpointExists: null,
+            ...safeFailureDiagnostic,
+          },
+        },
+      }).catch(() => undefined);
       const recoveryEvidence = await nativeProviderRecoveryEvidence({
         db: input.db,
         runId: input.execution.binding.runId,

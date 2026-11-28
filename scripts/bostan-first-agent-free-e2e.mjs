@@ -186,6 +186,14 @@ export function safeHeartbeatQaEventDiagnostic(events) {
     "native_session_interrupted",
   ]);
   const recoveryModes = new Set(["bootstrap_retry", "exact_checkpoint_resume", "ambiguous_state"]);
+  const failureTypes = new Set(["AbortError", "Error", "FetchError", "NativeCancellationPendingRecoveryError",
+    "NativeControllerDetachedForRestartError", "NativePermissionDeclinedError", "NativeProviderTerminalFailure",
+    "NativeResultPendingFinalizationError", "NativeSessionCleanupQuarantinedError", "NativeSessionProtocolIntegrityError",
+    "PostgresError", "RangeError", "ReferenceError", "SyntaxError", "TypeError"]);
+  const failureStages = new Set(["controller_identity", "coordinator_claim", "native_session_execute", "provider_setup",
+    "remote_session_recovery", "result_finalize", "runner_backend_setup", "runner_environment", "wake_context"]);
+  const nativeErrorCodes = new Set(["08001", "08006", "22P02", "23502", "23503", "23505", "23514", "40001", "40P01",
+    "57014", "EACCES", "EADDRINUSE", "ECONNREFUSED", "ECONNRESET", "EPIPE", "ENOENT", "ERR_SOCKET_CLOSED", "ETIMEDOUT"]);
   const signalForFailureCode = new Map([
     ["native_permission_declined", "native_permission_declined"],
     ["native_provider_terminal_failed", "native_provider_terminal_failed"],
@@ -218,7 +226,7 @@ export function safeHeartbeatQaEventDiagnostic(events) {
     const key = fields.get(event?.eventType);
     if (key) counts[key]++;
     const detail = event?.payload?.failureDetail;
-    if (event?.eventType !== "lifecycle" || !detail || typeof detail !== "object" || Array.isArray(detail)) continue;
+    if (!["lifecycle", "native.failure_diagnostic"].includes(event?.eventType) || !detail || typeof detail !== "object" || Array.isArray(detail)) continue;
     const rawCode = detail.originalFailureCode;
     const rawMode = detail.recoveryMode;
     const rawMessage = typeof detail.message === "string" ? detail.message.slice(0, 2_000) : "";
@@ -231,6 +239,12 @@ export function safeHeartbeatQaEventDiagnostic(events) {
       providerEventsExist: typeof detail.providerEventsExist === "boolean" ? detail.providerEventsExist : null,
       checkpointExists: typeof detail.checkpointExists === "boolean" ? detail.checkpointExists : null,
       safeSignal: messageSignal ?? signalForFailureCode.get(sourceFailureCode) ?? null,
+      ...(event.eventType === "native.failure_diagnostic" ? {
+        failureStage: failureStages.has(detail.failureStage) ? detail.failureStage : null,
+        failureType: failureTypes.has(detail.failureType) ? detail.failureType : null,
+        nativeErrorCode: typeof detail.nativeErrorCode === "string" && nativeErrorCodes.has(detail.nativeErrorCode)
+          ? detail.nativeErrorCode : null,
+      } : {}),
     };
   }
   return { available: true, ...counts, nativeFailure };
