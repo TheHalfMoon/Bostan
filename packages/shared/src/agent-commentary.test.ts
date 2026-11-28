@@ -6,6 +6,8 @@ describe("agent commentary input", () => {
   it("preserves free-form text and the document-sized ceiling", () => {
     expect(submitAgentCommentarySchema.parse(input)).toEqual(input);
     const body = "🙂".repeat(AGENT_COMMENTARY_MAX_LENGTH / 2);
+    expect(body.length).toBe(AGENT_COMMENTARY_MAX_LENGTH);
+    expect(Array.from(body).length).toBeLessThan(AGENT_COMMENTARY_MAX_LENGTH);
     expect(submitAgentCommentarySchema.parse({ ...input, kind: "suggestion", body }).body).toBe(body);
     expect(submitAgentCommentarySchema.safeParse({ ...input, body: body + "x" }).success).toBe(false);
   });
