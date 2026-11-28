@@ -113,6 +113,10 @@ vi.mock("./AppConnectionSidebar", () => ({
   ),
 }));
 
+vi.mock("./TitleBar", () => ({
+  TitleBar: () => <header data-testid="app-title-bar">Title bar</header>,
+}));
+
 vi.mock("./BreadcrumbBar", () => ({
   BreadcrumbBar: () => <div>Breadcrumbs</div>,
 }));
@@ -400,6 +404,8 @@ describe("Layout", () => {
     expect(
       container.querySelector(".streamlined-task-detail-surface"),
     ).not.toBeNull();
+    // Streamlined desktop shell: the title bar sits above the sidebar.
+    expect(container.querySelector('[data-testid="app-title-bar"]')).not.toBeNull();
     expect(
       container.querySelector("#main-content")?.classList.contains("pt-0"),
     ).toBe(true);
@@ -605,6 +611,8 @@ describe("Layout", () => {
     expect(container.textContent).toContain("Main company nav");
     expect(container.textContent).toContain("Company settings sidebar");
     expect(mockSetForceCollapsed).toHaveBeenCalledWith(true);
+    // The legacy opt-out shell keeps its own organization menu and header toggle.
+    expect(container.querySelector('[data-testid="app-title-bar"]')).toBeNull();
 
     await act(async () => {
       root.unmount();

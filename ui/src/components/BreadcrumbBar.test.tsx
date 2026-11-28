@@ -8,6 +8,10 @@ import { BreadcrumbBar } from "./BreadcrumbBar";
 
 const viewport = vi.hoisted(() => ({ isMobile: false }));
 
+vi.mock("../context/ThemeContext", () => ({
+  useTheme: () => ({ theme: "light", preference: "system", setPreference: vi.fn(), toggleTheme: vi.fn() }),
+}));
+
 vi.mock("@/lib/router", () => ({
   Link: ({ children, className, to }: { children: ReactNode; className?: string; to: string }) => (
     <a className={className} href={to}>{children}</a>

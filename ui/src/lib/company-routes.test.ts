@@ -153,4 +153,9 @@ describe("company routes", () => {
     // Already-prefixed paths are returned untouched.
     expect(applyCompanyPrefix("/PAP/artifacts", "PAP")).toBe("/PAP/artifacts");
   });
+
+  it("treats the CEO workspace as a company board route", () => {
+    expect(isBoardPathWithoutPrefix("/ceo")).toBe(true);
+    expect(applyCompanyPrefix("/ceo?objective=g1", "PAP")).toBe("/PAP/ceo?objective=g1");
+  });
 });

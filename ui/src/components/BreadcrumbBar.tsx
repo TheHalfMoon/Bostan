@@ -1,4 +1,6 @@
 import { Link } from "@/lib/router";
+import { ThemeToggle } from "./ThemeToggle";
+import { useStreamlinedUiEnabled } from "../hooks/useStreamlinedUiEnabled";
 import { Menu, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { useSidebar } from "../context/SidebarContext";
@@ -37,6 +39,7 @@ function GlobalToolbar({
   context: GlobalToolbarContext;
   pageToolbar?: ReactNode;
 }) {
+  const { enabled: streamlinedUiEnabled } = useStreamlinedUiEnabled();
   const { slots } = usePluginSlots({ slotTypes: ["globalToolbarButton"], companyId: context.companyId });
   const { launchers } = usePluginLaunchers({ placementZones: ["globalToolbarButton"], companyId: context.companyId, enabled: !!context.companyId });
   return (
@@ -48,6 +51,9 @@ function GlobalToolbar({
       {launchers.length > 0 ? (
         <PluginLauncherOutlet placementZones={["globalToolbarButton"]} context={context} className="flex items-center gap-1" />
       ) : null}
+      {/* Streamlined desktop: the title bar carries the theme toggle. The legacy
+          shell has no title bar, so it keeps the toggle here at every width. */}
+      <ThemeToggle className={streamlinedUiEnabled ? "md:hidden" : undefined} />
     </div>
   );
 }

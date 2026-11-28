@@ -1,10 +1,11 @@
-import { Moon, Sun } from "lucide-react";
+import { useId, useRef, type KeyboardEvent } from "react";
+import { Monitor, Moon, Sun } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useTheme } from "../context/ThemeContext";
+import { useTheme, type ThemePreference } from "../context/ThemeContext";
 
-type ThemeToggleVariant = "icon" | "menu-action" | "compact-menu-action";
+type ThemeToggleVariant = "icon" | "menu-action" | "compact-menu-action" | "preference";
 
 interface ThemeToggleProps {
   className?: string;
@@ -18,6 +19,9 @@ interface ThemeToggleProps {
    *
    * `compact-menu-action`: compact label + icon row — matches the
    * surrounding actions in `SidebarAccountMenu`.
+   *
+   * `preference`: labelled Light / Dark / System radio group. The choice
+   * persists; System follows the OS `prefers-color-scheme`.
    */
   variant?: ThemeToggleVariant;
   /**
@@ -29,6 +33,81 @@ interface ThemeToggleProps {
 
 const MENU_ACTION_DESCRIPTION = "Toggle the app appearance.";
 
+const PREFERENCE_OPTIONS: ReadonlyArray<{ value: ThemePreference; label: string; Icon: typeof Sun }> = [
+  { value: "light", label: "Light", Icon: Sun },
+  { value: "dark", label: "Dark", Icon: Moon },
+  { value: "system", label: "System", Icon: Monitor },
+];
+
+function ThemePreferenceControl({ className, onAfterToggle }: Pick<ThemeToggleProps, "className" | "onAfterToggle">) {
+  const { preference, setPreference } = useTheme();
+  const labelId = useId();
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const selectedIndex = Math.max(0, PREFERENCE_OPTIONS.findIndex((option) => option.value === preference));
+
+  function choose(index: number, moveFocus: boolean) {
+    const option = PREFERENCE_OPTIONS[index];
+    if (!option) return;
+    setPreference(option.value);
+    if (moveFocus) optionRefs.current[index]?.focus();
+    onAfterToggle?.();
+  }
+
+  // WAI-ARIA radio group: one tab stop (the checked radio); arrows move and select.
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const last = PREFERENCE_OPTIONS.length - 1;
+    const current = optionRefs.current.findIndex((node) => node === document.activeElement);
+    const from = current === -1 ? selectedIndex : current;
+    let next: number | null = null;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = from === last ? 0 : from + 1;
+    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = from === 0 ? last : from - 1;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = last;
+    if (next === null) return;
+    event.preventDefault();
+    choose(next, true);
+  }
+
+  return (
+    <div className={cn("flex items-center justify-between gap-3 px-2.5 py-1.5", className)}>
+      <span id={labelId} className="text-(length:--text-compact) font-medium text-foreground">
+        Appearance
+      </span>
+      <div
+        role="radiogroup"
+        aria-labelledby={labelId}
+        onKeyDown={handleKeyDown}
+        className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-muted p-0.5"
+      >
+        {PREFERENCE_OPTIONS.map(({ value, label, Icon }, index) => {
+          const selected = index === selectedIndex;
+          return (
+            <button
+              key={value}
+              ref={(node) => {
+                optionRefs.current[index] = node;
+              }}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              aria-label={label}
+              title={label}
+              tabIndex={selected ? 0 : -1}
+              onClick={() => choose(index, false)}
+              className={cn(
+                "inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring",
+                selected && "bg-card text-foreground shadow-xs",
+              )}
+            >
+              <Icon className="size-3.5" aria-hidden="true" />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Canonical theme-toggle widget. Both the signed-out `/auth` chrome and
  * the in-app account menu render through this component so the label,
@@ -36,6 +115,9 @@ const MENU_ACTION_DESCRIPTION = "Toggle the app appearance.";
  */
 export function ThemeToggle({ className, variant = "icon", onAfterToggle }: ThemeToggleProps) {
   const { theme, toggleTheme } = useTheme();
+  if (variant === "preference") {
+    return <ThemePreferenceControl className={className} onAfterToggle={onAfterToggle} />;
+  }
   const isDark = theme === "dark";
   const label = isDark ? "Switch to light mode" : "Switch to dark mode";
   const Icon = isDark ? Sun : Moon;

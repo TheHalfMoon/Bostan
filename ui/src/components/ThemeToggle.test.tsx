@@ -7,10 +7,13 @@ import { ThemeToggle } from "./ThemeToggle";
 
 const mockToggleTheme = vi.hoisted(() => vi.fn());
 const mockTheme = vi.hoisted(() => ({ value: "dark" as "dark" | "light" }));
+const mockSetPreference = vi.hoisted(() => vi.fn());
 
 vi.mock("../context/ThemeContext", () => ({
   useTheme: () => ({
     theme: mockTheme.value,
+    preference: "system",
+    setPreference: mockSetPreference,
     toggleTheme: mockToggleTheme,
   }),
 }));
@@ -120,5 +123,64 @@ describe("ThemeToggle", () => {
     expect(button?.getAttribute("aria-label")).toBe("Switch to dark mode");
 
     await act(async () => root.unmount());
+  });
+
+  it("renders a Light / Dark / System radio group for the preference variant", async () => {
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<ThemeToggle variant="preference" />);
+    });
+    await flushReact();
+    const radios = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="radio"]'));
+    expect(radios.map((radio) => radio.getAttribute("aria-label"))).toEqual(["Light", "Dark", "System"]);
+    expect(radios.map((radio) => radio.getAttribute("aria-checked"))).toEqual(["false", "false", "true"]);
+    const group = container.querySelector('[role="radiogroup"]');
+    const labelId = group?.getAttribute("aria-labelledby");
+    expect(labelId && document.getElementById(labelId)?.textContent).toBe("Appearance");
+
+    await act(async () => {
+      radios[1]?.click();
+    });
+    expect(mockSetPreference).toHaveBeenCalledWith("dark");
+    act(() => root.unmount());
+  });
+
+  it("supports radio-group keyboard navigation with a single tab stop", async () => {
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<ThemeToggle variant="preference" />);
+    });
+    await flushReact();
+    const radios = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="radio"]'));
+    // Only the checked option (System) is in the tab order.
+    expect(radios.map((radio) => radio.tabIndex)).toEqual([-1, -1, 0]);
+
+    const group = container.querySelector<HTMLElement>('[role="radiogroup"]')!;
+    radios[2]!.focus();
+    const press = (key: string) =>
+      act(() => {
+        group.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+      });
+
+    press("ArrowRight"); // wraps from System to Light
+    expect(mockSetPreference).toHaveBeenLastCalledWith("light");
+    expect(document.activeElement).toBe(radios[0]);
+
+    press("ArrowDown");
+    expect(mockSetPreference).toHaveBeenLastCalledWith("dark");
+    expect(document.activeElement).toBe(radios[1]);
+
+    press("ArrowLeft");
+    expect(mockSetPreference).toHaveBeenLastCalledWith("light");
+
+    press("End");
+    expect(mockSetPreference).toHaveBeenLastCalledWith("system");
+    press("Home");
+    expect(mockSetPreference).toHaveBeenLastCalledWith("light");
+
+    mockSetPreference.mockClear();
+    press("a");
+    expect(mockSetPreference).not.toHaveBeenCalled();
+    act(() => root.unmount());
   });
 });

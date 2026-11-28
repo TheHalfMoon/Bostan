@@ -5,11 +5,15 @@ import { describe, expect, it } from "vitest";
 import { BostanLockup } from "./BostanLockup";
 
 describe("BostanLockup", () => {
-  it("renders an accessible Bostan mark instead of the previous wordmark", () => {
+  it("renders the tree-and-wordmark lockup as one accessible image", () => {
     const html = renderToStaticMarkup(<BostanLockup />);
+    expect(html).toContain('role="img"');
     expect(html).toContain('aria-label="Bostan"');
-    expect(html).toContain(">B</span>");
-    expect(html).toContain(">Bostan</span>");
+    // Ink linework and wordmark follow the theme; nodes use the slate brand token.
+    expect(html).toContain('fill="currentColor"');
+    expect(html).toContain('fill="var(--bostan-slate)"');
+    expect(html.match(/<path /g)).toHaveLength(3);
+    expect(html).not.toContain(">B</span>");
     expect(html).not.toContain("Paperclip");
   });
 
