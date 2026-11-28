@@ -6,7 +6,7 @@ are a point-in-time snapshot; update them only when new evidence exists.
 
 ## Executive status
 
-**Overall: NO-GO / NOT COMPLETE.** PR #584 remains OPEN/DRAFT. Its latest remote head is `dabe465b654de81cb6c8a57dc8c9e7ba1c343b91`.
+**Overall: NO-GO / NOT COMPLETE.** PR #584 remains OPEN/DRAFT. Its latest remote head is `396c1512c0820511e15e10a457967b4e1469789f`.
 
 ### Latest native qualification update
 
@@ -14,9 +14,11 @@ Native run [46107218941](https://github.com/TheHalfMoon/Bostan/actions/runs/4610
 
 Run [46115222987](https://github.com/TheHalfMoon/Bostan/actions/runs/46115222987), job 140887415573, completed **FAILURE** at 2026-11-28T07:35:22Z. The server build took 11m09s, standard-user PostgreSQL probe 9m34s, packaging 13m55s, and native qualification 39m08s. The pinned Ollama archive was downloaded and verified; Qwen pull exited 0 in 8 seconds, its child closed, and manifest/license checks passed. Post-pull measurements were 15.99 GiB RAM total, 12.04 GiB free, and 22.11 GiB temp disk free. Packaged startup reached `ready`; private health, first-admin bootstrap, and native-agent readiness passed. The first task failed 5s after readiness with `native_session_interrupted` at `preparing`; the bounded event counts showed no harness-ready, session, turn, or provider events. The run log had 8 JSON records and no recognized safe error signal. Graceful shutdown and disposable-profile/Ollama cleanup passed. This narrows the failure to native-session preparation before a provider session starts; it does not identify the cause. No inference, completed task/comment, restart recovery or cost evidence was produced.
 
-The prior code forwarded the run/resource summary but dropped the structured, redacted `failureDetail` on lifecycle events. Commit `dabe465b654de81cb6c8a57dc8c9e7ba1c343b91` adds allowlisted original source code, recovery mode, provider-session/event/checkpoint booleans, and safe message classification through the PowerShell 5.1 sanitizer. Focused tests passed 30/30; an independent privacy review found no concrete findings. Exact-head native run [46141357687](https://github.com/TheHalfMoon/Bostan/actions/runs/46141357687) and standard CI [46141361633](https://github.com/TheHalfMoon/Bostan/actions/runs/46141361633) are active. Do not launch another qualification until these reach terminal state.
+Native run [46141357687](https://github.com/TheHalfMoon/Bostan/actions/runs/46141357687) completed **FAILURE** on `dabe465b`. It passed PowerShell 5.1 archive hashing, model archive and manifest/license verification, installed-app startup, private health, first-admin bootstrap, and native-agent readiness. The first task failed in `preparing` with `native_session_interrupted`, with no persisted harness/session/turn/provider events. The API run log had 8 JSON records and no recognized error records; shutdown and temporary-profile cleanup passed. This confirms the failure occurs before provider events but did not identify its source.
 
-Standard CI [46115227162](https://github.com/TheHalfMoon/Bostan/actions/runs/46115227162) passed all 18 checks on exact PR head `bdec1690`. Completion-ledger CI [46115313898](https://github.com/TheHalfMoon/Bostan/actions/runs/46115313898) passed all 15 checks on commit `cc88c29c`. No real inference, completed task, persisted comment, restart recovery or verified $0 cost is proven.
+Commit `396c1512c0820511e15e10a457967b4e1469789f` adds a fixed, bounded classification of the already-redacted native preparation error (database transport/transaction/timeout, lease loss, authorization, workspace/runtime access, memory pressure, or unclassified); raw run errors remain excluded. Focused Node and actual Windows PowerShell 5.1 tests passed 30/30. Exact-head native run [46146577370](https://github.com/TheHalfMoon/Bostan/actions/runs/46146577370) is active; standard CI [46146581477](https://github.com/TheHalfMoon/Bostan/actions/runs/46146581477) is running. Do not launch another qualification until both reach terminal state.
+
+Standard CI [46141361633](https://github.com/TheHalfMoon/Bostan/actions/runs/46141361633) passed all 18 checks on exact prior PR head `dabe465b`. The current head's standard CI and this ledger's CI are pending. No real inference, completed task, persisted comment, restart recovery or verified $0 cost is proven.
 
 Focused source changes on this head bind the pinned local Ollama provider into the native agent runtime and preserve separate graceful-shutdown/profile-cleanup receipts. Independent security review found no introduced remote/paid fallback or cleanup-scope issue. PR #584 remains draft; do not merge or publish.
 
@@ -59,13 +61,13 @@ The Codex Security diff-scan launcher rejected the PR #590 range on both attempt
 
 | Gate | Status | Evidence and limit |
 |---|---|---|
-| Hosted source CI | **PRIOR-HEAD PASS** | Run 46115227162 passed 18/18 on `bdec1690`; exact-head run 46141361633 is active for `dabe465b`. |
+| Hosted source CI | **PRIOR-HEAD PASS** | Run 46141361633 passed 18/18 on `dabe465b`; exact-head run 46146581477 is running for `396c1512`. |
 | Windows installed-app CI | **IN PROGRESS, PRIOR-HEAD PASS** | Earlier exact-head run 46094528231 passed. Current exact-head run 46107222605 has its desktop (windows-latest) package job still in progress. |
 | Apple Silicon macOS installed-app CI | **IN PROGRESS, PRIOR-HEAD PASS** | Earlier run 46094528231 passed; current exact-head run 46107222605 desktop (macos-15) job is still active. |
 | Intel macOS installed-app CI | **IN PROGRESS, PRIOR-HEAD PASS** | Earlier run 46094528231 passed; current exact-head run 46107222605 desktop (macos-15-intel) job is still active. |
 | Native Windows installer plus Ollama archive | **PASS ON EXACT HEAD** | Run 46115222987 downloaded and verified Ollama, pulled Qwen, and verified manifest/license. |
 | Clean standard-user install, startup, auth health and first-admin bootstrap | **PASS ON EXACT HEAD** | Run 46115222987 packaged the application, reached `ready`, and passed private health, first-admin bootstrap, and native-agent readiness. |
-| Clean first-agent journey through persisted task completion | **FAILED, RETRY ACTIVE** | Run 46115222987 failed during native-session preparation (`native_session_interrupted`), before harness/session/provider events. Run 46141357687 exercises the reviewed structured failure-detail receipt. |
+| Clean first-agent journey through persisted task completion | **FAILED, RETRY ACTIVE** | Run 46141357687 failed during native-session preparation (`native_session_interrupted`), before harness/session/provider events. Run 46146577370 adds bounded classification of the backend's redacted run error. |
 | Real local-model inference and successful task execution | **NOT QUALIFIED** | No provider session started; no inference or completed-task evidence exists. |
 | Verified zero-cost execution | **NOT QUALIFIED** | No completed run with real inference and verified provider cost exists. |
 | Persisted result, restart and history recovery after real inference | **NOT QUALIFIED** | No real task result has been persisted or recovered after restart. |
@@ -91,11 +93,11 @@ The roadmap explicitly retains these unfinished requirements:
 
 ## Engineering packet in progress
 
-PR [#584](https://github.com/TheHalfMoon/Bostan/pull/584) remains **OPEN / DRAFT** at remote head `dabe465b654de81cb6c8a57dc8c9e7ba1c343b91`.
+PR [#584](https://github.com/TheHalfMoon/Bostan/pull/584) remains **OPEN / DRAFT** at remote head `396c1512c0820511e15e10a457967b4e1469789f`.
 
 Commits 67c71397 and 7e70fcd3 bind the local Ollama provider to native agent readiness/execution and surface safe shutdown/profile-cleanup receipts. The reviewed configuration is pinned to loopback port 11434 and qwen2.5-coder:1.5b; no paid or remote fallback was added. Focused tests passed 47/47 across script, adapter and server suites; adapter TypeScript check passed. Independent read-only security review found no introduced security issue.
 
-Native run 46115222987 failed during first-task native-session preparation; see the latest native qualification update above. Corrected run 46141357687 is active; no duplicate should be started. Standard run 46115227162 passed 18/18 on prior head `bdec1690`; exact-head standard run 46141361633 is active.
+Native run 46141357687 failed during first-task native-session preparation; see the latest native qualification update above. Corrected run 46146577370 is active; no duplicate should be started. Standard run 46141361633 passed 18/18 on prior head `dabe465b`; exact-head standard run 46146581477 is active.
 
 The preserved desktop/dist-unpacked-qa/ remains untouched in the primary checkout. Do not start a duplicate build or qualification run.
 
@@ -239,7 +241,7 @@ amended. This UX correction does not add permission parity to other providers.
 
 ## Next actions
 
-1. Let exact-head run 46141357687 reach terminal state; do not launch a duplicate. Capture the allowlisted native failure source, recovery fields, resource measurements, process exits and durations.
+1. Let exact-head run 46146577370 and standard CI 46146581477 reach terminal state; do not launch a duplicate. Capture the fixed failure class, recovery fields, resource measurements, process exits and durations.
 2. Use that source to fix the actual agent execution boundary. Then qualify real installed-app Qwen inference through persisted task/comment, restart recovery and verified $0 provider cost.
 3. Qualify any corrected exact source commit without reusing stale artifacts. Keep PR #584 draft until real inference, persistence, restart and zero-cost acceptance pass.
 4. Keep other dependency, ACPX, UI, install/recovery and security packets isolated and follow repository review rules. No merge or public release without all required gates and authorization.
