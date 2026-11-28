@@ -1,4 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Bostan">
-  <rect x="3" y="3" width="42" height="42" rx="12" fill="#18181b" stroke="#71717a" stroke-width="1.5"/>
-  <text x="24" y="32" text-anchor="middle" font-size="29" font-weight="700" font-family="Arial, sans-serif" fill="#fafafa">B</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Bostan"><rect x="0" y="0" width="64" height="64" rx="12" fill="#D91F26"/><g transform="translate(7.04 7.04) scale(0.78)"><g fill="none" stroke="#FFFFFF" stroke-width="8"><path d="M32 62V30"/><path d="M32 50A18 18 0 0 0 14 32V30"/><path d="M32 42A18 18 0 0 1 50 24"/></g><g fill="#FFFFFF"><circle cx="32" cy="20" r="8"/><circle cx="13" cy="22" r="8"/><circle cx="51" cy="15" r="8"/></g></g></svg>

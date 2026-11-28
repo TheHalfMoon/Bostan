@@ -1,0 +1,55 @@
+{
+  "$comment": "Bostan identity v3 geometry. Single source for the React mark/wordmark components, the static SVG/PNG/ICO/ICNS assets (ui/scripts/generate-brand-assets.mjs) and brand-assets.test.ts. Custom-drawn and original; do not substitute a typeface.",
+  "mark": {
+    "viewBox": "0 0 64 64",
+    "strokeWidth": 6,
+    "strokes": [
+      "M32 60V28",
+      "M32 48A18 18 0 0 0 14 30V29",
+      "M32 40A18 18 0 0 1 50 22"
+    ],
+    "ground": "M14 60H50",
+    "nodes": [
+      [32, 20, 6.5],
+      [14, 22, 6.5],
+      [50, 15, 6.5]
+    ]
+  },
+  "markSmall": {
+    "$comment": "16-32 px: no ground, heavier stroke, larger nodes. strokeWidthBySize keys are rendered pixel sizes.",
+    "viewBox": "0 0 64 64",
+    "strokeWidthBySize": { "16": 10, "24": 9, "32": 8 },
+    "strokes": [
+      "M32 62V30",
+      "M32 50A18 18 0 0 0 14 32V30",
+      "M32 42A18 18 0 0 1 50 24"
+    ],
+    "nodes": [
+      [32, 20, 8],
+      [13, 22, 8],
+      [51, 15, 8]
+    ]
+  },
+  "wordmark": {
+    "viewBox": "0 -6 482 112",
+    "width": 482,
+    "height": 112,
+    "strokeWidth": 12,
+    "strokes": [
+      "M6 100V0",
+      "M6 6H31A20.5 20.5 0 0 1 31 47H6",
+      "M6 47H35A23.5 23.5 0 0 1 35 94H6",
+      "M232.9 13.9A22 22 0 1 0 216 50A22 22 0 1 1 199.1 86.1",
+      "M274 12H318",
+      "M296 12V100",
+      "M340 100L374 2L408 100",
+      "M353 66H395",
+      "M422 100V4L470 96V0"
+    ],
+    "circles": [[122, 50, 44]],
+    "nodes": [
+      [270, 12, 10],
+      [322, 12, 10]
+    ]
+  }
+}

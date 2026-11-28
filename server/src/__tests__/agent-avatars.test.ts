@@ -8,7 +8,12 @@ import path from "node:path";
 import express from "express";
 import type { Server } from "node:http";
 import sharp from "sharp";
-import { AGENT_PALETTE_IDS, appearanceForPalette, PAPERCLIP_DARK_AVATAR_BACKGROUND } from "@bostan/shared";
+import {
+  AGENT_PALETTE_IDS,
+  appearanceForPalette,
+  BOSTAN_DARK_AVATAR_BACKGROUND,
+  PAPERCLIP_DARK_AVATAR_BACKGROUND,
+} from "@bostan/shared";
 import { createLocalDiskStorageProvider } from "../storage/local-disk-provider.js";
 import { createAgentAvatarService, avatarCacheKey, type AgentAvatarRequest } from "../services/agent-avatars.js";
 import { createAgentAvatarPool } from "../services/agent-avatar-pool.js";
@@ -124,13 +129,14 @@ describe("on-demand agent avatars", () => {
     }
     expect(data[(256 * info.width + 256) * info.channels + 3]).toBe(255);
   }, 20_000);
-  it("serves Slack exports on the Paperclip dark-mode color in a separate cache", async () => {
+  it("serves Slack exports on the Bostan dark-mode color in a separate cache", async () => {
     const css = await readFile(new URL("../../../ui/src/index.css", import.meta.url), "utf8");
-    const lightness = Number(css.match(/\.dark\s*\{\s*--background:\s*oklch\(([\d.]+) 0 0\)/)?.[1]);
-    // Neutral OKLCH converts to equal sRGB channels; PNG rounds to 8-bit color.
-    const linear = lightness ** 3;
-    const channel = Math.round((linear <= 0.0031308 ? 12.92 * linear : 1.055 * linear ** (1 / 2.4) - 0.055) * 255);
-    expect(PAPERCLIP_DARK_AVATAR_BACKGROUND).toBe(`#${channel.toString(16).padStart(2, "0").repeat(3)}`);
+    const darkBackground = css.match(/\.dark\s*\{[^}]*--bostan-bg:\s*(#[\da-f]{6})/i)?.[1];
+    expect(darkBackground).toBeDefined();
+    const channels = (darkBackground?.slice(1).match(/.{2}/g) ?? []).map((channel) => Number.parseInt(channel, 16));
+    expect(channels).toHaveLength(3);
+    expect(BOSTAN_DARK_AVATAR_BACKGROUND.toLowerCase()).toBe(darkBackground?.toLowerCase());
+    expect(PAPERCLIP_DARK_AVATAR_BACKGROUND).toBe(BOSTAN_DARK_AVATAR_BACKGROUND);
     const service = createAgentAvatarService(await storage()); cleanups.push(() => service.close());
     const url = await serve(service);
     const clear = await fetch(url + "?size=512&scale=1");
@@ -140,7 +146,7 @@ describe("on-demand agent avatars", () => {
     const clearPixels = await sharp(Buffer.from(await clear.arrayBuffer())).ensureAlpha().raw().toBuffer();
     const darkPixels = await sharp(Buffer.from(await dark.arrayBuffer())).ensureAlpha().raw().toBuffer();
     expect(Array.from(clearPixels.subarray(0, 4))).toEqual([0, 0, 0, 0]);
-    expect(Array.from(darkPixels.subarray(0, 4))).toEqual([channel, channel, channel, 255]);
+    expect(Array.from(darkPixels.subarray(0, 4))).toEqual([...channels, 255]);
     expect(avatarCacheKey({ ...request, background: "paperclip-dark" })).not.toBe(avatarCacheKey(request));
     const invalid = await fetch(url + "?background=white");
     expect(invalid.status).toBe(400); await invalid.text();

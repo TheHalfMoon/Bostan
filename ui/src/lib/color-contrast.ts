@@ -6,7 +6,7 @@
  * light page backgrounds.
  */
 
-const DARK_BG = { r: 24, g: 24, b: 27 }; // zinc-900 (#18181b)
+const DARK_BG = { r: 14, g: 16, b: 20 }; // Bostan v3 dark bg (#0E1014)
 const LIGHT_BG = { r: 255, g: 255, b: 255 }; // white
 
 export function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
