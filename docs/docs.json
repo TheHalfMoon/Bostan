@@ -4,9 +4,9 @@
   "description": "The control plane for autonomous AI companies",
   "theme": "mint",
   "colors": {
-    "primary": "#2563EB",
-    "light": "#3B82F6",
-    "dark": "#1D4ED8"
+    "primary": "#D91F26",
+    "light": "#FF8F86",
+    "dark": "#A3141A"
   },
   "favicon": "/favicon.svg",
   "logo": {

@@ -447,13 +447,15 @@ export function Dashboard() {
             <MetricCard
               appearance={designSandbox ? "card" : "plain"}
               icon={ShieldCheck}
-              value={data.pendingApprovals + data.budgets.pendingApprovals}
+              // Budget overrides are rows in the approvals table, so pendingApprovals
+              // already includes them; adding budgets.pendingApprovals double-counted.
+              value={data.pendingApprovals}
               label="Pending Approvals"
               to="/approvals"
               description={
                 <span>
                   {data.budgets.pendingApprovals > 0
-                    ? `${data.budgets.pendingApprovals} budget overrides awaiting board review`
+                    ? `incl. ${data.budgets.pendingApprovals} budget ${data.budgets.pendingApprovals === 1 ? "override" : "overrides"}`
                     : "Awaiting board review"}
                 </span>
               }

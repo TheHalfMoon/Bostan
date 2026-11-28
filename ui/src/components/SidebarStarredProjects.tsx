@@ -124,7 +124,7 @@ export function SidebarStarredProjects() {
               "flex min-w-0 flex-1 items-center gap-2.5 mx-2 rounded-lg px-2 py-1.5 pointer-coarse:py-1 pr-8 text-(length:--text-compact) font-medium transition-colors",
               !rail && "pl-6",
               isActive
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                ? "nav-active"
                 : "text-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
             )}
           >

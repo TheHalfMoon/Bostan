@@ -11,7 +11,8 @@ describe("BostanLoading", () => {
     expect(html).toContain('role="status"');
     expect(html).toContain("min-h-dvh");
     expect(html).toContain('aria-hidden="true"');
-    expect(html).toContain(">B</span>");
+    expect(html).toContain('viewBox="0 0 64 64"');
+    expect(html).toContain('data-variant="full"');
     expect(html).not.toContain("paperclip-thinking-icon");
     expect(html).toContain('<span class="sr-only">Loading…</span>');
   });

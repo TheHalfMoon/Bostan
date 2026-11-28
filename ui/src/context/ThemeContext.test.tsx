@@ -55,10 +55,14 @@ describe("ThemeContext", () => {
   let observedTheme: "light" | "dark" | null = null;
   let setTheme: ((theme: "light" | "dark") => void) | null = null;
   let toggleTheme: (() => void) | null = null;
+  let setPreference: ((preference: "light" | "dark" | "system") => void) | null = null;
+  let observedPreference: string | null = null;
 
   function Probe() {
     const ctx = useTheme();
     observedTheme = ctx.theme;
+    observedPreference = ctx.preference;
+    setPreference = ctx.setPreference;
     setTheme = ctx.setTheme;
     toggleTheme = ctx.toggleTheme;
     return null;
@@ -175,5 +179,89 @@ describe("ThemeContext", () => {
     act(() => {
       root.unmount();
     });
+  });
+  it("persists an explicit system preference and resumes following the OS", () => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, "light");
+    const mql = installMatchMedia(true);
+
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <ThemeProvider>
+          <Probe />
+        </ThemeProvider>,
+      );
+    });
+    expect(observedPreference).toBe("light");
+    expect(observedTheme).toBe("light");
+
+    act(() => {
+      setPreference?.("system");
+    });
+    expect(observedPreference).toBe("system");
+    expect(observedTheme).toBe("dark");
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("system");
+    expect(mql.listenerCount()).toBe(1);
+
+    act(() => {
+      mql.dispatch(false);
+    });
+    expect(observedTheme).toBe("light");
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
+  it("restores a stored system preference on reload", () => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, "system");
+    document.documentElement.classList.add("dark");
+    const mql = installMatchMedia(true);
+
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <ThemeProvider>
+          <Probe />
+        </ThemeProvider>,
+      );
+    });
+    expect(observedPreference).toBe("system");
+    expect(observedTheme).toBe("dark");
+    expect(mql.listenerCount()).toBe(1);
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
+  it("sets the theme-color meta to the v3 chrome token", () => {
+    const meta = document.createElement("meta");
+    meta.name = "theme-color";
+    document.head.appendChild(meta);
+    installMatchMedia(false);
+
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <ThemeProvider>
+          <Probe />
+        </ThemeProvider>,
+      );
+    });
+    act(() => {
+      setPreference?.("dark");
+    });
+    expect(meta.getAttribute("content")).toBe("#14171C");
+    act(() => {
+      setPreference?.("light");
+    });
+    expect(meta.getAttribute("content")).toBe("#FFFFFF");
+
+    act(() => {
+      root.unmount();
+    });
+    meta.remove();
   });
 });

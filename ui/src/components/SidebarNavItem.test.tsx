@@ -98,11 +98,12 @@ describe("SidebarNavItem", () => {
     expect(link().firstElementChild?.textContent).toBe("Recent task");
   });
 
-  it("uses the sidebar accent surface for the active item", () => {
+  it("marks the active item with the v3 nav-active treatment", () => {
     render(<SidebarNavItem to="/issues" label="Tasks" icon={Inbox} active />);
 
-    expect(classTokens(link())).toContain("bg-sidebar-accent");
-    expect(classTokens(link())).toContain("text-sidebar-accent-foreground");
+    // Selected tint + red label + 3px inset accent bar (see index.css).
+    expect(classTokens(link())).toContain("nav-active");
+    expect(classTokens(link())).not.toContain("hover:bg-sidebar-accent");
     expect(classTokens(link())).not.toContain("bg-background");
   });
 
