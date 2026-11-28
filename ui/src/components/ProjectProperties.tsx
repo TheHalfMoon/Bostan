@@ -995,7 +995,7 @@ export function ProjectProperties({ project, repositories, onUpdate, onFieldUpda
                               })}
                             immediate
                             className="w-full rounded border border-border bg-transparent px-2 py-1 text-xs font-mono outline-none"
-                            placeholder=".paperclip/worktrees"
+                            placeholder=".bostan/worktrees"
                           />
                         </div>
                         <div>

@@ -323,7 +323,7 @@ export function OpenClawGatewayConfigFields({
           }
           immediate
           className={inputClass}
-          placeholder="https://paperclip.example"
+          placeholder="https://bostan.example"
         />
       </Field>
 
@@ -381,7 +381,7 @@ export function OpenClawGatewayConfigFields({
             onCommit={(v) => mark("adapterConfig", "claimedApiKeyPath", v || undefined)}
             immediate
             className={inputClass}
-            placeholder="~/.openclaw/workspace/paperclip-claimed-api-key.json"
+            placeholder="~/.openclaw/workspace/bostan-claimed-api-key.json"
           />
         </Field>
       )}
