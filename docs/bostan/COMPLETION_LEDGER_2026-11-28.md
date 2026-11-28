@@ -6,7 +6,7 @@ are a point-in-time snapshot; update them only when new evidence exists.
 
 ## Executive status
 
-**Overall: NO-GO / NOT COMPLETE.** PR #584 head 4bfa89b137d2268102414460c03d4ddf227b813a passed all 18 hosted source and desktop CI checks. At exact head 4ca245ba23c1ad056cebe4319c85a9a689a3d211, native run 46075821679 has completed packaging and is active in the packaged Windows native-agent step; source CI run 46075836375 has no failed jobs and its Windows package job is active. The latest completed native qualification failed during Qwen model pull; no real inference, zero-cost agent execution, or release readiness is proven.
+**Overall: NO-GO / NOT COMPLETE.** PR #584 is still draft. Its current exact head is `7159cc59641ebf372247793eca8c92f921e1b9da`. The updated native qualification is in progress (run 46086505266) and standard CI is in progress (run 46086509828). Both runs have passed initial setup/integrity work; the native run has reached the server build, and the hosted Windows/macOS build jobs are active. The previous completed head passed source CI but failed during Qwen model pull. Real inference, a persisted installed-app task, restart recovery and zero-cost agent execution remain unproven.
 
 The earlier completed native failure was run [46058240798](https://github.com/TheHalfMoon/Bostan/actions/runs/46058240798), built at parent commit `2f24d925cfe9d297dff28a59cc083c112c790ee5`:
 
@@ -27,16 +27,18 @@ The exact-head native rerun is [46058483810](https://github.com/TheHalfMoon/Bost
 
 At 2026-11-27T22:06:33.891Z, the Qwen pull began. Ten seconds later the child had exited and the old receipt was BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=other childAlive=false outputBytes=7012; the QA worker exited 1. The job cleaned its owned temporary files. The receipt did not include the child exit code or useful error class. Model manifest/license verification, installed-app onboarding, inference, task persistence, comment attribution, restart recovery and cost verification were not reached.
 
-The exact-head qualification runs are native [46075821679](https://github.com/TheHalfMoon/Bostan/actions/runs/46075821679) and standard CI [46075836375](https://github.com/TheHalfMoon/Bostan/actions/runs/46075836375). The native run passed the archive hash probe, server build, standard-user PostgreSQL probe, UI build and package. Packaging took 13m50s; the PostgreSQL probe took 6m52s and server build 8m27s. The packaged Windows native-agent step began at `2026-11-27T22:51:34Z` and remains active; no model-pull receipt or first-agent outcome is available. The standard CI run has no failed jobs and its Windows package job remains active. The diagnostics change is intended to capture the actual child exit code and a bounded sanitized category from both log tails; no new receipt is available until the native run completes.
+The exact-head qualification runs are native [46075821679](https://github.com/TheHalfMoon/Bostan/actions/runs/46075821679) and standard CI [46075836375](https://github.com/TheHalfMoon/Bostan/actions/runs/46075836375). The native run passed the archive hash probe, server build, standard-user PostgreSQL probe, UI build, package, Ollama archive size/hash verification, extraction, version check and server readiness. Archive download took about 22m32s. The Qwen pull began at `2026-11-27T23:22:03Z` and failed about 15 seconds later. Its sanitized receipt was `BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=other childAlive=false failureClass=process_exit exitCode=unavailable diagnostic=other outputBytes=7612`; the old PowerShell 5.1 process wrapper did not preserve an actual child exit code, and the task-owned raw pull logs were cleaned. No model pull completion, installed-app first-agent journey, real inference, task persistence, restart recovery or zero-cost evidence is available. Standard CI run 46075836375 passed all 18 checks.
+
+The new exact-head runs are native [46086505266](https://github.com/TheHalfMoon/Bostan/actions/runs/46086505266) and standard CI [46086509828](https://github.com/TheHalfMoon/Bostan/actions/runs/46086509828), both on `7159cc59641ebf372247793eca8c92f921e1b9da`. At the latest observation, native archive/runtime qualification and the PS 5.1 standard-user hash probe had passed, the serialized server build had passed, and the standard-user PostgreSQL probe was active; the model-pull step had not started. The standard CI run had passed secret scan, typecheck, gates, the Windows server job, Storybook and most test jobs; Windows/macOS packaging and two test shards remained active. The new native pull supervisor uses the owned Node child handle, captures the actual numeric exit code, caps combined diagnostic output at 1 MiB, reports fixed sanitized categories and retains the task-owned Ollama root if stdio closure cannot be confirmed. Its focused tests pass 13/13; PowerShell 5.1 parsing and `git diff --check` pass. The active exact-head native run has not yet exercised the model-pull step.
 
 ## Mandatory acceptance gates
 
 | Gate | Status | Evidence and limit |
 |---|---|---|
-| Hosted source CI | **PASS on prior head; IN PROGRESS on current head** | `4bfa89b1`: 18/18 checks passed. Current exact head `4ca245ba`: run `46075836375` has passed secret scan, typecheck and some test jobs; the remainder are active or queued. |
-| Windows installed-app CI | **PASS on prior head; IN PROGRESS on current head** | Run `46058489615`, desktop Windows job passed (46m37s). Current run `46075836375` has a Windows job active. These prove install/startup paths, not real inference. |
-| Apple Silicon macOS installed-app CI | **PASS on prior head; IN PROGRESS on current head** | Run `46058489615`, `desktop (macos-15)` passed (25m21s). Current run `46075836375` is in its installed-app qualification step. |
-| Intel macOS installed-app CI | **PASS on prior head; IN PROGRESS on current head** | Run `46058489615`, `desktop (macos-15-intel)` passed (33m12s). Current run `46075836375` is packaging the app. |
+| Hosted source CI | **PASS on previous head; IN PROGRESS on current head** | Run `46075836375` passed 18/18 on `4ca245ba`. Exact head `7159cc59` is being checked by run `46086509828`. |
+| Windows installed-app CI | **PASS on previous head; IN PROGRESS on current head** | Run `46075836375` passed its Windows installed-app job. Run `46086509828` is packaging Windows desktop before the standard-user installed-app workflow. These checks do not prove real inference. |
+| Apple Silicon macOS installed-app CI | **PASS on previous head; IN PROGRESS on current head** | Run `46058489615`, `desktop (macos-15)` passed (25m21s). On current head, the macOS desktop jobs are rebuilding. |
+| Intel macOS installed-app CI | **PASS on previous head; IN PROGRESS on current head** | Run `46058489615`, `desktop (macos-15-intel)` passed (33m12s). On current head, the macOS desktop jobs are rebuilding. |
 | Native Windows installer plus Ollama archive | **PASS, partial** | Run `46058483810`: package and archive pin, size, hash, extraction, version and loopback readiness passed. Qwen pull failed before installed-app first-agent qualification. |
 | Clean standard-user install, onboarding, workspace and agent creation in a native local-model journey | **NOT QUALIFIED** | The model pull failed before installed-app qualification. |
 | Real local-model inference and successful task execution | **FAIL / NOT QUALIFIED** | No inference or successful agent task was reached in the latest completed native run. |
@@ -64,11 +66,7 @@ The roadmap explicitly retains these unfinished requirements:
 ## Engineering packet in progress
 
 PR [#584](https://github.com/TheHalfMoon/Bostan/pull/584) remains **OPEN / DRAFT**.
-The prior remote head `4bfa89b1` passed all 18 hosted CI checks. The current
-remote head is `4ca245ba`; its standard and native qualification runs are
-in progress. The native run has completed the server build, standard-user
-PostgreSQL probe and UI build and is packaging the application. Local commit
-`2f7e01542012fc5da65248e8c7271fea64388048` improves classification precedence when model-pull logs exceed the 1 MiB cap. Commit `4ca245ba` adds bounded tail reads from both streams, captures the child exit state, and emits fixed categories only; focused tests pass 7/7, the PowerShell 5.1 probe passes, and the changed scripts parse under PowerShell 5.1. The local `desktop/dist-unpacked-qa/` directory is preserved and untracked.
+The previous remote head `4ca245ba` passed all 18 standard hosted checks, while native run `46075821679` failed at Qwen model pull. The native archive integrity, Ollama extraction/version, loopback readiness, server build, PostgreSQL probe and package all passed; installed-app qualification was not reached. Current PR head `7159cc59` replaces the PowerShell 5.1 pull-process wrapper with a bounded Node supervisor. It captures numeric child exit codes, bounds and serializes combined stdout/stderr, emits fixed diagnostic categories, uses the owned child process handle for termination, bounds post-exit pipe closure and preserves the task-owned Ollama root if cleanup is uncertain. Focused tests pass 13/13, Windows PowerShell 5.1 parser/probe pass, and `git diff --check` passes. Exact-head native and standard CI runs `46086505266` and `46086509828` are in progress. The local `desktop/dist-unpacked-qa/` directory is preserved and untracked.
 
 Independent review confirmed that the signed-exit-code filter could previously
 drop valid Windows termination codes; `4bfa89b1` widens the allowlist with a
@@ -96,8 +94,21 @@ PR #586; all 15 hosted checks pass. Sibling branch
 `@modelcontextprotocol/sdk@1.32.0` override and is published as draft PR #587.
 NPMScan reports four advisories (two high and two moderate) on 1.31.0 and none
 on 1.32.0. The affected MCP server suites passed 53 tests and all three package
-typechecks passed; frozen-lockfile installation passed. PR #587 hosted CI is
-pending.
+typechecks passed; frozen-lockfile installation passed. PR #587 hosted CI run
+46081294978 passed all 15 checks.
+
+Draft PR [#588](https://github.com/TheHalfMoon/Bostan/pull/588) stacks on #587
+to patch remaining Undici 5/6/7/8 paths and upgrade the Cursor Cloud SDK from
+1.0.28 to 1.5.2. NPMScan exact-version checks reported zero advisories for
+undici 6.29.1, 7.30.1, 8.14.0 and @cursor/sdk 1.5.2. Upgrade simulations
+reported fixed vulnerability deltas for the three Undici lines, no tightened
+Node engine requirements and no new SDK lifecycle script. A full-workspace
+frozen lockfile-only install passes. The isolated worktree did not have
+workspace package links, so its adapter typecheck remains unverified; hosted
+CI must validate that API and the cross-platform lockfile. No PR #588 checks
+had been reported at the latest check. The advisory D1 review returned low
+risk at low confidence; that output is not security approval because the model
+is known to miss severe issues.
 
 Read-only product reviews on 4ca245ba found no authorization bypass in the
 inspected ACPX approval and Paperclip tool-authority paths. They did find that
@@ -136,16 +147,16 @@ amended. This UX correction does not add permission parity to other providers.
 
 ## Next actions
 
-1. Let native run `46075821679` finish and inspect its child exit, bounded
-   sanitized log-category receipts and stage timings. It has entered the
-   packaged Windows native-agent step; model-pull outcome is pending.
-2. Identify and repair any Qwen pull failure from the new evidence, then rerun
-   qualification serially.
-3. Complete actual local Qwen inference through the installed application;
+1. Finish the active exact-head native and standard CI runs. If Qwen pull fails,
+   use the newly captured numeric exit and bounded category to isolate its
+   cause before changing the workflow or retrying.
+2. Complete actual local Qwen inference through the installed application;
    verify persisted task/comment, restart recovery and zero provider cost.
-4. Finish CI and review for draft PR #586, then publish the isolated SDK fix
-   branch after its base checks settle. Continue package-path and runtime
-   compatibility review for the partial undici findings.
+3. Run and review PR #588 CI and Cursor adapter compatibility checks; keep it
+   draft unless all required CI and independent review gates pass.
+4. Keep PRs #586 and #587 draft until repository review requirements are met;
+   both now have passing hosted checks. Continue package-path and runtime
+   compatibility review for remaining dependency findings.
 5. Keep the ACPX permissions clarification separate from #584 and decide
    whether to implement provider-specific safe automatic rules after validating
    each provider protocol and adding behavior tests.
