@@ -10,7 +10,7 @@ import { heartbeatsApi } from "../api/heartbeats";
 import { issuesApi } from "../api/issues";
 import { approvalLabel, approvalSubject } from "../components/ApprovalPayload";
 import { BostanMark } from "../components/brand/BostanMark";
-import { CeoInspectorTabs } from "./CeoInspectorTabs";
+import { CeoInspectorTabs, type CeoInspectorTab } from "./CeoInspectorTabs";
 import { ExecutionStateBadge } from "../components/ExecutionStateBadge";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { useCompany } from "../context/CompanyContext";
@@ -114,7 +114,7 @@ export function CeoWorkspace() {
   const { selectedCompanyId } = useCompany();
   const { setBreadcrumbs } = useBreadcrumbs();
   const { openNewIssue } = useDialogActions();
-  const [tab, setTab] = useState<InspectorTab>("approvals");
+  const [tab, setTab] = useState<CeoInspectorTab>("approvals");
   const companyId = selectedCompanyId ?? "";
   const enabled = !!selectedCompanyId;
 
