@@ -7756,6 +7756,7 @@ export async function executePaperclipNativeSession(input: {
       throw new Error(input.execution.provider.kind === "muse" ? "muse_cloud_requires_managed_runner" : "dot_cloud_requires_managed_runner");
     }
     if (!input.useRunnerd) {
+      outerFailureStage = "native_session_execute";
       return await executePaperclipNativeSessionWithinScope(input);
     }
     // The session scope is unaffected by appending server-staged attachment
@@ -7777,6 +7778,7 @@ export async function executePaperclipNativeSession(input: {
     await closingWarmNativeSessions.get(sessionScopeId);
 
     if (input.execution.schema === "paperclip.native-execution-input.v6" || input.execution.schema === "paperclip.native-execution-input.v8") {
+      outerFailureStage = "native_session_execute";
       return await executePaperclipNativeSessionWithinScope(input);
     }
     outerFailureStage = "workspace_validation";
@@ -7830,6 +7832,7 @@ export async function executePaperclipNativeSession(input: {
         }),
       };
     }
+    outerFailureStage = "native_session_execute";
     return await executePaperclipNativeSessionWithinScope(preparedInput);
   } catch (error) {
     executionFailure = error;
