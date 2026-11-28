@@ -5,6 +5,11 @@ $events = [ordered]@{
   available = $true; harnessReady = 1; sessionStarted = 1; sessionResumed = 0
   turnStarted = 1; turnCompleted = 0; turnFailed = 1; turnCancelled = 0
   turnInterrupted = 0; providerEvents = 3; providerRpcResults = 2
+  nativeFailure = [ordered]@{
+    sourceFailureCode = 'provider_process_exited'; recoveryMode = 'bootstrap_retry'
+    providerSessionEstablished = $false; providerEventsExist = $false; checkpointExists = $false
+    safeSignal = 'native_provider_process_exited'
+  }
 }
 $log = [ordered]@{
   available = $true; bytes = 4096L; safeSignal = 'native_provider_timeout'
@@ -22,7 +27,10 @@ if ($valid -isnot [string] -or -not $valid.StartsWith($prefix, [StringComparison
 $roundTrip = ConvertFrom-Json -InputObject $valid.Substring($prefix.Length)
 if ($roundTrip.status -ne 'failed' -or $roundTrip.errorCode -ne 'adapter_failed' -or
   $roundTrip.executionStage -ne 'settled' -or $roundTrip.safeSignal -ne 'native_provider_timeout' -or
-  $roundTrip.events.turnFailed -ne 1 -or $roundTrip.log.errorRecords -ne 1) {
+  $roundTrip.events.turnFailed -ne 1 -or $roundTrip.log.errorRecords -ne 1 -or
+  $roundTrip.events.nativeFailure.sourceFailureCode -ne 'provider_process_exited' -or
+  $roundTrip.events.nativeFailure.recoveryMode -ne 'bootstrap_retry' -or
+  $roundTrip.events.nativeFailure.safeSignal -ne 'native_provider_process_exited') {
   throw 'bounded first-agent diagnostic fields were not preserved'
 }
 if ($valid -match 'C:\\Users|password|token=|secret|private') {
@@ -53,6 +61,19 @@ foreach ($property in $diagnostic.GetEnumerator()) { $badSignal[$property.Key] =
 $badSignal['safeSignal'] = 'provider_private_secret'
 if (Get-BostanAllowedFirstAgentRunDiagnostic ($prefix + (ConvertTo-Json -InputObject $badSignal -Compress -Depth 5))) {
   throw 'unknown safe signal was accepted'
+}
+
+$badNativeFailure = [ordered]@{}
+foreach ($property in $diagnostic.GetEnumerator()) { $badNativeFailure[$property.Key] = $property.Value }
+$badNativeFailure['events'] = [ordered]@{}
+foreach ($property in $events.GetEnumerator()) { $badNativeFailure['events'][$property.Key] = $property.Value }
+$badNativeFailure['events']['nativeFailure'] = [ordered]@{
+  sourceFailureCode = 'private_provider_failure'; recoveryMode = 'bootstrap_retry'
+  providerSessionEstablished = $false; providerEventsExist = $false; checkpointExists = $false
+  safeSignal = 'native_provider_process_exited'
+}
+if (Get-BostanAllowedFirstAgentRunDiagnostic ($prefix + (ConvertTo-Json -InputObject $badNativeFailure -Compress -Depth 6))) {
+  throw 'unknown native failure source code was accepted'
 }
 
 $badStage = [ordered]@{}
@@ -90,4 +111,4 @@ if (Get-BostanAllowedNativeResourceDiagnostic ($resourcePrefix + '{"totalMemoryG
   throw 'native resource receipt accepted an unexpected field'
 }
 
-Write-Output 'BOSTAN_CI_FIRST_AGENT_RUN_DIAGNOSTIC_PROBE_PASS cases=valid,unavailable_log,extra_field,unsafe_signal,non_scalar_stage,bounded_counts,oversized_line,resources,unsafe_resource'
+Write-Output 'BOSTAN_CI_FIRST_AGENT_RUN_DIAGNOSTIC_PROBE_PASS cases=valid,unavailable_log,extra_field,unsafe_signal,unsafe_native_failure,non_scalar_stage,bounded_counts,oversized_line,resources,unsafe_resource'

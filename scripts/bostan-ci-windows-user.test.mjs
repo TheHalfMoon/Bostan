@@ -72,7 +72,7 @@ test("Windows PowerShell 5.1 allows bounded first-agent run diagnostics and reje
   });
   assert.equal(result.status, 0, JSON.stringify({ error: result.error?.message, signal: result.signal, stdout: result.stdout, stderr: result.stderr }));
   assert.equal(result.stderr, "");
-  assert.match(result.stdout, /BOSTAN_CI_FIRST_AGENT_RUN_DIAGNOSTIC_PROBE_PASS cases=valid,unavailable_log,extra_field,unsafe_signal,non_scalar_stage,bounded_counts,oversized_line,resources,unsafe_resource/);
+  assert.match(result.stdout, /BOSTAN_CI_FIRST_AGENT_RUN_DIAGNOSTIC_PROBE_PASS cases=valid,unavailable_log,extra_field,unsafe_signal,unsafe_native_failure,non_scalar_stage,bounded_counts,oversized_line,resources,unsafe_resource/);
 });
 
 test("Windows CI forwards the cleanup receipts actually emitted by the packaged QA", () => {

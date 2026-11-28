@@ -133,6 +133,39 @@ export function safeHeartbeatQaEventDiagnostic(events) {
     turnStarted: 0, turnCompleted: 0, turnFailed: 0,
     turnCancelled: 0, turnInterrupted: 0, providerEvents: 0, providerRpcResults: 0,
   };
+  const failureCodes = new Set([
+    "native_permission_declined", "native_provider_terminal_failed", "native_provider_approval_required",
+    "native_provider_usage_limit", "native_session_cleanup_quarantined", "native_adopted_runner_authentication_timeout",
+    "runner_remote_provider_artifact_incompatible", "runner_remote_provider_verification_unavailable",
+    "provider_process_exited", "provider_stdout_closed", "provider_process_output_closed",
+    "provider_process_status_failed", "provider_initialize_timeout", "provider_initialize_protocol_error",
+    "provider_request_timeout", "provider_request_protocol_error", "provider_frame_too_large",
+    "provider_transport_failed", "native_runner_process_exited", "planning_mode_unsupported",
+    "native_event_replay_conflict", "native_provider_runtime_missing", "native_provider_model_rejected",
+    "native_current_wake_comments_unread", "native_current_wake_comments_changed_after_read",
+    "native_session_interrupted",
+  ]);
+  const recoveryModes = new Set(["bootstrap_retry", "exact_checkpoint_resume", "ambiguous_state"]);
+  const signalForFailureCode = new Map([
+    ["native_permission_declined", "native_permission_declined"],
+    ["native_provider_terminal_failed", "native_provider_terminal_failed"],
+    ["native_provider_approval_required", "native_provider_approval_required"],
+    ["native_provider_usage_limit", "native_provider_usage_limit"],
+    ["native_adopted_runner_authentication_timeout", "native_provider_auth_rejected"],
+    ["provider_process_exited", "native_provider_process_exited"],
+    ["provider_stdout_closed", "native_provider_output_closed"],
+    ["provider_process_output_closed", "native_provider_output_closed"],
+    ["provider_process_status_failed", "native_provider_process_exited"],
+    ["provider_initialize_timeout", "native_provider_initialize_timeout"],
+    ["provider_initialize_protocol_error", "native_provider_initialize_protocol_error"],
+    ["provider_request_timeout", "native_provider_request_timeout"],
+    ["provider_request_protocol_error", "native_provider_request_protocol_error"],
+    ["provider_transport_failed", "native_provider_transport_failed"],
+    ["native_runner_process_exited", "native_provider_process_exited"],
+    ["native_provider_runtime_missing", "native_provider_runtime_missing"],
+    ["native_provider_model_rejected", "native_provider_model_rejected"],
+  ]);
+  let nativeFailure = null;
   const fields = new Map([
     ["harness.ready", "harnessReady"], ["session.started", "sessionStarted"],
     ["session.resumed", "sessionResumed"], ["turn.started", "turnStarted"],
@@ -140,12 +173,27 @@ export function safeHeartbeatQaEventDiagnostic(events) {
     ["turn.cancelled", "turnCancelled"], ["turn.interrupted", "turnInterrupted"],
     ["provider.event", "providerEvents"], ["provider.rpc_result", "providerRpcResults"],
   ]);
-  if (!Array.isArray(events)) return { available: false, ...counts };
+  if (!Array.isArray(events)) return { available: false, ...counts, nativeFailure };
   for (const event of events.slice(0, 200)) {
     const key = fields.get(event?.eventType);
     if (key) counts[key]++;
+    const detail = event?.payload?.failureDetail;
+    if (event?.eventType !== "lifecycle" || !detail || typeof detail !== "object" || Array.isArray(detail)) continue;
+    const rawCode = detail.originalFailureCode;
+    const rawMode = detail.recoveryMode;
+    const rawMessage = typeof detail.message === "string" ? detail.message.slice(0, 2_000) : "";
+    const messageSignal = rawMessage ? safeHeartbeatQaLogDiagnostic(rawMessage).safeSignal : null;
+    const sourceFailureCode = typeof rawCode === "string" && failureCodes.has(rawCode) ? rawCode : null;
+    nativeFailure = {
+      sourceFailureCode,
+      recoveryMode: typeof rawMode === "string" && recoveryModes.has(rawMode) ? rawMode : null,
+      providerSessionEstablished: typeof detail.providerSessionEstablished === "boolean" ? detail.providerSessionEstablished : null,
+      providerEventsExist: typeof detail.providerEventsExist === "boolean" ? detail.providerEventsExist : null,
+      checkpointExists: typeof detail.checkpointExists === "boolean" ? detail.checkpointExists : null,
+      safeSignal: messageSignal ?? signalForFailureCode.get(sourceFailureCode) ?? null,
+    };
   }
-  return { available: true, ...counts };
+  return { available: true, ...counts, nativeFailure };
 }
 
 export function safeHeartbeatQaLogDiagnostic(content) {

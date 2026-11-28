@@ -30,14 +30,43 @@ function Get-BostanAllowedFirstAgentRunDiagnostic([string]$line) {
     if ($actual -ccontains 'safeSignal' -and $null -ne $record.safeSignal -and
       ($record.safeSignal -isnot [string] -or $allowedSignals -cnotcontains $record.safeSignal)) { return $false }
 
-    $eventFields = @('available','harnessReady','sessionStarted','sessionResumed','turnStarted','turnCompleted','turnFailed','turnCancelled','turnInterrupted','providerEvents','providerRpcResults')
+    $eventFields = @('available','harnessReady','sessionStarted','sessionResumed','turnStarted','turnCompleted','turnFailed','turnCancelled','turnInterrupted','providerEvents','providerRpcResults','nativeFailure')
     $eventProperties = @($record.events.PSObject.Properties.Name)
     if ($record.events -is [System.Array] -or $eventProperties.Count -ne $eventFields.Count) { return $false }
     foreach ($field in $eventProperties) { if ($eventFields -cnotcontains [string]$field) { return $false } }
     if ($record.events.available -isnot [bool]) { return $false }
     foreach ($field in $eventFields | Where-Object { $_ -ne 'available' }) {
+      if ($field -eq 'nativeFailure') { continue }
       $value = $record.events.$field
       if ((($value -isnot [int]) -and ($value -isnot [long])) -or $value -lt 0 -or $value -gt 200) { return $false }
+    }
+    $nativeFailure = $record.events.nativeFailure
+    if ($null -ne $nativeFailure) {
+      if ($nativeFailure -is [System.Array]) { return $false }
+      $failureFields = @('sourceFailureCode','recoveryMode','providerSessionEstablished','providerEventsExist','checkpointExists','safeSignal')
+      $failureProperties = @($nativeFailure.PSObject.Properties.Name)
+      if ($failureProperties.Count -ne $failureFields.Count) { return $false }
+      foreach ($field in $failureProperties) { if ($failureFields -cnotcontains [string]$field) { return $false } }
+      $failureCodes = @(
+        'native_permission_declined','native_provider_terminal_failed','native_provider_approval_required',
+        'native_provider_usage_limit','native_session_cleanup_quarantined','native_adopted_runner_authentication_timeout',
+        'runner_remote_provider_artifact_incompatible','runner_remote_provider_verification_unavailable',
+        'provider_process_exited','provider_stdout_closed','provider_process_output_closed','provider_process_status_failed',
+        'provider_initialize_timeout','provider_initialize_protocol_error','provider_request_timeout',
+        'provider_request_protocol_error','provider_frame_too_large','provider_transport_failed',
+        'native_runner_process_exited','planning_mode_unsupported','native_event_replay_conflict',
+        'native_provider_runtime_missing','native_provider_model_rejected','native_current_wake_comments_unread',
+        'native_current_wake_comments_changed_after_read','native_session_interrupted'
+      )
+      if ($null -ne $nativeFailure.sourceFailureCode -and
+        ($nativeFailure.sourceFailureCode -isnot [string] -or $failureCodes -cnotcontains $nativeFailure.sourceFailureCode)) { return $false }
+      if ($null -ne $nativeFailure.recoveryMode -and
+        ($nativeFailure.recoveryMode -isnot [string] -or $nativeFailure.recoveryMode -cnotin @('bootstrap_retry','exact_checkpoint_resume','ambiguous_state'))) { return $false }
+      foreach ($field in @('providerSessionEstablished','providerEventsExist','checkpointExists')) {
+        if ($null -ne $nativeFailure.$field -and $nativeFailure.$field -isnot [bool]) { return $false }
+      }
+      if ($null -ne $nativeFailure.safeSignal -and
+        ($nativeFailure.safeSignal -isnot [string] -or $allowedSignals -cnotcontains $nativeFailure.safeSignal)) { return $false }
     }
 
     $logFields = @('available','bytes','safeSignal','jsonLines','errorRecords','recordsWithErrorField','recordsWithCodeField')
@@ -71,6 +100,17 @@ function Get-BostanAllowedFirstAgentRunDiagnostic([string]$line) {
       executionStage = $record.executionStage
     }
     if ($actual -ccontains 'safeSignal') { $safeRecord['safeSignal'] = $record.safeSignal }
+    $safeNativeFailure = $null
+    if ($null -ne $nativeFailure) {
+      $safeNativeFailure = [ordered]@{
+        sourceFailureCode = $nativeFailure.sourceFailureCode
+        recoveryMode = $nativeFailure.recoveryMode
+        providerSessionEstablished = $nativeFailure.providerSessionEstablished
+        providerEventsExist = $nativeFailure.providerEventsExist
+        checkpointExists = $nativeFailure.checkpointExists
+        safeSignal = $nativeFailure.safeSignal
+      }
+    }
     $safeRecord['events'] = [ordered]@{
       available = [bool]$record.events.available
       harnessReady = [int]$record.events.harnessReady
@@ -83,6 +123,7 @@ function Get-BostanAllowedFirstAgentRunDiagnostic([string]$line) {
       turnInterrupted = [int]$record.events.turnInterrupted
       providerEvents = [int]$record.events.providerEvents
       providerRpcResults = [int]$record.events.providerRpcResults
+      nativeFailure = $safeNativeFailure
     }
     $safeRecord['log'] = [ordered]@{
       available = [bool]$record.log.available

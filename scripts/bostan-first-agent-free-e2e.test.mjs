@@ -274,12 +274,29 @@ test("packaged QA heartbeat diagnostics retain safe phase and provider failure s
     { eventType: "session.started" }, { eventType: "turn.started" },
     { eventType: "provider.rpc_result", payload: { text: "private model output" } },
     { eventType: "turn.failed" }, { eventType: "unknown.private.event" },
+    { eventType: "lifecycle", payload: { failureDetail: {
+      originalFailureCode: "provider_process_exited", recoveryMode: "bootstrap_retry",
+      providerSessionEstablished: false, providerEventsExist: false, checkpointExists: false,
+      message: "provider_process_exited path=C:\\Users\\private\\secret token=hidden",
+    } } },
   ]);
   assert.deepEqual(events, { available: true, harnessReady: 1, sessionStarted: 1, sessionResumed: 0,
     turnStarted: 1, turnCompleted: 0, turnFailed: 1, turnCancelled: 0, turnInterrupted: 0,
-    providerEvents: 0, providerRpcResults: 1 });
-  assert.doesNotMatch(JSON.stringify(events), /private|token|output/);
-  assert.equal(safeHeartbeatQaEventDiagnostic(null).available, false);
+    providerEvents: 0, providerRpcResults: 1,
+    nativeFailure: { sourceFailureCode: "provider_process_exited", recoveryMode: "bootstrap_retry",
+      providerSessionEstablished: false, providerEventsExist: false, checkpointExists: false,
+      safeSignal: "native_provider_process_exited" } });
+  assert.doesNotMatch(JSON.stringify(events), /private|token|output|secret|hidden|Users/);
+  assert.deepEqual(safeHeartbeatQaEventDiagnostic(null), { available: false, harnessReady: 0,
+    sessionStarted: 0, sessionResumed: 0, turnStarted: 0, turnCompleted: 0, turnFailed: 0,
+    turnCancelled: 0, turnInterrupted: 0, providerEvents: 0, providerRpcResults: 0, nativeFailure: null });
+  const unknownFailure = safeHeartbeatQaEventDiagnostic([{ eventType: "lifecycle", payload: { failureDetail: {
+    originalFailureCode: "private_provider_failure", recoveryMode: "private", message: "private output",
+    providerSessionEstablished: "yes", providerEventsExist: true, checkpointExists: false,
+  } } }]);
+  assert.deepEqual(unknownFailure.nativeFailure, { sourceFailureCode: null, recoveryMode: null,
+    providerSessionEstablished: null, providerEventsExist: true, checkpointExists: false, safeSignal: null });
+  assert.doesNotMatch(JSON.stringify(unknownFailure), /private|output|yes/);
   assert.deepEqual(safeHeartbeatQaLogDiagnostic("provider_request_timeout secret=private"),
     { available: true, bytes: 39, safeSignal: "native_provider_request_timeout",
       jsonLines: 0, errorRecords: 0, recordsWithErrorField: 0, recordsWithCodeField: 0 });
