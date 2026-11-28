@@ -37,6 +37,9 @@ overrides:
   rollup: ">=4.59.0"
   react: "^19.2.8"
   react-dom: "^19.2.8"
+  "undici@6": "6.29.1"
+  "undici@7": "7.30.1"
+  "undici@8": "8.14.0"
   # CodeMirror validates extensions with instanceof, so exactly one copy of
   # these two packages may resolve. Different CodeMirror packages pin
   # different transitive minors, which resolves two copies and crashes the
