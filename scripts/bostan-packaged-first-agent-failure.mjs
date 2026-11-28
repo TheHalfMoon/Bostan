@@ -37,7 +37,7 @@ export function packagedFirstAgentFailureReceipt(stage, error) {
     code = "heartbeat_not_succeeded";
   } else if (safeHttpFailureCode.test(normalized)) {
     code = normalized;
-  } else if (/^native_agent_setup_(?:harness_free_provider_limited|harness_probe_transport_unavailable|harness_probe_failed|harness_test_failed|lifecycle_verification_failed)$/.test(normalized)) {
+  } else if (/^native_agent_setup_(?:harness_free_provider_limited|harness_probe_(?:transport_unavailable|error_event|process_exit|failed)|harness_test_failed|lifecycle_verification_failed)$/.test(normalized)) {
     code = normalized;
   } else if ([
     "native_agent_lifecycle_failed",

@@ -71,6 +71,8 @@ describe("lifecycle failure diagnostics", () => {
     ["host", "harness_model_unavailable", "Execution configuration check failed. The selected model is unavailable."],
     ["host", "harness_free_provider_limited", "Execution configuration check failed. The selected free provider is rate-limited or at capacity."],
     ["host", "harness_probe_failed", "Execution configuration check failed. The execution tool launched, but its hello verification request failed."],
+    ["host", "harness_probe_error_event", "Execution configuration check failed. The OpenCode hello request returned an error response."],
+    ["host", "harness_probe_process_exit", "Execution configuration check failed. The OpenCode hello process exited before verifying the model response."],
     ["host", "harness_probe_transport_unavailable", "Execution configuration check failed. The execution tool's hello verification could not complete due to a connection or transport error."],
     ["plugin", "required_plugin_unavailable", "Execution configuration check: required plugin step failed. A required plugin is unavailable."],
     ["select_plugins", "unknown private code", "Execution configuration check: finding required plugins failed. Bostan could not complete this step."],

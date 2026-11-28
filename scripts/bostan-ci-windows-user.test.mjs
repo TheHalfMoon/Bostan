@@ -49,6 +49,8 @@ test("Windows CI forwards only bounded packaged first-agent stage and failure re
   }
   assert.equal(receiptPattern.test("BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=company_create code=heartbeat_not_succeeded"), true);
   assert.equal(receiptPattern.test("BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=agent_readiness code=native_agent_setup_harness_test_failed"), true);
+  assert.equal(receiptPattern.test("BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=agent_readiness code=native_agent_setup_harness_probe_error_event"), true);
+  assert.equal(receiptPattern.test("BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=agent_readiness code=native_agent_setup_harness_probe_process_exit"), true);
   assert.equal(receiptPattern.test("BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=agent_readiness code=native_agent_readiness_timeout"), true);
   assert.equal(receiptPattern.test("BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=cleanup code=qa_process_still_owns_temp_profile"), true);
   assert.equal(receiptPattern.test("BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=company_create code=sk_private_token"), false);

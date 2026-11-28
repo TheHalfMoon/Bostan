@@ -7,6 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { qualifyFreeQaModel, qualifyNativeOpenCodeQaModel, isOpenRouterFreeQaModel } from "./bostan-free-model-policy.mjs";
+import { LOCAL_OPENCODE_QA_MODEL, localOllamaAgentEnvironment } from "./bostan-opencode-local-admission.mjs";
 import { admitOpenRouterZeroCostQa } from "./bostan-openrouter-free-preflight.mjs";
 import { qualifyDisposableFirstAgentScope, selectSingleAssignmentRun,
   observeHeartbeatQaStatus,
@@ -114,11 +115,13 @@ export function qualifyGovernedCaseQa(env = process.env) {
 export function nativeGovernedCaseAgentConfig({ model, workspace }) {
   qualifyNativeOpenCodeQaModel(model);
   if (!path.isAbsolute(workspace)) throw new Error("Governed Case needs an absolute disposable workspace");
-  return {
+  const config = {
     provider: "opencode", model, cwd: workspace,
     opencodePermissionMode: "deny", lifecycleMode: "per_turn",
     timeoutSec: 160,
   };
+  if (model === LOCAL_OPENCODE_QA_MODEL) config.env = localOllamaAgentEnvironment();
+  return config;
 }
 
 /**

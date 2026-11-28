@@ -198,6 +198,15 @@ test("failed real hello probe remains failed but reports safe precise stage, nev
   assert.doesNotMatch(JSON.stringify(observed), /secret|private/);
 });
 
+test("classified OpenCode probe failures produce only safe readiness codes", () => {
+  assert.equal(safeAgentLifecycleDiagnostic({ lifecycleError:
+    "Execution configuration check failed. The OpenCode hello request returned an error response. Check the local model provider and endpoint; no task was executed. secret=value",
+  }).failureCode, "harness_probe_error_event");
+  assert.equal(safeAgentLifecycleDiagnostic({ lifecycleError:
+    "Execution configuration check failed. The OpenCode hello process exited before verifying the model response. Check the OpenCode runtime and local provider configuration; no task was executed. secret=value",
+  }).failureCode, "harness_probe_process_exit");
+});
+
 test("free-provider lifecycle capacity is safely classified without echoing provider data", () => {
   const observed = safeAgentLifecycleDiagnostic({
     lifecycleState: "verifying", status: "paused",

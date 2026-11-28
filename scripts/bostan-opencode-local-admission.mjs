@@ -42,6 +42,15 @@ export function localOllamaOpenCodeConfig(endpoint = LOCAL_OLLAMA_HOST) {
   };
 }
 
+/** Return only the provider binding needed by the installed app's agent config. */
+export function localOllamaAgentEnvironment(endpoint = LOCAL_OLLAMA_HOST) {
+  const config = localOllamaOpenCodeConfig(endpoint);
+  return {
+    OLLAMA_HOST: qualifyLoopbackOllamaHost(endpoint),
+    PAPERCLIP_OPENCODE_PROVIDERS: JSON.stringify(config.provider),
+  };
+}
+
 export function qualifyLoopbackOllamaHost(value = LOCAL_OLLAMA_HOST) {
   let host;
   try { host = new URL(value); } catch { throw new Error("A local Ollama loopback endpoint is required"); }

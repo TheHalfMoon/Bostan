@@ -4,6 +4,7 @@ import {
   localModelAppearsInOpenCodeCatalog,
   inspectLocalOllamaModel,
   localOllamaOpenCodeConfig,
+  localOllamaAgentEnvironment,
   LOCAL_OLLAMA_HOST,
   LOCAL_OLLAMA_MANIFEST_DIGEST,
   LOCAL_OPENCODE_QA_MODEL,
@@ -68,4 +69,12 @@ test("isolated OpenCode config registers only loopback Ollama", () => {
     },
   });
   assert.throws(() => localOllamaOpenCodeConfig("http://192.0.2.4:11434"), /private loopback/);
+});
+
+test("agent runtime receives the same explicit loopback provider that admission qualified", () => {
+  const env = localOllamaAgentEnvironment();
+  assert.equal(env.OLLAMA_HOST, LOCAL_OLLAMA_HOST);
+  assert.deepEqual(JSON.parse(env.PAPERCLIP_OPENCODE_PROVIDERS), localOllamaOpenCodeConfig().provider);
+  assert.equal(env.PAPERCLIP_OPENCODE_PROVIDERS.includes("apiKey"), false);
+  assert.throws(() => localOllamaAgentEnvironment("http://192.0.2.4:11434"), /private loopback/);
 });

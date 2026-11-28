@@ -106,6 +106,10 @@ test("governed Case only admits native signed-API runner with all general OpenCo
   });
   assert.equal(localModelConfig.model, "ollama/qwen2.5-coder:1.5b");
   assert.equal(localModelConfig.opencodePermissionMode, "deny");
+  assert.equal(localModelConfig.env.OLLAMA_HOST, "http://127.0.0.1:11434");
+  assert.equal(JSON.parse(localModelConfig.env.PAPERCLIP_OPENCODE_PROVIDERS).ollama.options.baseURL,
+    "http://127.0.0.1:11434/v1");
+  assert.deepEqual(config.env, undefined);
   assert.throws(() => nativeGovernedCaseAgentConfig({
     model: "ollama/unapproved:latest", workspace: "/tmp/bostan-qa-only",
   }));

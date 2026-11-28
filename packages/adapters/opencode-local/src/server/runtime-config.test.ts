@@ -120,6 +120,28 @@ describe("prepareOpenCodeRuntimeConfig", () => {
     await prepared.cleanup();
   });
 
+  it("keeps an explicitly configured loopback Ollama provider available to native model probes", async () => {
+    const source = await makeConfigHome();
+    const providers = {
+      ollama: {
+        npm: "@ai-sdk/openai-compatible",
+        name: "Ollama (local)",
+        options: { baseURL: "http://127.0.0.1:11434/v1" },
+        models: { "qwen2.5-coder:1.5b": { name: "Qwen2.5 Coder 1.5B" } },
+      },
+    };
+    const prepared = await prepareOpenCodeRuntimeConfig({
+      env: { XDG_CONFIG_HOME: source, PAPERCLIP_OPENCODE_PROVIDERS: JSON.stringify(providers) },
+      config: { model: "ollama/qwen2.5-coder:1.5b" },
+    });
+    cleanupPaths.add(prepared.env.XDG_CONFIG_HOME);
+    const saved = JSON.parse(await fs.readFile(path.join(prepared.env.XDG_CONFIG_HOME, "opencode", "opencode.json"), "utf8"));
+    expect(saved.provider.ollama).toMatchObject(providers.ollama);
+    expect(saved.provider.ollama.options.baseURL).toBe("http://127.0.0.1:11434/v1");
+    expect(saved.provider.ollama.models["qwen2.5-coder:1.5b"]).toMatchObject({ name: "Qwen2.5 Coder 1.5B" });
+    await prepared.cleanup();
+  });
+
   it("reads PAPERCLIP_OPENCODE_PROVIDERS from process.env when absent from the run env", async () => {
     const configHome = await makeConfigHome({ permission: { read: "allow" } });
     const providers = { bifrost: { npm: "@ai-sdk/openai-compatible", models: { "example/model-a": {} } } };
