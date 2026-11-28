@@ -6,6 +6,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -42,6 +44,7 @@ export function CompanySwitcher({ open: controlledOpen, onOpenChange, variant = 
   const { companies, selectedCompany, setSelectedCompanyId, companyListUnavailable, retryCompanies } =
     useCompany();
   const sidebarCompanies = companies.filter((company) => company.status !== "archived");
+  const selectedArchivedCompany = selectedCompany?.status === "archived" ? selectedCompany : null;
   const open = controlledOpen ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
 
@@ -83,16 +86,32 @@ export function CompanySwitcher({ open: controlledOpen, onOpenChange, variant = 
       <DropdownMenuContent align="start" className="w-(--sz-220px)">
         <DropdownMenuLabel>Organizations</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {sidebarCompanies.map((company) => (
-          <DropdownMenuItem
-            key={company.id}
-            onClick={() => setSelectedCompanyId(company.id)}
-            className={company.id === selectedCompany?.id ? "bg-accent" : ""}
-          >
-            <span className={`h-2 w-2 rounded-full shrink-0 mr-2 ${statusDotColor(company.status)}`} />
-            <span className="truncate">{company.name}</span>
-          </DropdownMenuItem>
-        ))}
+        <DropdownMenuRadioGroup
+          value={selectedCompany?.id ?? ""}
+          onValueChange={(companyId) => setSelectedCompanyId(companyId)}
+        >
+          {selectedArchivedCompany && (
+            <DropdownMenuRadioItem
+              value={selectedArchivedCompany.id}
+              disabled
+              aria-label={`${selectedArchivedCompany.name}, archived`}
+              className="bg-accent"
+            >
+              <span className={`h-2 w-2 rounded-full shrink-0 mr-2 ${statusDotColor(selectedArchivedCompany.status)}`} />
+              <span className="truncate">{selectedArchivedCompany.name}</span>
+            </DropdownMenuRadioItem>
+          )}
+          {sidebarCompanies.map((company) => (
+            <DropdownMenuRadioItem
+              key={company.id}
+              value={company.id}
+              className={company.id === selectedCompany?.id ? "bg-accent" : ""}
+            >
+              <span className={`h-2 w-2 rounded-full shrink-0 mr-2 ${statusDotColor(company.status)}`} />
+              <span className="truncate">{company.name}</span>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
         {sidebarCompanies.length === 0 && (
           // "No companies" is a claim about the account, and after a failed list
           // request it is one we cannot make — say what actually happened and
@@ -112,7 +131,9 @@ export function CompanySwitcher({ open: controlledOpen, onOpenChange, variant = 
               </DropdownMenuItem>
             </>
           ) : (
-            <DropdownMenuItem disabled>No organizations</DropdownMenuItem>
+            <DropdownMenuItem disabled>
+              {companies.length > 0 ? "No active organizations" : "No organizations"}
+            </DropdownMenuItem>
           )
         )}
         <DropdownMenuSeparator />
