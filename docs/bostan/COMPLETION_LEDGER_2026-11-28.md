@@ -95,6 +95,18 @@ The preserved desktop/dist-unpacked-qa/ remains untouched in the primary checkou
 
 Commit 8db89b829cf75bcc9da8cf670644073c05447cd1 on branch fix/nav-failure-accessible-label-20261128 announces failed runs in collapsed and expanded default/production sidebar navigation. The inbox count is labeled accurately as items needing attention. Focused SidebarNavItem and Sidebar tests passed 48/48; token gates passed; independent accessibility review found no remaining concrete issue. A local UI typecheck was attempted but this isolated checkout lacked workspace dependency links and reported unrelated runner type errors; no changed-file error remained. The branch was pushed, but no PR was opened because the repository reports public visibility and the PR checklist requires private visibility.
 
+Commit `5d450e5bf537eba15c8d46ec152345df821fd89a` on local branch
+`fix/dialog-accessibility-20261128` repairs the gateway token-revocation
+confirmation: it is named and described for assistive technology, contains
+keyboard focus, starts on Cancel, restores focus after dismissal/success, and
+stays open during a failed or pending request so the user can retry. The
+regression test reproduced the prior dialog gap. Gateway component tests passed
+22/22, UI typecheck passed, token and map gates passed, map/catalog tests passed
+30/30, and the existing Storybook interaction passed in Edge at desktop and
+mobile widths with mocked API responses. Independent review found no concrete
+security/accessibility issue. The commit remains isolated and local; no live
+gateway or full product acceptance is claimed.
+
 GitHub repository metadata identifies TheHalfMoon/Bostan as public. This conflicts with the PR template private-repository checklist and remains a governance/release blocker; no repository visibility setting was changed.
 
 Independent review confirmed that the signed-exit-code filter could previously
