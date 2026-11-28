@@ -139,6 +139,9 @@
       "rollup": ">=4.59.0",
       "react": "^19.2.8",
       "react-dom": "^19.2.8",
+      "undici@6": "6.29.1",
+      "undici@7": "7.30.1",
+      "undici@8": "8.14.0",
       "@codemirror/state": "^6.7.2",
       "@codemirror/view": "^6.43.11",
       "@lezer/common": "^1.5.2"

@@ -29,8 +29,8 @@
     "prepublishOnly": "node ../../../scripts/bostan-release-disabled.mjs"
   },
   "dependencies": {
-    "@cursor/sdk": "^1.0.28",
     "@bostan/adapter-utils": "workspace:*",
+    "@cursor/sdk": "^1.5.2",
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
