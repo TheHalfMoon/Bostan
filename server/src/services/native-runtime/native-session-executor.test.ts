@@ -9338,6 +9338,15 @@ describe("native session bounded recovery", () => {
     await expect(executePaperclipNativeSession({ db: leaseDb(execution, {}, {}, updates), execution, runnerInstanceId: "runner", onEvent })).rejects.toBe(failure);
     expect(onEvent).toHaveBeenCalledWith({ eventType: "native.remote_runner_recovery_failed", level: "error",
       message: "Could not verify the existing remote runner.", payload: { remoteRunnerRecovery } });
+    expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: "native.failure_diagnostic",
+      payload: { failureDetail: expect.objectContaining({
+        originalFailureCode: "native_session_interrupted",
+        failureStage: "remote_session_recovery",
+        failureType: "Error",
+        nativeErrorCode: null,
+      }) },
+    }));
     expect(updates.find(update => update.table === nativeRunFinalizations && update.values.failureDetail)?.values.failureDetail)
       .toMatchObject({ remoteRunnerRecovery });
     const resultJson = updates.find(update => update.table === heartbeatRuns && update.values.error)?.values.resultJson as SQL;

@@ -189,9 +189,11 @@ export function safeHeartbeatQaEventDiagnostic(events) {
   const failureTypes = new Set(["AbortError", "Error", "FetchError", "NativeCancellationPendingRecoveryError",
     "NativeControllerDetachedForRestartError", "NativePermissionDeclinedError", "NativeProviderTerminalFailure",
     "NativeResultPendingFinalizationError", "NativeSessionCleanupQuarantinedError", "NativeSessionProtocolIntegrityError",
-    "PostgresError", "RangeError", "ReferenceError", "SyntaxError", "TypeError"]);
-  const failureStages = new Set(["controller_identity", "coordinator_claim", "native_session_execute", "provider_setup",
-    "remote_session_recovery", "result_finalize", "runner_backend_setup", "runner_environment", "wake_context"]);
+    "PostgresError", "RangeError", "ReferenceError", "RemoteRunnerRecoveryError", "SyntaxError", "TypeError"]);
+  const failureStages = new Set(["attachment_prompt", "attachment_prompt_validation", "attachment_scope", "attachment_staging",
+    "controller_identity", "coordinator_claim", "native_session_execute", "provider_setup", "remote_session_recovery",
+    "result_finalize", "runner_backend_setup", "runner_environment", "runtime_admission", "warm_session_retirement",
+    "warm_session_wait", "wake_context", "workspace_validation"]);
   const nativeErrorCodes = new Set(["08001", "08006", "22P02", "23502", "23503", "23505", "23514", "40001", "40P01",
     "57014", "EACCES", "EADDRINUSE", "ECONNREFUSED", "ECONNRESET", "EPIPE", "ENOENT", "ERR_SOCKET_CLOSED", "ETIMEDOUT"]);
   const signalForFailureCode = new Map([
