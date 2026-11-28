@@ -97,18 +97,20 @@ on 1.32.0. The affected MCP server suites passed 53 tests and all three package
 typechecks passed; frozen-lockfile installation passed. PR #587 hosted CI run
 46081294978 passed all 15 checks.
 
-Draft PR [#588](https://github.com/TheHalfMoon/Bostan/pull/588) stacks on #587
-to patch remaining Undici 5/6/7/8 paths and upgrade the Cursor Cloud SDK from
-1.0.28 to 1.5.2. NPMScan exact-version checks reported zero advisories for
+Draft PR [#588](https://github.com/TheHalfMoon/Bostan/pull/588) targets `main`
+independently, so its checks cover only the Undici/Cursor change and do not
+bundle #586 or #587. It patches remaining Undici 5/6/7/8 paths and upgrades the
+Cursor Cloud SDK from 1.0.28 to 1.5.2. NPMScan exact-version checks reported zero advisories for
 undici 6.29.1, 7.30.1, 8.14.0 and @cursor/sdk 1.5.2. Upgrade simulations
 reported fixed vulnerability deltas for the three Undici lines, no tightened
 Node engine requirements and no new SDK lifecycle script. A full-workspace
 frozen lockfile-only install passes. The isolated worktree did not have
 workspace package links, so its adapter typecheck remains unverified; hosted
-CI must validate that API and the cross-platform lockfile. No PR #588 checks
-had been reported at the latest check. The advisory D1 review returned low
-risk at low confidence; that output is not security approval because the model
-is known to miss severe issues.
+CI must validate that API and the cross-platform lockfile. PR #588 CI run
+46088685034 was queued on head `51fb215377c2d0b84e867ab52e76cb7f6a3fa57c`
+at the latest check. The advisory D1 review returned low risk at low
+confidence; that output is not security approval because the model is known to
+miss severe issues.
 
 Read-only product reviews on 4ca245ba found no authorization bypass in the
 inspected ACPX approval and Paperclip tool-authority paths. They did find that
