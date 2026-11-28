@@ -143,6 +143,17 @@ reproduced the false state before the display-only fix. Recovery suites passed
 Independent review found no concrete issue; exact-run identity, native-resume,
 expiry and durable-path predicates were unchanged. No live recovery is claimed.
 
+Commit `b91e1c5ed71d1bd324f101c5191a030c1e29cbf5` on local branch
+`fix/test-tool-approval-policy-20261128` rechecks current policy, agent
+eligibility, and signed remote tool identity before approving a parked Test-tab
+invocation. Only the exact unchanged signed invocation retains its consumed
+rate-limit slot. Five focused real-PostgreSQL cases and four nearby approval/
+lifecycle cases passed with inert fixture providers; server TypeScript,
+feature-map checks, and `git diff --check` passed. Independent read-only review
+found no actionable issue. Local stdio target drift and concurrent approval
+dispatch remain unverified. The commit is local only; no PR was opened under the
+public-repository/private-template governance mismatch.
+
 GitHub repository metadata identifies TheHalfMoon/Bostan as public. This conflicts with the PR template private-repository checklist and remains a governance/release blocker; no repository visibility setting was changed.
 
 Independent review confirmed that the signed-exit-code filter could previously
