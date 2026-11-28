@@ -107,6 +107,17 @@ mobile widths with mocked API responses. Independent review found no concrete
 security/accessibility issue. The commit remains isolated and local; no live
 gateway or full product acceptance is claimed.
 
+Commit `9c05e54831b2a0caf4804f57d1a567d481effbf7` on local branch
+`fix/onboarding-accessibility-20261128` prevents Enter during input-method
+composition from creating an organization with partially composed text. The
+shared submit predicate honors `isComposing` and legacy key code 229 for plain
+Enter and Ctrl/Cmd+Enter. Four regressions reproduced premature company
+creation before the fix. Three focused onboarding suites passed 200/200 and the
+keyboard subset passed 6/6; UI typecheck, token gates, branding check, map
+validation and `git diff --check` passed. Independent review found no concrete
+issue. These are simulated keyboard events; live OS input methods and full
+product acceptance remain unqualified. The commit remains local and isolated.
+
 GitHub repository metadata identifies TheHalfMoon/Bostan as public. This conflicts with the PR template private-repository checklist and remains a governance/release blocker; no repository visibility setting was changed.
 
 Independent review confirmed that the signed-exit-code filter could previously
