@@ -6,9 +6,15 @@ are a point-in-time snapshot; update them only when new evidence exists.
 
 ## Executive status
 
-**Overall: NO-GO / NOT COMPLETE.** PR #584 remains OPEN/DRAFT at remote head 7e70fcd3d97b58243c50d35d0693c25df6b19cc0.
+**Overall: NO-GO / NOT COMPLETE.** PR #584 remains OPEN/DRAFT. Its latest remote head is `bdec1690333d5e82e9afe561961b307e9a41cbf8`.
 
-Exact-head standard CI run 46107222605 currently has all test shards, typecheck, gates, Storybook, secret scan and Windows qualification passed; Windows and both macOS desktop-package checks remain in progress. Exact-head native run 46107218941 has passed archive hash fixtures, frozen dependency installation, server build, standard-user PostgreSQL probe and UI build. Its desktop package step is still in progress; Ollama model pull and installed first-agent qualification have not started. No model inference, task completion, persisted comment, restart recovery or verified $0 cost is proven.
+### Latest native qualification update
+
+Native run [46107218941](https://github.com/TheHalfMoon/Bostan/actions/runs/46107218941), job 140862550776, completed **FAILURE** at 2026-11-28T05:48:32Z. Package creation passed in 14m10s. Ollama archive download, pinned hash verification, model pull (exit 0, child closed), manifest and Apache license checks passed. Installation passed in 165,378ms. Packaged startup reached ready; authenticated private health, first-admin bootstrap, and native agent readiness passed. The first task failed after 47m54s at `first_task_execution` with `heartbeat_not_succeeded`. Graceful app shutdown, disposable profile cleanup and task-owned Ollama cleanup passed. No task completion, attributed comment, persisted result, restart recovery or $0 inference evidence exists.
+
+The child emitted `BOSTAN_PACKAGED_FIRST_AGENT_RUN_DIAGNOSTIC`, but the PowerShell 5.1 CI wrapper omitted that receipt from its allowlist. Post-model resource diagnostics were also suppressed. This prevents identifying the inference failure cause from that run. Commit `bdec1690333d5e82e9afe561961b307e9a41cbf8` adds bounded, schema-validated forwarding for those receipts and model-pull duration, including a Windows PowerShell 5.1 sanitizer probe. Focused tests passed 16/16 and independent review found no concrete findings. New exact-head workflow [46115222987](https://github.com/TheHalfMoon/Bostan/actions/runs/46115222987) was in progress at this update; it will run the corrected qualification without a duplicate job.
+
+Standard CI [46107222605](https://github.com/TheHalfMoon/Bostan/actions/runs/46107222605) passed all 18 checks on prior head `7e70fcd3`. No real inference, completed task, persisted comment, restart recovery or verified $0 cost is proven.
 
 Focused source changes on this head bind the pinned local Ollama provider into the native agent runtime and preserve separate graceful-shutdown/profile-cleanup receipts. Independent security review found no introduced remote/paid fallback or cleanup-scope issue. PR #584 remains draft; do not merge or publish.
 
@@ -51,14 +57,14 @@ The Codex Security diff-scan launcher rejected the PR #590 range on both attempt
 
 | Gate | Status | Evidence and limit |
 |---|---|---|
-| Hosted source CI | **IN PROGRESS, PARTIAL** | Exact-head run 46107222605: test shards, typecheck, gates, Storybook, secret scan and Windows workflow passed; Windows/macOS desktop package jobs remain active. Do not report 18/18 on this head until terminal. |
+| Hosted source CI | **PRIOR-HEAD PASS** | Run 46107222605 passed 18/18 on `7e70fcd3`; exact-head run 46115222987 is active for `bdec1690`. |
 | Windows installed-app CI | **IN PROGRESS, PRIOR-HEAD PASS** | Earlier exact-head run 46094528231 passed. Current exact-head run 46107222605 has its desktop (windows-latest) package job still in progress. |
 | Apple Silicon macOS installed-app CI | **IN PROGRESS, PRIOR-HEAD PASS** | Earlier run 46094528231 passed; current exact-head run 46107222605 desktop (macos-15) job is still active. |
 | Intel macOS installed-app CI | **IN PROGRESS, PRIOR-HEAD PASS** | Earlier run 46094528231 passed; current exact-head run 46107222605 desktop (macos-15-intel) job is still active. |
-| Native Windows installer plus Ollama archive | **PRIOR-HEAD PASS, CURRENT RUN NOT REACHED** | Run 46094352560 verified the pinned archive, local model and license on an earlier head. Current run 46107218941 is still packaging before its model stage. |
-| Clean standard-user install, startup, auth health and first-admin bootstrap | **PRIOR-HEAD PASS, CURRENT RUN NOT REACHED** | Run 46094352560 passed these stages on an earlier head; current native run 46107218941 has not reached the installer/installed-app step. |
-| Clean first-agent journey through persisted task completion | **NOT STARTED ON CURRENT RUN** | Previous run 46100133830 failed at agent readiness without task creation or inference. Current exact-head native run 46107218941 is still packaging; local model pull and first-agent stage are pending. |
-| Real local-model inference and successful task execution | **NOT QUALIFIED** | Current native journey has not started. No real inference or completed task receipt exists. |
+| Native Windows installer plus Ollama archive | **PASS ON PRIOR HEAD** | Run 46107218941 verified/downloaded Ollama, pulled the pinned model, verified its manifest/license, installed and launched the app. Run 46115222987 is active on the corrected receipt code. |
+| Clean standard-user install, startup, auth health and first-admin bootstrap | **PASS ON PRIOR HEAD** | Run 46107218941 passed installation, packaged startup, private health, first-admin bootstrap and native agent readiness. Exact-head retry 46115222987 is active. |
+| Clean first-agent journey through persisted task completion | **FAILED, RETRY ACTIVE** | Run 46107218941 failed at `first_task_execution` / `heartbeat_not_succeeded`. Its safe detailed run diagnostic was suppressed by the wrapper, now fixed at `bdec1690`; run 46115222987 is active. |
+| Real local-model inference and successful task execution | **NOT QUALIFIED** | No real inference completion or successful task receipt exists. |
 | Verified zero-cost execution | **NOT QUALIFIED** | No completed run with real inference and verified provider cost exists. |
 | Persisted result, restart and history recovery after real inference | **NOT QUALIFIED** | No real task result has been persisted or recovered after restart. |
 | Linux packaged desktop | **NOT TESTED** | No Linux packaged-app or real-agent evidence was established in the current qualification set. |
@@ -83,11 +89,11 @@ The roadmap explicitly retains these unfinished requirements:
 
 ## Engineering packet in progress
 
-PR [#584](https://github.com/TheHalfMoon/Bostan/pull/584) remains **OPEN / DRAFT** at remote head 7e70fcd3d97b58243c50d35d0693c25df6b19cc0.
+PR [#584](https://github.com/TheHalfMoon/Bostan/pull/584) remains **OPEN / DRAFT** at remote head `bdec1690333d5e82e9afe561961b307e9a41cbf8`.
 
 Commits 67c71397 and 7e70fcd3 bind the local Ollama provider to native agent readiness/execution and surface safe shutdown/profile-cleanup receipts. The reviewed configuration is pinned to loopback port 11434 and qwen2.5-coder:1.5b; no paid or remote fallback was added. Focused tests passed 47/47 across script, adapter and server suites; adapter TypeScript check passed. Independent read-only security review found no introduced security issue.
 
-Exact-head native workflow 46107218941, job 140862550776, has passed standard-user archive-hash qualification, frozen installation, Electron install, server build, standard-user PostgreSQL probe and UI build. Desktop package step 14 is active; step 15 (Ollama/model and installed native-agent journey) remains pending. Exact-head standard run 46107222605 has core tests/typecheck/gates/Storybook/Windows job passed; three desktop package jobs and native-agent qualification are active.
+Latest native run 46107218941 failed only after reaching first-task heartbeat execution; see the latest native qualification update above. Corrected exact-head run 46115222987 is active. Standard run 46107222605 passed 18/18 on the prior PR head; exact-head standard CI is part of the current workflow set.
 
 The preserved desktop/dist-unpacked-qa/ remains untouched in the primary checkout. Do not start a duplicate build or qualification run.
 
@@ -203,8 +209,8 @@ amended. This UX correction does not add permission parity to other providers.
 
 ## Next actions
 
-1. Let exact-head native run 46107218941 and standard run 46107222605 reach terminal state; do not cancel healthy jobs. Capture model-pull and agent-stage receipts, exits and durations before any further source changes.
-2. If agent readiness passes, continue installed-app local Qwen execution through persisted task/comment, restart recovery and verified $0 provider cost. If it fails, use the first-stage safe receipt to repair the earliest actual boundary.
+1. Let exact-head run 46115222987 reach terminal state; do not launch a duplicate. Capture the now-allowlisted task diagnostic, resource measurements, process exits and durations.
+2. Use the actual first failure signal to fix the agent execution boundary. Then qualify real installed-app Qwen inference through persisted task/comment, restart recovery and verified $0 provider cost.
 3. Qualify any corrected exact source commit without reusing stale artifacts. Keep PR #584 draft until real inference, persistence, restart and zero-cost acceptance pass.
 4. Keep other dependency, ACPX, UI, install/recovery and security packets isolated and follow repository review rules. No merge or public release without all required gates and authorization.
 5. Resolve the public-repository/private-checklist governance mismatch before creating additional public PRs; continue local engineering that does not require changing repository visibility.
