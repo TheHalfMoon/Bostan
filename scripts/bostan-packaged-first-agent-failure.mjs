@@ -65,3 +65,8 @@ export function captureFirstAgentFailure(current, stage, error) {
     error,
   };
 }
+
+export function packagedFirstAgentCleanupReceipt(error) {
+  const failure = packagedFirstAgentFailureReceipt("cleanup", error);
+  return `BOSTAN_PACKAGED_FIRST_AGENT_CLEANUP_FAILURE code=${failure.slice(failure.indexOf(" code=") + 6)}`;
+}

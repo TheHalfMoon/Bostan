@@ -60,6 +60,27 @@ test("Windows CI forwards only bounded packaged first-agent stage and failure re
   assert.match(harness, /packagedFirstAgentFailureReceipt\(firstFailure\.stage, firstFailure\.error\)/, "the first failure stage and safe code reach the bounded classifier");
 });
 
+test("Windows CI forwards the cleanup receipts actually emitted by the packaged QA", () => {
+  const wrapper = fs.readFileSync(path.join(import.meta.dirname, "bostan-ci-windows-user.ps1"), "utf8");
+  const harness = fs.readFileSync(path.join(import.meta.dirname, "bostan-windows-packaged-free-first-agent-qa.mjs"), "utf8");
+  const match = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_PACKAGED_NATIVE_QA_[^']*)'\) \{ return \$line \}$/m);
+  assert.ok(match, "native packaged QA shutdown/profile cleanup allowlist is present");
+  const receiptPattern = new RegExp(match[1]);
+  assert.equal(receiptPattern.test("BOSTAN_PACKAGED_NATIVE_QA_GRACEFUL_SHUTDOWN_PASS"), true);
+  assert.equal(receiptPattern.test("BOSTAN_PACKAGED_NATIVE_QA_TEMP_PROFILE_CLEANUP_PASS"), true);
+  assert.equal(receiptPattern.test("BOSTAN_PACKAGED_NATIVE_QA_TEMP_PROFILE_CLEANUP_PASS C:\\Users\\private"), false);
+  assert.match(harness, /console\.log\("BOSTAN_PACKAGED_NATIVE_QA_GRACEFUL_SHUTDOWN_PASS"\)/);
+  assert.match(harness, /console\.log\("BOSTAN_PACKAGED_NATIVE_QA_TEMP_PROFILE_CLEANUP_PASS"\)/);
+
+  const cleanupFailureMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_PACKAGED_FIRST_AGENT_CLEANUP_FAILURE[^']*)'\) \{ return \$line \}$/m);
+  assert.ok(cleanupFailureMatch, "separate cleanup failure receipt is forwarded");
+  const cleanupFailurePattern = new RegExp(cleanupFailureMatch[1]);
+  assert.equal(cleanupFailurePattern.test("BOSTAN_PACKAGED_FIRST_AGENT_CLEANUP_FAILURE code=qa_process_still_owns_temp_profile"), true);
+  assert.equal(cleanupFailurePattern.test("BOSTAN_PACKAGED_FIRST_AGENT_CLEANUP_FAILURE code=sk_private_token"), false);
+  assert.match(wrapper, /\$line -eq 'BOSTAN_PACKAGED_FIRST_AGENT_TEMP_PRESERVED_FOR_SAFE_RECOVERY'/);
+  assert.match(harness, /console\.log\("BOSTAN_PACKAGED_FIRST_AGENT_TEMP_PRESERVED_FOR_SAFE_RECOVERY"\)/);
+});
+
 test("native model setup exposes only bounded fixed phase, failure and progress receipts", () => {
   const wrapper = fs.readFileSync(path.join(import.meta.dirname, "bostan-ci-windows-user.ps1"), "utf8");
   const setup = fs.readFileSync(path.join(import.meta.dirname, "bostan-windows-local-native-qa.ps1"), "utf8");

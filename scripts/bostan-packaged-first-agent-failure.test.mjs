@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { captureFirstAgentFailure, packagedFirstAgentFailureReceipt } from "./bostan-packaged-first-agent-failure.mjs";
+import {
+  captureFirstAgentFailure,
+  packagedFirstAgentCleanupReceipt,
+  packagedFirstAgentFailureReceipt,
+} from "./bostan-packaged-first-agent-failure.mjs";
 
 test("failure receipts retain a bounded stage and safe enum-like error code", () => {
   assert.equal(
@@ -48,5 +52,23 @@ test("shutdown and temporary-profile cleanup errors have bounded categories", ()
   assert.equal(
     packagedFirstAgentFailureReceipt("cleanup", new Error("qa_process_still_owns_temp_profile")),
     "BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=cleanup code=qa_process_still_owns_temp_profile",
+  );
+});
+
+test("cleanup failures retain a separate safe receipt after an earlier journey failure", () => {
+  const first = captureFirstAgentFailure(null, "agent_readiness", new Error("native_agent_readiness_timeout"));
+  const afterCleanup = captureFirstAgentFailure(first, "cleanup", new Error("qa_process_still_owns_temp_profile"));
+
+  assert.equal(
+    packagedFirstAgentFailureReceipt(afterCleanup.stage, afterCleanup.error),
+    "BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=agent_readiness code=native_agent_readiness_timeout",
+  );
+  assert.equal(
+    packagedFirstAgentCleanupReceipt(new Error("qa_process_still_owns_temp_profile")),
+    "BOSTAN_PACKAGED_FIRST_AGENT_CLEANUP_FAILURE code=qa_process_still_owns_temp_profile",
+  );
+  assert.equal(
+    packagedFirstAgentCleanupReceipt(new Error("C:\\Users\\private token sk-secret")),
+    "BOSTAN_PACKAGED_FIRST_AGENT_CLEANUP_FAILURE code=unclassified",
   );
 });

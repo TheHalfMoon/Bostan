@@ -9,7 +9,11 @@ import { qualifyFreeQaModel, qualifyLocalOpenCodeQaModel } from "./bostan-free-m
 import { admitFreeOpenCodeModel } from "./bostan-opencode-free-admission.mjs";
 import { nativeGovernedCaseAgentConfig, requireNativeCaseQaHost } from "./bostan-governed-case-free-e2e.mjs";
 import { classifyPackagedStartupProgress, packagedStartupFailure } from "./bostan-packaged-startup-progress.mjs";
-import { captureFirstAgentFailure, packagedFirstAgentFailureReceipt } from "./bostan-packaged-first-agent-failure.mjs";
+import {
+  captureFirstAgentFailure,
+  packagedFirstAgentCleanupReceipt,
+  packagedFirstAgentFailureReceipt,
+} from "./bostan-packaged-first-agent-failure.mjs";
 import {
   assertHeartbeatQaSucceeded,
   buildFirstWorkerTask,
@@ -709,10 +713,11 @@ async function run() {
       }
       catch (error) {
         cleanupAllowed = false;
+        console.log(packagedFirstAgentCleanupReceipt(error));
         firstFailure = captureFirstAgentFailure(firstFailure, "cleanup", error);
       }
     }
-    if (!cleanupAllowed) console.error("BOSTAN_PACKAGED_FIRST_AGENT_TEMP_PRESERVED_FOR_SAFE_RECOVERY");
+    if (!cleanupAllowed) console.log("BOSTAN_PACKAGED_FIRST_AGENT_TEMP_PRESERVED_FOR_SAFE_RECOVERY");
   }
   if (!cleanupAllowed) {
     firstFailure = captureFirstAgentFailure(firstFailure, "cleanup", new Error("temporary_profile_cleanup_failed"));
