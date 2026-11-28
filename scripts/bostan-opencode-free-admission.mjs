@@ -35,12 +35,66 @@ export function isolatedOpenCodeAdmissionEnvironment(home, original = process.en
 }
 
 export function freeModelResponseMatches(stdout, expected = REPLY) {
-  return stdout.split(/\r?\n/).some(line => {
+  const chunks = [];
+  for (const line of stdout.split(/\r?\n/)) {
     try {
       const event = JSON.parse(line);
-      return event.type === "text" && event.part?.text?.trim() === expected;
-    } catch { return false; }
-  });
+      if (event.type === "text" && typeof event.part?.text === "string") chunks.push(event.part.text);
+    } catch {}
+  }
+  // OpenCode streams long text as multiple JSONL text events. Compare the
+  // assembled model response, not each individual transport chunk.
+  return chunks.join("").trim() === expected;
+}
+
+export function openCodeAdmissionArgs(model, reply) {
+  if (typeof model !== "string" || typeof reply !== "string" || !reply) {
+    throw new Error("An explicit OpenCode admission model and reply marker are required");
+  }
+  // The packaged 1.18.34 `run` command has no --standalone option. It starts
+  // its own local session server; the isolated HOME keeps its state disposable.
+  return ["run", "--print-logs", "--log-level", "DEBUG", "--format", "json", "--model", model,
+    "Reply exactly " + reply + ". Do not use tools."];
+}
+
+function sanitizedPreview(value, maxLength = 160, fromEnd = false) {
+  const sanitized = value
+    .replace(/(?:sk-[A-Za-z0-9_-]{12,}|Bearer\s+\S+)/gi, "[redacted]")
+    .replace(/https?:\/\/\S+/gi, "[url]")
+    .replace(/[A-Za-z]:\\[^\s"']+/g, "[path]")
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ");
+  return fromEnd ? sanitized.slice(-maxLength) : sanitized.slice(0, maxLength);
+}
+
+export function summarizeFreeModelAdmissionOutput(stdout, expected = REPLY, stderr = "") {
+  const types = [];
+  const chunks = [];
+  const errors = [];
+  for (const line of stdout.split(/\r?\n/)) {
+    try {
+      const event = JSON.parse(line);
+      if (typeof event.type === "string" && types.length < 12 && !types.includes(event.type)) types.push(event.type);
+      if (event.type === "text" && typeof event.part?.text === "string") chunks.push(event.part.text);
+      if (event.type === "error" && errors.length < 3) {
+        const error = event.error;
+        const message = typeof error === "string" ? error
+          : [error?.data?.message, error?.message, error?.data?.error].find(value => typeof value === "string");
+        errors.push({ name: typeof error?.name === "string" ? sanitizedPreview(error.name) : undefined,
+          message: typeof message === "string" ? sanitizedPreview(message) : undefined });
+      }
+    } catch {}
+  }
+  const response = chunks.join("").trim();
+  const stderrText = stderr.trim();
+  const errorLogs = stderrText.split(/\r?\n/)
+    .filter(line => /\b(?:ERROR|WARN|error|failed|failure|500|404)\b/i.test(line))
+    .slice(-5)
+    .map(line => sanitizedPreview(line, 512));
+  return { eventTypes: types, textEventCount: chunks.length, responseLength: response.length,
+    includesExpected: response.includes(expected), preview: sanitizedPreview(response),
+    errors, stderrLength: stderrText.length, stderrPreview: sanitizedPreview(stderrText),
+    stderrTail: sanitizedPreview(stderrText, 512, true), errorLogs };
 }
 
 function appendBounded(old, data) {
@@ -119,8 +173,7 @@ export async function admitFreeOpenCodeModel({
     fs.mkdirSync(cwd, { mode: 0o700 });
     const result = await runBoundedAdmissionChild({
       executable, cwd, env: isolatedOpenCodeAdmissionEnvironment(home, env),
-      args: ["run", "--standalone", "--format", "json", "--model", qualifiedModel,
-        "Reply exactly " + REPLY + ". Do not use tools."],
+      args: openCodeAdmissionArgs(qualifiedModel, REPLY),
       timeoutMs,
     });
     if (result.timedOut) throw new Error("OpenCode free model admission timed out; no Bostan agent was created");

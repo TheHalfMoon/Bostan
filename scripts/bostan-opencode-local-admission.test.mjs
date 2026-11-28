@@ -1,0 +1,80 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  localModelAppearsInOpenCodeCatalog,
+  inspectLocalOllamaModel,
+  localOllamaOpenCodeConfig,
+  localOllamaAgentEnvironment,
+  LOCAL_OLLAMA_HOST,
+  LOCAL_OLLAMA_MANIFEST_DIGEST,
+  LOCAL_OPENCODE_QA_MODEL,
+  qualifyLoopbackOllamaHost,
+} from "./bostan-opencode-local-admission.mjs";
+import {
+  qualifyLocalOpenCodeQaModel,
+  qualifyNativeOpenCodeQaModel,
+} from "./bostan-free-model-policy.mjs";
+
+test("admits only the pinned local Qwen model through loopback Ollama", async () => {
+  assert.equal(qualifyLocalOpenCodeQaModel(LOCAL_OPENCODE_QA_MODEL), LOCAL_OPENCODE_QA_MODEL);
+  assert.equal(qualifyNativeOpenCodeQaModel(LOCAL_OPENCODE_QA_MODEL), LOCAL_OPENCODE_QA_MODEL);
+  assert.equal(qualifyLoopbackOllamaHost(), LOCAL_OLLAMA_HOST);
+  assert.equal(qualifyLoopbackOllamaHost("http://localhost:11434"), LOCAL_OLLAMA_HOST);
+  for (const model of ["ollama/other:latest", "openrouter/example:free", "https://example.invalid"]) {
+    assert.throws(() => qualifyLocalOpenCodeQaModel(model), /explicitly permitted local OpenCode QA model/);
+  }
+  for (const endpoint of ["http://0.0.0.0:11434", "http://192.0.2.10:11434", "https://127.0.0.1:11434", "http://user@127.0.0.1:11434"]) {
+    assert.throws(() => qualifyLoopbackOllamaHost(endpoint), /private loopback listener/);
+  }
+  const model = await inspectLocalOllamaModel({ fetchImpl: async url => {
+    assert.equal(String(url), `${LOCAL_OLLAMA_HOST}/api/tags`);
+    return { ok: true, json: async () => ({ models: [{
+      name: "qwen2.5-coder:1.5b", digest: LOCAL_OLLAMA_MANIFEST_DIGEST, size: 986_048_576,
+    }] }) };
+  } });
+  assert.deepEqual(model, {
+    model: LOCAL_OPENCODE_QA_MODEL,
+    digest: LOCAL_OLLAMA_MANIFEST_DIGEST,
+    size: 986_048_576,
+    endpoint: LOCAL_OLLAMA_HOST,
+  });
+});
+
+test("rejects an absent or changed local model before OpenCode starts", async () => {
+  await assert.rejects(inspectLocalOllamaModel({ fetchImpl: async () => ({
+    ok: true,
+    json: async () => ({ models: [{ name: "qwen2.5-coder:1.5b", digest: "sha256:0000", size: 986_048_576 }] }),
+  }) }), /pinned local Qwen2.5 Coder 1.5B model is not installed/);
+});
+
+test("requires the pinned local model in OpenCode's actual Ollama catalog", () => {
+  assert.equal(localModelAppearsInOpenCodeCatalog("ollama/qwen2.5-coder:1.5b\n"), true);
+  assert.equal(localModelAppearsInOpenCodeCatalog("ollama/qwen2.5-coder:1.5b (Qwen)\n"), true);
+  assert.equal(localModelAppearsInOpenCodeCatalog("ollama/qwen2.5-coder:7b\n"), false);
+  assert.equal(localModelAppearsInOpenCodeCatalog("ollama-cloud/qwen2.5-coder:1.5b\n"), false);
+  assert.equal(localModelAppearsInOpenCodeCatalog("", LOCAL_OPENCODE_QA_MODEL), false);
+});
+
+test("isolated OpenCode config registers only loopback Ollama", () => {
+  assert.deepEqual(localOllamaOpenCodeConfig(), {
+    $schema: "https://opencode.ai/config.json",
+    tools: { "*": false },
+    provider: {
+      ollama: {
+        npm: "@ai-sdk/openai-compatible",
+        name: "Ollama (local)",
+        options: { baseURL: "http://127.0.0.1:11434/v1" },
+        models: { "qwen2.5-coder:1.5b": { name: "Qwen2.5 Coder 1.5B" } },
+      },
+    },
+  });
+  assert.throws(() => localOllamaOpenCodeConfig("http://192.0.2.4:11434"), /private loopback/);
+});
+
+test("agent runtime receives the same explicit loopback provider that admission qualified", () => {
+  const env = localOllamaAgentEnvironment();
+  assert.equal(env.OLLAMA_HOST, LOCAL_OLLAMA_HOST);
+  assert.deepEqual(JSON.parse(env.PAPERCLIP_OPENCODE_PROVIDERS), localOllamaOpenCodeConfig().provider);
+  assert.equal(env.PAPERCLIP_OPENCODE_PROVIDERS.includes("apiKey"), false);
+  assert.throws(() => localOllamaAgentEnvironment("http://192.0.2.4:11434"), /private loopback/);
+});

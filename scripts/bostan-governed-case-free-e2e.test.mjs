@@ -101,6 +101,18 @@ test("governed Case only admits native signed-API runner with all general OpenCo
   assert.equal(config.provider, "opencode");
   assert.equal(config.opencodePermissionMode, "deny");
   assert.equal(config.lifecycleMode, "per_turn");
+  const localModelConfig = nativeGovernedCaseAgentConfig({
+    model: "ollama/qwen2.5-coder:1.5b", workspace: "/tmp/bostan-qa-only",
+  });
+  assert.equal(localModelConfig.model, "ollama/qwen2.5-coder:1.5b");
+  assert.equal(localModelConfig.opencodePermissionMode, "deny");
+  assert.equal(localModelConfig.env.OLLAMA_HOST, "http://127.0.0.1:11434");
+  assert.equal(JSON.parse(localModelConfig.env.PAPERCLIP_OPENCODE_PROVIDERS).ollama.options.baseURL,
+    "http://127.0.0.1:11434/v1");
+  assert.deepEqual(config.env, undefined);
+  assert.throws(() => nativeGovernedCaseAgentConfig({
+    model: "ollama/unapproved:latest", workspace: "/tmp/bostan-qa-only",
+  }));
   assert.equal(config.cwd, "/tmp/bostan-qa-only");
   assert.ok(!Object.hasOwn(config, "dangerouslySkipPermissions"));
   assert.throws(() => nativeGovernedCaseAgentConfig({
@@ -111,7 +123,7 @@ test("governed Case only admits native signed-API runner with all general OpenCo
   }), /absolute disposable workspace/);
 });
 
-test("native governed Case host preflight refuses low-memory Macs and sparse TEMP, not ordinary app installs", () => {
+test("native governed Case host preflight enforces memory and TEMP on Windows, macOS and Linux", () => {
   const G = 1024 ** 3;
   const good = { platform: "darwin", totalMemoryBytes: 16 * G, freeMemoryBytes: 9 * G, tempFreeBytes: 30 * G };
   assert.deepEqual(evaluateNativeCaseQaHost(good), {
@@ -124,7 +136,8 @@ test("native governed Case host preflight refuses low-memory Macs and sparse TEM
     ["enoughFreeMemory"]);
   assert.deepEqual(evaluateNativeCaseQaHost({ ...good, tempFreeBytes: 4 * G }).blocked,
     ["enoughTempDisk"]);
-  assert.deepEqual(evaluateNativeCaseQaHost({ ...good, platform: "win32" }).blocked,
+  assert.equal(evaluateNativeCaseQaHost({ ...good, platform: "win32" }).qualified, true);
+  assert.deepEqual(evaluateNativeCaseQaHost({ ...good, platform: "freebsd" }).blocked,
     ["supportedNativePlatform"]);
   assert.equal(evaluateNativeCaseQaHost({ ...good, freeMemoryBytes: null }).qualified, false);
 });

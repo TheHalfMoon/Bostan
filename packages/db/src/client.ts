@@ -509,6 +509,7 @@ const MIGRATIONS_WITH_TOP_LEVEL_STATEMENTS = new Set([
 async function applyPendingMigrationsManually(
   url: string,
   pendingMigrations: string[],
+  onMigrationFailure?: (migrationFile: string) => void,
 ): Promise<void> {
   if (pendingMigrations.length === 0) return;
 
@@ -582,10 +583,15 @@ async function applyPendingMigrationsManually(
             folderMillisByFileName.get(migrationFile) ?? Date.now(),
           );
         };
-        if (MIGRATIONS_WITH_TOP_LEVEL_STATEMENTS.has(migrationFile)) {
-          await applyMigration();
-        } else {
-          await runInTransaction(sql, applyMigration);
+        try {
+          if (MIGRATIONS_WITH_TOP_LEVEL_STATEMENTS.has(migrationFile)) {
+            await applyMigration();
+          } else {
+            await runInTransaction(sql, applyMigration);
+          }
+        } catch (error) {
+          try { onMigrationFailure?.(migrationFile); } catch { /* Preserve the original migration error. */ }
+          throw error;
         }
       }
     } finally {
@@ -1121,14 +1127,17 @@ export async function inspectMigrations(url: string): Promise<MigrationState> {
   }
 }
 
-export async function applyPendingMigrations(url: string): Promise<void> {
+export async function applyPendingMigrations(
+  url: string,
+  options?: { onMigrationFailure?: (migrationFile: string) => void },
+): Promise<void> {
   const initialState = await inspectMigrations(url);
   if (initialState.status === "upToDate") return;
 
   if (initialState.reason === "no-migration-journal-empty-db") {
     // Use the same per-file executor for bootstrap and upgrades: Drizzle wraps
     // the whole journal in one transaction and cannot run committing backfills.
-    await applyPendingMigrationsManually(url, initialState.pendingMigrations);
+    await applyPendingMigrationsManually(url, initialState.pendingMigrations, options?.onMigrationFailure);
     const bootstrappedState = await inspectMigrations(url);
     if (bootstrappedState.status === "upToDate") return;
     throw new Error(
@@ -1155,7 +1164,7 @@ export async function applyPendingMigrations(url: string): Promise<void> {
     throw new Error("Migrations are still pending after migration-history reconciliation; run inspectMigrations for details.");
   }
 
-  await applyPendingMigrationsManually(url, state.pendingMigrations);
+  await applyPendingMigrationsManually(url, state.pendingMigrations, options?.onMigrationFailure);
 
   const finalState = await inspectMigrations(url);
   if (finalState.status !== "upToDate") {

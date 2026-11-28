@@ -503,10 +503,9 @@ export async function testEnvironment(
           });
         } else {
           checks.push({
-            code: "opencode_hello_probe_failed",
+            code: parsed.errorMessage ? "opencode_hello_probe_error_event" : "opencode_hello_probe_process_exit",
             level: "error",
             message: "OpenCode hello probe failed.",
-            ...(detail ? { detail } : {}),
             hint: "Run `opencode run --format json` manually in this working directory to debug.",
           });
         }
@@ -515,7 +514,6 @@ export async function testEnvironment(
           code: "opencode_hello_probe_failed",
           level: "error",
           message: "OpenCode hello probe failed.",
-          detail: err instanceof Error ? err.message : String(err),
           hint: "Run `opencode run --format json` manually in this working directory to debug.",
         });
       }

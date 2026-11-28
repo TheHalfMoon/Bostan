@@ -32,6 +32,8 @@ export function assertHarnessTestPassed(result: AdapterEnvironmentTestResult) {
       : has("_hello_probe_timed_out") ? "harness_probe_timed_out"
       : has("_hello_probe_unexpected_output") ? "harness_probe_unexpected_output"
       : has("_hello_probe_transport_unavailable") ? "harness_probe_transport_unavailable"
+      : has("_hello_probe_error_event") ? "harness_probe_error_event"
+      : has("_hello_probe_process_exit") ? "harness_probe_process_exit"
       : has("_hello_probe_failed") ? "harness_probe_failed"
       : "harness_test_failed";
     throw Object.assign(new Error("The harness test failed"), { code });

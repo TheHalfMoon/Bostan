@@ -70,6 +70,10 @@ export function safeAgentLifecycleDiagnostic(agent) {
   const failureCode = lifecycleError.startsWith(
     "Execution configuration check failed. The selected free provider is rate-limited")
     ? "harness_free_provider_limited"
+    : lifecycleError.startsWith("Execution configuration check failed. The OpenCode hello request returned an error response.")
+      ? "harness_probe_error_event"
+    : lifecycleError.startsWith("Execution configuration check failed. The OpenCode hello process exited before verifying the model response.")
+      ? "harness_probe_process_exit"
     : lifecycleError.startsWith("Execution configuration check failed. The execution tool's hello verification could not complete due to a connection or transport error.")
     ? "harness_probe_transport_unavailable"
     : lifecycleError.startsWith("Execution configuration check failed. The execution tool launched, but its hello verification request failed.")
@@ -101,19 +105,210 @@ export function safeFreeProviderFailureSignal(run) {
   return null;
 }
 
+export function safeHeartbeatQaDiagnostic(run) {
+  const code = run?.errorCode;
+  const stage = run?.executionStage;
+  const status = TERMINAL_HEARTBEAT_STATUSES.has(run?.status) ? run.status : null;
+  const errorCode = typeof code === "string" && /^[a-z][a-z0-9_]{0,63}$/.test(code) ? code : null;
+  const executionStage = typeof stage === "string" && /^(preparing|dispatching|executing|settled)$/.test(stage)
+    ? stage : null;
+  const providerSignal = safeFreeProviderFailureSignal(run);
+  const error = typeof run?.error === "string" ? run.error.slice(0, 8192) : "";
+  const nativeSignal = run?.errorCode === "native_session_interrupted"
+    ? /native_finalization_missing: session returned no semantic result/i.test(error)
+      ? "native_semantic_result_missing"
+      : /native_finalization_missing: session returned no terminal event/i.test(error)
+        ? "native_terminal_event_missing"
+        : /provider_process_exited/i.test(error) ? "native_provider_process_exited"
+          : /provider_initialize_timeout/i.test(error) ? "native_provider_initialize_timeout"
+            : null
+    : null;
+  const genericFailureClass = run?.errorCode === "native_session_interrupted"
+    ? safeNativePreparationFailureClass(error)
+    : null;
+  const safeSignal = providerSignal ?? nativeSignal;
+  return { status, errorCode, executionStage, ...(safeSignal ? { safeSignal } : {}),
+    ...(genericFailureClass ? { failureClass: genericFailureClass } : {}) };
+}
+
+function safeNativePreparationFailureClass(error) {
+  // The raw run error can contain task text, credentials, paths, or provider
+  // output. Emit only fixed classes that help separate pre-provider failures.
+  const knownPreparationCodes = [
+    "native_session_supervisor_busy", "native_instruction_materialization_handoff_unavailable",
+    "native_instruction_materialization_handoff_mismatch", "native_state_file_changed",
+    "native_runner_warm_transition_recovery_unproven", "native_session_supervisor_checkpoint_mismatch",
+    "native_finalization_coordinator_missing", "native_execution_binding_changed",
+    "native_cancellation_intent_conflict", "native_run_already_committed",
+    "native_restart_recovery_claim_changed", "native_replacement_lineage_invalid",
+    "native_session_retry_exhausted", "native_session_lease_lost", "native_workspace_required",
+    "native_instruction_preparation_configuration_changed", "native_instruction_materialization_not_claimed",
+    "native_instruction_preparation_copy_changed", "native_cleanup_maintenance_unproven",
+    "native_session_tool_authority_unavailable", "native_tool_authority_epoch_revoked",
+    "paperclip_runner_provider_unsupported",
+  ];
+  const normalized = error.trim();
+  for (const code of knownPreparationCodes) {
+    if (normalized === code || normalized.startsWith(code + ":")) return code;
+  }
+  const classes = [
+    [/native_session_lease_lost/i, "native_session_lease_lost"],
+    [/native_session_cancelled|native_retry_cancelled/i, "native_session_cancelled"],
+    [/database (?:connection|pool)|connection pool|ECONNREFUSED|ECONNRESET/i, "database_transport_failure"],
+    [/deadlock detected|could not serialize access|SQLSTATE.?40P01|SQLSTATE.?40001/i, "database_transaction_conflict"],
+    [/statement timeout|lock timeout|SQLSTATE.?57014/i, "database_statement_timeout"],
+    [/permission denied|not authorized|authorization failed/i, "authorization_failure"],
+    [/workspace.*(?:missing|unavailable)|(?:missing|unavailable).*workspace/i, "workspace_unavailable"],
+    [/ENOENT|file not found|no such file/i, "runtime_file_missing"],
+    [/EACCES|access is denied/i, "runtime_access_denied"],
+    [/out of memory|allocation failed|heap out of memory/i, "memory_pressure"],
+  ];
+  for (const [pattern, value] of classes) if (pattern.test(error)) return value;
+  return error ? "unclassified_native_failure" : null;
+}
+
+export function safeHeartbeatQaEventDiagnostic(events) {
+  const counts = {
+    harnessReady: 0, sessionStarted: 0, sessionResumed: 0,
+    turnStarted: 0, turnCompleted: 0, turnFailed: 0,
+    turnCancelled: 0, turnInterrupted: 0, providerEvents: 0, providerRpcResults: 0,
+  };
+  const failureCodes = new Set([
+    "native_permission_declined", "native_provider_terminal_failed", "native_provider_approval_required",
+    "native_provider_usage_limit", "native_session_cleanup_quarantined", "native_adopted_runner_authentication_timeout",
+    "runner_remote_provider_artifact_incompatible", "runner_remote_provider_verification_unavailable",
+    "provider_process_exited", "provider_stdout_closed", "provider_process_output_closed",
+    "provider_process_status_failed", "provider_initialize_timeout", "provider_initialize_protocol_error",
+    "provider_request_timeout", "provider_request_protocol_error", "provider_frame_too_large",
+    "provider_transport_failed", "native_runner_process_exited", "planning_mode_unsupported",
+    "native_event_replay_conflict", "native_provider_runtime_missing", "native_provider_model_rejected",
+    "native_current_wake_comments_unread", "native_current_wake_comments_changed_after_read",
+    "native_session_interrupted",
+  ]);
+  const recoveryModes = new Set(["bootstrap_retry", "exact_checkpoint_resume", "ambiguous_state"]);
+  const failureTypes = new Set(["AbortError", "Error", "FetchError", "NativeCancellationPendingRecoveryError",
+    "NativeControllerDetachedForRestartError", "NativePermissionDeclinedError", "NativeProviderTerminalFailure",
+    "NativeResultPendingFinalizationError", "NativeSessionCleanupQuarantinedError", "NativeSessionProtocolIntegrityError",
+    "PostgresError", "RangeError", "ReferenceError", "RemoteRunnerRecoveryError", "SyntaxError", "TypeError"]);
+  const failureStages = new Set(["attachment_prompt", "attachment_prompt_validation", "attachment_scope", "attachment_staging",
+    "controller_identity", "coordinator_claim", "native_session_execute", "provider_setup", "remote_session_recovery",
+    "result_finalize", "runner_backend_setup", "runner_environment", "runtime_admission", "warm_session_retirement",
+    "warm_session_wait", "wake_context", "workspace_validation"]);
+  const nativeErrorCodes = new Set(["08001", "08006", "22P02", "23502", "23503", "23505", "23514", "40001", "40P01",
+    "57014", "EACCES", "EADDRINUSE", "ECONNREFUSED", "ECONNRESET", "EPIPE", "ENOENT", "ERR_SOCKET_CLOSED", "ETIMEDOUT"]);
+  const signalForFailureCode = new Map([
+    ["native_permission_declined", "native_permission_declined"],
+    ["native_provider_terminal_failed", "native_provider_terminal_failed"],
+    ["native_provider_approval_required", "native_provider_approval_required"],
+    ["native_provider_usage_limit", "native_provider_usage_limit"],
+    ["native_adopted_runner_authentication_timeout", "native_provider_auth_rejected"],
+    ["provider_process_exited", "native_provider_process_exited"],
+    ["provider_stdout_closed", "native_provider_output_closed"],
+    ["provider_process_output_closed", "native_provider_output_closed"],
+    ["provider_process_status_failed", "native_provider_process_exited"],
+    ["provider_initialize_timeout", "native_provider_initialize_timeout"],
+    ["provider_initialize_protocol_error", "native_provider_initialize_protocol_error"],
+    ["provider_request_timeout", "native_provider_request_timeout"],
+    ["provider_request_protocol_error", "native_provider_request_protocol_error"],
+    ["provider_transport_failed", "native_provider_transport_failed"],
+    ["native_runner_process_exited", "native_provider_process_exited"],
+    ["native_provider_runtime_missing", "native_provider_runtime_missing"],
+    ["native_provider_model_rejected", "native_provider_model_rejected"],
+  ]);
+  let nativeFailure = null;
+  const fields = new Map([
+    ["harness.ready", "harnessReady"], ["session.started", "sessionStarted"],
+    ["session.resumed", "sessionResumed"], ["turn.started", "turnStarted"],
+    ["turn.completed", "turnCompleted"], ["turn.failed", "turnFailed"],
+    ["turn.cancelled", "turnCancelled"], ["turn.interrupted", "turnInterrupted"],
+    ["provider.event", "providerEvents"], ["provider.rpc_result", "providerRpcResults"],
+  ]);
+  if (!Array.isArray(events)) return { available: false, ...counts, nativeFailure };
+  for (const event of events.slice(0, 200)) {
+    const key = fields.get(event?.eventType);
+    if (key) counts[key]++;
+    const detail = event?.payload?.failureDetail;
+    if (!["lifecycle", "native.failure_diagnostic"].includes(event?.eventType) || !detail || typeof detail !== "object" || Array.isArray(detail)) continue;
+    const rawCode = detail.originalFailureCode;
+    const rawMode = detail.recoveryMode;
+    const rawMessage = typeof detail.message === "string" ? detail.message.slice(0, 2_000) : "";
+    const messageSignal = rawMessage ? safeHeartbeatQaLogDiagnostic(rawMessage).safeSignal : null;
+    const sourceFailureCode = typeof rawCode === "string" && failureCodes.has(rawCode) ? rawCode : null;
+    nativeFailure = {
+      sourceFailureCode,
+      recoveryMode: typeof rawMode === "string" && recoveryModes.has(rawMode) ? rawMode : null,
+      providerSessionEstablished: typeof detail.providerSessionEstablished === "boolean" ? detail.providerSessionEstablished : null,
+      providerEventsExist: typeof detail.providerEventsExist === "boolean" ? detail.providerEventsExist : null,
+      checkpointExists: typeof detail.checkpointExists === "boolean" ? detail.checkpointExists : null,
+      safeSignal: messageSignal ?? signalForFailureCode.get(sourceFailureCode) ?? null,
+      ...(event.eventType === "native.failure_diagnostic" ? {
+        failureStage: failureStages.has(detail.failureStage) ? detail.failureStage : null,
+        failureType: failureTypes.has(detail.failureType) ? detail.failureType : null,
+        nativeErrorCode: typeof detail.nativeErrorCode === "string" && nativeErrorCodes.has(detail.nativeErrorCode)
+          ? detail.nativeErrorCode : null,
+      } : {}),
+    };
+  }
+  return { available: true, ...counts, nativeFailure };
+}
+
+export function safeHeartbeatQaLogDiagnostic(content) {
+  if (typeof content !== "string") return { available: false, bytes: 0, safeSignal: null };
+  const bounded = content.slice(0, 65_536);
+  let jsonLines = 0;
+  let errorRecords = 0;
+  let recordsWithErrorField = 0;
+  let recordsWithCodeField = 0;
+  for (const line of bounded.split(/\r?\n/).slice(0, 200)) {
+    try {
+      const record = JSON.parse(line);
+      if (!record || typeof record !== "object" || Array.isArray(record)) continue;
+      jsonLines++;
+      if (record.level === "error" || record.level === 50 || record.level === "fatal" || record.level === 60) errorRecords++;
+      if (Object.hasOwn(record, "error") || Object.hasOwn(record, "err")) recordsWithErrorField++;
+      const error = record.error ?? record.err;
+      if (error && typeof error === "object" && (Object.hasOwn(error, "code") || Object.hasOwn(error, "errorCode"))) {
+        recordsWithCodeField++;
+      }
+    } catch { /* The bounded content may be a non-JSON progress log. */ }
+  }
+  const signals = [
+    [/native_finalization_missing: session returned no semantic result/i, "native_semantic_result_missing"],
+    [/native_finalization_missing: session returned no terminal event/i, "native_terminal_event_missing"],
+    [/native_permission_declined/i, "native_permission_declined"],
+    [/native_provider_model_rejected/i, "native_provider_model_rejected"],
+    [/native_provider_approval_required/i, "native_provider_approval_required"],
+    [/native_provider_usage_limit/i, "native_provider_usage_limit"],
+    [/provider_initialize_timeout/i, "native_provider_initialize_timeout"],
+    [/provider_initialize_protocol_error/i, "native_provider_initialize_protocol_error"],
+    [/provider_request_timeout/i, "native_provider_request_timeout"],
+    [/provider_request_protocol_error/i, "native_provider_request_protocol_error"],
+    [/provider_process_output_closed/i, "native_provider_output_closed"],
+    [/provider_stdout_closed/i, "native_provider_output_closed"],
+    [/provider_process_exited/i, "native_provider_process_exited"],
+    [/provider_transport_failed/i, "native_provider_transport_failed"],
+    [/native_provider_runtime_missing/i, "native_provider_runtime_missing"],
+    [/native_provider_terminal_failed/i, "native_provider_terminal_failed"],
+    [/ENOENT.*spawn|spawn.*ENOENT/i, "native_provider_executable_missing"],
+    [/EACCES.*spawn|spawn.*EACCES/i, "native_provider_executable_denied"],
+    [/\b429\b|TooManyRequests|rate[ -]?limit|free (?:usage|tier) (?:limit|quota)/i, "adapter_rate_limit_signaled"],
+    [/\b401\b|\b403\b|unauthorized|authentication required/i, "native_provider_auth_rejected"],
+    [/\b502\b|\b503\b|service unavailable|provider unavailable|bad gateway/i, "adapter_provider_unavailable_signaled"],
+    [/ETIMEDOUT|request timed out|connection timeout/i, "native_provider_timeout"],
+    [/ECONNREFUSED|connection refused/i, "native_provider_connection_refused"],
+    [/model (?:not found|rejected|unsupported)|unknown model/i, "native_provider_model_rejected"],
+    [/permission (?:was )?declined|approval required/i, "native_provider_approval_required"],
+  ];
+  const safeSignal = signals.find(([pattern]) => pattern.test(bounded))?.[1] ?? null;
+  return { available: true, bytes: Buffer.byteLength(bounded), safeSignal,
+    jsonLines, errorRecords, recordsWithErrorField, recordsWithCodeField };
+}
+
 export function assertHeartbeatQaSucceeded(run) {
   if (run?.status === "succeeded") return;
   // The provider may never have been called. Persisted interruption is
   // terminal and must not be mistaken for a 175-second provider timeout.
-  const code = run?.errorCode;
-  const stage = run?.executionStage;
-  const errorCode = typeof code === "string" && /^[a-z][a-z0-9_]{0,63}$/.test(code) ? code : null;
-  const executionStage = typeof stage === "string" &&
-    /^(preparing|dispatching|executing|settled)$/.test(stage) ? stage : null;
-  const safeSignal = safeFreeProviderFailureSignal(run);
-  throw new Error("Bostan synthetic heartbeat ended without success: " +
-    JSON.stringify({ status: run?.status ?? null, errorCode, executionStage,
-      ...(safeSignal ? { safeSignal } : {}) }));
+  throw new Error("Bostan synthetic heartbeat ended without success: " + JSON.stringify(safeHeartbeatQaDiagnostic(run)));
 }
 
 const MARKER = "BOSTAN_CLEAN_RUN_PASS";

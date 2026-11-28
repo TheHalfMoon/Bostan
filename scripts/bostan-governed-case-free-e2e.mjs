@@ -6,7 +6,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { qualifyFreeQaModel, isOpenRouterFreeQaModel } from "./bostan-free-model-policy.mjs";
+import { qualifyFreeQaModel, qualifyNativeOpenCodeQaModel, isOpenRouterFreeQaModel } from "./bostan-free-model-policy.mjs";
+import { LOCAL_OPENCODE_QA_MODEL, localOllamaAgentEnvironment } from "./bostan-opencode-local-admission.mjs";
 import { admitOpenRouterZeroCostQa } from "./bostan-openrouter-free-preflight.mjs";
 import { qualifyDisposableFirstAgentScope, selectSingleAssignmentRun,
   observeHeartbeatQaStatus,
@@ -26,7 +27,7 @@ export const NATIVE_CASE_QA_BUDGET = Object.freeze({
   totalMemoryGiB: 12, freeMemoryGiB: 6, tempFreeGiB: 8,
 });
 export function evaluateNativeCaseQaHost(input, budget = NATIVE_CASE_QA_BUDGET) {
-  const supported = ["darwin", "linux"].includes(input?.platform);
+  const supported = ["darwin", "linux", "win32"].includes(input?.platform);
   const enough = (actual, required) =>
     Number.isSafeInteger(actual) && actual >= required * GIB;
   const checks = {
@@ -48,12 +49,20 @@ export function inspectNativeCaseQaHost() {
     const free = Number(disk.bavail) * Number(disk.bsize);
     if (Number.isSafeInteger(free)) tempFreeBytes = free;
   } catch { /* Missing inspection is never a positive resource receipt. */ }
-  return evaluateNativeCaseQaHost({
+  const measured = {
     platform: process.platform,
     totalMemoryBytes: os.totalmem(),
     freeMemoryBytes: os.freemem(),
     tempFreeBytes,
-  });
+  };
+  return {
+    ...evaluateNativeCaseQaHost(measured),
+    resourcesGiB: {
+      total: Number((measured.totalMemoryBytes / GIB).toFixed(2)),
+      free: Number((measured.freeMemoryBytes / GIB).toFixed(2)),
+      tempFree: measured.tempFreeBytes === null ? null : Number((measured.tempFreeBytes / GIB).toFixed(2)),
+    },
+  };
 }
 export function requireNativeCaseQaHost() {
   const result = inspectNativeCaseQaHost();
@@ -104,13 +113,15 @@ export function qualifyGovernedCaseQa(env = process.env) {
  * OpenCode's own general-purpose shell/read/edit permissions denied.
  */
 export function nativeGovernedCaseAgentConfig({ model, workspace }) {
-  qualifyFreeQaModel(model);
+  qualifyNativeOpenCodeQaModel(model);
   if (!path.isAbsolute(workspace)) throw new Error("Governed Case needs an absolute disposable workspace");
-  return {
+  const config = {
     provider: "opencode", model, cwd: workspace,
     opencodePermissionMode: "deny", lifecycleMode: "per_turn",
     timeoutSec: 160,
   };
+  if (model === LOCAL_OPENCODE_QA_MODEL) config.env = localOllamaAgentEnvironment();
+  return config;
 }
 
 /**

@@ -1,5 +1,221 @@
 const DEFAULT_RECENT_LOG_LIMIT = 40;
 const RECENT_LOG_SUMMARY_LINES = 8;
+const PROCESS_DIAGNOSTIC_LINE = /^POSTGRES_CHILD_(?:SPAWN_ERROR code=[A-Z0-9_]{1,32}|CLOSED exitCode=(?:null|0|[1-9]\d{0,2}) signal=(?:none|SIG[A-Z]{1,12}) stdoutBytes=(?:0|[1-9]\d{0,8}) stderrBytes=(?:0|[1-9]\d{0,8}))$/;
+
+function postgresOutputLines(recentLogs: string[]): string[] {
+  return recentLogs.filter(line => !PROCESS_DIAGNOSTIC_LINE.test(line));
+}
+
+export type EmbeddedPostgresStartIssue =
+  | "POSTGRES_START_ADDRESS_IN_USE"
+  | "POSTGRES_START_DATA_DIRECTORY_DENIED"
+  | "POSTGRES_START_ROOT_REFUSED"
+  | "POSTGRES_START_LOCALE_INVALID"
+  | "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING"
+  | "POSTGRES_START_EXTENSION_MISSING"
+  | "POSTGRES_START_SHARED_MEMORY_FAILED"
+  | "POSTGRES_START_SHARED_MEMORY_RESOURCE_LIMIT"
+  | `POSTGRES_START_SHARED_MEMORY_OS_ERROR_${number}`
+  | "POSTGRES_START_DISK_FULL"
+  | "POSTGRES_START_CLUSTER_INCOMPATIBLE"
+  | "POSTGRES_START_CONFIGURATION_INVALID"
+  | "POSTGRES_START_RECOVERY_FAILED"
+  | "POSTGRES_START_LOGS_EMPTY"
+  | "POSTGRES_START_LOGS_UNCLASSIFIED";
+
+export interface EmbeddedPostgresStartDiagnostic {
+  sharedMemoryFailureKind: "PRE_EXISTING_BLOCK_IN_USE" | "CREATE_FAILED" | "MAP_FAILED" | "RESOURCE_LIMIT" | "SHARED_MEMORY_UNKNOWN" | null;
+  sharedMemoryEvidence: Array<"FATAL" | "DETAIL" | "HINT" | "EXISTING_OBJECT" | "CREATE" | "ALLOCATE" | "RESERVE" | "MAP" | "OS_ERROR" | "ACCESS_DENIED" | "RESOURCE_LIMIT">;
+  sharedMemorySystemCall: "CreateFileMapping" | "MapViewOfFile" | "VirtualAlloc" | "shmget" | "mmap" | null;
+  sharedMemoryOsErrorCode: number | null;
+  sharedMemoryLogLines: Array<{
+    severity: "FATAL" | "PANIC" | "ERROR" | "WARNING" | "LOG" | "DETAIL" | "HINT" | "OTHER";
+    kind: "CREATE_SEGMENT" | "OPEN_SEGMENT" | "MAP_SEGMENT" | "SYSTEM_CALL" | "ALLOCATION" | "RESERVATION" | "DYNAMIC_SHARED_MEMORY" | "MENTION_ONLY";
+  }>;
+  postgresLogLines: Array<{
+    severity: "PANIC" | "FATAL" | "ERROR" | "WARNING" | "LOG" | "DETAIL" | "HINT" | "OTHER";
+    kind: "ADDRESS_BIND" | "SHARED_MEMORY" | "PERMISSION" | "ROOT_REFUSAL" | "EXTENSION" | "RUNTIME_DEPENDENCY" | "CONFIGURATION" | "DATA_DIRECTORY" | "LOCALE" | "RECOVERY" | "DISK" | "ERROR_OTHER" | "OTHER";
+    dataDirectoryCause: "INVALID_PERMISSIONS" | "MISSING" | "ACCESS_DENIED" | "LOCK_FILE" | "CONFIGURATION" | null;
+  }>;
+}
+
+export interface EmbeddedPostgresRuntimeDependencyDiagnostic {
+  kind: "MISSING_DLL" | "MISSING_ENTRY_POINT" | "INVALID_IMAGE";
+  libraryBasename: string | null;
+}
+
+/** Extract only known Windows loader failures and an optional DLL basename. */
+export function summarizeEmbeddedPostgresRuntimeDependency(recentLogs: string[]): EmbeddedPostgresRuntimeDependencyDiagnostic | null {
+  const haystack = postgresOutputLines(recentLogs).slice(-DEFAULT_RECENT_LOG_LIMIT).join("\n").slice(-65536);
+  const kind: EmbeddedPostgresRuntimeDependencyDiagnostic["kind"] | null = /(?:0xc0000135|\.dll.{0,100}(?:was not found|could not be found|not found)|(?:was not found|could not be found).{0,100}\.dll)/i.test(haystack)
+    ? "MISSING_DLL"
+    : /(?:0xc0000139|entry point.{0,100}(?:not found|could not be located)|procedure.{0,100}entry point.{0,100}(?:not found|could not be located))/i.test(haystack)
+      ? "MISSING_ENTRY_POINT"
+      : /(?:0xc000007b|not designed to run on windows|bad image format)/i.test(haystack)
+        ? "INVALID_IMAGE"
+        : null;
+  if (!kind) return null;
+  const libraryBasename = haystack.match(/\b([A-Za-z0-9_.+-]{1,100}\.dll)\b/i)?.[1] ?? null;
+  return { kind, libraryBasename };
+}
+
+function summarizePostgresLogLines(recentLogs: string[]): EmbeddedPostgresStartDiagnostic["postgresLogLines"] {
+  const summaries: EmbeddedPostgresStartDiagnostic["postgresLogLines"] = [];
+  for (const line of recentLogs.slice(-DEFAULT_RECENT_LOG_LIMIT)) {
+    const severityMatch = /(?:^|\s)(PANIC|FATAL|ERROR|WARNING|LOG|DETAIL|HINT):/i.exec(line);
+    if (!severityMatch) continue;
+    const severity = severityMatch[1].toUpperCase() as EmbeddedPostgresStartDiagnostic["postgresLogLines"][number]["severity"];
+    const kind: EmbeddedPostgresStartDiagnostic["postgresLogLines"][number]["kind"] = /address already in use|could not bind|could not create any tcp\/ip sockets/i.test(line)
+      ? "ADDRESS_BIND"
+      : /shared memory/i.test(line)
+        ? "SHARED_MEMORY"
+        : /server must be started under an unprivileged user id|cannot be run as root|must not be run as root/i.test(line)
+          ? "ROOT_REFUSAL"
+        : /permission denied|access is denied|could not access the data directory/i.test(line)
+          ? "PERMISSION"
+          : /extension/i.test(line)
+            ? "EXTENSION"
+            : /module could not be found|library not loaded|image not found|could not open shared object/i.test(line)
+              ? "RUNTIME_DEPENDENCY"
+              : /configuration|invalid value|unrecognized parameter/i.test(line)
+                ? "CONFIGURATION"
+                : /directory|postmaster\.pid/i.test(line)
+                  ? "DATA_DIRECTORY"
+                  : /locale/i.test(line)
+                    ? "LOCALE"
+                    : /checkpoint|recovery/i.test(line)
+                      ? "RECOVERY"
+                      : /no space left|disk is full/i.test(line)
+                        ? "DISK"
+                        : ["PANIC", "FATAL", "ERROR"].includes(severity)
+                          ? "ERROR_OTHER"
+                          : "OTHER";
+    const dataDirectoryCause: EmbeddedPostgresStartDiagnostic["postgresLogLines"][number]["dataDirectoryCause"] = /data directory.{0,128}(?:has )?invalid permissions|invalid permissions.{0,128}data directory/i.test(line)
+      ? "INVALID_PERMISSIONS"
+      : /data directory.{0,128}(?:does not exist|no such file|not found)|(?:does not exist|no such file|not found).{0,128}data directory/i.test(line)
+        ? "MISSING"
+        : /permission denied|access is denied|could not access the data directory/i.test(line)
+          ? "ACCESS_DENIED"
+          : /postmaster\.pid|lock file/i.test(line)
+            ? "LOCK_FILE"
+            : /configuration file|postgresql\.conf/i.test(line)
+              ? "CONFIGURATION"
+              : null;
+    summaries.push({ severity, kind, dataDirectoryCause });
+    if (summaries.length > 8) summaries.shift();
+  }
+  return summaries;
+}
+
+/** Return only fixed, allowlisted facts from bounded PostgreSQL log lines. */
+function summarizeSharedMemoryLogLines(recentLogs: string[]): EmbeddedPostgresStartDiagnostic["sharedMemoryLogLines"] {
+  const summaries: EmbeddedPostgresStartDiagnostic["sharedMemoryLogLines"] = [];
+  const severityNames = new Set(["FATAL", "PANIC", "ERROR", "WARNING", "LOG", "DETAIL", "HINT"]);
+  for (const line of recentLogs.slice(-DEFAULT_RECENT_LOG_LIMIT)) {
+    if (!/shared memory|failed system call was/i.test(line)) continue;
+    const severityMatch = /(?:^|\s)([A-Z]+):/i.exec(line);
+    const severityCandidate = severityMatch?.[1]?.toUpperCase() ?? "OTHER";
+    const severity = (severityNames.has(severityCandidate) ? severityCandidate : "OTHER") as EmbeddedPostgresStartDiagnostic["sharedMemoryLogLines"][number]["severity"];
+    const kind: EmbeddedPostgresStartDiagnostic["sharedMemoryLogLines"][number]["kind"] = /failed system call was/i.test(line)
+      ? "SYSTEM_CALL"
+      : /could not create.{0,64}shared memory/i.test(line)
+        ? "CREATE_SEGMENT"
+        : /could not open.{0,64}shared memory/i.test(line)
+          ? "OPEN_SEGMENT"
+          : /could not map.{0,64}shared memory/i.test(line)
+            ? "MAP_SEGMENT"
+            : /allocat.{0,64}shared memory|shared memory.{0,64}allocat/i.test(line)
+              ? "ALLOCATION"
+              : /reserv.{0,64}shared memory|shared memory.{0,64}reserv/i.test(line)
+                ? "RESERVATION"
+                : /dynamic shared memory/i.test(line)
+                  ? "DYNAMIC_SHARED_MEMORY"
+                  : "MENTION_ONLY";
+    summaries.push({ severity, kind });
+    if (summaries.length > 8) summaries.shift();
+  }
+  return summaries;
+}
+
+function hasSharedMemoryFailure(haystack: string): boolean {
+  return /failed system call was|could not (?:create|open|map|allocate|reserve)[^\n.]{0,160}shared memory|shared memory[^\n.]{0,160}(?:failed|error code|still in use|cannot|could not|not enough|allocate|allocation|reserve|map|create|open)/i.test(haystack);
+}
+
+/** Extract only allowlisted shared-memory facts; never return PostgreSQL log text. */
+export function summarizeEmbeddedPostgresStartDiagnostic(recentLogs: string[]): EmbeddedPostgresStartDiagnostic {
+  const postgresLogs = postgresOutputLines(recentLogs);
+  const haystack = postgresLogs.join("\n").slice(-65536);
+  const sharedMemoryLogLines = summarizeSharedMemoryLogLines(postgresLogs);
+  if (!hasSharedMemoryFailure(haystack)) {
+    return { sharedMemoryFailureKind: null, sharedMemoryEvidence: [], sharedMemorySystemCall: null, sharedMemoryOsErrorCode: null, sharedMemoryLogLines, postgresLogLines: summarizePostgresLogLines(postgresLogs) };
+  }
+
+  const errorMatch = haystack.match(/shared memory[\s\S]{0,256}?error code\s+(\d{1,5})\b/i);
+  const systemCallMatch = haystack.match(/failed system call was\s+(CreateFileMapping|MapViewOfFile|VirtualAlloc|shmget|mmap)\b/i);
+  const parsedErrorCode = errorMatch ? Number(errorMatch[1]) : null;
+  const sharedMemoryFailureKind = /pre-existing shared memory block is still in use/i.test(haystack)
+    ? "PRE_EXISTING_BLOCK_IN_USE"
+    : /could not (?:create|open) shared memory segment/i.test(haystack)
+      ? "CREATE_FAILED"
+      : /could not map shared memory segment/i.test(haystack)
+        ? "MAP_FAILED"
+        : /not enough (?:system )?(?:memory|resources)|paging file|commit(?:ment)? limit|out of memory|cannot allocate memory|could not allocate.{0,64}shared memory/i.test(haystack)
+          ? "RESOURCE_LIMIT"
+          : "SHARED_MEMORY_UNKNOWN";
+  const sharedMemoryEvidence: EmbeddedPostgresStartDiagnostic["sharedMemoryEvidence"] = [];
+  if (/\bFATAL:/i.test(haystack)) sharedMemoryEvidence.push("FATAL");
+  if (/\bDETAIL:/i.test(haystack)) sharedMemoryEvidence.push("DETAIL");
+  if (/\bHINT:/i.test(haystack)) sharedMemoryEvidence.push("HINT");
+  if (/pre-existing|already exists|still in use/i.test(haystack)) sharedMemoryEvidence.push("EXISTING_OBJECT");
+  if (/\bcreate(?:d|s|ing)?\b/i.test(haystack)) sharedMemoryEvidence.push("CREATE");
+  if (/\ballocat(?:e|ed|es|ing|ion)\b/i.test(haystack)) sharedMemoryEvidence.push("ALLOCATE");
+  if (/\breserv(?:e|ed|es|ing|ation)\b/i.test(haystack)) sharedMemoryEvidence.push("RESERVE");
+  if (/\bmap(?:ped|ping)?\b/i.test(haystack)) sharedMemoryEvidence.push("MAP");
+  if (/error code\s+\d|windows error\s+\d/i.test(haystack)) sharedMemoryEvidence.push("OS_ERROR");
+  if (/permission denied|access is denied/i.test(haystack)) sharedMemoryEvidence.push("ACCESS_DENIED");
+  if (/not enough (?:system )?(?:memory|resources)|paging file|commit(?:ment)? limit|out of memory|cannot allocate memory|could not allocate.{0,64}shared memory/i.test(haystack)) {
+    sharedMemoryEvidence.push("RESOURCE_LIMIT");
+  }
+  return {
+    sharedMemoryFailureKind,
+    sharedMemoryEvidence,
+    sharedMemorySystemCall: (systemCallMatch?.[1] as EmbeddedPostgresStartDiagnostic["sharedMemorySystemCall"]) ?? null,
+    sharedMemoryOsErrorCode: parsedErrorCode !== null && parsedErrorCode > 0 && parsedErrorCode <= 65535
+      ? parsedErrorCode
+      : null,
+    sharedMemoryLogLines,
+    postgresLogLines: summarizePostgresLogLines(postgresLogs),
+  };
+}
+
+/** Classify bounded PostgreSQL startup output without returning any log text. */
+export function classifyEmbeddedPostgresStartIssue(recentLogs: string[]): EmbeddedPostgresStartIssue {
+  const postgresLogs = postgresOutputLines(recentLogs);
+  const haystack = postgresLogs.join("\n").slice(-65536);
+  if (!haystack.trim()) return "POSTGRES_START_LOGS_EMPTY";
+  if (summarizeEmbeddedPostgresRuntimeDependency(postgresLogs)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
+  if (/server must be started under an unprivileged user id|cannot be run as root|must not be run as root/i.test(haystack)) return "POSTGRES_START_ROOT_REFUSED";
+  if (/address already in use|could not bind.*(?:socket|address)|could not create any tcp\/ip sockets/i.test(haystack)) return "POSTGRES_START_ADDRESS_IN_USE";
+  if (/permission denied|access is denied|could not access the data directory|could not open.*(?:directory|postmaster\.pid)/i.test(haystack)) return "POSTGRES_START_DATA_DIRECTORY_DENIED";
+  if (/invalid locale|locale.*not supported|could not set locale/i.test(haystack)) return "POSTGRES_START_LOCALE_INVALID";
+  if (/pg_trgm|fuzzystrmatch|extension control file|extension script file|could not access file.*extension/i.test(haystack)) return "POSTGRES_START_EXTENSION_MISSING";
+  if (/could not load library|entry point.*not found|module could not be found|could not open.*\.(?:dll|so|dylib)/i.test(haystack)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
+  if (hasSharedMemoryFailure(haystack)) {
+    const osError = haystack.match(/shared memory[\s\S]{0,256}?error code\s+(\d{1,5})\b/i)?.[1];
+    if (osError && Number(osError) > 0 && Number(osError) <= 65535) {
+      return `POSTGRES_START_SHARED_MEMORY_OS_ERROR_${Number(osError)}`;
+    }
+    if (/error code (?:8|1455)\b|paging file|commit(?:ment)? limit|not enough (?:system )?(?:memory|resources)|cannot allocate memory|out of memory/i.test(haystack)) {
+      return "POSTGRES_START_SHARED_MEMORY_RESOURCE_LIMIT";
+    }
+    return "POSTGRES_START_SHARED_MEMORY_FAILED";
+  }
+  if (/no space left on device|not enough space|disk is full/i.test(haystack)) return "POSTGRES_START_DISK_FULL";
+  if (/database files are incompatible with server|database system identifier differs|wrong database system identifier/i.test(haystack)) return "POSTGRES_START_CLUSTER_INCOMPATIBLE";
+  if (/invalid value for parameter|unrecognized configuration parameter|could not open configuration file|configuration file contains errors/i.test(haystack)) return "POSTGRES_START_CONFIGURATION_INVALID";
+  if (/could not locate a valid checkpoint record|invalid primary checkpoint record|redo is not required/i.test(haystack)) return "POSTGRES_START_RECOVERY_FAILED";
+  return "POSTGRES_START_LOGS_UNCLASSIFIED";
+}
 
 function toError(error: unknown, fallbackMessage: string): Error {
   if (error instanceof Error) return error;
@@ -37,6 +253,7 @@ function detectEmbeddedPostgresHint(recentLogs: string[]): string | null {
 
 export function createEmbeddedPostgresLogBuffer(limit = DEFAULT_RECENT_LOG_LIMIT): {
   append(message: unknown): void;
+  clear(): void;
   getRecentLogs(): string[];
 } {
   const recentLogs: string[] = [];
@@ -58,6 +275,9 @@ export function createEmbeddedPostgresLogBuffer(limit = DEFAULT_RECENT_LOG_LIMIT
           recentLogs.splice(0, recentLogs.length - limit);
         }
       }
+    },
+    clear() {
+      recentLogs.length = 0;
     },
     getRecentLogs() {
       return [...recentLogs];

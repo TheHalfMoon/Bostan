@@ -9,6 +9,7 @@ import { appendHeartbeatRunEvent } from "./heartbeat-run-events.js";
 import { logger } from "../middleware/logger.js";
 import { and, eq, inArray, isNull, not, or, sql } from "drizzle-orm";
 import {
+  agentWakeupRequests,
   chatActions,
   environmentLeases,
   heartbeatRuns,
@@ -28,6 +29,7 @@ import { isSupersededConversationRun } from "./agent-conversations.js";
 import { hasRequiredWorkspaceRecovery } from "./workspace-restore-recovery-state.js";
 import { hasRemoteTerminationReceipt } from "./remote-execution-termination.js";
 import { readSystemRecovery } from "./system-recovery-state.js";
+import { readTaskRetryIntent } from "./task-retry.js";
 
 /** An operator records observed outcomes; this is not permission to blindly retry. */
 export async function validateExecutionReconciliation(input: {
@@ -171,7 +173,7 @@ export async function markExecutionReconciliation(
   db: Db,
   action: Pick<
     typeof issueRecoveryActions.$inferSelect,
-    "companyId" | "id" | "evidence" | "sourceIssueId"
+    "companyId" | "id" | "evidence" | "sourceIssueId" | "returnOwnerAgentId"
   >,
   decision: ExecutionReconciliation,
   actorId: string,
@@ -203,6 +205,25 @@ export async function markExecutionReconciliation(
       throw conflict("The authorized chat retry owner is no longer valid.");
     }
   }
+  // A durable board Retry already owns continuation authority for this exact
+  // failed run. Let its normal resume path deliver it instead of also creating
+  // a recovery-action continuation with a second run identity.
+  const [boardRetry] = !deliveryOwner && !options?.workspaceRepairOnly && action.returnOwnerAgentId
+    ? await db.select().from(agentWakeupRequests).where(and(
+        eq(agentWakeupRequests.companyId, action.companyId),
+        eq(agentWakeupRequests.agentId, action.returnOwnerAgentId),
+        eq(agentWakeupRequests.reason, "task_retry"),
+        eq(agentWakeupRequests.status, "deferred_issue_execution"),
+        eq(agentWakeupRequests.requestedByActorType, "user"),
+        sql`${agentWakeupRequests.payload}->>'issueId' = ${action.sourceIssueId}`,
+        sql`${agentWakeupRequests.payload}->'taskRetry'->>'sourceRunId' = ${decision.runId}`,
+      )).orderBy(agentWakeupRequests.requestedAt).limit(1)
+    : [];
+  const retryIntent = readTaskRetryIntent(boardRetry?.payload);
+  const ownsBoardRetry = Boolean(boardRetry && retryIntent
+    && retryIntent.generationId === boardRetry.id
+    && !retryIntent.canonicalIntentId && !retryIntent.chatActionId
+    && retryIntent.actorId === boardRetry.requestedByActorId);
   await db.transaction(async tx => {
     await notifyDeliveryWork(tx, DELIVERY_QUEUES.executionContinuation);
     await notifyDeliveryWork(tx, DELIVERY_QUEUES.executionReplacement);
@@ -229,8 +250,10 @@ export async function markExecutionReconciliation(
             actorId,
             recordedAt: new Date().toISOString(),
           },
-          continuationDelivery: options?.workspaceRepairOnly ? "not_requested" : deliveryOwner ? "delegated" : "pending",
-          ...(deliveryOwner ? { continuationDeliveryOwner: deliveryOwner } : {}),
+          continuationDelivery: options?.workspaceRepairOnly ? "not_requested"
+            : deliveryOwner || ownsBoardRetry ? "delegated" : "pending",
+          ...(deliveryOwner ? { continuationDeliveryOwner: deliveryOwner }
+            : ownsBoardRetry ? { continuationDeliveryOwner: { kind: "board_task_retry", requestId: boardRetry!.id } } : {}),
         },
       })
       .where(

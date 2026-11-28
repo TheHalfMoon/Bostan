@@ -6,6 +6,8 @@ import test from "node:test";
 import {
   isolatedOpenCodeAdmissionEnvironment,
   freeModelResponseMatches,
+  openCodeAdmissionArgs,
+  summarizeFreeModelAdmissionOutput,
   runBoundedAdmissionChild,
   admitFreeOpenCodeModel,
 } from "./bostan-opencode-free-admission.mjs";
@@ -46,6 +48,48 @@ test("only a real JSON text event with exact response qualifies", () => {
   assert.equal(freeModelResponseMatches(JSON.stringify({ type: "text", part: { text: "before " + expected } })), false);
   assert.equal(freeModelResponseMatches("no JSON " + expected), false);
   assert.equal(freeModelResponseMatches(textEvent + "\n{bad json"), true);
+  assert.equal(freeModelResponseMatches([
+    JSON.stringify({ type: "text", part: { text: "BOSTAN_ISOLATED_" } }),
+    JSON.stringify({ type: "text", part: { text: "FREE_MODEL_READY" } }),
+  ].join("\n")), true);
+  assert.equal(freeModelResponseMatches([
+    JSON.stringify({ type: "text", part: { text: "BOSTAN_ISOLATED_" } }),
+    JSON.stringify({ type: "text", part: { text: "FREE_MODEL_READY plus extra" } }),
+  ].join("\n")), false);
+});
+
+test("admission uses only flags supported by the packaged OpenCode run command", () => {
+  const args = openCodeAdmissionArgs("ollama/qwen2.5-coder:1.5b", "BOSTAN_LOCAL_MODEL_READY");
+  assert.deepEqual(args, ["run", "--print-logs", "--log-level", "DEBUG", "--format", "json", "--model", "ollama/qwen2.5-coder:1.5b",
+    "Reply exactly BOSTAN_LOCAL_MODEL_READY. Do not use tools."]);
+  assert.ok(!args.includes("--standalone"));
+});
+
+test("admission failure summary is bounded and omits URL, path, and credential-like output", () => {
+  const output = [
+    JSON.stringify({ type: "step_start" }),
+    JSON.stringify({ type: "text", part: { text: "wrong https://private.invalid sk-abcdefghijklmnopqrstuvwxyz C:\\\\Users\\\\person\\\\secret" } }),
+    JSON.stringify({ type: "error", error: { name: "RequestError", data: { message: "request to https://private.invalid failed with key sk-abcdefghijklmnopqrstuvwxyz at C:\\\\Users\\\\person\\\\secret" } } }),
+  ].join("\n");
+  const summary = summarizeFreeModelAdmissionOutput(output, undefined,
+    "provider failed https://private.invalid sk-abcdefghijklmnopqrstuvwxyz C:\\\\Users\\\\person\\\\secret");
+  assert.deepEqual(summary.eventTypes, ["step_start", "text", "error"]);
+  assert.equal(summary.textEventCount, 1);
+  assert.equal(summary.includesExpected, false);
+  assert.equal(summary.errors.length, 1);
+  assert.equal(summary.errors[0].name, "RequestError");
+  assert.ok(summary.errors[0].message.length <= 160);
+  assert.doesNotMatch(summary.errors[0].message, /https?:|sk-|C:\\\\Users|private\.invalid|secret/);
+  assert.ok(summary.preview.length <= 160);
+  assert.doesNotMatch(summary.preview, /https?:|sk-|C:\\\\Users|private\.invalid|secret/);
+  assert.ok(summary.stderrLength > 0);
+  assert.ok(summary.stderrPreview.length <= 160);
+  assert.doesNotMatch(summary.stderrPreview, /https?:|sk-|C:\\\\Users|private\.invalid|secret/);
+  assert.ok(summary.stderrTail.length <= 512);
+  assert.doesNotMatch(summary.stderrTail, /https?:|sk-|C:\\\\Users|private\.invalid|secret/);
+  assert.equal(summary.errorLogs.length, 1);
+  assert.ok(summary.errorLogs[0].length <= 512);
+  assert.doesNotMatch(summary.errorLogs[0], /https?:|sk-|C:\\\\Users|private\.invalid|secret/);
 });
 
 test("child stdin is EOF from birth and prints the required JSON text event", async () => {

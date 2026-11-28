@@ -190,6 +190,29 @@ describe("opencode remote environment diagnostics", () => {
     expect(discoverOpenCodeModels).not.toHaveBeenCalled();
   });
 
+  it.each([
+    { parsedError: true, expected: "opencode_hello_probe_error_event" },
+    { parsedError: false, expected: "opencode_hello_probe_process_exit" },
+  ])("classifies failed native hello probes without exposing process output ($expected)", async ({ parsedError, expected }) => {
+    const localProviders = { ollama: { models: { "qwen2.5-coder:1.5b": {} } } };
+    runAdapterExecutionTargetProcess.mockResolvedValueOnce({
+      exitCode: 17, signal: null, timedOut: false,
+      stdout: parsedError ? JSON.stringify({ type: "error", error: { message: "secret provider output" } }) : "",
+      stderr: "secret diagnostic output", pid: 9123, startedAt: new Date().toISOString(),
+    } as Awaited<ReturnType<typeof runAdapterExecutionTargetProcess>>);
+    const result = await testEnvironment({ companyId: "synthetic", adapterType: "paperclip_runner",
+      config: { model: "ollama/qwen2.5-coder:1.5b", env: {
+        XDG_CONFIG_HOME: configHome,
+        PAPERCLIP_OPENCODE_PROVIDERS: JSON.stringify(localProviders),
+      } } });
+    const failed = result.checks.find(check => check.code === expected);
+    expect(failed?.level).toBe("error");
+    expect(JSON.stringify(failed)).not.toMatch(/secret|provider output|diagnostic output/);
+    const call = runAdapterExecutionTargetProcess.mock.calls[0] as unknown as [unknown, unknown, unknown, unknown,
+      { env: Record<string, string> }];
+    expect(JSON.parse(call[4].env.PAPERCLIP_OPENCODE_PROVIDERS)).toEqual(localProviders);
+  });
+
   it("preserves an explicitly configured native probe directory", async () => {
     await testEnvironment({ companyId: "company-1", adapterType: "paperclip_runner",
       config: { model: "provider/model", cwd: configHome, env: { XDG_CONFIG_HOME: configHome } } });

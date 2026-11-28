@@ -63,6 +63,7 @@ import { and, eq } from "drizzle-orm";
 import {
   createDb,
   ensurePostgresDatabase,
+  classifyEmbeddedPostgresStartIssue,
   formatEmbeddedPostgresError,
   getPostgresDataDirectory,
   inspectMigrations,
@@ -194,6 +195,7 @@ type EmbeddedPostgresCtor = new (opts: {
   port: number;
   persistent: boolean;
   initdbFlags?: string[];
+  postgresFlags?: string[];
   onLog?: (message: unknown) => void;
   onError?: (message: unknown) => void;
 }) => EmbeddedPostgresInstance;
@@ -214,7 +216,11 @@ export interface StartedServer {
 // the process dies, and in a restart loop the leftover backends of every
 // failed generation can exhaust `max_connections` before the next boot even
 // gets a connection.
-type StartupDatabaseTeardown = { close: (() => Promise<void>) | null };
+type StartupDatabaseTeardown = {
+  close: (() => Promise<void>) | null;
+  failureCode: string;
+  migrationFailure: string | null;
+};
 
 // Ends the pool behind a drizzle client. Tolerates a client without `$client`
 // (test doubles) and never throws, so it is safe on every exit path.
@@ -225,34 +231,82 @@ async function endDatabaseClient(client: unknown, timeoutSeconds: number): Promi
   await sql.end({ timeout: timeoutSeconds });
 }
 
-export async function startServer(): Promise<StartedServer> {
-  const startupDatabase: StartupDatabaseTeardown = { close: null };
+type StartupProgressStage =
+  | "server_start_entered"
+  | "instrumentation_starting" | "instrumentation_ready"
+  | "error_monitoring_starting" | "error_monitoring_ready"
+  | "signing_secret_starting" | "signing_secret_ready"
+  | "config_loading" | "config_loaded"
+  | "database_contract_checking" | "database_contract_ready"
+  | "external_database_migrations_starting" | "external_database_migrations_ready"
+  | "postgres_dependency_importing" | "postgres_dependency_imported"
+  | "postgres_native_runtime_preparing" | "postgres_native_runtime_prepared"
+  | "postgres_initializing" | "postgres_initialized"
+  | "postgres_starting" | "postgres_started"
+  | "postgres_database_checking" | "postgres_database_ready"
+  | "postgres_migrations_starting" | "postgres_migrations_ready";
+
+export async function startServer(options?: {
+  embeddedPostgresRuntimeRoot?: string;
+  onStartupFailure?: (failureCode: string, migrationFile?: string, error?: unknown) => void;
+  onStartupProgress?: (stage: StartupProgressStage) => void;
+}): Promise<StartedServer> {
+  const reportStartupProgress = (stage: StartupProgressStage) => {
+    try { options?.onStartupProgress?.(stage); }
+    catch { /* Diagnostic observers must not prevent server startup. */ }
+  };
+  reportStartupProgress("server_start_entered");
+  const startupDatabase: StartupDatabaseTeardown = {
+    close: null,
+    failureCode: "SERVER_STARTUP_FAILED",
+    migrationFailure: null,
+  };
   try {
-    return await startServerWithDatabaseTeardown(startupDatabase);
+    return await startServerWithDatabaseTeardown(
+      startupDatabase,
+      reportStartupProgress,
+      options?.embeddedPostgresRuntimeRoot,
+    );
   } catch (error) {
     if (startupDatabase.close) {
       await startupDatabase.close().catch((closeError) => {
         logger.error({ err: closeError }, "failed to close database clients after startup failure");
       });
     }
+    try { options?.onStartupFailure?.(startupDatabase.failureCode, startupDatabase.migrationFailure ?? undefined, error); }
+    catch (callbackError) { logger.error({ err: callbackError }, "desktop startup diagnostic callback failed"); }
     throw error;
   }
 }
 
 async function startServerWithDatabaseTeardown(
   startupDatabase: StartupDatabaseTeardown,
+  reportStartupProgress: (stage: StartupProgressStage) => void,
+  embeddedPostgresRuntimeRoot?: string,
 ): Promise<StartedServer> {
+  startupDatabase.failureCode = "SERVER_INSTRUMENTATION_FAILED";
+  reportStartupProgress("instrumentation_starting");
   setStartupRecoveryPhase("starting");
   warnIfUnsupportedNodeVersion(process.versions.node, (message) => logger.warn(message));
 
   // Tracing must be active (or have failed and logged) before the first DB
   // connection or the HTTP server exists — see instrumentation.ts.
   await instrumentationReady;
+  reportStartupProgress("instrumentation_ready");
+  startupDatabase.failureCode = "SERVER_ERROR_MONITORING_FAILED";
   // Error monitoring must be ready before the first request can fail — see
   // sentry.ts.
+  reportStartupProgress("error_monitoring_starting");
   await sentryReady;
+  reportStartupProgress("error_monitoring_ready");
+  startupDatabase.failureCode = "SERVER_SIGNING_SECRET_FAILED";
+  reportStartupProgress("signing_secret_starting");
   ensureDecisionSigningSecret();
+  reportStartupProgress("signing_secret_ready");
+  startupDatabase.failureCode = "SERVER_CONFIG_FAILED";
+  reportStartupProgress("config_loading");
   let config = loadConfig();
+  reportStartupProgress("config_loaded");
   const offline = isBostanOffline();
   if (offline) {
     logger.info({ env: OFFLINE_ENV, suppressed: OFFLINE_SUPPRESSED_JOBS }, "offline mode: scheduled outbound jobs are suppressed");
@@ -299,6 +353,7 @@ async function startServerWithDatabaseTeardown(
   
   type EnsureMigrationsOptions = {
     autoApply?: boolean;
+    onMigrationFailure?: (migrationFile: string) => void;
   };
   
   async function ensureMigrations(
@@ -334,7 +389,7 @@ async function startServerWithDatabaseTeardown(
       }
   
       logger.info({ pendingMigrations: state.pendingMigrations }, `Applying ${state.pendingMigrations.length} pending migrations for ${label}`);
-      await applyPendingMigrations(connectionString);
+      await applyPendingMigrations(connectionString, { onMigrationFailure: opts?.onMigrationFailure });
       return "applied (pending migrations)";
     }
   
@@ -355,7 +410,7 @@ async function startServerWithDatabaseTeardown(
     }
 
     logger.info({ pendingMigrations: state.pendingMigrations }, `Applying ${state.pendingMigrations.length} pending migrations for ${label}`);
-    await applyPendingMigrations(connectionString);
+    await applyPendingMigrations(connectionString, { onMigrationFailure: opts?.onMigrationFailure });
     return "applied (pending migrations)";
   }
   
@@ -461,36 +516,51 @@ async function startServerWithDatabaseTeardown(
   let startupDbInfo:
     | { mode: "external-postgres"; connectionString: string }
     | { mode: "embedded-postgres"; dataDir: string; port: number };
+  reportStartupProgress("database_contract_checking");
   assertCloudDatabaseContract();
+  reportStartupProgress("database_contract_ready");
+  startupDatabase.failureCode = "DATABASE_BOOTSTRAP_FAILED";
   if (config.databaseUrl) {
+    startupDatabase.failureCode = "DATABASE_MIGRATION_FAILED";
     const migrationUrl = config.databaseMigrationUrl ?? config.databaseUrl;
+    reportStartupProgress("external_database_migrations_starting");
     migrationSummary = await ensureMigrations(migrationUrl, "PostgreSQL");
+    reportStartupProgress("external_database_migrations_ready");
   
+    startupDatabase.failureCode = "DATABASE_BOOTSTRAP_FAILED";
     db = createDb(config.databaseUrl);
     pluginMigrationDb = config.databaseMigrationUrl ? createDb(config.databaseMigrationUrl) : db;
     logger.info("Using external PostgreSQL via DATABASE_URL/config");
     activeDatabaseConnectionString = config.databaseUrl;
     startupDbInfo = { mode: "external-postgres", connectionString: config.databaseUrl };
   } else {
+    startupDatabase.failureCode = "POSTGRES_BOOTSTRAP_FAILED";
     const moduleName = "embedded-postgres";
+    startupDatabase.failureCode = "POSTGRES_DEPENDENCY_IMPORT_FAILED";
     let EmbeddedPostgres: EmbeddedPostgresCtor;
     try {
       // embedded-postgres registers async-exit-hook handlers as an import side
       // effect. Those handlers stop PostgreSQL immediately on SIGINT/SIGTERM,
       // racing Paperclip's later heartbeat snapshot query. Paperclip explicitly
       // stops the managed cluster in its own ordered shutdown path instead.
+      reportStartupProgress("postgres_dependency_importing");
       const mod = await loadWithoutCoordinatedShutdownSignalHooks(
         () => import(moduleName),
       );
       EmbeddedPostgres = mod.default as EmbeddedPostgresCtor;
-    } catch {
+      reportStartupProgress("postgres_dependency_imported");
+    } catch (cause) {
       throw new Error(
         "Embedded PostgreSQL mode requires dependency `embedded-postgres`. Reinstall dependencies (without omitting required packages), or set DATABASE_URL for external Postgres.",
+        { cause },
       );
     }
-    await prepareEmbeddedPostgresNativeRuntime();
-  
     const dataDir = resolve(config.embeddedPostgresDataDir);
+    startupDatabase.failureCode = "POSTGRES_NATIVE_RUNTIME_PREPARE_FAILED";
+    reportStartupProgress("postgres_native_runtime_preparing");
+    const embeddedPostgresRuntimeFlags = await prepareEmbeddedPostgresNativeRuntime(dataDir, embeddedPostgresRuntimeRoot);
+    reportStartupProgress("postgres_native_runtime_prepared");
+    startupDatabase.failureCode = "POSTGRES_BOOTSTRAP_FAILED";
     const configuredPort = config.embeddedPostgresPort;
     let port = configuredPort;
     const logBuffer = createEmbeddedPostgresLogBuffer(120);
@@ -590,6 +660,7 @@ async function startServerWithDatabaseTeardown(
           port,
           persistent: true,
           initdbFlags: ["--encoding=UTF8", "--locale=C", "--lc-messages=C"],
+          postgresFlags: embeddedPostgresRuntimeFlags,
           onLog: appendEmbeddedPostgresLog,
           onError: appendEmbeddedPostgresLog,
         });
@@ -597,13 +668,19 @@ async function startServerWithDatabaseTeardown(
 
         if (!clusterAlreadyInitialized) {
           try {
+            reportStartupProgress("postgres_initializing");
             await embeddedPostgres.initialise();
+            reportStartupProgress("postgres_initialized");
           } catch (err) {
             logEmbeddedPostgresFailure("initialise", err);
-            throw formatEmbeddedPostgresError(err, {
+            const startupError = formatEmbeddedPostgresError(err, {
               fallbackMessage: `Failed to initialize embedded PostgreSQL cluster in ${dataDir} on port ${port}`,
               recentLogs: logBuffer.getRecentLogs(),
             });
+            // The desktop host receives only this fixed code, not the formatted
+            // error text or buffered PostgreSQL startup logs.
+            Object.assign(startupError, { code: "POSTGRES_INIT_FAILED" });
+            throw startupError;
           }
         } else {
           logger.info(`Embedded PostgreSQL cluster already exists (${clusterVersionFile}); skipping init`);
@@ -614,15 +691,31 @@ async function startServerWithDatabaseTeardown(
           rmSync(postmasterPidFile, { force: true });
         }
         try {
+          reportStartupProgress("postgres_starting");
           await embeddedPostgres.start();
+          reportStartupProgress("postgres_started");
         } catch (err) {
           logEmbeddedPostgresFailure("start", err);
-          throw formatEmbeddedPostgresError(err, {
+          const recentLogs = logBuffer.getRecentLogs();
+          const startupError = formatEmbeddedPostgresError(err, {
             fallbackMessage: `Failed to start embedded PostgreSQL on port ${port}`,
-            recentLogs: logBuffer.getRecentLogs(),
+            recentLogs,
           });
+          // embedded-postgres may reject with no Error when its process exits
+          // before the ready marker; distinguish that phase without forwarding
+          // its buffered stdout, stderr, paths, or connection information.
+          Object.assign(startupError, {
+            code: "POSTGRES_START_FAILED",
+            postgresStartupIssue: classifyEmbeddedPostgresStartIssue(recentLogs),
+          });
+          throw startupError;
         }
         embeddedPostgresStartedByThisProcess = true;
+        const stopEmbeddedPostgresOnStartupFailure = async () => {
+          if (!embeddedPostgres || !embeddedPostgresStartedByThisProcess) return;
+          await (embeddedPostgresSupervisor?.shutdown() ?? embeddedPostgres.stop());
+        };
+        startupDatabase.close = stopEmbeddedPostgresOnStartupFailure;
         embeddedPostgresSupervisor = createEmbeddedPostgresSupervisor({
           initialInstance: embeddedPostgres,
           createInstance: createEmbeddedPostgres,
@@ -656,8 +749,11 @@ async function startServerWithDatabaseTeardown(
       }
     }
   
+    startupDatabase.failureCode = "POSTGRES_DATABASE_FAILED";
     const embeddedAdminConnectionString = `postgres://paperclip:paperclip@127.0.0.1:${port}/postgres`;
+    reportStartupProgress("postgres_database_checking");
     const dbStatus = await ensurePostgresDatabase(embeddedAdminConnectionString, "paperclip");
+    reportStartupProgress("postgres_database_ready");
     if (dbStatus === "created") {
       logger.info("Created embedded PostgreSQL database: paperclip");
     }
@@ -667,10 +763,15 @@ async function startServerWithDatabaseTeardown(
     if (shouldAutoApplyFirstRunMigrations) {
       logger.info("Detected first-run embedded PostgreSQL setup; applying pending migrations automatically");
     }
+    startupDatabase.failureCode = "POSTGRES_MIGRATION_FAILED";
+    reportStartupProgress("postgres_migrations_starting");
     migrationSummary = await ensureMigrations(embeddedConnectionString, "Embedded PostgreSQL", {
       autoApply: shouldAutoApplyFirstRunMigrations,
+      onMigrationFailure: migrationFile => { startupDatabase.migrationFailure = migrationFile; },
     });
+    reportStartupProgress("postgres_migrations_ready");
   
+    startupDatabase.failureCode = "POSTGRES_DATABASE_FAILED";
     db = createDb(embeddedConnectionString);
     pluginMigrationDb = db;
     logger.info("Embedded PostgreSQL ready");
@@ -687,8 +788,16 @@ async function startServerWithDatabaseTeardown(
     const clients = pluginMigrationDb === db ? [db] : [db, pluginMigrationDb];
     await Promise.all([...clients.map((client) => endDatabaseClient(client, 5)), closeLivenessDb(db, 5)]);
   };
-  startupDatabase.close = closeDatabaseClients;
+  startupDatabase.close = async () => {
+    try { await closeDatabaseClients(); }
+    finally {
+      if (embeddedPostgres && embeddedPostgresStartedByThisProcess) {
+        await (embeddedPostgresSupervisor?.shutdown() ?? embeddedPostgres.stop());
+      }
+    }
+  };
   setSentryRunLinkResolver(createSentryRunLinkResolver(db));
+  startupDatabase.failureCode = "SERVER_RUNTIME_INITIALIZATION_FAILED";
   
   // A claimed warm-pool stack may restart while its provider environment still
   // names the pool host. Restore the signed, durable identity before Better

@@ -11,18 +11,21 @@ import {
   costEvents,
   agents,
   agentRuntimeState,
+  agentTaskSessions,
   authUsers,
   agentWakeupRequests,
   activityLog,
   caseHandoffs,
   cases,
   companies,
+  companySkills,
   createDb,
   documentRevisions,
   documents,
   environmentLeases,
   environments,
   heartbeatRuns,
+  heartbeatRunEvents,
   issueComments,
   issueInboxArchives,
   issueRecoveryActions,
@@ -39,6 +42,7 @@ import { errorHandler } from "../middleware/index.js";
 import { issueRoutes } from "../routes/issues.js";
 import { buildPaperclipWakePayload, heartbeatService } from "../services/heartbeat.js";
 import { deliverReconciledExecutions } from "../services/execution-recovery-resolution.js";
+import { requestTaskRetry } from "../services/task-retry.js";
 import { workspaceOperationService, isNativeWorkspaceFinalizationOperationActive } from "../services/workspace-operations.js";
 import { issueRecoveryActionService } from "../services/issue-recovery-actions.js";
 import { recoveryService } from "../services/recovery/service.js";
@@ -148,6 +152,7 @@ if (!embeddedPostgresSupport.supported) {
 describeEmbeddedPostgres("issue recovery actions", () => {
   let tempDb: Awaited<ReturnType<typeof startEmbeddedPostgresTestDatabase>> | null = null;
   let db: ReturnType<typeof createDb>;
+  let heartbeatServicesToDrain: Array<ReturnType<typeof heartbeatService>> = [];
   let operationLogRoot: string;
   const priorOperationLogRoot = process.env.WORKSPACE_OPERATION_LOG_BASE_PATH;
 
@@ -159,6 +164,8 @@ describeEmbeddedPostgres("issue recovery actions", () => {
   }, 30_000);
 
   afterEach(async () => {
+    await Promise.all(heartbeatServicesToDrain.map((heartbeat) => heartbeat.drainActiveRunExecutions()));
+    heartbeatServicesToDrain = [];
     await db.delete(caseHandoffs);
     await db.delete(cases);
     await db.delete(documentRevisions);
@@ -170,6 +177,9 @@ describeEmbeddedPostgres("issue recovery actions", () => {
     await db.delete(environmentLeases);
     await db.delete(activityLog);
     await db.delete(costEvents);
+    // These audit/session references are intentionally non-cascading.
+    await db.delete(agentTaskSessions);
+    await db.delete(heartbeatRunEvents);
     await db.delete(heartbeatRuns);
     await db.delete(agentWakeupRequests);
     await db.delete(environments);
@@ -177,6 +187,7 @@ describeEmbeddedPostgres("issue recovery actions", () => {
     await db.delete(issues);
     await db.delete(agentRuntimeState);
     await db.delete(agents);
+    await db.delete(companySkills);
     await db.delete(companies);
     await db.delete(authUsers);
   });
@@ -2049,6 +2060,9 @@ describeEmbeddedPostgres("issue recovery actions", () => {
     const runId = randomUUID();
     await seedHeartbeatRun({ companyId, agentId: coderId, runId, issueId: sourceIssueId, status: "failed" });
     await db.update(issues).set({ status: "blocked" }).where(eq(issues.id, sourceIssueId));
+    const retry = await requestTaskRetry({ db, companyId, issueId: sourceIssueId, actorId: "local-board",
+      actorSource: "local_implicit", observedRunId: runId, idempotencyKey: randomUUID() });
+    expect(retry.accepted).toBe(true);
     const [action] = await db.insert(issueRecoveryActions).values({
       companyId, sourceIssueId, kind: "active_run_watchdog", status: "resolved", outcome: "blocked",
       ownerType: "board", returnOwnerAgentId: coderId, cause: "uncertain_external_action", fingerprint: runId,
@@ -2066,9 +2080,24 @@ describeEmbeddedPostgres("issue recovery actions", () => {
     expect(resolved.body.issue.status).toBe("todo");
     const [recorded] = await db.select().from(issueRecoveryActions).where(eq(issueRecoveryActions.id, action!.id));
     expect(recorded!.evidence).not.toHaveProperty("automaticRecovery");
-    expect(recorded!.evidence).toMatchObject({ executionReconciliation: { runId }, continuationDelivery: "pending" });
+    expect(recorded!.evidence).toMatchObject({ executionReconciliation: { runId }, continuationDelivery: "delegated",
+      continuationDeliveryOwner: { kind: "board_task_retry", requestId: retry.requestId } });
     await request(app).post(`/api/issues/${sourceIssueId}/recovery-actions/resolve`).send(body).expect(200);
     expect((await db.select().from(issueRecoveryActions).where(eq(issueRecoveryActions.id, action!.id)))[0]).toEqual(recorded);
+    const heartbeat = heartbeatService(db, { runtimeEnv: {} });
+    heartbeatServicesToDrain.push(heartbeat);
+    await deliverReconciledExecutions(db, heartbeat.wakeup);
+    await heartbeat.resumeTaskRetry(companyId, retry.requestId!);
+    const continuations = await db.select().from(heartbeatRuns).where(and(
+      eq(heartbeatRuns.companyId, companyId),
+      sql`${heartbeatRuns.contextSnapshot}->>'taskRetryRequestId' = ${retry.requestId}`,
+    ));
+    expect(continuations).toHaveLength(1);
+    await deliverReconciledExecutions(db, heartbeat.wakeup);
+    expect(await db.select().from(heartbeatRuns).where(and(
+      eq(heartbeatRuns.companyId, companyId),
+      sql`${heartbeatRuns.contextSnapshot}->>'taskRetryRequestId' = ${retry.requestId}`,
+    ))).toHaveLength(1);
   });
 
   async function seedReconciledDelivery() {
@@ -2132,11 +2161,13 @@ describeEmbeddedPostgres("issue recovery actions", () => {
         },
       })
       .returning();
+    const heartbeat = heartbeatService(db, { runtimeEnv: {} });
+    heartbeatServicesToDrain.push(heartbeat);
     return {
       ...fixture,
       previousRunId,
       action: action!,
-      heartbeat: heartbeatService(db, { runtimeEnv: {} }),
+      heartbeat,
     };
   }
 

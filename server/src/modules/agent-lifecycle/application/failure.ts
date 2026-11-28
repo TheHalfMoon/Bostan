@@ -10,6 +10,8 @@ const reasons = {
   harness_cwd_invalid: "The working directory is unavailable. Check the working directory in Configuration, then retry.",
   harness_probe_timed_out: "The execution test timed out. Bostan will retry automatically. If this continues, run the agent test in Configuration.",
   harness_probe_failed: "The execution tool launched, but its hello verification request failed. Run the agent test in Configuration for the check codes; no task was executed.",
+  harness_probe_error_event: "The OpenCode hello request returned an error response. Check the local model provider and endpoint; no task was executed.",
+  harness_probe_process_exit: "The OpenCode hello process exited before verifying the model response. Check the OpenCode runtime and local provider configuration; no task was executed.",
   harness_probe_transport_unavailable: "The execution tool's hello verification could not complete due to a connection or transport error. Verify local network and provider availability; no task was executed.",
   harness_probe_unexpected_output: "The execution test did not return the expected response. Run the agent test in Configuration to inspect the failed checks.",
   test_environment_unavailable: "The test environment is unavailable. Check the agent's environment in Configuration. Bostan will retry automatically.",

@@ -1,0 +1,288 @@
+const path = require("node:path");
+const { pathToFileURL } = require("node:url");
+const phases = new Set([
+  "window_loaded", "data_protected", "runtime_valid", "child_spawned",
+  "utility_bootstrap", "importing_server", "starting_server", "ready",
+]);
+const startupEntryStages = new Set([
+  "server_start_entered",
+  "instrumentation_starting", "instrumentation_ready",
+  "error_monitoring_starting", "error_monitoring_ready",
+  "signing_secret_starting", "signing_secret_ready",
+  "config_loading", "config_loaded",
+  "database_contract_checking", "database_contract_ready",
+  "external_database_migrations_starting", "external_database_migrations_ready",
+  "postgres_dependency_importing", "postgres_dependency_imported",
+  "postgres_native_runtime_preparing", "postgres_native_runtime_prepared",
+  "postgres_initializing", "postgres_initialized",
+  "postgres_starting", "postgres_started",
+  "postgres_database_checking", "postgres_database_ready",
+  "postgres_migrations_starting", "postgres_migrations_ready",
+]);
+// Primary error plus at most two causes bounds the chain to three nodes total.
+const startupFailureChainMaxNodes = 3;
+const startupErrorClasses = new Set([
+  "Error", "TypeError", "RangeError", "ReferenceError", "SyntaxError",
+  "EvalError", "URIError", "AggregateError", "AbortError", "StartupRefusalError",
+  "UNKNOWN",
+]);
+const codes = new Set([
+  "STARTUP_FAILED", "STARTUP_TIMEOUT", "BACKEND_EXITED", "RUNTIME_MISSING",
+  "ERR_MODULE_NOT_FOUND", "ERR_PACKAGE_PATH_NOT_EXPORTED", "ERR_UNKNOWN_FILE_EXTENSION",
+  "ERR_DLOPEN_FAILED", "ERR_REQUIRE_ESM", "ERR_INVALID_PACKAGE_CONFIG",
+  "EACCES", "EPERM", "ENOENT", "EADDRINUSE",
+  "POSTGRES_LIBRARY_MISSING", "POSTGRES_SIGNATURE_INVALID", "POSTGRES_LOCALE_INVALID",
+  "POSTGRES_PERMISSION_DENIED", "POSTGRES_ROOT_REFUSED", "POSTGRES_INIT_FAILED",
+  "POSTGRES_RUNTIME_PACKAGE_UNSAFE", "POSTGRES_RUNTIME_PACKAGE_INVALID",
+  "POSTGRES_START_FAILED", "POSTGRES_DATABASE_FAILED", "POSTGRES_MIGRATION_FAILED",
+  "POSTGRES_MIGRATION_CONNECTION_FAILED", "POSTGRES_MIGRATION_AUTH_FAILED",
+  "POSTGRES_MIGRATION_SCHEMA_FAILED", "POSTGRES_MIGRATION_CONSTRAINT_FAILED",
+  "POSTGRES_MIGRATION_FEATURE_UNSUPPORTED", "POSTGRES_MIGRATION_FILE_MISSING",
+  "POSTGRES_DEPENDENCY_IMPORT_FAILED", "POSTGRES_NATIVE_RUNTIME_PREPARE_FAILED",
+  "POSTGRES_DARWIN_ALIAS_MANIFEST_UNSAFE", "POSTGRES_DARWIN_ALIAS_MANIFEST_INVALID",
+  "POSTGRES_DARWIN_ALIAS_ENTRY_INVALID", "POSTGRES_DARWIN_ALIAS_PATH_INVALID",
+  "POSTGRES_DARWIN_ALIAS_SOURCE_UNSAFE", "POSTGRES_DARWIN_ALIAS_DESTINATION_OCCUPIED",
+  "POSTGRES_DARWIN_ALIAS_CREATE_FAILED",
+  "POSTGRES_BOOTSTRAP_FAILED", "DATABASE_BOOTSTRAP_FAILED", "DATABASE_MIGRATION_FAILED",
+  "SERVER_INSTRUMENTATION_FAILED",
+  "SERVER_ERROR_MONITORING_FAILED", "SERVER_SIGNING_SECRET_FAILED", "SERVER_CONFIG_FAILED",
+  "SERVER_RUNTIME_INITIALIZATION_FAILED", "SERVER_STARTUP_FAILED",
+]);
+const postgresStartupIssues = new Set([
+  "POSTGRES_START_ADDRESS_IN_USE", "POSTGRES_START_DATA_DIRECTORY_DENIED",
+  "POSTGRES_START_ROOT_REFUSED",
+  "POSTGRES_START_LOCALE_INVALID", "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING",
+  "POSTGRES_START_EXTENSION_MISSING", "POSTGRES_START_SHARED_MEMORY_FAILED",
+  "POSTGRES_START_CONFIGURATION_INVALID", "POSTGRES_START_CLUSTER_INCOMPATIBLE",
+  "POSTGRES_START_DISK_FULL", "POSTGRES_START_RECOVERY_FAILED",
+  "POSTGRES_START_SHARED_MEMORY_RESOURCE_LIMIT",
+  "POSTGRES_START_LOGS_EMPTY", "POSTGRES_START_LOGS_UNCLASSIFIED",
+  "POSTGRES_RUNTIME_PACKAGE_UNSAFE", "POSTGRES_RUNTIME_PACKAGE_INVALID",
+  "SERVER_STARTUP_UNCLASSIFIED",
+  "SERVER_STARTUP_ERROR_ERROR", "SERVER_STARTUP_ERROR_TYPEERROR",
+  "SERVER_STARTUP_ERROR_RANGEERROR", "SERVER_STARTUP_ERROR_REFERENCEERROR",
+  "SERVER_STARTUP_ERROR_SYNTAXERROR", "SERVER_STARTUP_ERROR_EVALERROR",
+  "SERVER_STARTUP_ERROR_URIERROR", "SERVER_STARTUP_ERROR_AGGREGATEERROR",
+  "POSTGRES_START_PROCESS_EXITED", "POSTGRES_START_PROCESS_LAUNCH_FAILED",
+  "POSTGRES_START_UNCLASSIFIED",
+]);
+function startupPhaseLine(phase) {
+  return phases.has(phase) ? `BOSTAN_DESKTOP_STARTUP_PHASE ${phase}` : null;
+}
+function startupEntryLine(stage) {
+  return startupEntryStages.has(stage) ? `BOSTAN_DESKTOP_STARTUP_ENTRY ${stage}` : null;
+}
+function startupCode(code) { return codes.has(code) ? code : "STARTUP_FAILED"; }
+function startupFailureContextLine({ serverStartEntered, failureCallbackCalled, error }) {
+  const node = value => {
+    if ((typeof value !== "object" && typeof value !== "function") || value === null) return "UNKNOWN:OTHER";
+    let name = "";
+    let code = "";
+    try { name = typeof value.name === "string" ? value.name : ""; } catch { /* Keep fixed fallback. */ }
+    try { code = typeof value.code === "string" ? value.code : ""; } catch { /* Keep fixed fallback. */ }
+    const safeClass = startupErrorClasses.has(name) ? name : "UNKNOWN";
+    const safeCode = codes.has(code) ? code : "OTHER";
+    return `${safeClass}:${safeCode}`;
+  };
+  const chain = [];
+  const seen = new Set();
+  let current = error;
+  for (let depth = 0; depth < startupFailureChainMaxNodes && current != null; depth++) {
+    if (typeof current !== "object" && typeof current !== "function") {
+      chain.push("UNKNOWN:OTHER");
+      break;
+    }
+    if (seen.has(current)) break;
+    seen.add(current);
+    chain.push(node(current));
+    try { current = current.cause; }
+    catch { chain.push("UNKNOWN:OTHER"); break; }
+  }
+  const primary = chain.shift() ?? "UNKNOWN:OTHER";
+  const causes = chain.join("|") || "none";
+  return `BOSTAN_DESKTOP_STARTUP_CONTEXT entry=${serverStartEntered === true ? "yes" : "no"} callback=${failureCallbackCalled === true ? "yes" : "no"} error=${primary} causes=${causes}`;
+}
+function isStartupFailureContextLine(line) {
+  if (typeof line !== "string" || line.length > 512 || /[\r\n]/.test(line)) return false;
+  const errorNode = "[A-Za-z]+:[A-Z0-9_]+";
+  const match = new RegExp(`^BOSTAN_DESKTOP_STARTUP_CONTEXT entry=(?:yes|no) callback=(?:yes|no) error=(${errorNode}) causes=(none|${errorNode}(?:\\|${errorNode}){0,${startupFailureChainMaxNodes - 2}})$`).exec(line);
+  if (!match) return false;
+  const isSafeNode = token => {
+    const separator = token.indexOf(":");
+    const errorClass = token.slice(0, separator);
+    const errorCode = token.slice(separator + 1);
+    return startupErrorClasses.has(errorClass) && (errorCode === "OTHER" || codes.has(errorCode));
+  };
+  return isSafeNode(match[1]) && (match[2] === "none" || match[2].split("|").every(isSafeNode));
+}
+function startupErrorCode(error, fallbackCode) {
+  const code = startupCode(error?.code);
+  if (code !== "STARTUP_FAILED" && code !== "POSTGRES_INIT_FAILED") return code;
+  // The dependency wraps initdb exits as a message. Match only its fixed prefix;
+  // classify buffered stderr locally, never emit any of its text or paths.
+  try {
+    const text = typeof error?.message === "string" ? error.message.slice(0, 65536) : "";
+    if (text.startsWith("Postgres init script exited with code ")) {
+      if (/code signature|signature.*invalid|not valid for use in process/i.test(text)) return "POSTGRES_SIGNATURE_INVALID";
+      if (/Library not loaded:|image not found|cannot open shared object file/i.test(text)) return "POSTGRES_LIBRARY_MISSING";
+      if (/invalid locale|locale.*not supported|could not set locale/i.test(text)) return "POSTGRES_LOCALE_INVALID";
+      if (/cannot be run as root/i.test(text)) return "POSTGRES_ROOT_REFUSED";
+      if (/permission denied|operation not permitted/i.test(text)) return "POSTGRES_PERMISSION_DENIED";
+      return "POSTGRES_INIT_FAILED";
+    }
+  } catch { /* Fall through to a fixed stage code. */ }
+  if (code === "POSTGRES_INIT_FAILED") {
+    return code;
+  }
+  const stageCode = startupCode(fallbackCode);
+  if (stageCode === "POSTGRES_MIGRATION_FAILED") {
+    const sqlState = typeof error?.code === "string" ? error.code : "";
+    if (/^08[A-Z0-9]{3}$/.test(sqlState)) return "POSTGRES_MIGRATION_CONNECTION_FAILED";
+    if (/^28[A-Z0-9]{3}$/.test(sqlState)) return "POSTGRES_MIGRATION_AUTH_FAILED";
+    if (/^(?:42P01|42703|42704|42883|3D000|3F000)$/.test(sqlState)) return "POSTGRES_MIGRATION_SCHEMA_FAILED";
+    if (/^23[A-Z0-9]{3}$/.test(sqlState)) return "POSTGRES_MIGRATION_CONSTRAINT_FAILED";
+    if (sqlState === "0A000") return "POSTGRES_MIGRATION_FEATURE_UNSUPPORTED";
+    if (sqlState === "58P01") return "POSTGRES_MIGRATION_FILE_MISSING";
+  }
+  return stageCode === "STARTUP_FAILED" ? code : stageCode;
+}
+function startupFailureLine(code) { return `BOSTAN_DESKTOP_STARTUP_FAILURE ${startupCode(code)}`; }
+function startupFailureStageLine(code) { return `BOSTAN_DESKTOP_STARTUP_STAGE ${startupCode(code)}`; }
+function startupFailureIssue(error, fallbackCode) {
+  const failureCode = startupCode(error?.code ?? fallbackCode);
+  if (failureCode === "STARTUP_FAILED") {
+    try {
+      const name = error?.name;
+      const issue = typeof name === "string" ? `SERVER_STARTUP_ERROR_${name.toUpperCase()}` : "";
+      return postgresStartupIssues.has(issue) ? issue : "SERVER_STARTUP_UNCLASSIFIED";
+    } catch { return "SERVER_STARTUP_UNCLASSIFIED"; }
+  }
+  if (failureCode !== "POSTGRES_START_FAILED") return null;
+  try {
+    const message = typeof error?.message === "string" ? error.message.slice(0, 65536) : "";
+    // A normal PostgreSQL startup log mentions dynamic shared memory. Prefer
+    // the child's bounded exit receipt over a broad log classifier so that
+    // informational startup lines cannot mask the actual process outcome.
+    const processExit = message.match(/Postgres server exited before readiness \(exitCode=(null|0|[1-9]\d{0,2}), signal=(?:none|SIG[A-Z]+)\)/);
+    if (processExit) return `POSTGRES_START_PROCESS_EXIT_CODE_${processExit[1]}`;
+    if (postgresStartupIssues.has(error?.postgresStartupIssue) || isSharedMemoryOsErrorIssue(error?.postgresStartupIssue)) return error.postgresStartupIssue;
+    // The backend attaches only a bounded in-memory tail of PostgreSQL output
+    // to its startup error. Convert recognized causes to fixed codes here;
+    // never include log text, paths, or connection details in the receipt.
+    if (/address already in use|could not bind.*(?:socket|address)/i.test(message)) return "POSTGRES_START_ADDRESS_IN_USE";
+    if (/server must be started under an unprivileged user id|cannot be run as root|must not be run as root/i.test(message)) return "POSTGRES_START_ROOT_REFUSED";
+    if (/permission denied|access is denied|could not access the data directory|could not open.*(?:directory|postmaster\.pid)/i.test(message)) return "POSTGRES_START_DATA_DIRECTORY_DENIED";
+    if (/invalid locale|locale.*not supported|could not set locale/i.test(message)) return "POSTGRES_START_LOCALE_INVALID";
+    if (/could not load library|could not access file|entry point.*not found|module could not be found/i.test(message)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
+    if (/pg_trgm|fuzzystrmatch|extension control file|extension script file/i.test(message)) return "POSTGRES_START_EXTENSION_MISSING";
+    if (/shared memory.*(?:error code (?:8|1455)\b|paging file|commit(?:ment)? limit|not enough (?:system )?memory|out of memory)/i.test(message)) return "POSTGRES_START_SHARED_MEMORY_RESOURCE_LIMIT";
+    if (/shared memory|could not create.*memory/i.test(message)) return "POSTGRES_START_SHARED_MEMORY_FAILED";
+    if (/no space left on device|not enough space|disk is full/i.test(message)) return "POSTGRES_START_DISK_FULL";
+    if (/database files are incompatible with server|database system identifier differs|wrong database system identifier/i.test(message)) return "POSTGRES_START_CLUSTER_INCOMPATIBLE";
+    if (/invalid value for parameter|unrecognized configuration parameter|could not open configuration file|configuration file contains errors/i.test(message)) return "POSTGRES_START_CONFIGURATION_INVALID";
+    if (/could not locate a valid checkpoint record|invalid primary checkpoint record|redo is not required/i.test(message)) return "POSTGRES_START_RECOVERY_FAILED";
+    if (/Postgres server failed to spawn \(code ENOENT\)/i.test(message)) return "POSTGRES_START_RUNTIME_DEPENDENCY_MISSING";
+    if (/Postgres server failed to spawn \(code (?:EACCES|EPERM)\)/i.test(message)) return "POSTGRES_START_PROCESS_LAUNCH_FAILED";
+    if (/start script exited|process exited before|server process.*exited|server exited before readiness/i.test(message)) return "POSTGRES_START_PROCESS_EXITED";
+  } catch { /* Keep startup reporting on the fixed fallback classification. */ }
+  return "POSTGRES_START_UNCLASSIFIED";
+}
+function startupFailureIssueLine(issue) {
+  return postgresStartupIssues.has(issue) || isSharedMemoryOsErrorIssue(issue) || /^POSTGRES_START_PROCESS_EXIT_CODE_(?:null|0|[1-9]\d{0,2})$/.test(issue)
+    ? `BOSTAN_DESKTOP_STARTUP_ISSUE ${issue}` : null;
+}
+function isSharedMemoryOsErrorIssue(issue) {
+  const match = typeof issue === "string" && /^POSTGRES_START_SHARED_MEMORY_OS_ERROR_(\d{1,5})$/.exec(issue);
+  return Boolean(match && Number(match[1]) > 0 && Number(match[1]) <= 65535);
+}
+function startupFailureLibrary(error) {
+  if (startupErrorCode(error) === "POSTGRES_DARWIN_ALIAS_DESTINATION_OCCUPIED") {
+    try {
+      const alias = error?.library;
+      return typeof alias === "string" && /^lib[A-Za-z0-9_.+-]{1,100}\.dylib$/.test(alias) ? alias : null;
+    } catch { return null; }
+  }
+  if (startupErrorCode(error) !== "POSTGRES_LIBRARY_MISSING") return null;
+  try {
+    const text = typeof error?.message === "string" ? error.message.slice(0, 65536) : "";
+    // macOS versions and nested loaders vary in how they phrase dyld failures.
+    // Inspect only the loader line that caused the fixed POSTGRES_LIBRARY_MISSING
+    // classification, then emit a library basename (never a path or stderr).
+    const line = text.split(/\r?\n/).find(value => /Library not loaded:|image not found|cannot open shared object file/i.test(value));
+    const basename = line?.match(/\blib[A-Za-z0-9_.+-]{1,100}\.dylib\b/i)?.[0];
+    return typeof basename === "string" && /^lib[A-Za-z0-9_.+-]{1,100}\.dylib$/i.test(basename) ? basename : null;
+  } catch { return null; }
+}
+function startupFailureLibraryLine(library) {
+  return typeof library === "string" && /^lib[A-Za-z0-9_.+-]{1,100}\.dylib$/.test(library)
+    ? `BOSTAN_DESKTOP_STARTUP_LIBRARY ${library}` : null;
+}
+function startupMigrationLine(migration) {
+  return typeof migration === "string" && /^\d{4}_[a-z0-9_]+\.sql$/.test(migration)
+    ? `BOSTAN_DESKTOP_STARTUP_MIGRATION ${migration}` : null;
+}
+function startupMigrationIssue(error, migration) {
+  if (migration !== "0080_company_search_fuzzystrmatch.sql") return null;
+  let message = "";
+  try {
+    const fields = [error?.message, error?.detail, error?.hint, error?.file, error?.routine];
+    message = fields.filter(value => typeof value === "string").join("\n").slice(0, 8192);
+  }
+  catch { return null; }
+  if (/fuzzystrmatch\.control|extension control file/i.test(message)) return "POSTGRES_EXTENSION_CONTROL_FILE_MISSING";
+  if (/fuzzystrmatch[^\r\n]*\.sql|extension script file/i.test(message)) return "POSTGRES_EXTENSION_SQL_FILE_MISSING";
+  if (/fuzzystrmatch\.dll|\$libdir|could not access file|could not load library/i.test(message)) return "POSTGRES_EXTENSION_LIBRARY_MISSING";
+  if (/could not open file/i.test(message)) return "POSTGRES_MIGRATION_FILE_MISSING";
+  if (error?.code === "58P01") return "POSTGRES_EXTENSION_FILE_LOOKUP_FAILED";
+  return null;
+}
+const migrationIssues = new Set([
+  "POSTGRES_EXTENSION_CONTROL_FILE_MISSING", "POSTGRES_EXTENSION_SQL_FILE_MISSING",
+  "POSTGRES_EXTENSION_LIBRARY_MISSING", "POSTGRES_MIGRATION_FILE_MISSING",
+  "POSTGRES_EXTENSION_FILE_LOOKUP_FAILED",
+]);
+function startupMigrationIssueLine(migration, issue) {
+  return startupMigrationLine(migration) && migrationIssues.has(issue)
+    ? `BOSTAN_DESKTOP_STARTUP_MIGRATION_ISSUE ${issue}` : null;
+}
+const sitePattern = /^BOSTAN_DESKTOP_STARTUP_SITE (?:server|config|signing):[1-9]\d{0,5}:[1-9]\d{0,5}$/;
+function startupFailureSite(error, runtimeRoot) {
+  // Only code locations in three known startup modules may leave this process.
+  // Never expose the raw message, stack, function names or absolute paths.
+  try {
+    if (typeof error?.stack !== "string") return null;
+    const prefixes = ["dist", "dist-runtime"].map(directory =>
+      pathToFileURL(path.join(runtimeRoot, directory) + path.sep).href
+        .replace(/[.*+?^${}()|[\\]\\]/g, "\\$&"));
+    const frame = new RegExp(`^\\s+at (?:[^\\r\\n]*?\\()?(${prefixes.join("|")})(index\\.js|server\\.mjs|config\\.js|services/decision-signing\\.js):([1-9]\\d{0,5}):([1-9]\\d{0,5})\\)?$`);
+    for (const line of error.stack.slice(0, 8192).split(/\r?\n/).slice(0, 32)) {
+      const match = frame.exec(line);
+      if (!match) continue;
+      const module = { "index.js": "server", "server.mjs": "server", "config.js": "config", "services/decision-signing.js": "signing" }[match[2]];
+      return `BOSTAN_DESKTOP_STARTUP_SITE ${module}:${match[3]}:${match[4]}`;
+    }
+  } catch { /* Optional diagnosis cannot replace the original startup failure. */ }
+  return null;
+}
+function isStartupSiteLine(line) { return typeof line === "string" && !/[\r\n]/.test(line) && sitePattern.test(line); }
+function isStartupDiagnosticLine(line) {
+  if (typeof line !== "string") return false;
+  if (isStartupSiteLine(line)) return true;
+  if (startupEntryLine(line.startsWith("BOSTAN_DESKTOP_STARTUP_ENTRY ") ? line.slice("BOSTAN_DESKTOP_STARTUP_ENTRY ".length) : null) === line) return true;
+  if (isStartupFailureContextLine(line)) return true;
+  if (line.startsWith("BOSTAN_DESKTOP_STARTUP_ISSUE ")
+      && startupFailureIssueLine(line.slice("BOSTAN_DESKTOP_STARTUP_ISSUE ".length)) === line) return true;
+  if (startupMigrationLine(line.startsWith("BOSTAN_DESKTOP_STARTUP_MIGRATION ") ? line.slice("BOSTAN_DESKTOP_STARTUP_MIGRATION ".length) : null) === line) return true;
+  if (line.startsWith("BOSTAN_DESKTOP_STARTUP_MIGRATION_ISSUE ")
+      && migrationIssues.has(line.slice("BOSTAN_DESKTOP_STARTUP_MIGRATION_ISSUE ".length))) return true;
+  const phasePrefix = "BOSTAN_DESKTOP_STARTUP_PHASE ";
+  const phase = line.startsWith(phasePrefix) ? line.slice(phasePrefix.length) : null;
+  if (phase !== null) return phases.has(phase);
+  const prefix = "BOSTAN_DESKTOP_STARTUP_FAILURE ";
+  if (line.startsWith(prefix) && codes.has(line.slice(prefix.length))) return true;
+  const stagePrefix = "BOSTAN_DESKTOP_STARTUP_STAGE ";
+  if (line.startsWith(stagePrefix) && codes.has(line.slice(stagePrefix.length))) return true;
+  const libraryPrefix = "BOSTAN_DESKTOP_STARTUP_LIBRARY ";
+  return line.startsWith(libraryPrefix) && startupFailureLibraryLine(line.slice(libraryPrefix.length)) === line;
+}
+module.exports = { startupPhaseLine, startupEntryLine, startupCode, startupErrorCode, startupFailureContextLine, startupFailureLine, startupFailureStageLine, startupFailureIssue, startupFailureIssueLine, startupFailureLibrary, startupFailureLibraryLine, startupMigrationLine, startupMigrationIssue, startupMigrationIssueLine, startupFailureSite, isStartupSiteLine, isStartupDiagnosticLine };

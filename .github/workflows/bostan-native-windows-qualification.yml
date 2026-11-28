@@ -1,0 +1,50 @@
+name: Bostan Windows Native Agent Qualification
+
+on:
+  push:
+    branches: [fix/windows-packaged-server-import]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bostan-native-windows-qualification-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  native-agent:
+    if: github.repository == 'TheHalfMoon/Bostan'
+    runs-on: windows-latest
+    # Measured cold build (49m) plus the verified Ollama archive download (34m)
+    # already consumed 83m before local model preparation or installed QA.
+    timeout-minutes: 120
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Measure hosted Windows resources before build
+        run: node -e "const os=require('node:os'),fs=require('node:fs');const d=fs.statfsSync(os.tmpdir());console.log(JSON.stringify({platform:process.platform,architecture:process.arch,totalMemoryGiB:+(os.totalmem()/2**30).toFixed(2),freeMemoryGiB:+(os.freemem()/2**30).toFixed(2),tempFreeGiB:+(d.bavail*d.bsize/2**30).toFixed(2)}))"
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Qualify PowerShell 5.1 streaming archive hashing as a standard user
+        shell: pwsh
+        run: ./scripts/bostan-ci-windows-user.ps1 -Mode ArchiveHashProbe
+      - run: pnpm install --frozen-lockfile
+      - run: npm --prefix desktop ci
+      - run: node desktop/node_modules/electron/install.js
+      - run: pnpm --filter @bostan/server... --workspace-concurrency=1 build
+      - name: Probe embedded PostgreSQL as a standard user before packaging
+        shell: pwsh
+        run: ./scripts/bostan-ci-windows-user.ps1 -Mode PostgresProbe
+      - run: pnpm --filter @bostan/ui build
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+      - run: npm --prefix desktop run package
+      - name: Run packaged Windows native agent with local Qwen model
+        shell: pwsh
+        run: ./scripts/bostan-ci-windows-user.ps1 -Mode Native

@@ -6415,6 +6415,8 @@ export function nativeSessionFailureSourceCode(
   if (error instanceof NativeSessionCleanupQuarantinedError)
     return "native_session_cleanup_quarantined";
   const message = error instanceof Error ? error.message : String(error);
+  if (/Pinned OpenCode runtime unavailable:|OpenCode native target is not qualified/i.test(message))
+    return "native_provider_runtime_missing";
   if (/classification=runtime_package_missing\)/.test(message))
     return "native_provider_runtime_missing";
   if (/native_provider_model_rejected/i.test(message))
@@ -6480,6 +6482,39 @@ export function nativeSessionFailureSourceCode(
     return "native_current_wake_comments_unread";
   }
   return "native_session_interrupted";
+}
+
+const NATIVE_FAILURE_TYPES = new Set([
+  "AbortError", "Error", "FetchError", "NativeCancellationPendingRecoveryError",
+  "NativeControllerDetachedForRestartError", "NativePermissionDeclinedError",
+  "NativeProviderTerminalFailure", "NativeResultPendingFinalizationError",
+  "NativeSessionCleanupQuarantinedError", "NativeSessionProtocolIntegrityError",
+  "PostgresError", "RangeError", "ReferenceError", "RemoteRunnerRecoveryError", "SyntaxError", "TypeError",
+]);
+const NATIVE_FAILURE_STAGES = new Set([
+  "attachment_prompt", "attachment_prompt_validation", "attachment_scope", "attachment_staging",
+  "controller_identity", "coordinator_claim", "native_session_execute",
+  "provider_setup", "remote_session_recovery", "result_finalize",
+  "runner_backend_setup", "runner_environment", "runtime_admission", "warm_session_retirement",
+  "warm_session_wait", "wake_context", "workspace_validation",
+]);
+const NATIVE_FAILURE_CODES = new Set([
+  "08001", "08006", "22P02", "23502", "23503", "23505", "23514",
+  "40001", "40P01", "57014", "EACCES", "EADDRINUSE", "ECONNREFUSED",
+  "ECONNRESET", "EPIPE", "ENOENT", "ERR_SOCKET_CLOSED", "ETIMEDOUT",
+]);
+
+export function safeNativeSessionFailureDiagnostic(error: unknown, stage: string) {
+  const name = error instanceof Error ? error.name : "";
+  const errorCode = record(error).code;
+  return {
+    failureStage: NATIVE_FAILURE_STAGES.has(stage) ? stage : "provider_setup",
+    failureType: NATIVE_FAILURE_TYPES.has(name) ? name : "unknown",
+    nativeErrorCode:
+      typeof errorCode === "string" && NATIVE_FAILURE_CODES.has(errorCode)
+        ? errorCode
+        : null,
+  };
 }
 
 const NATIVE_CLEANUP_OPERATOR_RECOVERY_MESSAGE =
@@ -7628,25 +7663,55 @@ export async function executePaperclipNativeSession(input: {
     },
   ) => Promise<unknown>;
 }): Promise<AdapterExecutionResult> {
-  const agentKeyId = input.runnerEnvironment?.PAPERCLIP_AGENT_KEY_ID;
-  if (agentKeyId) {
-    // Recovered pre-upgrade inputs also need the current public identity marker
-    // before deciding whether an already-running provider can be reused.
-    input = { ...input, execution: { ...input.execution,
-      binding: { ...input.execution.binding, agentKeyId },
-    } };
-  }
-  if (input.observability) {
-    const preconfiguredCodex = input.observability.kind === "codex" && "homeMode" in input.execution && input.execution.homeMode === "preconfigured";
-    if (preconfiguredCodex) {
-      await input.onLog?.("stderr", "[bostan] Company observability is unavailable for a caller-owned Codex home.\n");
-      input = { ...input, observability: undefined };
-    } else {
-      const environment = { ...resolveNativeProviderEnvironment(input.execution.provider, input.runnerEnvironment) };
-      applyObservabilityEnvironment(environment, input.observability);
-      if (input.execution.provider.kind === "acpx" && input.observability.kind === "codex") environment.PAPERCLIP_OBSERVABILITY_CODEX_CONFIG = JSON.stringify(input.observability.otelConfig);
-      input = { ...input, runnerEnvironment: environment };
+  let outerFailureStage = "provider_setup";
+  let emittedNativeFailureDiagnostic = false;
+  const originalOnEvent = input.onEvent;
+  input = {
+    ...input,
+    onEvent: async (event) => {
+      await originalOnEvent?.(event);
+      if (event.eventType === "native.failure_diagnostic") emittedNativeFailureDiagnostic = true;
+    },
+  };
+  try {
+    const agentKeyId = input.runnerEnvironment?.PAPERCLIP_AGENT_KEY_ID;
+    if (agentKeyId) {
+      // Recovered pre-upgrade inputs also need the current public identity marker
+      // before deciding whether an already-running provider can be reused.
+      input = { ...input, execution: { ...input.execution,
+        binding: { ...input.execution.binding, agentKeyId },
+      } };
     }
+    if (input.observability) {
+      const preconfiguredCodex = input.observability.kind === "codex" && "homeMode" in input.execution && input.execution.homeMode === "preconfigured";
+      if (preconfiguredCodex) {
+        await input.onLog?.("stderr", "[bostan] Company observability is unavailable for a caller-owned Codex home.\n");
+        input = { ...input, observability: undefined };
+      } else {
+        const environment = { ...resolveNativeProviderEnvironment(input.execution.provider, input.runnerEnvironment) };
+        applyObservabilityEnvironment(environment, input.observability);
+        if (input.execution.provider.kind === "acpx" && input.observability.kind === "codex") environment.PAPERCLIP_OBSERVABILITY_CODEX_CONFIG = JSON.stringify(input.observability.otelConfig);
+        input = { ...input, runnerEnvironment: environment };
+      }
+    }
+  } catch (error) {
+    const safeFailureDiagnostic = safeNativeSessionFailureDiagnostic(error, "provider_setup");
+    await input.onEvent?.({
+      eventType: "native.failure_diagnostic",
+      level: "error",
+      message: "Native session setup failed before a result was produced.",
+      payload: {
+        failureDetail: {
+          originalFailureCode: nativeSessionFailureSourceCode(error),
+          recoveryMode: "ambiguous_state",
+          providerSessionEstablished: null,
+          providerEventsExist: null,
+          checkpointExists: null,
+          ...safeFailureDiagnostic,
+        },
+      },
+    }).catch(() => undefined);
+    throw error;
   }
   const runId = input.execution.binding.runId;
   if (nativeSessionStartups.has(runId)) {
@@ -7680,15 +7745,18 @@ export async function executePaperclipNativeSession(input: {
       throw new Error("native_session_supervisor_busy");
     }
     executingNativeOwnerScopes.set(ownerScope, ownerToken);
+    outerFailureStage = "warm_session_retirement";
     await retireSupersededWarmNativeSessions(
       ownerScope, nativeSessionScopeKey(input.execution),
     );
+    outerFailureStage = "runtime_admission";
     if ((input.execution.schema === "paperclip.native-execution-input.v6" || input.execution.schema === "paperclip.native-execution-input.v8") && isCloudManagedInstance()
         && (!input.useRunnerd || input.runnerExecutionTarget?.kind !== "remote"
           || input.runnerExecutionTarget.transport !== "sandbox")) {
       throw new Error(input.execution.provider.kind === "muse" ? "muse_cloud_requires_managed_runner" : "dot_cloud_requires_managed_runner");
     }
     if (!input.useRunnerd) {
+      outerFailureStage = "native_session_execute";
       return await executePaperclipNativeSessionWithinScope(input);
     }
     // The session scope is unaffected by appending server-staged attachment
@@ -7706,14 +7774,18 @@ export async function executePaperclipNativeSession(input: {
     // The shutdown sweep can have removed an idle owner while its remote
     // checkpoint is still being saved. The scope reservation also prevents
     // a later sweep from closing an owner this turn is about to acquire.
+    outerFailureStage = "warm_session_wait";
     await closingWarmNativeSessions.get(sessionScopeId);
 
     if (input.execution.schema === "paperclip.native-execution-input.v6" || input.execution.schema === "paperclip.native-execution-input.v8") {
+      outerFailureStage = "native_session_execute";
       return await executePaperclipNativeSessionWithinScope(input);
     }
+    outerFailureStage = "workspace_validation";
     const workspaceRoot = input.execution.workspace.cwd;
     if (workspaceRoot === null) throw new Error("native_workspace_required");
     const targetKind = input.runnerExecutionTarget?.kind ?? "local";
+    outerFailureStage = "attachment_scope";
     const chatAttachmentReadScope = new NativeChatAttachmentReadScope({
       db: input.db,
       binding: input.execution.binding,
@@ -7722,6 +7794,7 @@ export async function executePaperclipNativeSession(input: {
     });
     preparedInput = { ...input, chatAttachmentReadScope };
     cleanupStagedAttachments = () => chatAttachmentReadScope.close();
+    outerFailureStage = "attachment_staging";
     const attachmentStage = await stageNativeRunnerWakeAttachments({
       db: input.db,
       binding: {
@@ -7742,10 +7815,12 @@ export async function executePaperclipNativeSession(input: {
         throw new Error("paperclip_runner_attachment_staging_cleanup_failed");
       }
     };
+    outerFailureStage = "attachment_prompt";
     const stagedPrompt = renderNativeRunnerStagedAttachmentPrompt(
       attachmentStage.attachments,
     );
     if (stagedPrompt) {
+      outerFailureStage = "attachment_prompt_validation";
       preparedInput = {
         ...preparedInput,
         execution: parseNativeExecutionInput({
@@ -7757,10 +7832,32 @@ export async function executePaperclipNativeSession(input: {
         }),
       };
     }
+    outerFailureStage = "native_session_execute";
     return await executePaperclipNativeSessionWithinScope(preparedInput);
   } catch (error) {
     executionFailure = error;
     const remoteRunnerRecovery = readRemoteRunnerRecoveryError(error);
+    if (!emittedNativeFailureDiagnostic) {
+      const safeFailureDiagnostic = safeNativeSessionFailureDiagnostic(
+        error,
+        remoteRunnerRecovery ? "remote_session_recovery" : outerFailureStage,
+      );
+      await input.onEvent?.({
+        eventType: "native.failure_diagnostic",
+        level: "error",
+        message: "Native session preparation failed before a result was produced.",
+        payload: {
+          failureDetail: {
+            originalFailureCode: nativeSessionFailureSourceCode(error),
+            recoveryMode: "ambiguous_state",
+            providerSessionEstablished: null,
+            providerEventsExist: null,
+            checkpointExists: null,
+            ...safeFailureDiagnostic,
+          },
+        },
+      }).catch(() => undefined);
+    }
     if (remoteRunnerRecovery) {
       await input.onEvent?.({
         eventType: "native.remote_runner_recovery_failed",
@@ -7954,11 +8051,13 @@ async function executePaperclipNativeSessionWithinScope(
   }
   const leaseOwner =
     input.leaseOwner ?? `${effectiveRunnerInstanceId}:${randomUUID()}`;
+  let failureStage = "controller_identity";
   const controller = await currentNativeControllerIdentity();
   const leaseNow = new Date();
   const leaseExpiresAt = new Date(leaseNow.getTime() + 20 * 60_000);
   let attempt: number;
   try {
+    failureStage = "coordinator_claim";
     attempt = await trace.measure(
       "native.coordinator.claim",
       () =>
@@ -8158,6 +8257,7 @@ async function executePaperclipNativeSessionWithinScope(
     await trace.finish("failed");
     throw error;
   }
+  failureStage = "provider_setup";
   const controlPlaneInstanceId = `${effectiveRunnerInstanceId}:control`;
   const planSynchronizations: PlanSynchronization[] = [];
   const upsertPlanSynchronization = (
@@ -8809,6 +8909,7 @@ async function executePaperclipNativeSessionWithinScope(
     controller,
   });
   try {
+    failureStage = "runner_environment";
     const usesPluginTask = input.runnerExecutionTarget?.kind === "remote" && input.runnerExecutionTarget.transport === "sandbox" && !!input.runnerExecutionTarget.runnerTask;
     const prepareRunnerEnvironment = async () => {
       if (!usesPluginTask && input.managedGitHub && input.execution.schema !== "paperclip.native-execution-input.v6" && input.execution.schema !== "paperclip.native-execution-input.v8") {
@@ -8831,11 +8932,13 @@ async function executePaperclipNativeSessionWithinScope(
       && input.execution.schema !== "paperclip.native-execution-input.v6"
       && input.execution.schema !== "paperclip.native-execution-input.v8";
     if (!overlapGitHubPreparation) await prepareRunnerEnvironment();
+    failureStage = "wake_context";
     const expectedCurrentWakeComments = await timeController("wake_binding", () => resolveCurrentWakeCommentsBinding(
       input.db,
       input.execution.binding,
     ));
     let remoteWarmRecoveryPending = remoteWarmRecovery !== undefined;
+    failureStage = "runner_backend_setup";
     let runnerdBackend =
       input.useRunnerd && input.backend === undefined
         ? await timeController("backend_setup", () => createRunnerdBackend({
@@ -8858,6 +8961,7 @@ async function executePaperclipNativeSessionWithinScope(
           }))
         : null;
     if (remoteWarmRecovery) {
+      failureStage = "remote_session_recovery";
       await remoteWarmRecovery.revalidate(leaseOwner);
       const recovered = await runnerdBackend?.recoverSession?.(remoteWarmRecovery.checkpoint, {
         signal: new AbortController().signal,
@@ -8886,6 +8990,7 @@ async function executePaperclipNativeSessionWithinScope(
           )).then(rows => rows[0])
       : null;
     nativeSessionExecuteStartedAtMs = Date.now();
+    failureStage = "native_session_execute";
     native = await trace.measure(
       "native.session.execute",
       async () => {
@@ -9188,6 +9293,7 @@ async function executePaperclipNativeSessionWithinScope(
       },
       { parentName: "task.provider_session" },
     );
+    failureStage = "result_finalize";
     // A detached consumer can resolve successfully after its stream closes.
     // Only the replacement controller may settle the run or certify accounting.
     assertControllerActive();
@@ -9366,6 +9472,25 @@ async function executePaperclipNativeSessionWithinScope(
           : providerUsageLimitObserved
             ? "native_provider_usage_limit"
             : classifiedFailureCode;
+      const safeFailureDiagnostic = safeNativeSessionFailureDiagnostic(
+        error,
+        readRemoteRunnerRecoveryError(error) ? "remote_session_recovery" : failureStage,
+      );
+      await input.onEvent?.({
+        eventType: "native.failure_diagnostic",
+        level: "error",
+        message: "Native session failed before producing a result.",
+        payload: {
+          failureDetail: {
+            originalFailureCode: sourceFailureCode,
+            recoveryMode: "ambiguous_state",
+            providerSessionEstablished: null,
+            providerEventsExist: null,
+            checkpointExists: null,
+            ...safeFailureDiagnostic,
+          },
+        },
+      }).catch(() => undefined);
       const recoveryEvidence = await nativeProviderRecoveryEvidence({
         db: input.db,
         runId: input.execution.binding.runId,

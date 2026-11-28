@@ -2,7 +2,8 @@ import { canActorReadAssetContent } from "../services/asset-content-access.js";
 import { Router, type Request, type Response } from "express";
 import multer from "multer";
 import createDOMPurify from "dompurify";
-import { JSDOM } from "jsdom";
+import type { JSDOM as JSDOMInstance } from "jsdom";
+import { loadJSDOM } from "../lazy-jsdom.js";
 import type { Db } from "@bostan/db";
 import { ASSET_NAMESPACE_RULE, createAssetImageMetadataSchema } from "@bostan/shared";
 import type { StorageService } from "../storage/types.js";
@@ -28,6 +29,7 @@ function sanitizeSvgBuffer(input: Buffer): Buffer | null {
   const raw = input.toString("utf8").trim();
   if (!raw) return null;
 
+  const { JSDOM } = loadJSDOM();
   const baseDom = new JSDOM("");
   const domPurify = createDOMPurify(
     baseDom.window as unknown as Parameters<typeof createDOMPurify>[0],
@@ -46,7 +48,7 @@ function sanitizeSvgBuffer(input: Buffer): Buffer | null {
     }
   });
 
-  let parsedDom: JSDOM | null = null;
+  let parsedDom: JSDOMInstance | null = null;
   try {
     const sanitized = domPurify.sanitize(raw, {
       USE_PROFILES: { svg: true, svgFilters: true, html: false },

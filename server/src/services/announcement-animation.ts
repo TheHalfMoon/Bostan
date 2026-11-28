@@ -1,5 +1,5 @@
 import createDOMPurify from "dompurify";
-import { JSDOM } from "jsdom";
+import { loadJSDOM } from "../lazy-jsdom.js";
 import { ANNOUNCEMENT_ANIMATION_MAX_BYTES } from "@bostan/shared";
 
 // A visual HTML/CSS document, never an application. JSDOM does not execute
@@ -10,6 +10,7 @@ export function validateAnnouncementAnimation(bytes: Uint8Array): string {
     throw new Error("Invalid or oversized announcement animation");
   }
   const source = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  const { JSDOM } = loadJSDOM();
   const dom = new JSDOM("");
   try {
     const purifier = createDOMPurify(dom.window as unknown as Parameters<typeof createDOMPurify>[0]);

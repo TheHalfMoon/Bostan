@@ -5,7 +5,7 @@ import os from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel, syntheticFreeAgentAdapterConfig, observeHeartbeatQaStatus, assertHeartbeatQaSucceeded, firstAgentLifecycleReadinessTimeoutMs, safeAgentLifecycleDiagnostic, safeFreeProviderFailureSignal, selectSingleAssignmentRun, safeFirstAgentQaEndpointClass, safeFirstAgentQaHttpError } from "./bostan-first-agent-free-e2e.mjs";
+import { qualifyDisposableFirstAgentScope, qualifyFreeQaModel, syntheticFreeAgentAdapterConfig, observeHeartbeatQaStatus, assertHeartbeatQaSucceeded, firstAgentLifecycleReadinessTimeoutMs, safeAgentLifecycleDiagnostic, safeFreeProviderFailureSignal, safeHeartbeatQaDiagnostic, safeHeartbeatQaEventDiagnostic, safeHeartbeatQaLogDiagnostic, selectSingleAssignmentRun, safeFirstAgentQaEndpointClass, safeFirstAgentQaHttpError } from "./bostan-first-agent-free-e2e.mjs";
 
 function fixture() {
   const home = mkdtempSync(path.join(os.tmpdir(), "bostan-free-agent-guard-"));
@@ -87,6 +87,7 @@ test("scope refuses startup without a managed run lock", () => {
 test("allowlisted QA models only; never attempt a paid or unknown model", () => {
   assert.equal(qualifyFreeQaModel(undefined), "opencode/deepseek-v4.1-flash-free");
   assert.equal(qualifyFreeQaModel("opencode/beam-free"), "opencode/beam-free");
+  assert.equal(qualifyFreeQaModel("opencode/hy4-flash-free"), "opencode/hy4-flash-free");
   for (const model of ["openai/gpt-5.2", "opencode/claude-opus-5-5", "unknown/free",
     "opencode/deepseek-v4.1-flash-free\n--ignore-safety"]) {
     assert.throws(() => qualifyFreeQaModel(model), /Only explicitly permitted/);
@@ -197,6 +198,15 @@ test("failed real hello probe remains failed but reports safe precise stage, nev
   assert.doesNotMatch(JSON.stringify(observed), /secret|private/);
 });
 
+test("classified OpenCode probe failures produce only safe readiness codes", () => {
+  assert.equal(safeAgentLifecycleDiagnostic({ lifecycleError:
+    "Execution configuration check failed. The OpenCode hello request returned an error response. Check the local model provider and endpoint; no task was executed. secret=value",
+  }).failureCode, "harness_probe_error_event");
+  assert.equal(safeAgentLifecycleDiagnostic({ lifecycleError:
+    "Execution configuration check failed. The OpenCode hello process exited before verifying the model response. Check the OpenCode runtime and local provider configuration; no task was executed. secret=value",
+  }).failureCode, "harness_probe_process_exit");
+});
+
 test("free-provider lifecycle capacity is safely classified without echoing provider data", () => {
   const observed = safeAgentLifecycleDiagnostic({
     lifecycleState: "verifying", status: "paused",
@@ -246,6 +256,81 @@ test("source QA never diagnoses rate-limit from a successful or unrelated failed
   ]) {
     assert.equal(safeFreeProviderFailureSignal(row), null);
   }
+});
+
+test("packaged QA heartbeat diagnostics retain safe phase and provider failure signals only", () => {
+  const diagnostic = safeHeartbeatQaDiagnostic({ status: "failed", errorCode: "adapter_failed",
+    executionStage: "dispatching", error: "HTTP 429 Too Many Requests", stderrExcerpt: "Bearer private-test-value" });
+  assert.deepEqual(diagnostic, { status: "failed", errorCode: "adapter_failed",
+    executionStage: "dispatching", safeSignal: "adapter_rate_limit_signaled" });
+  assert.doesNotMatch(JSON.stringify(diagnostic), /private-test-value|Bearer|Too Many Requests/);
+  assert.deepEqual(safeHeartbeatQaDiagnostic({ status: "unknown", errorCode: "PRIVATE SECRET", error: "secret" }),
+    { status: null, errorCode: null, executionStage: null });
+  assert.equal(safeHeartbeatQaDiagnostic({ status: "failed", errorCode: "native_session_interrupted",
+    error: "native_finalization_missing: session returned no semantic result; private details" }).safeSignal,
+  "native_semantic_result_missing");
+  const preparationFailure = safeHeartbeatQaDiagnostic({ status: "failed",
+    errorCode: "native_session_interrupted", executionStage: "preparing",
+    error: "SQLSTATE 57014: statement timeout; task=private prompt; token=private-secret" });
+  assert.deepEqual(preparationFailure, { status: "failed", errorCode: "native_session_interrupted",
+    executionStage: "preparing", failureClass: "database_statement_timeout" });
+  assert.doesNotMatch(JSON.stringify(preparationFailure), /private|prompt|token|SQLSTATE/);
+  assert.equal(safeHeartbeatQaDiagnostic({ status: "failed", errorCode: "native_session_interrupted",
+    error: "unrecognized private failure" }).failureClass, "unclassified_native_failure");
+  assert.equal(safeHeartbeatQaDiagnostic({ status: "failed", errorCode: "native_session_interrupted",
+    error: "native_finalization_coordinator_missing: private task and database details" }).failureClass,
+  "native_finalization_coordinator_missing");
+  const events = safeHeartbeatQaEventDiagnostic([
+    { eventType: "harness.ready", payload: { token: "private" } },
+    { eventType: "session.started" }, { eventType: "turn.started" },
+    { eventType: "provider.rpc_result", payload: { text: "private model output" } },
+    { eventType: "turn.failed" }, { eventType: "unknown.private.event" },
+    { eventType: "lifecycle", payload: { failureDetail: {
+      originalFailureCode: "provider_process_exited", recoveryMode: "bootstrap_retry",
+      providerSessionEstablished: false, providerEventsExist: false, checkpointExists: false,
+      message: "provider_process_exited path=C:\\Users\\private\\secret token=hidden",
+    } } },
+  ]);
+  assert.deepEqual(events, { available: true, harnessReady: 1, sessionStarted: 1, sessionResumed: 0,
+    turnStarted: 1, turnCompleted: 0, turnFailed: 1, turnCancelled: 0, turnInterrupted: 0,
+    providerEvents: 0, providerRpcResults: 1,
+    nativeFailure: { sourceFailureCode: "provider_process_exited", recoveryMode: "bootstrap_retry",
+      providerSessionEstablished: false, providerEventsExist: false, checkpointExists: false,
+      safeSignal: "native_provider_process_exited" } });
+  assert.doesNotMatch(JSON.stringify(events), /private|token|output|secret|hidden|Users/);
+  const nativeDiagnostic = safeHeartbeatQaEventDiagnostic([{ eventType: "native.failure_diagnostic", payload: { failureDetail: {
+    originalFailureCode: "native_session_interrupted", recoveryMode: "ambiguous_state", failureStage: "runner_backend_setup",
+    failureType: "TypeError", nativeErrorCode: "ECONNRESET", message: "private prompt C:\\Users\\secret",
+  } } }]);
+  assert.deepEqual(nativeDiagnostic.nativeFailure, { sourceFailureCode: "native_session_interrupted", recoveryMode: "ambiguous_state",
+    providerSessionEstablished: null, providerEventsExist: null, checkpointExists: null, safeSignal: null,
+    failureStage: "runner_backend_setup", failureType: "TypeError", nativeErrorCode: "ECONNRESET" });
+  assert.doesNotMatch(JSON.stringify(nativeDiagnostic), /private|prompt|secret|Users/);
+  assert.deepEqual(safeHeartbeatQaEventDiagnostic(null), { available: false, harnessReady: 0,
+    sessionStarted: 0, sessionResumed: 0, turnStarted: 0, turnCompleted: 0, turnFailed: 0,
+    turnCancelled: 0, turnInterrupted: 0, providerEvents: 0, providerRpcResults: 0, nativeFailure: null });
+  const unknownFailure = safeHeartbeatQaEventDiagnostic([{ eventType: "lifecycle", payload: { failureDetail: {
+    originalFailureCode: "private_provider_failure", recoveryMode: "private", message: "private output",
+    providerSessionEstablished: "yes", providerEventsExist: true, checkpointExists: false,
+  } } }]);
+  assert.deepEqual(unknownFailure.nativeFailure, { sourceFailureCode: null, recoveryMode: null,
+    providerSessionEstablished: null, providerEventsExist: true, checkpointExists: false, safeSignal: null });
+  assert.doesNotMatch(JSON.stringify(unknownFailure), /private|output|yes/);
+  assert.deepEqual(safeHeartbeatQaLogDiagnostic("provider_request_timeout secret=private"),
+    { available: true, bytes: 39, safeSignal: "native_provider_request_timeout",
+      jsonLines: 0, errorRecords: 0, recordsWithErrorField: 0, recordsWithCodeField: 0 });
+  assert.deepEqual(safeHeartbeatQaLogDiagnostic("unclassified private provider output"),
+    { available: true, bytes: 36, safeSignal: null,
+      jsonLines: 0, errorRecords: 0, recordsWithErrorField: 0, recordsWithCodeField: 0 });
+  assert.equal(safeHeartbeatQaLogDiagnostic("provider output: HTTP 429 Too Many Requests secret").safeSignal,
+    "adapter_rate_limit_signaled");
+  const structuredLog = safeHeartbeatQaLogDiagnostic('{"level":"error","msg":"private","err":{"code":"E_PRIVATE","message":"secret"}}');
+  assert.deepEqual({ jsonLines: structuredLog.jsonLines, errorRecords: structuredLog.errorRecords,
+    recordsWithErrorField: structuredLog.recordsWithErrorField, recordsWithCodeField: structuredLog.recordsWithCodeField },
+  { jsonLines: 1, errorRecords: 1, recordsWithErrorField: 1, recordsWithCodeField: 1 });
+  assert.doesNotMatch(JSON.stringify(structuredLog), /private|secret|E_PRIVATE/);
+  assert.doesNotMatch(JSON.stringify(safeHeartbeatQaLogDiagnostic("provider_request_timeout secret=private")), /private|secret/);
+  assert.deepEqual(safeHeartbeatQaLogDiagnostic(null), { available: false, bytes: 0, safeSignal: null });
 });
 
 

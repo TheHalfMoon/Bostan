@@ -350,6 +350,7 @@ import {
   retainedNativeCleanupJournalMatches,
   nativeProviderUsageLimitFromEvent,
   nativeSessionFailureSourceCode,
+  safeNativeSessionFailureDiagnostic,
   nativeSessionRecoveryProjection,
   nativeGovernedWaitResult,
   nativeConversationReplyResult,
@@ -9327,7 +9328,13 @@ describe("native warm session supervision", () => {
 describe("native session bounded recovery", () => {
   it("persists closed remote recovery evidence without replacing saved run results", async () => {
     const updates: Array<{ table: unknown; values: Record<string, unknown> }> = [];
-    const onEvent = vi.fn(async () => undefined);
+    let rejectDiagnosticOnce = true;
+    const onEvent = vi.fn(async (event: { eventType: string }) => {
+      if (event.eventType === "native.failure_diagnostic" && rejectDiagnosticOnce) {
+        rejectDiagnosticOnce = false;
+        throw new Error("private event transport error");
+      }
+    });
     const remoteRunnerRecovery = { stage: "identity_marker", reason: "fingerprint_missing" } as const;
     const failure = new RemoteRunnerRecoveryError(remoteRunnerRecovery);
     state.execute.mockReset().mockRejectedValueOnce(failure);
@@ -9337,6 +9344,16 @@ describe("native session bounded recovery", () => {
     await expect(executePaperclipNativeSession({ db: leaseDb(execution, {}, {}, updates), execution, runnerInstanceId: "runner", onEvent })).rejects.toBe(failure);
     expect(onEvent).toHaveBeenCalledWith({ eventType: "native.remote_runner_recovery_failed", level: "error",
       message: "Could not verify the existing remote runner.", payload: { remoteRunnerRecovery } });
+    expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: "native.failure_diagnostic",
+      payload: { failureDetail: expect.objectContaining({
+        originalFailureCode: "native_session_interrupted",
+        failureStage: "remote_session_recovery",
+        failureType: "Error",
+        nativeErrorCode: null,
+      }) },
+    }));
+    expect(onEvent.mock.calls.filter(([event]) => event.eventType === "native.failure_diagnostic")).toHaveLength(2);
     expect(updates.find(update => update.table === nativeRunFinalizations && update.values.failureDetail)?.values.failureDetail)
       .toMatchObject({ remoteRunnerRecovery });
     const resultJson = updates.find(update => update.table === heartbeatRuns && update.values.error)?.values.resultJson as SQL;
@@ -9426,6 +9443,16 @@ describe("native session bounded recovery", () => {
         }),
       ),
     ).toBe("native_session_interrupted");
+  });
+
+  it("exposes only allowlisted native failure diagnostics", () => {
+    expect(safeNativeSessionFailureDiagnostic(
+      Object.assign(new TypeError("private prompt C:\\Users\\secret"), { code: "ECONNRESET" }),
+      "runner_backend_setup",
+    )).toEqual({ failureStage: "runner_backend_setup", failureType: "TypeError", nativeErrorCode: "ECONNRESET" });
+    expect(safeNativeSessionFailureDiagnostic(
+      Object.assign(new Error("private"), { code: "PRIVATE_CODE" }), "private_stage",
+    )).toEqual({ failureStage: "provider_setup", failureType: "Error", nativeErrorCode: null });
   });
 
   it.each([
@@ -13799,4 +13826,16 @@ it("keeps an ACPX missing runtime package failure actionable and stops automatic
   const code = nativeSessionFailureSourceCode(failure);
   expect(code).toBe("native_provider_runtime_missing");
   expect(nativeSessionFailureDisposition(1, new Date(), code)).toEqual({ phase: "terminal_failure", failureCode: code, nextAttemptAt: null });
+});
+
+it("classifies a missing pinned OpenCode runtime as actionable instead of a generic interruption", () => {
+  const code = nativeSessionFailureSourceCode(new Error(
+    "Pinned OpenCode runtime unavailable: OpenCode native target is not qualified. Restore Paperclip's runtime dependencies.",
+  ));
+  expect(code).toBe("native_provider_runtime_missing");
+  expect(nativeSessionFailureDisposition(1, new Date(), code)).toEqual({
+    phase: "terminal_failure",
+    failureCode: code,
+    nextAttemptAt: null,
+  });
 });
