@@ -9,7 +9,7 @@ import { qualifyFreeQaModel, qualifyLocalOpenCodeQaModel } from "./bostan-free-m
 import { admitFreeOpenCodeModel } from "./bostan-opencode-free-admission.mjs";
 import { nativeGovernedCaseAgentConfig, requireNativeCaseQaHost } from "./bostan-governed-case-free-e2e.mjs";
 import { classifyPackagedStartupProgress, packagedStartupFailure } from "./bostan-packaged-startup-progress.mjs";
-import { packagedFirstAgentFailureReceipt } from "./bostan-packaged-first-agent-failure.mjs";
+import { captureFirstAgentFailure, packagedFirstAgentFailureReceipt } from "./bostan-packaged-first-agent-failure.mjs";
 import {
   assertHeartbeatQaSucceeded,
   buildFirstWorkerTask,
@@ -351,7 +351,7 @@ async function run() {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "bostan-packaged-first-agent-"));
   let child;
   let cleanupAllowed = true;
-  let failure;
+  let firstFailure = null;
   let qualificationStage = "model_admission";
   let taskReceipt;
   let gracefulShutdownVerified = false;
@@ -680,7 +680,7 @@ async function run() {
       commentId: recoveryComment.commentId,
     };
   } catch (error) {
-    failure = error;
+    firstFailure = captureFirstAgentFailure(firstFailure, qualificationStage, error);
   } finally {
     if (child && child.exitCode === null) {
       qualificationStage = "shutdown";
@@ -694,7 +694,9 @@ async function run() {
           await terminateOwnedApplicationTree(child, profile);
           console.error("BOSTAN_PACKAGED_FIRST_AGENT_OWNED_TREE_STOPPED_AFTER_QUALIFICATION_FAILURE");
         } catch { cleanupAllowed = false; }
-        if (!failure) failure = new Error("desktop_graceful_shutdown_unverified");
+        if (!firstFailure) {
+          firstFailure = captureFirstAgentFailure(firstFailure, "shutdown", new Error("desktop_graceful_shutdown_unverified"));
+        }
       }
     }
     if (cleanupAllowed) {
@@ -702,21 +704,30 @@ async function run() {
       try {
         safeDeleteTemp(profile);
         temporaryProfileCleanupVerified = !fs.existsSync(profile);
+        if (!temporaryProfileCleanupVerified) throw new Error("temporary_profile_cleanup_unverified");
         if (temporaryProfileCleanupVerified) console.log("BOSTAN_PACKAGED_NATIVE_QA_TEMP_PROFILE_CLEANUP_PASS");
       }
-      catch { cleanupAllowed = false; }
+      catch (error) {
+        cleanupAllowed = false;
+        firstFailure = captureFirstAgentFailure(firstFailure, "cleanup", error);
+      }
     }
     if (!cleanupAllowed) console.error("BOSTAN_PACKAGED_FIRST_AGENT_TEMP_PRESERVED_FOR_SAFE_RECOVERY");
   }
-  if (failure) {
-    const receipt = packagedFirstAgentFailureReceipt(qualificationStage, failure);
+  if (!cleanupAllowed) {
+    firstFailure = captureFirstAgentFailure(firstFailure, "cleanup", new Error("temporary_profile_cleanup_failed"));
+  }
+  if (!gracefulShutdownVerified) {
+    firstFailure = captureFirstAgentFailure(firstFailure, "shutdown", new Error("desktop_graceful_shutdown_unverified"));
+  }
+  if (!temporaryProfileCleanupVerified) {
+    firstFailure = captureFirstAgentFailure(firstFailure, "cleanup", new Error("temporary_profile_cleanup_unverified"));
+  }
+  if (firstFailure) {
+    const receipt = packagedFirstAgentFailureReceipt(firstFailure.stage, firstFailure.error);
     const taggedFailure = new Error("packaged_first_agent_qualification_failed");
     taggedFailure.packagedFailureReceipt = receipt;
     throw taggedFailure;
-  }
-  if (!cleanupAllowed) throw new Error("packaged_first_agent_qa_cleanup_unverified");
-  if (!gracefulShutdownVerified || !temporaryProfileCleanupVerified) {
-    throw new Error("packaged_first_agent_qa_shutdown_or_cleanup_unverified");
   }
   console.log("BOSTAN_PACKAGED_DESKTOP_FIRST_FREE_AGENT_TASK_PASS " + JSON.stringify({
     ...taskReceipt,

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { packagedFirstAgentFailureReceipt } from "./bostan-packaged-first-agent-failure.mjs";
+import { captureFirstAgentFailure, packagedFirstAgentFailureReceipt } from "./bostan-packaged-first-agent-failure.mjs";
 
 test("failure receipts retain a bounded stage and safe enum-like error code", () => {
   assert.equal(
@@ -25,5 +25,28 @@ test("untrusted error text and stages are not copied into receipts", () => {
   assert.equal(
     packagedFirstAgentFailureReceipt("company_create", new Error("token_sk_private_value")),
     "BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=company_create code=unclassified",
+  );
+});
+
+test("the earliest failing stage survives later shutdown and cleanup failures", () => {
+  const first = captureFirstAgentFailure(null, "agent_readiness", new Error("native_agent_setup_harness_test_failed"));
+  const afterShutdown = captureFirstAgentFailure(first, "shutdown", new Error("desktop_graceful_shutdown_unverified"));
+  const afterCleanup = captureFirstAgentFailure(afterShutdown, "cleanup", new Error("temporary_profile_cleanup_failed"));
+
+  assert.equal(afterCleanup, first);
+  assert.equal(
+    packagedFirstAgentFailureReceipt(afterCleanup.stage, afterCleanup.error),
+    "BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=agent_readiness code=native_agent_setup_harness_test_failed",
+  );
+});
+
+test("shutdown and temporary-profile cleanup errors have bounded categories", () => {
+  assert.equal(
+    packagedFirstAgentFailureReceipt("shutdown", new Error("desktop_did_not_confirm_graceful_shutdown")),
+    "BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=shutdown code=desktop_did_not_confirm_graceful_shutdown",
+  );
+  assert.equal(
+    packagedFirstAgentFailureReceipt("cleanup", new Error("qa_process_still_owns_temp_profile")),
+    "BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=cleanup code=qa_process_still_owns_temp_profile",
   );
 });

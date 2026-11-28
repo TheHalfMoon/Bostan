@@ -37,7 +37,31 @@ export function packagedFirstAgentFailureReceipt(stage, error) {
     code = "heartbeat_not_succeeded";
   } else if (safeHttpFailureCode.test(normalized)) {
     code = normalized;
+  } else if (/^native_agent_setup_(?:harness_free_provider_limited|harness_probe_transport_unavailable|harness_probe_failed|harness_test_failed|lifecycle_verification_failed)$/.test(normalized)) {
+    code = normalized;
+  } else if ([
+    "native_agent_lifecycle_failed",
+    "native_agent_readiness_timeout",
+    "native_runner_not_selected",
+    "desktop_graceful_close_request_failed",
+    "desktop_did_not_confirm_graceful_shutdown",
+    "desktop_graceful_shutdown_unverified",
+    "qa_process_still_owns_temp_profile",
+    "process_cleanup_verification_unavailable",
+    "refusing_temp_cleanup_outside_system_temp",
+    "temporary_profile_cleanup_failed",
+    "temporary_profile_cleanup_unverified",
+  ].includes(normalized)) {
+    code = normalized;
   }
 
   return `BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=${safeStage} code=${code}`;
+}
+
+export function captureFirstAgentFailure(current, stage, error) {
+  if (current) return current;
+  return {
+    stage: stages.has(stage) ? stage : "unclassified",
+    error,
+  };
 }

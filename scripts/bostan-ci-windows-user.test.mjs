@@ -48,10 +48,14 @@ test("Windows CI forwards only bounded packaged first-agent stage and failure re
     assert.equal(receiptPattern.test(`BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=${stage} code=synthetic_company_create_failed_http_500`), true, stage);
   }
   assert.equal(receiptPattern.test("BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=company_create code=heartbeat_not_succeeded"), true);
+  assert.equal(receiptPattern.test("BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=agent_readiness code=native_agent_setup_harness_test_failed"), true);
+  assert.equal(receiptPattern.test("BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=agent_readiness code=native_agent_readiness_timeout"), true);
+  assert.equal(receiptPattern.test("BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=cleanup code=qa_process_still_owns_temp_profile"), true);
   assert.equal(receiptPattern.test("BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=company_create code=sk_private_token"), false);
   assert.equal(receiptPattern.test("BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=C:\\Users\\private code=secret"), false);
   assert.match(harness, /console\.log\(receipt\)/, "safe failure receipt goes through the wrapper's stdout filter");
-  assert.match(harness, /packagedFirstAgentFailureReceipt\(qualificationStage, failure\)/, "failure stage and code are reduced by the bounded classifier");
+  assert.match(harness, /captureFirstAgentFailure\(firstFailure, qualificationStage, error\)/, "the original failure stage is captured before shutdown and cleanup");
+  assert.match(harness, /packagedFirstAgentFailureReceipt\(firstFailure\.stage, firstFailure\.error\)/, "the first failure stage and safe code reach the bounded classifier");
 });
 
 test("native model setup exposes only bounded fixed phase, failure and progress receipts", () => {
