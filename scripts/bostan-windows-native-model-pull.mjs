@@ -205,6 +205,7 @@ export async function runBoundedModelPull({
       outputLimitExceeded,
       failureClass,
       diagnostic: outputLimitExceeded ? "output_limit" : classifyModelPullDiagnostic(stdoutText + "\n" + stderrText),
+      elapsedSeconds: Math.max(0, Math.floor((Date.now() - startedAt) / 1000)),
       childClosed: !closeResult.timedOut,
       terminationAccepted,
       ioFailed: ioFailed || Boolean(readFailure),
@@ -258,7 +259,10 @@ function parseArguments(argv) {
 
 function emitResult(result) {
   const exitCode = Number.isInteger(result.exitCode) ? result.exitCode : "unavailable";
+  const elapsedSeconds = Number.isInteger(result.elapsedSeconds) && result.elapsedSeconds >= 0 && result.elapsedSeconds <= 86_400
+    ? result.elapsedSeconds : "unavailable";
   console.log("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=" + exitCode
+    + " elapsedSeconds=" + elapsedSeconds
     + " diagnostic=" + result.diagnostic
     + " failureClass=" + result.failureClass
     + " outputBytes=" + result.outputBytes

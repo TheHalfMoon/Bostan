@@ -34,6 +34,10 @@ test("Windows CI receipt allowlist admits only fixed startup failure codes", () 
 test("Windows CI forwards only bounded packaged first-agent stage and failure receipts", () => {
   const wrapper = fs.readFileSync(path.join(import.meta.dirname, "bostan-ci-windows-user.ps1"), "utf8");
   const harness = fs.readFileSync(path.join(import.meta.dirname, "bostan-windows-packaged-free-first-agent-qa.mjs"), "utf8");
+  assert.match(wrapper, /bostan-ci-windows-run-diagnostic\.ps1/, "wrapper loads the run diagnostic sanitizer");
+  assert.match(wrapper, /Get-BostanAllowedFirstAgentRunDiagnostic \$line/, "wrapper forwards only sanitized run diagnostics");
+  assert.match(wrapper, /Get-BostanAllowedNativeResourceDiagnostic \$line/, "wrapper forwards only numeric post-model resource measurements");
+  assert.match(harness, /BOSTAN_PACKAGED_FIRST_AGENT_RUN_DIAGNOSTIC/, "the packaged harness emits a bounded diagnostic");
   const match = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_PACKAGED_FIRST_AGENT_FAIL[^']*)'\) \{ return \$line \}$/m);
   assert.ok(match, "packaged first-agent failure receipt allowlist is present");
   const receiptPattern = new RegExp(match[1]);
@@ -58,6 +62,17 @@ test("Windows CI forwards only bounded packaged first-agent stage and failure re
   assert.match(harness, /console\.log\(receipt\)/, "safe failure receipt goes through the wrapper's stdout filter");
   assert.match(harness, /captureFirstAgentFailure\(firstFailure, qualificationStage, error\)/, "the original failure stage is captured before shutdown and cleanup");
   assert.match(harness, /packagedFirstAgentFailureReceipt\(firstFailure\.stage, firstFailure\.error\)/, "the first failure stage and safe code reach the bounded classifier");
+});
+
+test("Windows PowerShell 5.1 allows bounded first-agent run diagnostics and rejects unsafe fields", { skip: process.platform !== "win32" }, () => {
+  const powershell = path.join(process.env.SystemRoot, "System32/WindowsPowerShell/v1.0/powershell.exe");
+  const probe = path.join(import.meta.dirname, "bostan-ci-windows-run-diagnostic-probe.ps1");
+  const result = spawnSync(powershell, ["-NoProfile", "-NonInteractive", "-File", probe], {
+    env: process.env, windowsHide: true, encoding: "utf8", timeout: 30000,
+  });
+  assert.equal(result.status, 0, JSON.stringify({ error: result.error?.message, signal: result.signal, stdout: result.stdout, stderr: result.stderr }));
+  assert.equal(result.stderr, "");
+  assert.match(result.stdout, /BOSTAN_CI_FIRST_AGENT_RUN_DIAGNOSTIC_PROBE_PASS cases=valid,unavailable_log,extra_field,unsafe_signal,non_scalar_stage,bounded_counts,oversized_line,resources,unsafe_resource/);
 });
 
 test("Windows CI forwards the cleanup receipts actually emitted by the packaged QA", () => {
@@ -129,14 +144,15 @@ test("native model setup exposes only bounded fixed phase, failure and progress 
   assert.equal(progressPattern.test("BOSTAN_NATIVE_MODEL_PULL_WAIT elapsedSeconds=120 outputProgress=stalled"), true);
   assert.equal(progressPattern.test("BOSTAN_NATIVE_MODEL_PULL_WAIT elapsedSeconds=120 outputProgress=C:\\secret"), false);
   for (const diagnostic of ["access_denied", "authorization", "disk_space", "model_unavailable", "network", "other", "output_limit", "resource"]) {
-    assert.equal(resultPattern.test(`BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 diagnostic=${diagnostic} failureClass=process_exit outputBytes=24 childClose=closed`), true, diagnostic);
+    assert.equal(resultPattern.test(`BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 elapsedSeconds=42 diagnostic=${diagnostic} failureClass=process_exit outputBytes=24 childClose=closed`), true, diagnostic);
   }
-  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=0 diagnostic=other failureClass=none outputBytes=12 childClose=closed"), true, "successful pull receipts confirm direct-child close");
-  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=unavailable diagnostic=other failureClass=process_launch outputBytes=0 childClose=unconfirmed"), true, "unknown exit state and direct-child close state are explicit");
-  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=-1073741819 diagnostic=resource failureClass=process_exit outputBytes=1048576 childClose=closed"), true, "signed Windows process failure codes are preserved");
-  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=429496729600 diagnostic=other failureClass=other outputBytes=24 childClose=closed"), false, "oversized process codes remain rejected");
-  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 diagnostic=secret failureClass=process_exit outputBytes=24 childClose=closed"), false);
-  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 diagnostic=network failureClass=token-secret outputBytes=24 childClose=closed"), false);
+  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=0 elapsedSeconds=0 diagnostic=other failureClass=none outputBytes=12 childClose=closed"), true, "successful pull receipts confirm duration and direct-child close");
+  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=unavailable elapsedSeconds=unavailable diagnostic=other failureClass=process_launch outputBytes=0 childClose=unconfirmed"), true, "unknown exit state and duration remain explicit");
+  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=-1073741819 elapsedSeconds=42 diagnostic=resource failureClass=process_exit outputBytes=1048576 childClose=closed"), true, "signed Windows process failure codes are preserved");
+  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 elapsedSeconds=86401 diagnostic=other failureClass=process_exit outputBytes=24 childClose=closed"), false, "out-of-range model pull duration is rejected");
+  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=429496729600 elapsedSeconds=42 diagnostic=other failureClass=other outputBytes=24 childClose=closed"), false, "oversized process codes remain rejected");
+  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 elapsedSeconds=42 diagnostic=secret failureClass=process_exit outputBytes=24 childClose=closed"), false);
+  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 elapsedSeconds=42 diagnostic=network failureClass=token-secret outputBytes=24 childClose=closed"), false);
   assert.equal(cleanupIncompletePattern.test("BOSTAN_NATIVE_WINDOWS_CLEANUP_INCOMPLETE task_owned_temp_preserved=true reason=child_close_unconfirmed"), true);
   assert.equal(cleanupIncompletePattern.test("BOSTAN_NATIVE_WINDOWS_CLEANUP_INCOMPLETE C:\\Users\\secret"), false);
   for (const cause of ["access_denied", "io_error", "other", "output_limit", "process_launch", "process_state"]) {

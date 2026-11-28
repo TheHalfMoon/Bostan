@@ -31,6 +31,7 @@ test("model-pull process runner preserves actual nonzero child exit with bounded
   assert.equal(result.diagnostic, "model_unavailable");
   assert.equal(result.childClosed, true);
   assert.equal(result.outputLimitExceeded, false);
+  assert.ok(Number.isInteger(result.elapsedSeconds) && result.elapsedSeconds >= 0);
   assert.equal(result.outputBytes, (await stat(fixture.stdoutPath)).size + (await stat(fixture.stderrPath)).size);
   assert.match(await readFile(fixture.stdoutPath, "utf8"), /manifest unknown/);
 });
@@ -47,6 +48,7 @@ test("successful child exit remains successful", async (t) => {
   assert.equal(result.failureClass, "none");
   assert.equal(result.childClosed, true);
   assert.equal(result.outputLimitExceeded, false);
+  assert.ok(Number.isInteger(result.elapsedSeconds) && result.elapsedSeconds >= 0);
 });
 
 test("output cap terminates only the owned child and keeps combined logs bounded", async (t) => {
@@ -173,7 +175,7 @@ test("Windows PowerShell 5.1 preserves the bounded helper receipt and child exit
     ], { windowsHide: true, encoding: "utf8", timeout: 30_000 });
     assert.equal(result.status, 0, JSON.stringify({ error: result.error?.message, signal: result.signal, stdout: result.stdout, stderr: result.stderr }));
     assert.equal(result.stderr, "");
-    assert.match(result.stdout, /BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 diagnostic=[a-z_]+ failureClass=process_exit outputBytes=[0-9]+ childClose=closed/);
+    assert.match(result.stdout, /BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 elapsedSeconds=\d+ diagnostic=[a-z_]+ failureClass=process_exit outputBytes=[0-9]+ childClose=closed/);
     assert.match(result.stdout, /BOSTAN_WINDOWS_POWERSHELL5_MODEL_PULL_PASS child_exit=1 runner_exit=1/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });

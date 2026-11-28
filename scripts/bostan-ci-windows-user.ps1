@@ -8,6 +8,7 @@ if ($env:GITHUB_ACTIONS -ne 'true' -or $env:CI -ne 'true' -or -not $env:RUNNER_T
 }
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if ([IO.Path]::GetFullPath($env:GITHUB_WORKSPACE) -ne $repo) { throw 'Unexpected CI checkout' }
+. (Join-Path $PSScriptRoot 'bostan-ci-windows-run-diagnostic.ps1')
 $nodeBinary = (Get-Command node.exe).Source
 $worker = Join-Path $PSScriptRoot 'bostan-ci-windows-user-worker.ps1'
 $nonce = [Guid]::NewGuid().ToString('N').Substring(0,10)
@@ -84,6 +85,12 @@ function Get-AllowedInstallerReceipt([string]$line) {
   if ($line -match '^BOSTAN_PACKAGED_STARTUP_PHASE (?:window_loaded|data_protected|runtime_valid|child_spawned|utility_bootstrap|importing_server|starting_server|ready)$') { return $line }
   if ($line -match '^BOSTAN_PACKAGED_STARTUP_FAILURE [A-Z0-9_]{1,80}$') { return $line }
   if ($line -match '^BOSTAN_PACKAGED_STARTUP_ISSUE POSTGRES_START_[A-Z0-9_]{1,80}$') { return $line }
+  $runDiagnostic = Get-BostanAllowedFirstAgentRunDiagnostic $line
+  if ($runDiagnostic -is [string]) { return $runDiagnostic }
+  if ($runDiagnostic -eq $false) { return $false }
+  $nativeResources = Get-BostanAllowedNativeResourceDiagnostic $line
+  if ($nativeResources -is [string]) { return $nativeResources }
+  if ($nativeResources -eq $false) { return $false }
   if ($line -match '^BOSTAN_PACKAGED_DESKTOP_(?:PRIVATE_HEALTH|FIRST_ADMIN|NATIVE_AGENT_READY|RESTART_READY|FIRST_TASK_PERSISTENCE|NATIVE_QA_GRACEFUL_SHUTDOWN|NATIVE_QA_TEMP_PROFILE_CLEANUP)_PASS$') { return $line }
   if ($line -match '^BOSTAN_PACKAGED_NATIVE_QA_(?:GRACEFUL_SHUTDOWN|TEMP_PROFILE_CLEANUP)_PASS$') { return $line }
   if ($line -match '^BOSTAN_PACKAGED_FIRST_AGENT_CLEANUP_FAILURE code=(?:unclassified|qa_process_still_owns_temp_profile|process_cleanup_verification_unavailable|refusing_temp_cleanup_outside_system_temp|temporary_profile_cleanup_failed|temporary_profile_cleanup_unverified)$') { return $line }
@@ -105,7 +112,7 @@ function Get-AllowedInstallerReceipt([string]$line) {
   if ($line -match '^BOSTAN_NATIVE_WINDOWS_CLEANUP_PASS task_owned_temp=true$') { return $line }
   if ($line -match '^BOSTAN_NATIVE_WINDOWS_FAILURE (?:ollama_download|ollama_archive_verify|ollama_archive_extract|ollama_executable_discovery|ollama_version_verify|ollama_server_start|qwen_model_pull|qwen_model_manifest_verify|qwen_model_license_verify|host_resource_verify|installed_app_qualification)$') { return $line }
   if ($line -match '^BOSTAN_NATIVE_MODEL_PULL_WAIT elapsedSeconds=[0-9]{1,4} outputProgress=(?:advanced|stalled)$') { return $line }
-  if ($line -match '^BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=(?:unavailable|-?[0-9]{1,10}) diagnostic=(?:access_denied|authorization|disk_space|model_unavailable|network|other|output_limit|resource) failureClass=(?:io_error|none|output_limit|process_exit|process_launch|process_state) outputBytes=[0-9]{1,7} childClose=(?:closed|unconfirmed)$') { return $line }
+  if ($line -match '^BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=(?:unavailable|-?[0-9]{1,10}) elapsedSeconds=(?:unavailable|(?:[0-9]{1,4}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9]{2}|86400)) diagnostic=(?:access_denied|authorization|disk_space|model_unavailable|network|other|output_limit|resource) failureClass=(?:io_error|none|output_limit|process_exit|process_launch|process_state) outputBytes=[0-9]{1,7} childClose=(?:closed|unconfirmed)$') { return $line }
   if ($line -match '^BOSTAN_NATIVE_WINDOWS_CLEANUP_INCOMPLETE task_owned_temp_preserved=true reason=child_close_unconfirmed$') { return $line }
   if ($line -match '^BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=(?:access_denied|io_error|other|output_limit|process_launch|process_state) childAlive=(?:true|false) failureClass=(?:access_denied|io_error|other|output_limit|process_exit|process_launch|process_state) exitCode=(?:unavailable|-?[0-9]{1,10}) diagnostic=(?:access_denied|authorization|disk_space|model_unavailable|network|other|output_limit|resource) outputBytes=[0-9]{1,7}$') { return $line }
   $nativeSuccessPrefix = 'BOSTAN_PACKAGED_DESKTOP_FIRST_FREE_AGENT_TASK_PASS '

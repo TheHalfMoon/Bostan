@@ -140,12 +140,12 @@ try {
       --stderr $modelPullStderr | ForEach-Object {
         $line = [string]$_
         Write-Output $line
-        if ($line -match '^BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=(unavailable|-?[0-9]{1,10}) diagnostic=(access_denied|authorization|disk_space|model_unavailable|network|other|output_limit|resource) failureClass=(io_error|none|output_limit|process_exit|process_launch|process_state) outputBytes=([0-9]{1,7}) childClose=(closed|unconfirmed)$') {
+        if ($line -match '^BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=(unavailable|-?[0-9]{1,10}) elapsedSeconds=(?:unavailable|(?:[0-9]{1,4}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9]{2}|86400)) diagnostic=(access_denied|authorization|disk_space|model_unavailable|network|other|output_limit|resource) failureClass=(io_error|none|output_limit|process_exit|process_launch|process_state) outputBytes=([0-9]{1,7}) childClose=(closed|unconfirmed)$') {
           $modelPullReceiptLine = $line
         }
       }
     $modelPullRunnerExitCode = $LASTEXITCODE
-    if ($modelPullReceiptLine -match '^BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=(unavailable|-?[0-9]{1,10}) diagnostic=(access_denied|authorization|disk_space|model_unavailable|network|other|output_limit|resource) failureClass=(io_error|none|output_limit|process_exit|process_launch|process_state) outputBytes=([0-9]{1,7}) childClose=(closed|unconfirmed)$') {
+    if ($modelPullReceiptLine -match '^BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=(unavailable|-?[0-9]{1,10}) elapsedSeconds=(?:unavailable|(?:[0-9]{1,4}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9]{2}|86400)) diagnostic=(access_denied|authorization|disk_space|model_unavailable|network|other|output_limit|resource) failureClass=(io_error|none|output_limit|process_exit|process_launch|process_state) outputBytes=([0-9]{1,7}) childClose=(closed|unconfirmed)$') {
       $modelPullExitCode = if ($matches[1] -eq 'unavailable') { $null } else { [int]$matches[1] }
       $modelPullDiagnostic = $matches[2]
       $modelPullFailureClass = $matches[3]
@@ -226,7 +226,7 @@ try {
     } elseif ($pullOutputReadFailed) {
       Write-Output "BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=io_error childAlive=$($pullChildAlive.ToString().ToLowerInvariant()) failureClass=$modelPullFailureClass exitCode=$(if ($null -eq $pullExitCode) { 'unavailable' } else { $pullExitCode }) diagnostic=$pullDiagnostic outputBytes=$pullOutputBytes"
     } elseif ($null -ne $pullExitCode -and $pullExitCode -ne 0) {
-      Write-Output "BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=$pullExitCode diagnostic=$pullDiagnostic failureClass=$modelPullFailureClass outputBytes=$pullOutputBytes"
+      Write-Output "BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=$pullExitCode elapsedSeconds=unavailable diagnostic=$pullDiagnostic failureClass=$modelPullFailureClass outputBytes=$pullOutputBytes childClose=unconfirmed"
     } else {
       $pullCause = 'other'
       if ($pullChildAlive) { $pullCause = 'process_state' }
