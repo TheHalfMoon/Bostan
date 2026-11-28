@@ -180,9 +180,10 @@ export function Sidebar({ children }: { children?: ReactNode }) {
               label="Inbox"
               icon={Inbox}
               badge={inboxBadge.inbox}
-              badgeLabel="unread"
+              badgeLabel="items needing attention"
               badgeTone={inboxBadge.failedRuns > 0 ? "danger" : "default"}
               alert={inboxBadge.failedRuns > 0}
+              alertLabel="failed runs"
             />
           ) : null}
           {agentChatEnabled && !chatRail ? <SidebarNavItem to="/chats" label="Chat" icon={MessageCircle} /> : null}
@@ -218,9 +219,10 @@ export function Sidebar({ children }: { children?: ReactNode }) {
               label="Tasks"
               icon={CircleCheck}
               badge={inboxBadge.inbox}
-              badgeLabel="unread"
+              badgeLabel="items needing attention"
               badgeTone={inboxBadge.failedRuns > 0 ? "danger" : "default"}
               alert={inboxBadge.failedRuns > 0}
+              alertLabel="failed runs"
             />
           ) : (
             <SidebarNavItem to="/issues" label="Tasks" icon={CircleCheck} />

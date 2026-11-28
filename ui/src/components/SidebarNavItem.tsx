@@ -47,13 +47,15 @@ interface SidebarNavItemProps {
   badge?: number;
   badgeTone?: "default" | "danger" | "warning";
   /**
-   * Accessible noun for the numeric badge when collapsed to the rail, where the
-   * count is rendered as a dot (e.g. `badgeLabel="unread"` → "Inbox, 28 unread").
+   * Accessible noun for the numeric badge when hidden in the collapsed rail or
+   * included in an alert's expanded accessible name.
    */
   badgeLabel?: string;
   textBadge?: string;
   textBadgeTone?: "default" | "amber";
   alert?: boolean;
+  /** Accessible description for the alert marker when it conveys a distinct state. */
+  alertLabel?: string;
   liveCount?: number;
   /**
    * Overrides NavLink's own route matching for rows whose active state is
@@ -82,6 +84,7 @@ export function SidebarNavItem({
   textBadge,
   textBadgeTone = "default",
   alert = false,
+  alertLabel,
   liveCount,
   active,
   trailing,
@@ -101,18 +104,16 @@ export function SidebarNavItem({
   const hasLive = liveCount != null && liveCount > 0;
   const showIconSlot = Boolean(iconNode || Icon || alert || (rail && (hasLive || hasBadge)));
 
-  // Accessible text equivalent for the collapsed dot indicator. The visible
-  // label is `sr-only` in the rail, so the count must be surfaced here.
-  const railStatusText = hasLive
-    ? `${liveCount} live`
-    : hasBadge
-      ? `${badge}${badgeLabel ? ` ${badgeLabel}` : ""}`
-      : alert
-        ? "attention needed"
-        : undefined;
-  const railAriaLabel = !rail || (!railStatusText && !trailingLabel)
+  // Preserve status text when visual badges collapse, and announce alerts
+  // in both layouts so the red marker is never the only failure signal.
+  const railStatusParts = [
+    hasLive ? String(liveCount) + " live" : undefined,
+    hasBadge ? String(badge) + (badgeLabel ? " " + badgeLabel : "") : undefined,
+    alert ? alertLabel ?? "attention needed" : undefined,
+  ].filter((part): part is string => Boolean(part));
+  const railAriaLabel = (!rail && !alert) || (!railStatusParts.length && !trailingLabel)
     ? undefined
-    : `${label}${railStatusText ? `, ${railStatusText}` : ""}${trailingLabel ? `, ${trailingLabel}` : ""}`;
+    : [label, ...railStatusParts, trailingLabel].filter(Boolean).join(", ");
 
   const link = (
     <NavLink

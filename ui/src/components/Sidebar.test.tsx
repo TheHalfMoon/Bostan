@@ -6,6 +6,7 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Sidebar } from "./Sidebar";
+import { Sidebar as ProductionSidebar } from "./Sidebar.production";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const mockHeartbeatsApi = vi.hoisted(() => ({
@@ -100,6 +101,20 @@ vi.mock("./SidebarCompanyMenu", () => ({
   SidebarCompanyMenu: () => <div>Company menu</div>,
 }));
 
+vi.mock("./SidebarAgents.production", () => ({
+  SidebarAgents: ({ streamlined }: { streamlined?: boolean }) => (
+    <div data-testid="production-sidebar-agents" data-streamlined={String(streamlined)}>Active agents</div>
+  ),
+}));
+
+vi.mock("./SidebarStarredProjects.production", () => ({
+  SidebarStarredProjects: () => <div data-testid="production-starred-projects" />,
+}));
+
+vi.mock("./SidebarCompanyMenu.production", () => ({
+  SidebarCompanyMenu: () => <div>Company menu</div>,
+}));
+
 vi.mock("./SidebarAgents", () => ({
   SidebarAgents: ({ streamlined }: { streamlined?: boolean }) => (
     <div data-testid="sidebar-agents" data-streamlined={String(streamlined)}>
@@ -134,7 +149,7 @@ async function flushReact() {
 describe("Sidebar", () => {
   let container: HTMLDivElement;
 
-  async function renderSidebar() {
+  async function renderSidebar(SidebarComponent: typeof Sidebar = Sidebar) {
     const root = createRoot(container);
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
@@ -144,7 +159,7 @@ describe("Sidebar", () => {
       root.render(
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
-            <Sidebar />
+            <SidebarComponent />
           </TooltipProvider>
         </QueryClientProvider>,
       );
@@ -357,6 +372,32 @@ describe("Sidebar", () => {
     });
   });
 
+  it("exposes failed runs on the production Inbox accessible name", async () => {
+    mockInboxBadge.inbox = 5;
+    mockInboxBadge.failedRuns = 1;
+    mockInstanceSettingsApi.getExperimental.mockResolvedValue({});
+    const root = await renderSidebar(ProductionSidebar);
+
+    const inboxLink = [...container.querySelectorAll("a")].find((anchor) => anchor.getAttribute("href") === "/inbox");
+    expect(inboxLink?.getAttribute("aria-label")).toBe("Inbox, 5 items needing attention, failed runs");
+
+    flushSync(() => {
+      root.unmount();
+    });
+  });
+  it("exposes failed runs on the Inbox accessible name", async () => {
+    mockInboxBadge.inbox = 5;
+    mockInboxBadge.failedRuns = 1;
+    mockInstanceSettingsApi.getExperimental.mockResolvedValue({ enableCombinedInboxTasks: false });
+    const root = await renderSidebar();
+
+    const inboxLink = [...container.querySelectorAll("a")].find((anchor) => anchor.getAttribute("href") === "/inbox");
+    expect(inboxLink?.getAttribute("aria-label")).toBe("Inbox, 5 items needing attention, failed runs");
+
+    flushSync(() => {
+      root.unmount();
+    });
+  });
   it("keeps the Inbox row, Workspaces and no chat surfaces while both PAP-670 flags are off", async () => {
     mockInstanceSettingsApi.getExperimental.mockResolvedValue({ enableIsolatedWorkspaces: true });
     const root = await renderSidebar();
@@ -441,6 +482,19 @@ describe("Sidebar", () => {
       });
     });
 
+    it("exposes failed runs on the combined Tasks accessible name", async () => {
+      mockInboxBadge.inbox = 5;
+      mockInboxBadge.failedRuns = 1;
+      mockInstanceSettingsApi.getExperimental.mockResolvedValue({ enableCombinedInboxTasks: true });
+      const root = await renderSidebar();
+
+      const tasksLink = [...container.querySelectorAll("a")].find((anchor) => anchor.getAttribute("href") === "/issues");
+      expect(tasksLink?.getAttribute("aria-label")).toBe("Tasks, 5 items needing attention, failed runs");
+
+      flushSync(() => {
+        root.unmount();
+      });
+    });
     it("drops the Inbox row and moves its unread badge onto Tasks", async () => {
       mockInboxBadge.inbox = 7;
       mockInstanceSettingsApi.getExperimental.mockResolvedValue({ enableCombinedInboxTasks: true });

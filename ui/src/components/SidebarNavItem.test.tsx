@@ -6,6 +6,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Inbox } from "lucide-react";
 import { SidebarNavItem, SidebarNavExpandedProvider } from "./SidebarNavItem";
+import { SidebarNavItem as ProductionSidebarNavItem } from "./SidebarNavItem.production";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const sidebarState = vi.hoisted(() => ({
@@ -89,6 +90,78 @@ describe("SidebarNavItem", () => {
     expect(alertBadge).not.toBeNull();
     expect(classTokens(alertBadge)).toContain("shadow-(--shadow-sidebar-icon-badge)");
     expect(classTokens(alertBadge)).not.toContain("shadow-(--shadow-extract-12)");
+  });
+
+  it("announces failed runs alongside unread counts in the collapsed rail", () => {
+    sidebarState.collapsed = true;
+    render(
+      <SidebarNavItem
+        to="/inbox"
+        label="Inbox"
+        icon={Inbox}
+        badge={28}
+        badgeLabel="unread"
+        alert
+        alertLabel="failed runs"
+      />,
+    );
+
+    expect(link().getAttribute("aria-label")).toBe("Inbox, 28 unread, failed runs");
+  });
+
+  it("announces failed runs alongside unread counts in expanded navigation", () => {
+    render(
+      <SidebarNavItem
+        to="/inbox"
+        label="Inbox"
+        icon={Inbox}
+        badge={28}
+        badgeLabel="unread"
+        alert
+        alertLabel="failed runs"
+      />,
+    );
+
+    expect(link().getAttribute("aria-label")).toBe("Inbox, 28 unread, failed runs");
+  });
+
+  it("announces an alert without requiring a numeric badge", () => {
+    render(<SidebarNavItem to="/inbox" label="Inbox" icon={Inbox} alert alertLabel="failed runs" />);
+
+    expect(link().getAttribute("aria-label")).toBe("Inbox, failed runs");
+  });
+
+  it("announces failed runs in the collapsed production navigation", () => {
+    sidebarState.collapsed = true;
+    render(
+      <ProductionSidebarNavItem
+        to="/inbox"
+        label="Inbox"
+        icon={Inbox}
+        badge={28}
+        badgeLabel="unread"
+        alert
+        alertLabel="failed runs"
+      />,
+    );
+
+    expect(link().getAttribute("aria-label")).toBe("Inbox, 28 unread, failed runs");
+  });
+
+  it("announces failed runs in expanded production navigation", () => {
+    render(
+      <ProductionSidebarNavItem
+        to="/inbox"
+        label="Inbox"
+        icon={Inbox}
+        badge={28}
+        badgeLabel="unread"
+        alert
+        alertLabel="failed runs"
+      />,
+    );
+
+    expect(link().getAttribute("aria-label")).toBe("Inbox, 28 unread, failed runs");
   });
 
   it("omits the icon slot when an item has no icon", () => {

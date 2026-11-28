@@ -157,9 +157,10 @@ export function Sidebar() {
             label="Inbox"
             icon={Inbox}
             badge={inboxBadge.inbox}
-            badgeLabel="unread"
+            badgeLabel="items needing attention"
             badgeTone={inboxBadge.failedRuns > 0 ? "danger" : "default"}
             alert={inboxBadge.failedRuns > 0}
+            alertLabel="failed runs"
           />
           {showDecisions ? (
             <SidebarNavItem
