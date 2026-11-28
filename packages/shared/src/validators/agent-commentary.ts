@@ -6,6 +6,7 @@ export const AGENT_COMMENTARY_KINDS = ["complaint", "suggestion"] as const;
 
 export const agentCommentaryToolInputSchema = z.object({
   body: z.string()
+    .max(AGENT_COMMENTARY_MAX_LENGTH)
     // Keep the limit in UTF-16 code units, matching String.length and the API's
     // established document-size contract across Zod versions.
     .refine((body) => body.length <= AGENT_COMMENTARY_MAX_LENGTH, `Feedback must be at most ${AGENT_COMMENTARY_MAX_LENGTH} characters`)
