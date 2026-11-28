@@ -1,0 +1,29 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { packagedFirstAgentFailureReceipt } from "./bostan-packaged-first-agent-failure.mjs";
+
+test("failure receipts retain a bounded stage and safe enum-like error code", () => {
+  assert.equal(
+    packagedFirstAgentFailureReceipt("company_create", new Error("synthetic_company_create_failed_http_500")),
+    "BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=company_create code=synthetic_company_create_failed_http_500",
+  );
+});
+
+test("heartbeat diagnostics are summarized without forwarding their payload", () => {
+  const error = new Error('Bostan synthetic heartbeat ended without success: {"providerOutput":"private text"}');
+  assert.equal(
+    packagedFirstAgentFailureReceipt("first_task_execution", error),
+    "BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=first_task_execution code=heartbeat_not_succeeded",
+  );
+});
+
+test("untrusted error text and stages are not copied into receipts", () => {
+  assert.equal(
+    packagedFirstAgentFailureReceipt("company\nsecret", new Error("token sk-private-value")),
+    "BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=unclassified code=unclassified",
+  );
+  assert.equal(
+    packagedFirstAgentFailureReceipt("company_create", new Error("token_sk_private_value")),
+    "BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=company_create code=unclassified",
+  );
+});

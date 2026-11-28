@@ -9,6 +9,7 @@ import { qualifyFreeQaModel, qualifyLocalOpenCodeQaModel } from "./bostan-free-m
 import { admitFreeOpenCodeModel } from "./bostan-opencode-free-admission.mjs";
 import { nativeGovernedCaseAgentConfig, requireNativeCaseQaHost } from "./bostan-governed-case-free-e2e.mjs";
 import { classifyPackagedStartupProgress, packagedStartupFailure } from "./bostan-packaged-startup-progress.mjs";
+import { packagedFirstAgentFailureReceipt } from "./bostan-packaged-first-agent-failure.mjs";
 import {
   assertHeartbeatQaSucceeded,
   buildFirstWorkerTask,
@@ -351,6 +352,7 @@ async function run() {
   let child;
   let cleanupAllowed = true;
   let failure;
+  let qualificationStage = "model_admission";
   let taskReceipt;
   let gracefulShutdownVerified = false;
   let temporaryProfileCleanupVerified = false;
@@ -370,6 +372,7 @@ async function run() {
       console.log("BOSTAN_PACKAGED_NATIVE_QA_HOST_AFTER_MODEL " + JSON.stringify(postAdmissionHost.resourcesGiB));
     }
 
+    qualificationStage = "desktop_startup";
     const chromiumProfile = path.join(profile, "chromium-profile");
     const appData = path.join(profile, "AppData", "Roaming");
     const localAppData = path.join(profile, "AppData", "Local");
@@ -394,6 +397,7 @@ async function run() {
     let base = launch.base;
     console.log("BOSTAN_PACKAGED_DESKTOP_PRIVATE_HEALTH_PASS");
 
+    qualificationStage = "signup";
     const email = `qa-${randomUUID()}@example.test`;
     const password = randomBytes(24).toString("base64url");
     const signup = await api(base, "POST", "auth/sign-up/email", {
@@ -401,22 +405,25 @@ async function run() {
     });
     let cookie = signup.response.headers.getSetCookie().map(value => value.split(";", 1)[0]).join("; ");
     if (signup.response.status !== 200 || !cookie || !signup.data?.user?.id) {
-      throw new Error("synthetic_signup_failed");
+      throw new Error(`synthetic_signup_failed_http_${signup.response.status}`);
     }
+    qualificationStage = "first_admin";
     const claim = await api(base, "POST", "bootstrap/claim", { cookie });
     if (claim.response.status !== 200 || claim.data?.claimed !== true) {
-      throw new Error("synthetic_first_admin_claim_failed");
+      throw new Error(`synthetic_first_admin_claim_failed_http_${claim.response.status}`);
     }
     console.log("BOSTAN_PACKAGED_DESKTOP_FIRST_ADMIN_PASS");
 
+    qualificationStage = "company_create";
     const companyResult = await api(base, "POST", "companies", { body: { name: "Bostan Free Model QA " + randomUUID() }, cookie });
     const company = companyResult.data;
     if (companyResult.response.status < 200 || companyResult.response.status >= 300 || !company?.id) {
-      throw new Error("synthetic_company_create_failed");
+      throw new Error(`synthetic_company_create_failed_http_${companyResult.response.status}`);
     }
     const workspace = path.join(profile, "workspace");
     fs.mkdirSync(workspace);
     const modelConfig = nativeGovernedCaseAgentConfig({ model, workspace });
+    qualificationStage = "agent_create";
     const agentResult = await api(base, "POST", `companies/${company.id}/agents`, {
       body: {
         name: "Bostan Native Free QA Worker", role: "general",
@@ -426,8 +433,9 @@ async function run() {
     });
     const agent = agentResult.data;
     if (agentResult.response.status < 200 || agentResult.response.status >= 300 || !agent?.id) {
-      throw new Error("native_agent_create_failed");
+      throw new Error(`native_agent_create_failed_http_${agentResult.response.status}`);
     }
+    qualificationStage = "agent_readiness";
     const ready = await waitFor(async () => {
       const result = await api(base, "GET", `agents/${agent.id}`, { cookie });
       const state = result.data;
@@ -440,6 +448,7 @@ async function run() {
     if (ready.adapterType !== "paperclip_runner") throw new Error("native_runner_not_selected");
     console.log("BOSTAN_PACKAGED_DESKTOP_NATIVE_AGENT_READY_PASS");
 
+    qualificationStage = "first_task_create";
     const taskResult = await api(base, "POST", `companies/${company.id}/issues`, {
       body: {
         title: "Synthetic Bostan first free model task " + randomUUID(),
@@ -448,13 +457,15 @@ async function run() {
     });
     const task = taskResult.data;
     if (taskResult.response.status < 200 || taskResult.response.status >= 300 || !task?.id) {
-      throw new Error("synthetic_task_create_failed");
+      throw new Error(`synthetic_task_create_failed_http_${taskResult.response.status}`);
     }
+    qualificationStage = "first_task_assignment";
     const assignedRun = await waitFor(async () => {
       const result = await api(base, "GET", `companies/${company.id}/heartbeat-runs?agentId=${agent.id}&limit=50`, { cookie });
       const selected = selectSingleAssignmentRun(result.data, { agentId: agent.id, issueId: task.id });
       return selected ? { done: true, result: selected } : { done: false };
     }, 60_000, "automatic_assignment_run_not_found");
+    qualificationStage = "first_task_execution";
     const run = await waitFor(async () => {
       const result = await api(base, "GET", `heartbeat-runs/${assignedRun.id}`, { cookie });
       return observeHeartbeatQaStatus(result.data);
@@ -478,6 +489,7 @@ async function run() {
     if (typeof run.usageJson?.costUsd !== "number" || run.usageJson.costUsd !== 0) {
       throw new Error("first_agent_usage_cost_not_verified_zero");
     }
+    qualificationStage = "first_task_persistence";
     const finalTask = await api(base, "GET", `issues/${task.id}`, { cookie });
     if (finalTask.data?.status !== "done") throw new Error("first_agent_task_not_persisted_done");
     const commentsResult = await api(base, "GET", `issues/${task.id}/comments`, { cookie });
@@ -491,6 +503,7 @@ async function run() {
       runAttributedCommentPersisted: true, commentId: comment.commentId,
     };
 
+    qualificationStage = "restart_recovery";
     await closeMainWindow(child);
     const firstProcessRoot = child.pid;
     child = null;
@@ -522,6 +535,7 @@ async function run() {
     }
     console.log("BOSTAN_PACKAGED_DESKTOP_FIRST_TASK_PERSISTENCE_PASS");
 
+    qualificationStage = "second_task_create";
     const secondTaskResult = await api(base, "POST", `companies/${company.id}/issues`, {
       body: {
         title: "Synthetic Bostan second native task " + randomUUID(),
@@ -530,13 +544,15 @@ async function run() {
     });
     const secondTask = secondTaskResult.data;
     if (secondTaskResult.response.status < 200 || secondTaskResult.response.status >= 300 || !secondTask?.id) {
-      throw new Error("synthetic_second_task_create_failed");
+      throw new Error(`synthetic_second_task_create_failed_http_${secondTaskResult.response.status}`);
     }
+    qualificationStage = "second_task_assignment";
     const secondAssignedRun = await waitFor(async () => {
       const result = await api(base, "GET", `companies/${company.id}/heartbeat-runs?agentId=${agent.id}&limit=50`, { cookie });
       const selected = selectSingleAssignmentRun(result.data, { agentId: agent.id, issueId: secondTask.id });
       return selected ? { done: true, result: selected } : { done: false };
     }, 60_000, "second_task_automatic_assignment_run_not_found");
+    qualificationStage = "second_task_execution";
     const secondRun = await waitFor(async () => {
       const result = await api(base, "GET", `heartbeat-runs/${secondAssignedRun.id}`, { cookie });
       return observeHeartbeatQaStatus(result.data);
@@ -545,6 +561,7 @@ async function run() {
     if (typeof secondRun.usageJson?.costUsd !== "number" || secondRun.usageJson.costUsd !== 0) {
       throw new Error("second_agent_usage_cost_not_verified_zero");
     }
+    qualificationStage = "second_task_persistence";
     const finalSecondTask = await api(base, "GET", `issues/${secondTask.id}`, { cookie });
     const secondCommentsResult = await api(base, "GET", `issues/${secondTask.id}/comments`, { cookie });
     const secondComments = Array.isArray(secondCommentsResult.data)
@@ -560,6 +577,7 @@ async function run() {
     };
 
     const processBaselineAfterSecondTask = processTree(child.pid);
+    qualificationStage = "cancellation_create";
     const cancelTaskResult = await api(base, "POST", `companies/${company.id}/issues`, {
       body: {
         title: "Synthetic Bostan native cancellation and recovery task " + randomUUID(),
@@ -572,8 +590,9 @@ async function run() {
     });
     const cancelTask = cancelTaskResult.data;
     if (cancelTaskResult.response.status < 200 || cancelTaskResult.response.status >= 300 || !cancelTask?.id) {
-      throw new Error("synthetic_cancellation_task_create_failed");
+      throw new Error(`synthetic_cancellation_task_create_failed_http_${cancelTaskResult.response.status}`);
     }
+    qualificationStage = "cancellation_settlement";
     const cancelAssignedRun = await waitFor(async () => {
       const result = await api(base, "GET", `companies/${company.id}/heartbeat-runs?agentId=${agent.id}&limit=50`, { cookie });
       const selected = selectSingleAssignmentRun(result.data, { agentId: agent.id, issueId: cancelTask.id });
@@ -620,6 +639,7 @@ async function run() {
       observedBeforeCancellation: activeNativeRun.events,
     };
 
+    qualificationStage = "recovery_task_create";
     const recoveryTaskResult = await api(base, "POST", `companies/${company.id}/issues`, {
       body: {
         title: "Synthetic Bostan post-cancellation recovery task " + randomUUID(),
@@ -628,13 +648,15 @@ async function run() {
     });
     const recoveryTask = recoveryTaskResult.data;
     if (recoveryTaskResult.response.status < 200 || recoveryTaskResult.response.status >= 300 || !recoveryTask?.id) {
-      throw new Error("synthetic_post_cancellation_recovery_task_create_failed");
+      throw new Error(`synthetic_post_cancellation_recovery_task_create_failed_http_${recoveryTaskResult.response.status}`);
     }
+    qualificationStage = "recovery_task_assignment";
     const recoveryAssignedRun = await waitFor(async () => {
       const result = await api(base, "GET", `companies/${company.id}/heartbeat-runs?agentId=${agent.id}&limit=50`, { cookie });
       const selected = selectSingleAssignmentRun(result.data, { agentId: agent.id, issueId: recoveryTask.id });
       return selected ? { done: true, result: selected } : { done: false };
     }, 60_000, "post_cancellation_recovery_assignment_run_not_found");
+    qualificationStage = "recovery_task_execution";
     const recoveryRun = await waitFor(async () => {
       const result = await api(base, "GET", `heartbeat-runs/${recoveryAssignedRun.id}`, { cookie });
       return observeHeartbeatQaStatus(result.data);
@@ -643,6 +665,7 @@ async function run() {
     if (typeof recoveryRun.usageJson?.costUsd !== "number" || recoveryRun.usageJson.costUsd !== 0) {
       throw new Error("post_cancellation_recovery_cost_not_verified_zero");
     }
+    qualificationStage = "recovery_task_persistence";
     const finalRecoveryTask = await api(base, "GET", `issues/${recoveryTask.id}`, { cookie });
     const recoveryCommentsResult = await api(base, "GET", `issues/${recoveryTask.id}/comments`, { cookie });
     const recoveryComments = Array.isArray(recoveryCommentsResult.data)
@@ -660,6 +683,7 @@ async function run() {
     failure = error;
   } finally {
     if (child && child.exitCode === null) {
+      qualificationStage = "shutdown";
       try {
         await closeMainWindow(child);
         gracefulShutdownVerified = true;
@@ -674,6 +698,7 @@ async function run() {
       }
     }
     if (cleanupAllowed) {
+      qualificationStage = "cleanup";
       try {
         safeDeleteTemp(profile);
         temporaryProfileCleanupVerified = !fs.existsSync(profile);
@@ -684,9 +709,10 @@ async function run() {
     if (!cleanupAllowed) console.error("BOSTAN_PACKAGED_FIRST_AGENT_TEMP_PRESERVED_FOR_SAFE_RECOVERY");
   }
   if (failure) {
-    const message = String(failure?.message ?? failure ?? "unknown").split(/[\r\n]/, 1)[0]
-      .replace(/[^a-z0-9_ -]/gi, "_").slice(0, 80);
-    throw new Error("qa_failed_" + (message || "unclassified"));
+    const receipt = packagedFirstAgentFailureReceipt(qualificationStage, failure);
+    const taggedFailure = new Error("packaged_first_agent_qualification_failed");
+    taggedFailure.packagedFailureReceipt = receipt;
+    throw taggedFailure;
   }
   if (!cleanupAllowed) throw new Error("packaged_first_agent_qa_cleanup_unverified");
   if (!gracefulShutdownVerified || !temporaryProfileCleanupVerified) {
@@ -700,6 +726,11 @@ async function run() {
 }
 
 run().catch(error => {
-  console.error("BOSTAN_PACKAGED_FIRST_AGENT_FAIL " + String(error?.message || "unknown").replace(/^qa_failed_/, "").slice(0, 100));
+  const message = String(error?.message || "unknown");
+  const code = /^qa_failed_[a-z0-9_]{1,80}$/i.test(message) ? message.slice("qa_failed_".length) : "unclassified";
+  const receipt = typeof error?.packagedFailureReceipt === "string"
+    ? error.packagedFailureReceipt
+    : `BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=unclassified code=${code}`;
+  console.log(receipt);
   process.exitCode = 1;
 });

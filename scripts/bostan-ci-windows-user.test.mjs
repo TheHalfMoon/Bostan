@@ -31,6 +31,29 @@ test("Windows CI receipt allowlist admits only fixed startup failure codes", () 
   assert.equal(stagePattern.test("BOSTAN_DESKTOP_STARTUP_STAGE PRIVATE_SECRET"), false);
 });
 
+test("Windows CI forwards only bounded packaged first-agent stage and failure receipts", () => {
+  const wrapper = fs.readFileSync(path.join(import.meta.dirname, "bostan-ci-windows-user.ps1"), "utf8");
+  const harness = fs.readFileSync(path.join(import.meta.dirname, "bostan-windows-packaged-free-first-agent-qa.mjs"), "utf8");
+  const match = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_PACKAGED_FIRST_AGENT_FAIL[^']*)'\) \{ return \$line \}$/m);
+  assert.ok(match, "packaged first-agent failure receipt allowlist is present");
+  const receiptPattern = new RegExp(match[1]);
+  for (const stage of [
+    "model_admission", "desktop_startup", "signup", "first_admin", "company_create", "agent_create",
+    "agent_readiness", "first_task_create", "first_task_assignment", "first_task_execution",
+    "first_task_persistence", "restart_recovery", "second_task_create", "second_task_assignment",
+    "second_task_execution", "second_task_persistence", "cancellation_create", "cancellation_settlement",
+    "recovery_task_create", "recovery_task_assignment", "recovery_task_execution", "recovery_task_persistence",
+    "shutdown", "cleanup", "unclassified",
+  ]) {
+    assert.equal(receiptPattern.test(`BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=${stage} code=synthetic_company_create_failed_http_500`), true, stage);
+  }
+  assert.equal(receiptPattern.test("BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=company_create code=heartbeat_not_succeeded"), true);
+  assert.equal(receiptPattern.test("BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=company_create code=sk_private_token"), false);
+  assert.equal(receiptPattern.test("BOSTAN_PACKAGED_FIRST_AGENT_FAIL stage=C:\\Users\\private code=secret"), false);
+  assert.match(harness, /console\.log\(receipt\)/, "safe failure receipt goes through the wrapper's stdout filter");
+  assert.match(harness, /packagedFirstAgentFailureReceipt\(qualificationStage, failure\)/, "failure stage and code are reduced by the bounded classifier");
+});
+
 test("native model setup exposes only bounded fixed phase, failure and progress receipts", () => {
   const wrapper = fs.readFileSync(path.join(import.meta.dirname, "bostan-ci-windows-user.ps1"), "utf8");
   const setup = fs.readFileSync(path.join(import.meta.dirname, "bostan-windows-local-native-qa.ps1"), "utf8");
