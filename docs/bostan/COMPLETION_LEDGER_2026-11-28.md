@@ -6,7 +6,11 @@ are a point-in-time snapshot; update them only when new evidence exists.
 
 ## Executive status
 
-**Overall: NO-GO / NOT COMPLETE.** PR #584 remains draft at `0d0df042e83e1e34e5167dcc20f338cafa812a9a`. Native run `46094352560` completed failed after the model pull, model/license checks, standard-user installation, packaged startup through `ready`, authenticated private health and first-admin bootstrap all passed. It emitted `stage=cleanup code=unclassified`, but the owned-temp cleanup receipt passed. Source inspection found the harness overwrote the original journey failure stage in `finally`; no native-agent-ready marker was emitted, so task execution/inference was not reached. Commit `0d0df042` preserves the first failure stage and adds bounded readiness/shutdown/cleanup categories; 10/10 focused tests pass. Exact-head native run `46100133830` passed the standard-user PostgreSQL probe, UI build and desktop package step and is running the packaged Windows first-agent qualification with local Qwen; no terminal receipt has been emitted. Standard CI run `46100138186` completed successfully with all 18 jobs passing. No real inference, persisted completion/comment, restart recovery or verified $0 execution is proven.
+**Overall: NO-GO / NOT COMPLETE.** PR #584 remains OPEN/DRAFT at remote head 7e70fcd3d97b58243c50d35d0693c25df6b19cc0.
+
+Exact-head standard CI run 46107222605 currently has all test shards, typecheck, gates, Storybook, secret scan and Windows qualification passed; Windows and both macOS desktop-package checks remain in progress. Exact-head native run 46107218941 has passed archive hash fixtures, frozen dependency installation, server build, standard-user PostgreSQL probe and UI build. Its desktop package step is still in progress; Ollama model pull and installed first-agent qualification have not started. No model inference, task completion, persisted comment, restart recovery or verified $0 cost is proven.
+
+Focused source changes on this head bind the pinned local Ollama provider into the native agent runtime and preserve separate graceful-shutdown/profile-cleanup receipts. Independent security review found no introduced remote/paid fallback or cleanup-scope issue. PR #584 remains draft; do not merge or publish.
 
 Run `46094352560` verified the 1,618,522,644-byte Ollama archive against pinned SHA-256 `3dd80f6e3a9699f2eadf4ac418f00529cee594df9557541806eda1f1f3f5588a`. Archive download took about 22m11s. Qwen pull exited 0 with closed child, then manifest and Apache license checks passed. The standard-user installer completed in 121,436ms within its 300,000ms budget; registration and signature checks passed. Packaged startup advanced from `importing_server` to `starting_server` to `ready`; authenticated private health and first-admin bootstrap passed. There is no `BOSTAN_PACKAGED_DESKTOP_NATIVE_AGENT_READY_PASS` marker and no emitted task/inference success receipt. The old failure marker's `cleanup` stage was inaccurate; do not infer that cleanup caused the journey failure.
 
@@ -47,18 +51,19 @@ The Codex Security diff-scan launcher rejected the PR #590 range on both attempt
 
 | Gate | Status | Evidence and limit |
 |---|---|---|
-| Hosted source CI | **PASS** | Head `0d0df042` standard CI run `46100138186`: 18/18 jobs passed, including typecheck, all test shards, and Windows/macOS packaging jobs. |
-| Windows installed-app CI | **PASS** | Exact-head run `46094528231` passed the standard-user Windows installed-app workflow. This does not prove real inference. |
-| Apple Silicon macOS installed-app CI | **PASS** | Exact-head standard CI run `46094528231` completed the Apple Silicon desktop job successfully. |
-| Intel macOS installed-app CI | **PASS** | Exact-head standard CI run `46094528231` completed the Intel desktop job successfully. |
-| Native Windows installer plus Ollama archive | **PASS, partial** | Run `46094352560`: pinned archive size/SHA-256, extraction, version, loopback, Qwen pull exit 0, model manifest/license, standard-user installation and signature check passed. |
-| Clean standard-user install, startup, auth health and first-admin bootstrap | **PASS, partial** | Run `46094352560` verified installer completion, packaged startup `ready`, authenticated private health and first-admin bootstrap. This does not prove agent readiness. |
-| Clean first-agent journey through persisted task completion | **FAIL / RETRY IN PROGRESS** | Run `46094352560` failed before the native-agent-ready receipt. Its `cleanup` stage was overwritten by the harness's `finally`; cleanup itself passed. Commit `0d0df042` fixes first-stage preservation; exact-head native run `46100133830` passed its standard-user PostgreSQL probe, UI build and desktop packaging and is now running the packaged first-agent qualification with local Qwen. |
-| Real local-model inference and successful task execution | **NOT REACHED / NOT QUALIFIED** | No native-agent-ready, task completion or real inference receipt was emitted by run `46094352560`. |
-| Verified zero-cost execution | **NOT QUALIFIED** | There is no completed run with real local inference and verified provider cost. |
-| Persisted result, restart and history recovery after real inference | **NOT QUALIFIED** | Not reached. Separate packaged startup/restart tests are not agent-task recovery evidence. |
+| Hosted source CI | **IN PROGRESS, PARTIAL** | Exact-head run 46107222605: test shards, typecheck, gates, Storybook, secret scan and Windows workflow passed; Windows/macOS desktop package jobs remain active. Do not report 18/18 on this head until terminal. |
+| Windows installed-app CI | **IN PROGRESS, PRIOR-HEAD PASS** | Earlier exact-head run 46094528231 passed. Current exact-head run 46107222605 has its desktop (windows-latest) package job still in progress. |
+| Apple Silicon macOS installed-app CI | **IN PROGRESS, PRIOR-HEAD PASS** | Earlier run 46094528231 passed; current exact-head run 46107222605 desktop (macos-15) job is still active. |
+| Intel macOS installed-app CI | **IN PROGRESS, PRIOR-HEAD PASS** | Earlier run 46094528231 passed; current exact-head run 46107222605 desktop (macos-15-intel) job is still active. |
+| Native Windows installer plus Ollama archive | **PRIOR-HEAD PASS, CURRENT RUN NOT REACHED** | Run 46094352560 verified the pinned archive, local model and license on an earlier head. Current run 46107218941 is still packaging before its model stage. |
+| Clean standard-user install, startup, auth health and first-admin bootstrap | **PRIOR-HEAD PASS, CURRENT RUN NOT REACHED** | Run 46094352560 passed these stages on an earlier head; current native run 46107218941 has not reached the installer/installed-app step. |
+| Clean first-agent journey through persisted task completion | **NOT STARTED ON CURRENT RUN** | Previous run 46100133830 failed at agent readiness without task creation or inference. Current exact-head native run 46107218941 is still packaging; local model pull and first-agent stage are pending. |
+| Real local-model inference and successful task execution | **NOT QUALIFIED** | Current native journey has not started. No real inference or completed task receipt exists. |
+| Verified zero-cost execution | **NOT QUALIFIED** | No completed run with real inference and verified provider cost exists. |
+| Persisted result, restart and history recovery after real inference | **NOT QUALIFIED** | No real task result has been persisted or recovered after restart. |
 | Linux packaged desktop | **NOT TESTED** | No Linux packaged-app or real-agent evidence was established in the current qualification set. |
 | Publish/release readiness | **NO-GO** | PR #584 is draft; no release authorization or complete end-to-end evidence. |
+| Private-development repository visibility | **BLOCKED** | GitHub repository metadata reports public visibility, while the checked-in PR template requires the repository to remain private. Do not mark that checklist item complete or open another public PR. |
 
 ## Approved roadmap work remaining
 
@@ -78,8 +83,19 @@ The roadmap explicitly retains these unfinished requirements:
 
 ## Engineering packet in progress
 
-PR [#584](https://github.com/TheHalfMoon/Bostan/pull/584) remains **OPEN / DRAFT**.
-The previous remote head `4ca245ba` passed all 18 standard hosted checks, while native run `46075821679` failed at Qwen model pull. The native archive integrity, Ollama extraction/version, loopback readiness, server build, PostgreSQL probe and package all passed; installed-app qualification was not reached. Head `7159cc59` replaced the PowerShell 5.1 pull-process wrapper with a bounded Node supervisor. It captures numeric child exit codes, bounds and serializes combined stdout/stderr, emits fixed sanitized categories, uses the owned child process handle for termination, bounds post-exit pipe closure and preserves the task-owned Ollama root if stdio closure cannot be confirmed. Focused tests passed 13/13. Run `46086505266` then qualified archive pull, pinned model/license, installation, packaged app ready, authenticated private health and first-admin bootstrap; the journey then failed before a native-agent-ready marker. Head `a5a1f982` added allowlisted failure receipts but run `46094352560` exposed that `finally` overwrote the earliest failure stage with `cleanup`. Commit `0d0df042` captures the first failing stage before shutdown/cleanup and allows safe readiness/shutdown/temp-cleanup categories; focused tests passed 10/10. Exact-head native run `46100133830` passed standard-user PostgreSQL probing, UI build and desktop packaging and is running the packaged Windows first-agent qualification with local Qwen; standard CI run `46100138186` is progressing with some test shards and platform packages still active. The local `desktop/dist-unpacked-qa/` remains preserved and untracked.
+PR [#584](https://github.com/TheHalfMoon/Bostan/pull/584) remains **OPEN / DRAFT** at remote head 7e70fcd3d97b58243c50d35d0693c25df6b19cc0.
+
+Commits 67c71397 and 7e70fcd3 bind the local Ollama provider to native agent readiness/execution and surface safe shutdown/profile-cleanup receipts. The reviewed configuration is pinned to loopback port 11434 and qwen2.5-coder:1.5b; no paid or remote fallback was added. Focused tests passed 47/47 across script, adapter and server suites; adapter TypeScript check passed. Independent read-only security review found no introduced security issue.
+
+Exact-head native workflow 46107218941, job 140862550776, has passed standard-user archive-hash qualification, frozen installation, Electron install, server build, standard-user PostgreSQL probe and UI build. Desktop package step 14 is active; step 15 (Ollama/model and installed native-agent journey) remains pending. Exact-head standard run 46107222605 has core tests/typecheck/gates/Storybook/Windows job passed; three desktop package jobs and native-agent qualification are active.
+
+The preserved desktop/dist-unpacked-qa/ remains untouched in the primary checkout. Do not start a duplicate build or qualification run.
+
+## Independent product work
+
+Commit 8db89b829cf75bcc9da8cf670644073c05447cd1 on branch fix/nav-failure-accessible-label-20261128 announces failed runs in collapsed and expanded default/production sidebar navigation. The inbox count is labeled accurately as items needing attention. Focused SidebarNavItem and Sidebar tests passed 48/48; token gates passed; independent accessibility review found no remaining concrete issue. A local UI typecheck was attempted but this isolated checkout lacked workspace dependency links and reported unrelated runner type errors; no changed-file error remained. The branch was pushed, but no PR was opened because the repository reports public visibility and the PR checklist requires private visibility.
+
+GitHub repository metadata identifies TheHalfMoon/Bostan as public. This conflicts with the PR template private-repository checklist and remains a governance/release blocker; no repository visibility setting was changed.
 
 Independent review confirmed that the signed-exit-code filter could previously
 drop valid Windows termination codes; `4bfa89b1` widens the allowlist with a
@@ -164,20 +180,9 @@ amended. This UX correction does not add permission parity to other providers.
 
 ## Next actions
 
-1. Finish exact-head standard CI `46100133830` and native qualification
-   `46100138186`. Use the preserved first failure stage and safe code to locate
-   the agent-readiness cause before modifying product behavior or starting
-   another native run.
-2. Complete actual local Qwen inference through the installed application;
-   verify persisted task/comment, restart recovery and zero provider cost.
-3. Run and review PR #588 CI and Cursor adapter compatibility checks; keep it
-   draft unless all required CI and independent review gates pass.
-4. Keep PRs #586 and #587 draft until repository review requirements are met;
-   both now have passing hosted checks. Continue package-path and runtime
-   compatibility review for remaining dependency findings.
-5. Keep the ACPX permissions clarification separate from #584 and decide
-   whether to implement provider-specific safe automatic rules after validating
-   each provider protocol and adding behavior tests.
-6. Work through remaining B0–B6 installation, recovery, security, accessibility
-   and live agent/effect acceptance gates. Keep PR #584 draft and update this
-   ledger only when evidence changes.
+1. Let exact-head native run 46107218941 and standard run 46107222605 reach terminal state; do not cancel healthy jobs. Capture model-pull and agent-stage receipts, exits and durations before any further source changes.
+2. If agent readiness passes, continue installed-app local Qwen execution through persisted task/comment, restart recovery and verified $0 provider cost. If it fails, use the first-stage safe receipt to repair the earliest actual boundary.
+3. Qualify any corrected exact source commit without reusing stale artifacts. Keep PR #584 draft until real inference, persistence, restart and zero-cost acceptance pass.
+4. Keep other dependency, ACPX, UI, install/recovery and security packets isolated and follow repository review rules. No merge or public release without all required gates and authorization.
+5. Resolve the public-repository/private-checklist governance mismatch before creating additional public PRs; continue local engineering that does not require changing repository visibility.
+6. Work through remaining B0–B6 installation, recovery, security, accessibility and live agent/effect acceptance gates. Product completion remains NO-GO.
