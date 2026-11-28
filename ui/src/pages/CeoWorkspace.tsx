@@ -10,6 +10,7 @@ import { heartbeatsApi } from "../api/heartbeats";
 import { issuesApi } from "../api/issues";
 import { approvalLabel, approvalSubject } from "../components/ApprovalPayload";
 import { BostanMark } from "../components/brand/BostanMark";
+import { CeoInspectorTabs } from "./CeoInspectorTabs";
 import { ExecutionStateBadge } from "../components/ExecutionStateBadge";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { useCompany } from "../context/CompanyContext";
@@ -18,11 +19,8 @@ import { findCeoAgent } from "../lib/ceo-agent";
 import { executionStateForAgent, executionStateForIssue } from "../lib/execution-state";
 import { queryKeys } from "../lib/queryKeys";
 import { timeAgo } from "../lib/timeAgo";
-import { cn } from "../lib/utils";
 
 const CEO_WORK_STATUSES = "backlog,todo,in_progress,in_review,blocked,done";
-type InspectorTab = "approvals" | "team";
-
 function ApprovalCard({ approval, requester }: { approval: Approval; requester: string | null }) {
   const queryClient = useQueryClient();
   const { selectedCompanyId } = useCompany();
@@ -244,32 +242,15 @@ export function CeoWorkspace() {
       </div>
 
       <aside aria-label="Inspector" className="flex w-full shrink-0 flex-col border-border bg-chrome lg:w-88 lg:border-l">
-        <div role="tablist" aria-label="Inspector" className="flex gap-1 border-b border-border px-3 py-2.5">
-          {(
-            [
-              ["approvals", `Approvals${pending.length ? ` · ${pending.length}` : ""}`],
-              ["team", `Team · ${team.length}`],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              id={`ceo-tab-${value}`}
-              aria-selected={tab === value}
-              aria-controls={`ceo-panel-${value}`}
-              onClick={() => setTab(value)}
-              className={cn(
-                "h-7 rounded-md px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                tab === value ? "nav-active" : "text-foreground hover:bg-accent",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <CeoInspectorTabs activeTab={tab} onTabChange={setTab} pendingApprovals={pending.length} teamSize={team.length} />
         {tab === "approvals" ? (
-          <div role="tabpanel" id="ceo-panel-approvals" aria-labelledby="ceo-tab-approvals" className="flex flex-col gap-3 p-4">
+          <div
+            role="tabpanel"
+            id="ceo-panel-approvals"
+            aria-labelledby="ceo-tab-approvals"
+            tabIndex={approvals.isPending || approvals.isError || pending.length === 0 ? 0 : undefined}
+            className="flex flex-col gap-3 p-4"
+          >
             {approvals.isError ? (
               <p role="alert" className="text-sm text-bad">
                 Couldn't load approvals.
@@ -289,7 +270,13 @@ export function CeoWorkspace() {
             )}
           </div>
         ) : (
-          <div role="tabpanel" id="ceo-panel-team" aria-labelledby="ceo-tab-team" className="flex flex-col gap-2 p-4">
+          <div
+            role="tabpanel"
+            id="ceo-panel-team"
+            aria-labelledby="ceo-tab-team"
+            tabIndex={team.length === 0 ? 0 : undefined}
+            className="flex flex-col gap-2 p-4"
+          >
             {team.length === 0 ? (
               <p className="text-sm text-muted-foreground">No agents report to the CEO yet.</p>
             ) : (
