@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   PAPERCLIP_RUNNER_DEFAULT_MODELS,
   PAPERCLIP_RUNNER_ACPX_PROFILES,
+  PAPERCLIP_RUNNER_PERMISSION_CAPABILITIES,
   paperclipRunnerTransitionConfig,
   isPaperclipRunnerProvider,
   resolvePaperclipRunnerModel,
@@ -37,6 +38,12 @@ describe("Bostan Runner permission defaults", () => {
 
   it.each(["approve-paperclip", "approve-reads", "deny-all", "approve-all"])("preserves explicit Claude %s settings", (mode) => {
     expect(resolvePaperclipRunnerPermissionMode("acpx", mode)).toBe(mode);
+  });
+
+  it.each(["approve-paperclip", "approve-reads"])("documents %s provider limitations", (mode) => {
+    const option = PAPERCLIP_RUNNER_PERMISSION_CAPABILITIES.acpx.options.find((entry) => entry.value === mode);
+    expect(option?.description).toContain("Claude ACPX agents");
+    expect(option?.description).toContain("Other ACPX agents use their supported approval flow when configured; otherwise the run fails closed.");
   });
 
   it.each([
