@@ -6,13 +6,17 @@ are a point-in-time snapshot; update them only when new evidence exists.
 
 ## Executive status
 
-**Overall: NO-GO / NOT COMPLETE.** PR #584 remains OPEN/DRAFT. Its latest remote head is `93ede73f82b7f77151bcfe4ea032d17ab67e5aba`.
+**Overall: NO-GO / NOT COMPLETE.** PR #584 remains OPEN/DRAFT. Its latest remote head is `06da51d7dc50faff430a94b2ec1517c4115c883c`.
 
 ### Latest native qualification update
 
 Native run [46154059205](https://github.com/TheHalfMoon/Bostan/actions/runs/46154059205), job 141006701898, completed **FAILURE** on `b3df28f3`. Ollama archive size/SHA-256 verification, Qwen model pull, manifest/license checks, install, packaged startup through `ready`, authenticated private health, first-admin bootstrap and native-agent readiness passed. The first task failed 5 seconds after readiness with `native_session_interrupted` at `preparing`; no harness, session, turn, or provider events were persisted. The bounded log had 8 JSON lines and no recognized error records. Graceful shutdown and disposable profile cleanup passed. A safe classification allowlist did not identify the failure, so its underlying cause remains unknown; no inference, completed task/comment, restart recovery or $0 evidence exists.
 
 Commit `93ede73f82b7f77151bcfe4ea032d17ab67e5aba` adds a bounded server event for the last native execution stage and allowlisted exception type/code. It excludes exception messages, paths and identifiers. The sanitizer test passed 23/23, the focused server regression passed, and server TypeScript `tsc --noEmit` passed. Exact-head native qualification [46160278639](https://github.com/TheHalfMoon/Bostan/actions/runs/46160278639) and standard CI [46160283730](https://github.com/TheHalfMoon/Bostan/actions/runs/46160283730) are in progress. Do not start another qualification until both are terminal.
+
+Run [46160278639](https://github.com/TheHalfMoon/Bostan/actions/runs/46160278639) completed **FAILURE** on `93ede73f`. The 1.62 GB Ollama archive download, pinned hash verification, Qwen model pull (exit 0, 7 seconds), manifest/license verification and post-pull resource checks passed. The installed app reached `ready`; private health, first-admin bootstrap and native-agent readiness passed. The first task then failed with `heartbeat_not_succeeded`; the bounded first-task event/log diagnostic marker did not appear, so this run still does not reveal the failing boundary. Graceful shutdown and temporary profile cleanup passed. No successful inference, persisted completion/comment, restart recovery or zero-cost receipt was produced.
+
+Commits `e538bb0a`, `786300f0` and `06da51d7` add an outer-preparation diagnostic fallback, retry it if the bounded event cannot be persisted, and ensure a failed fallback reports the generic execution stage instead of a stale attachment stage. Focused executor regressions passed, the sanitized QA test passed 23/23, and server TypeScript `tsc --noEmit` passed. The persistence regression deliberately rejects the first diagnostic write and verifies that the fallback is attempted. Exact-head native qualification [46166136056](https://github.com/TheHalfMoon/Bostan/actions/runs/46166136056) is active; exact-head standard CI is pending. Do not start another qualification until they are terminal.
 
 Run [46115222987](https://github.com/TheHalfMoon/Bostan/actions/runs/46115222987), job 140887415573, completed **FAILURE** at 2026-11-28T07:35:22Z. The server build took 11m09s, standard-user PostgreSQL probe 9m34s, packaging 13m55s, and native qualification 39m08s. The pinned Ollama archive was downloaded and verified; Qwen pull exited 0 in 8 seconds, its child closed, and manifest/license checks passed. Post-pull measurements were 15.99 GiB RAM total, 12.04 GiB free, and 22.11 GiB temp disk free. Packaged startup reached `ready`; private health, first-admin bootstrap, and native-agent readiness passed. The first task failed 5s after readiness with `native_session_interrupted` at `preparing`; the bounded event counts showed no harness-ready, session, turn, or provider events. The run log had 8 JSON records and no recognized safe error signal. Graceful shutdown and disposable-profile/Ollama cleanup passed. This narrows the failure to native-session preparation before a provider session starts; it does not identify the cause. No inference, completed task/comment, restart recovery or cost evidence was produced.
 
@@ -63,13 +67,13 @@ The Codex Security diff-scan launcher rejected the PR #590 range on both attempt
 
 | Gate | Status | Evidence and limit |
 |---|---|---|
-| Hosted source CI | **IN PROGRESS** | Exact-head run 46160283730 is running for `93ede73f`. |
-| Windows installed-app CI | **IN PROGRESS, PRIOR-HEAD PASS** | Exact-head standard CI run 46160283730 is running; prior packaged Windows qualification remains on older commits. |
-| Apple Silicon macOS installed-app CI | **IN PROGRESS, PRIOR-HEAD PASS** | Exact-head standard CI run 46160283730 is running; prior packaged macOS qualification remains on older commits. |
-| Intel macOS installed-app CI | **IN PROGRESS, PRIOR-HEAD PASS** | Exact-head standard CI run 46160283730 is running; prior packaged macOS qualification remains on older commits. |
-| Native Windows installer plus Ollama archive | **PRIOR-HEAD PASS; EXACT HEAD IN PROGRESS** | Run 46154059205 downloaded and verified Ollama, pulled Qwen, and verified manifest/license on `b3df28f3`; run 46160278639 is qualifying `93ede73f`. |
-| Clean standard-user install, startup, auth health and first-admin bootstrap | **PRIOR-HEAD PASS; EXACT HEAD IN PROGRESS** | Run 46154059205 reached `ready` and passed private health, first-admin bootstrap, and native-agent readiness on `b3df28f3`; exact-head run 46160278639 is active. |
-| Clean first-agent journey through persisted task completion | **FAILED, EXACT-HEAD RETRY ACTIVE** | Run 46154059205 failed during native-session preparation (`native_session_interrupted`) before harness/session/provider events. Commit `93ede73f` records bounded stage/type/code diagnostics; run 46160278639 is active. |
+| Hosted source CI | **PRIOR-HEAD PASS; EXACT HEAD PENDING** | Run 46160283730 passed 18/18 on `93ede73f`; new head `06da51d7` is awaiting exact-head CI. |
+| Windows installed-app CI | **PRIOR-HEAD PASS; EXACT HEAD PENDING** | Run 46160283730 passed on `93ede73f`; new head `06da51d7` is awaiting CI. |
+| Apple Silicon macOS installed-app CI | **PRIOR-HEAD PASS; EXACT HEAD PENDING** | Run 46160283730 passed on `93ede73f`; new head `06da51d7` is awaiting CI. |
+| Intel macOS installed-app CI | **PRIOR-HEAD PASS; EXACT HEAD PENDING** | Run 46160283730 passed on `93ede73f`; new head `06da51d7` is awaiting CI. |
+| Native Windows installer plus Ollama archive | **PRIOR-HEAD PASS; EXACT HEAD IN PROGRESS** | Run 46160278639 downloaded and verified Ollama, pulled Qwen, and verified manifest/license on `93ede73f`; run 46166136056 is qualifying `06da51d7`. |
+| Clean standard-user install, startup, auth health and first-admin bootstrap | **PRIOR-HEAD PASS; EXACT HEAD IN PROGRESS** | Run 46160278639 reached `ready` and passed private health, first-admin bootstrap, and native-agent readiness; run 46166136056 is active. |
+| Clean first-agent journey through persisted task completion | **FAILED, EXACT-HEAD RETRY ACTIVE** | Run 46160278639 failed with `heartbeat_not_succeeded`; no bounded run diagnostic marker was emitted. Commits `e538bb0a`–`06da51d7` add fallback diagnostics; run 46166136056 is active. |
 | Real local-model inference and successful task execution | **NOT QUALIFIED** | No provider session started; no inference or completed-task evidence exists. |
 | Verified zero-cost execution | **NOT QUALIFIED** | No completed run with real inference and verified provider cost exists. |
 | Persisted result, restart and history recovery after real inference | **NOT QUALIFIED** | No real task result has been persisted or recovered after restart. |
@@ -95,11 +99,11 @@ The roadmap explicitly retains these unfinished requirements:
 
 ## Engineering packet in progress
 
-PR [#584](https://github.com/TheHalfMoon/Bostan/pull/584) remains **OPEN / DRAFT** at remote head `93ede73f82b7f77151bcfe4ea032d17ab67e5aba`.
+PR [#584](https://github.com/TheHalfMoon/Bostan/pull/584) remains **OPEN / DRAFT** at remote head `06da51d7dc50faff430a94b2ec1517c4115c883c`.
 
 Commits 67c71397 and 7e70fcd3 bind the local Ollama provider to native agent readiness/execution and surface safe shutdown/profile-cleanup receipts. The reviewed configuration is pinned to loopback port 11434 and qwen2.5-coder:1.5b; no paid or remote fallback was added. Focused tests passed 47/47 across script, adapter and server suites; adapter TypeScript check passed. Independent read-only security review found no introduced security issue.
 
-Native run 46154059205 failed during first-task native-session preparation; the current exact-head diagnostic qualification is run 46160278639. Exact-head standard CI is run 46160283730. Do not start duplicate jobs.
+Native run 46160278639 failed during first-task execution; the current exact-head diagnostic qualification is run 46166136056. Run 46160283730 passed 18/18 on prior exact head `93ede73f`; CI for `06da51d7` is pending. Do not start duplicate jobs.
 
 The preserved desktop/dist-unpacked-qa/ remains untouched in the primary checkout. Do not start a duplicate build or qualification run.
 
