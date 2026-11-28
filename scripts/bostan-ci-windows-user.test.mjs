@@ -34,10 +34,12 @@ test("Windows CI receipt allowlist admits only fixed startup failure codes", () 
 test("native model setup exposes only bounded fixed phase, failure and progress receipts", () => {
   const wrapper = fs.readFileSync(path.join(import.meta.dirname, "bostan-ci-windows-user.ps1"), "utf8");
   const setup = fs.readFileSync(path.join(import.meta.dirname, "bostan-windows-local-native-qa.ps1"), "utf8");
+  const modelPullRunner = fs.readFileSync(path.join(import.meta.dirname, "bostan-windows-native-model-pull.mjs"), "utf8");
   const phaseMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_WINDOWS_PHASE[^']*)'\) \{ return \$line \}$/m);
   const failureMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_WINDOWS_FAILURE[^']*)'\) \{ return \$line \}$/m);
   const progressMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_MODEL_PULL_WAIT[^']*)'\) \{ return \$line \}$/m);
   const resultMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_MODEL_PULL_RESULT[^']*)'\) \{ return \$line \}$/m);
+  const cleanupIncompleteMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_WINDOWS_CLEANUP_INCOMPLETE[^']*)'\) \{ return \$line \}$/m);
   const operationFailureMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE[^']*)'\) \{ return \$line \}$/m);
   const archiveMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_WINDOWS_ARCHIVE_VERIFY[^']*)'\) \{ return \$line \}$/m);
   const archiveSizeMatch = wrapper.match(/^\s*if \(\$line -match '([^']*BOSTAN_NATIVE_WINDOWS_ARCHIVE_SIZE[^']*)'\) \{ return \$line \}$/m);
@@ -47,6 +49,7 @@ test("native model setup exposes only bounded fixed phase, failure and progress 
   assert.ok(failureMatch, "native setup failure allowlist is present");
   assert.ok(progressMatch, "native model pull progress allowlist is present");
   assert.ok(resultMatch, "native model pull result allowlist is present");
+  assert.ok(cleanupIncompleteMatch, "incomplete owned-temp cleanup receipt allowlist is present");
   assert.ok(operationFailureMatch, "native model pull operation failure receipt allowlist is present");
   assert.ok(archiveMatch, "native archive verification receipt allowlist is present");
   assert.ok(archiveSizeMatch, "native archive size receipt allowlist is present");
@@ -56,6 +59,7 @@ test("native model setup exposes only bounded fixed phase, failure and progress 
   const failurePattern = new RegExp(failureMatch[1]);
   const progressPattern = new RegExp(progressMatch[1]);
   const resultPattern = new RegExp(resultMatch[1]);
+  const cleanupIncompletePattern = new RegExp(cleanupIncompleteMatch[1]);
   const operationFailurePattern = new RegExp(operationFailureMatch[1]);
   const archivePattern = new RegExp(archiveMatch[1]);
   const archiveSizePattern = new RegExp(archiveSizeMatch[1]);
@@ -74,13 +78,17 @@ test("native model setup exposes only bounded fixed phase, failure and progress 
   assert.equal(progressPattern.test("BOSTAN_NATIVE_MODEL_PULL_WAIT elapsedSeconds=120 outputProgress=advanced"), true);
   assert.equal(progressPattern.test("BOSTAN_NATIVE_MODEL_PULL_WAIT elapsedSeconds=120 outputProgress=stalled"), true);
   assert.equal(progressPattern.test("BOSTAN_NATIVE_MODEL_PULL_WAIT elapsedSeconds=120 outputProgress=C:\\secret"), false);
-  for (const diagnostic of ["authorization", "disk_space", "model_unavailable", "network", "other", "resource"]) {
-    assert.equal(resultPattern.test(`BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 diagnostic=${diagnostic} failureClass=process_exit outputBytes=24`), true, diagnostic);
+  for (const diagnostic of ["access_denied", "authorization", "disk_space", "model_unavailable", "network", "other", "output_limit", "resource"]) {
+    assert.equal(resultPattern.test(`BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 diagnostic=${diagnostic} failureClass=process_exit outputBytes=24 childClose=closed`), true, diagnostic);
   }
-  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=-1073741819 diagnostic=resource failureClass=process_exit outputBytes=1048576"), true, "signed Windows process failure codes are preserved");
-  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=429496729600 diagnostic=other failureClass=other outputBytes=24"), false, "oversized process codes remain rejected");
-  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 diagnostic=secret failureClass=process_exit outputBytes=24"), false);
-  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 diagnostic=network failureClass=token-secret outputBytes=24"), false);
+  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=0 diagnostic=other failureClass=none outputBytes=12 childClose=closed"), true, "successful pull receipts confirm direct-child close");
+  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=unavailable diagnostic=other failureClass=process_launch outputBytes=0 childClose=unconfirmed"), true, "unknown exit state and direct-child close state are explicit");
+  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=-1073741819 diagnostic=resource failureClass=process_exit outputBytes=1048576 childClose=closed"), true, "signed Windows process failure codes are preserved");
+  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=429496729600 diagnostic=other failureClass=other outputBytes=24 childClose=closed"), false, "oversized process codes remain rejected");
+  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 diagnostic=secret failureClass=process_exit outputBytes=24 childClose=closed"), false);
+  assert.equal(resultPattern.test("BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=1 diagnostic=network failureClass=token-secret outputBytes=24 childClose=closed"), false);
+  assert.equal(cleanupIncompletePattern.test("BOSTAN_NATIVE_WINDOWS_CLEANUP_INCOMPLETE task_owned_temp_preserved=true reason=child_close_unconfirmed"), true);
+  assert.equal(cleanupIncompletePattern.test("BOSTAN_NATIVE_WINDOWS_CLEANUP_INCOMPLETE C:\\Users\\secret"), false);
   for (const cause of ["access_denied", "io_error", "other", "output_limit", "process_launch", "process_state"]) {
     assert.equal(operationFailurePattern.test(`BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=${cause} childAlive=false failureClass=process_exit exitCode=unavailable diagnostic=other outputBytes=1024`), true, cause);
   }
@@ -109,9 +117,15 @@ test("native model setup exposes only bounded fixed phase, failure and progress 
   ]) assert.ok(setup.includes(`$stage = '${stage}'`), stage);
   assert.ok(setup.includes('Write-Output "BOSTAN_NATIVE_WINDOWS_FAILURE $stage"'));
   assert.match(setup, /outputLength -gt 1048576/, "model pull log collection stays capped");
-  assert.match(setup, /BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=.*diagnostic=.*failureClass=.*outputBytes=/, "model pull failures emit bounded sanitized classification");
+  assert.match(setup, /BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=.*diagnostic=.*failureClass=.*outputBytes=.*childClose=/, "model pull failures emit bounded sanitized classification and direct-child close state");
   assert.match(setup, /if \(\$stage -eq 'qwen_model_pull'\) \{[\s\S]*?BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=\$pullCause childAlive=.*failureClass=.*exitCode=.*diagnostic=.*outputBytes=/, "the outer stage handler emits the terminal receipt for every model-pull failure");
-  assert.match(setup, /\$modelPullExitCode = \$modelPull\.ExitCode/, "the child's exit code is saved before catch and cleanup handling");
+  assert.match(setup, /bostan-windows-native-model-pull\.mjs/, "the bounded Node runner captures the actual Ollama child exit code under Windows PowerShell 5.1");
+  assert.match(setup, /\$modelPullExitCode = if \(\$matches\[1\] -eq 'unavailable'\)/, "the PowerShell catch path preserves unavailable exit state");
+  assert.match(setup, /if \(\$pullChildAlive\).*?elseif \(\$null -eq \$pullExitCode -and \$modelPullFailureClass -in @\('access_denied','io_error','output_limit','process_launch','process_state'\)\)/s, "an unavailable child exit is classified from the captured failure before a null PowerShell process object");
+  assert.match(modelPullRunner, /child\.once\("close", \(code, signal\) => resolve\(\{ code, signal \}\)\)/, "the runner receives the child close event and numeric exit code");
+  assert.match(modelPullRunner, /await outputFile\.write\(chunk\.subarray\(0, written\)\)/, "the runner caps combined stdout and stderr bytes while draining both streams");
+  assert.match(modelPullRunner, /return child\.kill\(\)/, "termination uses the owned child process handle instead of a reusable numeric PID");
+  assert.doesNotMatch(modelPullRunner, /taskkill\.exe|String\(child\.pid\)/, "the supervisor never targets an unrelated process through a recycled PID");
   assert.ok(setup.includes("bostan-windows-native-model-diagnostics.ps1"), "the bounded dual-stream diagnostic reader is loaded");
   const diagnostics = fs.readFileSync(path.join(import.meta.dirname, "bostan-windows-native-model-diagnostics.ps1"), "utf8");
   assert.match(diagnostics, /\$stream\.Position = \[Math\]::Max\(0L, \$stream\.Length - 32768L\)/, "each model log stream is classified from a bounded tail");
@@ -119,11 +133,10 @@ test("native model setup exposes only bounded fixed phase, failure and progress 
   assert.match(setup, /if \(\$pullOutputLimitExceeded\) \{[\s\S]*?BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=output_limit[\s\S]*?\} elseif \(\$pullOutputReadFailed\)/, "the output cap takes precedence over exit-code text classification");
   assert.match(diagnostics, /OutputLimitExceeded = \(\$outputBytes -gt 1048576\)/, "an exactly 1 MiB log remains distinct from an exceeded cap");
   assert.doesNotMatch(setup, /modelPullResultReported/, "nested catches cannot suppress the outer terminal model-pull receipt");
-  for (const diagnostic of ["disk_space", "authorization", "model_unavailable", "network", "resource"]) {
+  for (const diagnostic of ["disk_space", "authorization", "model_unavailable", "network", "resource", "access_denied"]) {
     assert.ok(diagnostics.includes("$diagnostic = '" + diagnostic + "'"), "model pull classifier detects " + diagnostic);
   }
   assert.doesNotMatch(setup, /pullDiagnosticText/, "terminal classification uses the bounded dual-stream reader");
-  assert.match(setup, /taskkill\.exe \/PID \$modelPull\.Id \/T \/F/, "cleanup targets only the owned pull process tree");
 });
 
 test("native model diagnostics retain terminal errors across bounded stdout and stderr tails", { skip: process.platform !== "win32" }, () => {

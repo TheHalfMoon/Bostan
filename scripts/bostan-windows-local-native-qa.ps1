@@ -11,6 +11,7 @@ $server = $null
 $modelPull = $null
 $modelPullExitCode = $null
 $modelPullFailureClass = 'other'
+$preserveOllamaRoot = $false
 $archiveStream = $null
 $ownsOllamaRoot = $false
 $ownsArchive = $false
@@ -130,41 +131,47 @@ try {
   $modelPullStderr = Join-Path $ollamaRoot 'model-pull.stderr.log'
   Write-Output 'BOSTAN_NATIVE_WINDOWS_PHASE qwen_model_pull_begin'
   $modelPull = $null
+  $modelPullReceiptLine = $null
   try {
-  $modelPull = Start-Process -FilePath $ollamaExe -ArgumentList @('pull', 'qwen2.5-coder:1.5b') `
-    -PassThru -WindowStyle Hidden -RedirectStandardOutput $modelPullStdout -RedirectStandardError $modelPullStderr
-  $modelPullStartedAt = Get-Date
-  $lastHeartbeat = 0
-  $lastOutputLength = 0L
-  do {
-    $modelPull.Refresh()
-    if ($modelPull.HasExited) { break }
-    Start-Sleep -Seconds 5
+    & node (Join-Path $PSScriptRoot 'bostan-windows-native-model-pull.mjs') `
+      --executable $ollamaExe `
+      --model 'qwen2.5-coder:1.5b' `
+      --stdout $modelPullStdout `
+      --stderr $modelPullStderr | ForEach-Object {
+        $line = [string]$_
+        Write-Output $line
+        if ($line -match '^BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=(unavailable|-?[0-9]{1,10}) diagnostic=(access_denied|authorization|disk_space|model_unavailable|network|other|output_limit|resource) failureClass=(io_error|none|output_limit|process_exit|process_launch|process_state) outputBytes=([0-9]{1,7}) childClose=(closed|unconfirmed)$') {
+          $modelPullReceiptLine = $line
+        }
+      }
+    $modelPullRunnerExitCode = $LASTEXITCODE
+    if ($modelPullReceiptLine -match '^BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=(unavailable|-?[0-9]{1,10}) diagnostic=(access_denied|authorization|disk_space|model_unavailable|network|other|output_limit|resource) failureClass=(io_error|none|output_limit|process_exit|process_launch|process_state) outputBytes=([0-9]{1,7}) childClose=(closed|unconfirmed)$') {
+      $modelPullExitCode = if ($matches[1] -eq 'unavailable') { $null } else { [int]$matches[1] }
+      $modelPullDiagnostic = $matches[2]
+      $modelPullFailureClass = $matches[3]
+      $modelPullOutputBytes = [long]$matches[4]
+      $preserveOllamaRoot = $matches[5] -eq 'unconfirmed'
+    }
+    if ($modelPullRunnerExitCode -ne 0) {
+      if ($null -eq $modelPullExitCode) { throw 'Local Qwen model pull did not report a child exit code' }
+      if ($modelPullExitCode -ne 0) { throw 'Pinned local Qwen model pull failed' }
+      throw 'Local Qwen model pull runner failed'
+    }
+    if ($null -eq $modelPullExitCode) {
+      $modelPullFailureClass = 'process_state'
+      throw 'Local Qwen model pull did not report a child exit code'
+    }
+    if ($modelPullExitCode -ne 0) { throw 'Pinned local Qwen model pull failed' }
     $outputLength = 0L
     foreach ($outputPath in @($modelPullStdout, $modelPullStderr)) {
       if (Test-Path -LiteralPath $outputPath) { $outputLength += (Get-Item -LiteralPath $outputPath).Length }
     }
     if ($outputLength -gt 1048576) { throw 'Local Qwen model pull diagnostics exceeded the bounded output cap' }
-    $elapsedSeconds = [int]((Get-Date) - $modelPullStartedAt).TotalSeconds
-    if ($elapsedSeconds -ge ($lastHeartbeat + 60)) {
-      $lastHeartbeat = $elapsedSeconds - ($elapsedSeconds % 60)
-      $outputProgress = if ($outputLength -gt $lastOutputLength) { 'advanced' } else { 'stalled' }
-      $lastOutputLength = $outputLength
-      Write-Output "BOSTAN_NATIVE_MODEL_PULL_WAIT elapsedSeconds=$lastHeartbeat outputProgress=$outputProgress"
-    }
-  } while (-not $modelPull.HasExited)
-  $modelPull.WaitForExit()
-  $modelPullExitCode = $modelPull.ExitCode
-  $outputLength = 0L
-  foreach ($outputPath in @($modelPullStdout, $modelPullStderr)) {
-    if (Test-Path -LiteralPath $outputPath) { $outputLength += (Get-Item -LiteralPath $outputPath).Length }
-  }
-  if ($outputLength -gt 1048576) { throw 'Local Qwen model pull diagnostics exceeded the bounded output cap' }
-  if ($modelPullExitCode -ne 0) { throw 'Pinned local Qwen model pull failed' }
   Write-Output 'BOSTAN_NATIVE_WINDOWS_PHASE qwen_model_pull_complete'
   } catch {
     $exceptionType = $_.Exception.GetType().FullName
     if ($_.Exception.Message -eq 'Pinned local Qwen model pull failed') { $modelPullFailureClass = 'process_exit' }
+    elseif ($_.Exception.Message -eq 'Local Qwen model pull did not report a child exit code' -and $modelPullFailureClass -eq 'other') { $modelPullFailureClass = 'process_state' }
     elseif ($exceptionType -match '^System\.ComponentModel\.Win32Exception$') { $modelPullFailureClass = 'process_launch' }
     elseif ($exceptionType -match '^System\.UnauthorizedAccessException$') { $modelPullFailureClass = 'access_denied' }
     elseif ($exceptionType -match '^System\.IO\.(IOException|DirectoryNotFoundException|FileNotFoundException)$') { $modelPullFailureClass = 'io_error' }
@@ -222,8 +229,9 @@ try {
       Write-Output "BOSTAN_NATIVE_MODEL_PULL_RESULT exitCode=$pullExitCode diagnostic=$pullDiagnostic failureClass=$modelPullFailureClass outputBytes=$pullOutputBytes"
     } else {
       $pullCause = 'other'
-      if ($null -eq $modelPull) { $pullCause = 'process_launch' }
-      elseif ($pullChildAlive) { $pullCause = 'process_state' }
+      if ($pullChildAlive) { $pullCause = 'process_state' }
+      elseif ($null -eq $pullExitCode -and $modelPullFailureClass -in @('access_denied','io_error','output_limit','process_launch','process_state')) { $pullCause = $modelPullFailureClass }
+      elseif ($null -eq $modelPull -and $modelPullFailureClass -eq 'process_launch') { $pullCause = 'process_launch' }
       elseif ($pullExitCode -eq 0) { $pullCause = 'process_state' }
       Write-Output "BOSTAN_NATIVE_MODEL_PULL_OPERATION_FAILURE cause=$pullCause childAlive=$($pullChildAlive.ToString().ToLowerInvariant()) failureClass=$modelPullFailureClass exitCode=$(if ($null -eq $pullExitCode) { 'unavailable' } else { $pullExitCode }) diagnostic=$pullDiagnostic outputBytes=$pullOutputBytes"
     }
@@ -249,7 +257,9 @@ try {
   if ($targetRoot -ne $expectedRoot -or -not $targetRoot.StartsWith($tempRoot + [IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
     throw 'Refusing Ollama cleanup outside its isolated runner TEMP directory'
   }
-  if ([System.IO.File]::Exists($targetRoot) -or [System.IO.Directory]::Exists($targetRoot)) {
+  if ($preserveOllamaRoot) {
+    Write-Output 'BOSTAN_NATIVE_WINDOWS_CLEANUP_INCOMPLETE task_owned_temp_preserved=true reason=child_close_unconfirmed'
+  } elseif ([System.IO.File]::Exists($targetRoot) -or [System.IO.Directory]::Exists($targetRoot)) {
     if (-not $ownsOllamaRoot) { throw 'Refusing to remove an Ollama path not created by this invocation' }
     if (-not [System.IO.Directory]::Exists($targetRoot)) { throw 'Owned Ollama root has an unexpected file type' }
     $targetAttributes = [System.IO.File]::GetAttributes($targetRoot)
@@ -272,5 +282,5 @@ try {
     Remove-Item -LiteralPath $archivePath -Force -ErrorAction Stop
     if ([System.IO.File]::Exists($archivePath) -or [System.IO.Directory]::Exists($archivePath)) { throw 'Owned archive cleanup did not complete' }
   }
-  Write-Output 'BOSTAN_NATIVE_WINDOWS_CLEANUP_PASS task_owned_temp=true'
+  if (-not $preserveOllamaRoot) { Write-Output 'BOSTAN_NATIVE_WINDOWS_CLEANUP_PASS task_owned_temp=true' }
 }

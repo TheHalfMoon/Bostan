@@ -32,11 +32,12 @@ function Get-BostanNativeModelPullDiagnostic {
   }
   $text = $diagnosticText.ToString()
   $diagnostic = 'other'
-  if ($text -match '(?i)(no space left|not enough space|disk full)') { $diagnostic = 'disk_space' }
-  elseif ($text -match '(?i)(unauthorized|forbidden|terms? (?:of )?service|license acceptance)') { $diagnostic = 'authorization' }
-  elseif ($text -match '(?i)(manifest.*(?:unknown|not found)|model.*(?:unknown|not found))') { $diagnostic = 'model_unavailable' }
-  elseif ($text -match '(?i)(resolve|dns|proxy|network|tls|certificate|timed out|connection (?:refused|reset|closed))') { $diagnostic = 'network' }
-  elseif ($text -match '(?i)(out of memory|allocation failed|resource exhausted)') { $diagnostic = 'resource' }
+  if ($text -match '(?i)(no space left|not enough space|disk full|insufficient disk)') { $diagnostic = 'disk_space' }
+  elseif ($text -match '(?i)(unauthorized|forbidden|terms? (?:of )?service|license acceptance|\bHTTP\s*(?:401|403)\b)') { $diagnostic = 'authorization' }
+  elseif ($text -match '(?i)(manifest.*(?:unknown|not found)|model.*(?:unknown|not found|does not exist))') { $diagnostic = 'model_unavailable' }
+  elseif ($text -match '(?i)(out of memory|allocation failed|resource exhausted|not enough memory)') { $diagnostic = 'resource' }
+  elseif ($text -match '(?i)(access denied|permission denied)') { $diagnostic = 'access_denied' }
+  elseif ($text -match '(?i)(resolve|dns|proxy|network|tls|certificate|timed out|deadline exceeded|unexpected eof|\beof\b|context canceled|connection (?:refused|reset|closed)|failed to connect|could not connect)') { $diagnostic = 'network' }
   return [PSCustomObject]@{
     OutputBytes = $outputBytes
     ReadFailed = $readFailed
