@@ -30,7 +30,17 @@ function Get-BostanAllowedFirstAgentRunDiagnostic([string]$line) {
     if ($actual -ccontains 'safeSignal' -and $null -ne $record.safeSignal -and
       ($record.safeSignal -isnot [string] -or $allowedSignals -cnotcontains $record.safeSignal)) { return $false }
     $allowedFailureClasses = @(
-      'native_session_lease_lost','native_session_cancelled','database_transport_failure',
+      'native_session_supervisor_busy','native_instruction_materialization_handoff_unavailable',
+      'native_instruction_materialization_handoff_mismatch','native_state_file_changed',
+      'native_runner_warm_transition_recovery_unproven','native_session_supervisor_checkpoint_mismatch',
+      'native_finalization_coordinator_missing','native_execution_binding_changed',
+      'native_cancellation_intent_conflict','native_run_already_committed',
+      'native_restart_recovery_claim_changed','native_replacement_lineage_invalid',
+      'native_session_retry_exhausted','native_session_lease_lost','native_workspace_required',
+      'native_instruction_preparation_configuration_changed','native_instruction_materialization_not_claimed',
+      'native_instruction_preparation_copy_changed','native_cleanup_maintenance_unproven',
+      'native_session_tool_authority_unavailable','native_tool_authority_epoch_revoked',
+      'paperclip_runner_provider_unsupported','native_session_cancelled','database_transport_failure',
       'database_transaction_conflict','database_statement_timeout','authorization_failure',
       'workspace_unavailable','runtime_file_missing','runtime_access_denied','memory_pressure',
       'unclassified_native_failure'

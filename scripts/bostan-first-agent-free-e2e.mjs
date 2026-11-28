@@ -134,6 +134,23 @@ export function safeHeartbeatQaDiagnostic(run) {
 function safeNativePreparationFailureClass(error) {
   // The raw run error can contain task text, credentials, paths, or provider
   // output. Emit only fixed classes that help separate pre-provider failures.
+  const knownPreparationCodes = [
+    "native_session_supervisor_busy", "native_instruction_materialization_handoff_unavailable",
+    "native_instruction_materialization_handoff_mismatch", "native_state_file_changed",
+    "native_runner_warm_transition_recovery_unproven", "native_session_supervisor_checkpoint_mismatch",
+    "native_finalization_coordinator_missing", "native_execution_binding_changed",
+    "native_cancellation_intent_conflict", "native_run_already_committed",
+    "native_restart_recovery_claim_changed", "native_replacement_lineage_invalid",
+    "native_session_retry_exhausted", "native_session_lease_lost", "native_workspace_required",
+    "native_instruction_preparation_configuration_changed", "native_instruction_materialization_not_claimed",
+    "native_instruction_preparation_copy_changed", "native_cleanup_maintenance_unproven",
+    "native_session_tool_authority_unavailable", "native_tool_authority_epoch_revoked",
+    "paperclip_runner_provider_unsupported",
+  ];
+  const normalized = error.trim();
+  for (const code of knownPreparationCodes) {
+    if (normalized === code || normalized.startsWith(code + ":")) return code;
+  }
   const classes = [
     [/native_session_lease_lost/i, "native_session_lease_lost"],
     [/native_session_cancelled|native_retry_cancelled/i, "native_session_cancelled"],

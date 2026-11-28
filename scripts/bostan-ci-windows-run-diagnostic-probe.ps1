@@ -34,6 +34,14 @@ if ($roundTrip.status -ne 'failed' -or $roundTrip.errorCode -ne 'adapter_failed'
   $roundTrip.events.nativeFailure.safeSignal -ne 'native_provider_process_exited') {
   throw 'bounded first-agent diagnostic fields were not preserved'
 }
+$knownFailureCode = [ordered]@{}
+foreach ($property in $diagnostic.GetEnumerator()) { $knownFailureCode[$property.Key] = $property.Value }
+$knownFailureCode['failureClass'] = 'native_finalization_coordinator_missing'
+$knownFailureReceipt = Get-BostanAllowedFirstAgentRunDiagnostic ($prefix + (ConvertTo-Json -InputObject $knownFailureCode -Compress -Depth 5))
+if ($knownFailureReceipt -isnot [string] -or
+  (ConvertFrom-Json -InputObject $knownFailureReceipt.Substring($prefix.Length)).failureClass -ne 'native_finalization_coordinator_missing') {
+  throw 'fixed native preparation failure code was not preserved'
+}
 if ($valid -match 'C:\\Users|password|token=|secret|private') {
   throw 'first-agent diagnostic exposed sensitive fixture text'
 }
@@ -119,4 +127,4 @@ if (Get-BostanAllowedNativeResourceDiagnostic ($resourcePrefix + '{"totalMemoryG
   throw 'native resource receipt accepted an unexpected field'
 }
 
-Write-Output 'BOSTAN_CI_FIRST_AGENT_RUN_DIAGNOSTIC_PROBE_PASS cases=valid,unavailable_log,extra_field,unsafe_signal,unsafe_native_failure,non_scalar_stage,unsafe_failure_class,bounded_counts,oversized_line,resources,unsafe_resource'
+Write-Output 'BOSTAN_CI_FIRST_AGENT_RUN_DIAGNOSTIC_PROBE_PASS cases=valid,known_native_code,unavailable_log,extra_field,unsafe_signal,unsafe_native_failure,non_scalar_stage,unsafe_failure_class,bounded_counts,oversized_line,resources,unsafe_resource'

@@ -277,6 +277,9 @@ test("packaged QA heartbeat diagnostics retain safe phase and provider failure s
   assert.doesNotMatch(JSON.stringify(preparationFailure), /private|prompt|token|SQLSTATE/);
   assert.equal(safeHeartbeatQaDiagnostic({ status: "failed", errorCode: "native_session_interrupted",
     error: "unrecognized private failure" }).failureClass, "unclassified_native_failure");
+  assert.equal(safeHeartbeatQaDiagnostic({ status: "failed", errorCode: "native_session_interrupted",
+    error: "native_finalization_coordinator_missing: private task and database details" }).failureClass,
+  "native_finalization_coordinator_missing");
   const events = safeHeartbeatQaEventDiagnostic([
     { eventType: "harness.ready", payload: { token: "private" } },
     { eventType: "session.started" }, { eventType: "turn.started" },
