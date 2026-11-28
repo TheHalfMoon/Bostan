@@ -9328,7 +9328,13 @@ describe("native warm session supervision", () => {
 describe("native session bounded recovery", () => {
   it("persists closed remote recovery evidence without replacing saved run results", async () => {
     const updates: Array<{ table: unknown; values: Record<string, unknown> }> = [];
-    const onEvent = vi.fn(async () => undefined);
+    let rejectDiagnosticOnce = true;
+    const onEvent = vi.fn(async (event: { eventType: string }) => {
+      if (event.eventType === "native.failure_diagnostic" && rejectDiagnosticOnce) {
+        rejectDiagnosticOnce = false;
+        throw new Error("private event transport error");
+      }
+    });
     const remoteRunnerRecovery = { stage: "identity_marker", reason: "fingerprint_missing" } as const;
     const failure = new RemoteRunnerRecoveryError(remoteRunnerRecovery);
     state.execute.mockReset().mockRejectedValueOnce(failure);
@@ -9347,6 +9353,7 @@ describe("native session bounded recovery", () => {
         nativeErrorCode: null,
       }) },
     }));
+    expect(onEvent.mock.calls.filter(([event]) => event.eventType === "native.failure_diagnostic")).toHaveLength(2);
     expect(updates.find(update => update.table === nativeRunFinalizations && update.values.failureDetail)?.values.failureDetail)
       .toMatchObject({ remoteRunnerRecovery });
     const resultJson = updates.find(update => update.table === heartbeatRuns && update.values.error)?.values.resultJson as SQL;

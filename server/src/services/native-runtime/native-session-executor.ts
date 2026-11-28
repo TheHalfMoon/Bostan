@@ -7669,29 +7669,49 @@ export async function executePaperclipNativeSession(input: {
   input = {
     ...input,
     onEvent: async (event) => {
-      if (event.eventType === "native.failure_diagnostic") emittedNativeFailureDiagnostic = true;
       await originalOnEvent?.(event);
+      if (event.eventType === "native.failure_diagnostic") emittedNativeFailureDiagnostic = true;
     },
   };
-  const agentKeyId = input.runnerEnvironment?.PAPERCLIP_AGENT_KEY_ID;
-  if (agentKeyId) {
-    // Recovered pre-upgrade inputs also need the current public identity marker
-    // before deciding whether an already-running provider can be reused.
-    input = { ...input, execution: { ...input.execution,
-      binding: { ...input.execution.binding, agentKeyId },
-    } };
-  }
-  if (input.observability) {
-    const preconfiguredCodex = input.observability.kind === "codex" && "homeMode" in input.execution && input.execution.homeMode === "preconfigured";
-    if (preconfiguredCodex) {
-      await input.onLog?.("stderr", "[bostan] Company observability is unavailable for a caller-owned Codex home.\n");
-      input = { ...input, observability: undefined };
-    } else {
-      const environment = { ...resolveNativeProviderEnvironment(input.execution.provider, input.runnerEnvironment) };
-      applyObservabilityEnvironment(environment, input.observability);
-      if (input.execution.provider.kind === "acpx" && input.observability.kind === "codex") environment.PAPERCLIP_OBSERVABILITY_CODEX_CONFIG = JSON.stringify(input.observability.otelConfig);
-      input = { ...input, runnerEnvironment: environment };
+  try {
+    const agentKeyId = input.runnerEnvironment?.PAPERCLIP_AGENT_KEY_ID;
+    if (agentKeyId) {
+      // Recovered pre-upgrade inputs also need the current public identity marker
+      // before deciding whether an already-running provider can be reused.
+      input = { ...input, execution: { ...input.execution,
+        binding: { ...input.execution.binding, agentKeyId },
+      } };
     }
+    if (input.observability) {
+      const preconfiguredCodex = input.observability.kind === "codex" && "homeMode" in input.execution && input.execution.homeMode === "preconfigured";
+      if (preconfiguredCodex) {
+        await input.onLog?.("stderr", "[bostan] Company observability is unavailable for a caller-owned Codex home.\n");
+        input = { ...input, observability: undefined };
+      } else {
+        const environment = { ...resolveNativeProviderEnvironment(input.execution.provider, input.runnerEnvironment) };
+        applyObservabilityEnvironment(environment, input.observability);
+        if (input.execution.provider.kind === "acpx" && input.observability.kind === "codex") environment.PAPERCLIP_OBSERVABILITY_CODEX_CONFIG = JSON.stringify(input.observability.otelConfig);
+        input = { ...input, runnerEnvironment: environment };
+      }
+    }
+  } catch (error) {
+    const safeFailureDiagnostic = safeNativeSessionFailureDiagnostic(error, "provider_setup");
+    await input.onEvent?.({
+      eventType: "native.failure_diagnostic",
+      level: "error",
+      message: "Native session setup failed before a result was produced.",
+      payload: {
+        failureDetail: {
+          originalFailureCode: nativeSessionFailureSourceCode(error),
+          recoveryMode: "ambiguous_state",
+          providerSessionEstablished: null,
+          providerEventsExist: null,
+          checkpointExists: null,
+          ...safeFailureDiagnostic,
+        },
+      },
+    }).catch(() => undefined);
+    throw error;
   }
   const runId = input.execution.binding.runId;
   if (nativeSessionStartups.has(runId)) {
@@ -7814,7 +7834,7 @@ export async function executePaperclipNativeSession(input: {
   } catch (error) {
     executionFailure = error;
     const remoteRunnerRecovery = readRemoteRunnerRecoveryError(error);
-    if (!emittedNativeFailureDiagnostic || remoteRunnerRecovery) {
+    if (!emittedNativeFailureDiagnostic) {
       const safeFailureDiagnostic = safeNativeSessionFailureDiagnostic(
         error,
         remoteRunnerRecovery ? "remote_session_recovery" : outerFailureStage,
@@ -9449,7 +9469,10 @@ async function executePaperclipNativeSessionWithinScope(
           : providerUsageLimitObserved
             ? "native_provider_usage_limit"
             : classifiedFailureCode;
-      const safeFailureDiagnostic = safeNativeSessionFailureDiagnostic(error, failureStage);
+      const safeFailureDiagnostic = safeNativeSessionFailureDiagnostic(
+        error,
+        readRemoteRunnerRecoveryError(error) ? "remote_session_recovery" : failureStage,
+      );
       await input.onEvent?.({
         eventType: "native.failure_diagnostic",
         level: "error",
