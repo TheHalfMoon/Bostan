@@ -6,7 +6,7 @@ function Get-BostanAllowedFirstAgentRunDiagnostic([string]$line) {
     $record = ConvertFrom-Json -InputObject $line.Substring($prefix.Length) -ErrorAction Stop
     if (-not $record -or $record -is [System.Array]) { return $false }
     $actual = @($record.PSObject.Properties.Name)
-    $allowed = @('status','errorCode','executionStage','safeSignal','events','log')
+    $allowed = @('status','errorCode','executionStage','safeSignal','failureClass','events','log')
     foreach ($field in $actual) { if ($allowed -cnotcontains [string]$field) { return $false } }
     foreach ($field in @('status','errorCode','executionStage','events','log')) {
       if ($actual -cnotcontains $field) { return $false }
@@ -29,6 +29,14 @@ function Get-BostanAllowedFirstAgentRunDiagnostic([string]$line) {
     )
     if ($actual -ccontains 'safeSignal' -and $null -ne $record.safeSignal -and
       ($record.safeSignal -isnot [string] -or $allowedSignals -cnotcontains $record.safeSignal)) { return $false }
+    $allowedFailureClasses = @(
+      'native_session_lease_lost','native_session_cancelled','database_transport_failure',
+      'database_transaction_conflict','database_statement_timeout','authorization_failure',
+      'workspace_unavailable','runtime_file_missing','runtime_access_denied','memory_pressure',
+      'unclassified_native_failure'
+    )
+    if ($actual -ccontains 'failureClass' -and $null -ne $record.failureClass -and
+      ($record.failureClass -isnot [string] -or $allowedFailureClasses -cnotcontains $record.failureClass)) { return $false }
 
     $eventFields = @('available','harnessReady','sessionStarted','sessionResumed','turnStarted','turnCompleted','turnFailed','turnCancelled','turnInterrupted','providerEvents','providerRpcResults','nativeFailure')
     $eventProperties = @($record.events.PSObject.Properties.Name)
@@ -100,6 +108,7 @@ function Get-BostanAllowedFirstAgentRunDiagnostic([string]$line) {
       executionStage = $record.executionStage
     }
     if ($actual -ccontains 'safeSignal') { $safeRecord['safeSignal'] = $record.safeSignal }
+    if ($actual -ccontains 'failureClass') { $safeRecord['failureClass'] = $record.failureClass }
     $safeNativeFailure = $null
     if ($null -ne $nativeFailure) {
       $safeNativeFailure = [ordered]@{

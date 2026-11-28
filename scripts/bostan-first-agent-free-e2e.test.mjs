@@ -269,6 +269,14 @@ test("packaged QA heartbeat diagnostics retain safe phase and provider failure s
   assert.equal(safeHeartbeatQaDiagnostic({ status: "failed", errorCode: "native_session_interrupted",
     error: "native_finalization_missing: session returned no semantic result; private details" }).safeSignal,
   "native_semantic_result_missing");
+  const preparationFailure = safeHeartbeatQaDiagnostic({ status: "failed",
+    errorCode: "native_session_interrupted", executionStage: "preparing",
+    error: "SQLSTATE 57014: statement timeout; task=private prompt; token=private-secret" });
+  assert.deepEqual(preparationFailure, { status: "failed", errorCode: "native_session_interrupted",
+    executionStage: "preparing", failureClass: "database_statement_timeout" });
+  assert.doesNotMatch(JSON.stringify(preparationFailure), /private|prompt|token|SQLSTATE/);
+  assert.equal(safeHeartbeatQaDiagnostic({ status: "failed", errorCode: "native_session_interrupted",
+    error: "unrecognized private failure" }).failureClass, "unclassified_native_failure");
   const events = safeHeartbeatQaEventDiagnostic([
     { eventType: "harness.ready", payload: { token: "private" } },
     { eventType: "session.started" }, { eventType: "turn.started" },

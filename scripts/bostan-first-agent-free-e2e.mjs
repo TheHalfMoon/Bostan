@@ -123,8 +123,31 @@ export function safeHeartbeatQaDiagnostic(run) {
           : /provider_initialize_timeout/i.test(error) ? "native_provider_initialize_timeout"
             : null
     : null;
+  const genericFailureClass = run?.errorCode === "native_session_interrupted"
+    ? safeNativePreparationFailureClass(error)
+    : null;
   const safeSignal = providerSignal ?? nativeSignal;
-  return { status, errorCode, executionStage, ...(safeSignal ? { safeSignal } : {}) };
+  return { status, errorCode, executionStage, ...(safeSignal ? { safeSignal } : {}),
+    ...(genericFailureClass ? { failureClass: genericFailureClass } : {}) };
+}
+
+function safeNativePreparationFailureClass(error) {
+  // The raw run error can contain task text, credentials, paths, or provider
+  // output. Emit only fixed classes that help separate pre-provider failures.
+  const classes = [
+    [/native_session_lease_lost/i, "native_session_lease_lost"],
+    [/native_session_cancelled|native_retry_cancelled/i, "native_session_cancelled"],
+    [/database (?:connection|pool)|connection pool|ECONNREFUSED|ECONNRESET/i, "database_transport_failure"],
+    [/deadlock detected|could not serialize access|SQLSTATE.?40P01|SQLSTATE.?40001/i, "database_transaction_conflict"],
+    [/statement timeout|lock timeout|SQLSTATE.?57014/i, "database_statement_timeout"],
+    [/permission denied|not authorized|authorization failed/i, "authorization_failure"],
+    [/workspace.*(?:missing|unavailable)|(?:missing|unavailable).*workspace/i, "workspace_unavailable"],
+    [/ENOENT|file not found|no such file/i, "runtime_file_missing"],
+    [/EACCES|access is denied/i, "runtime_access_denied"],
+    [/out of memory|allocation failed|heap out of memory/i, "memory_pressure"],
+  ];
+  for (const [pattern, value] of classes) if (pattern.test(error)) return value;
+  return error ? "unclassified_native_failure" : null;
 }
 
 export function safeHeartbeatQaEventDiagnostic(events) {

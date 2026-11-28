@@ -17,7 +17,7 @@ $log = [ordered]@{
 }
 $diagnostic = [ordered]@{
   status = 'failed'; errorCode = 'adapter_failed'; executionStage = 'settled'
-  safeSignal = 'native_provider_timeout'; events = $events; log = $log
+  safeSignal = 'native_provider_timeout'; failureClass = 'database_statement_timeout'; events = $events; log = $log
 }
 $prefix = 'BOSTAN_PACKAGED_FIRST_AGENT_RUN_DIAGNOSTIC '
 $valid = Get-BostanAllowedFirstAgentRunDiagnostic ($prefix + (ConvertTo-Json -InputObject $diagnostic -Compress -Depth 5))
@@ -27,6 +27,7 @@ if ($valid -isnot [string] -or -not $valid.StartsWith($prefix, [StringComparison
 $roundTrip = ConvertFrom-Json -InputObject $valid.Substring($prefix.Length)
 if ($roundTrip.status -ne 'failed' -or $roundTrip.errorCode -ne 'adapter_failed' -or
   $roundTrip.executionStage -ne 'settled' -or $roundTrip.safeSignal -ne 'native_provider_timeout' -or
+  $roundTrip.failureClass -ne 'database_statement_timeout' -or
   $roundTrip.events.turnFailed -ne 1 -or $roundTrip.log.errorRecords -ne 1 -or
   $roundTrip.events.nativeFailure.sourceFailureCode -ne 'provider_process_exited' -or
   $roundTrip.events.nativeFailure.recoveryMode -ne 'bootstrap_retry' -or
@@ -83,6 +84,13 @@ if (Get-BostanAllowedFirstAgentRunDiagnostic ($prefix + (ConvertTo-Json -InputOb
   throw 'non-scalar execution stage was accepted'
 }
 
+$badFailureClass = [ordered]@{}
+foreach ($property in $diagnostic.GetEnumerator()) { $badFailureClass[$property.Key] = $property.Value }
+$badFailureClass['failureClass'] = 'private error text'
+if (Get-BostanAllowedFirstAgentRunDiagnostic ($prefix + (ConvertTo-Json -InputObject $badFailureClass -Compress -Depth 5))) {
+  throw 'unknown first-agent failure class was accepted'
+}
+
 $badCount = [ordered]@{}
 foreach ($property in $diagnostic.GetEnumerator()) { $badCount[$property.Key] = $property.Value }
 $badEvents = [ordered]@{}
@@ -111,4 +119,4 @@ if (Get-BostanAllowedNativeResourceDiagnostic ($resourcePrefix + '{"totalMemoryG
   throw 'native resource receipt accepted an unexpected field'
 }
 
-Write-Output 'BOSTAN_CI_FIRST_AGENT_RUN_DIAGNOSTIC_PROBE_PASS cases=valid,unavailable_log,extra_field,unsafe_signal,unsafe_native_failure,non_scalar_stage,bounded_counts,oversized_line,resources,unsafe_resource'
+Write-Output 'BOSTAN_CI_FIRST_AGENT_RUN_DIAGNOSTIC_PROBE_PASS cases=valid,unavailable_log,extra_field,unsafe_signal,unsafe_native_failure,non_scalar_stage,unsafe_failure_class,bounded_counts,oversized_line,resources,unsafe_resource'
